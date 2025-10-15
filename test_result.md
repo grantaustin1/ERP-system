@@ -376,13 +376,7 @@ metadata:
   run_ui: true
 
 test_plan:
-  current_focus:
-    - "Automations Page Component"
-    - "Automation Rule Creation Form"
-    - "Automation Actions UI"
-    - "Automation List Display"
-    - "Automation Toggle, Edit, Delete, Test"
-    - "Execution History Tab"
+  current_focus: []
   stuck_tasks: []
   test_all: false
   test_priority: "high_first"
