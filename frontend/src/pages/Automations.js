@@ -230,6 +230,16 @@ export default function Automations() {
       actions: automation.actions || [],
       enabled: automation.enabled
     });
+    
+    // Convert conditions object to array for UI
+    const conditionsArray = Object.entries(automation.conditions || {}).map(([field, value]) => {
+      if (typeof value === 'object' && value.operator) {
+        return { field, operator: value.operator, value: value.value };
+      }
+      return { field, operator: '==', value };
+    });
+    setConditionsList(conditionsArray);
+    
     setDialogOpen(true);
   };
 
