@@ -198,6 +198,34 @@ class Token(BaseModel):
     access_token: str
     token_type: str = "bearer"
 
+class CancellationRequest(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    member_id: str
+    member_name: str
+    membership_type: str
+    reason: str
+    requested_by: str  # member, staff
+    request_source: str = "staff"  # staff, mobile_app, email
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    status: str = "pending"  # pending, staff_approved, manager_approved, admin_approved, rejected, completed
+    staff_approval: Optional[dict] = None  # {approved_by, approved_at, comments}
+    manager_approval: Optional[dict] = None
+    admin_approval: Optional[dict] = None
+    rejection_reason: Optional[str] = None
+    completed_at: Optional[datetime] = None
+
+class CancellationRequestCreate(BaseModel):
+    member_id: str
+    reason: str
+    request_source: str = "staff"
+
+class ApprovalAction(BaseModel):
+    request_id: str
+    action: str  # approve, reject
+    comments: Optional[str] = None
+    rejection_reason: Optional[str] = None
+
 # Auth dependency
 async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)):
     token = credentials.credentials
