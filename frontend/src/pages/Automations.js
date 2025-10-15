@@ -99,6 +99,14 @@ export default function Automations() {
     assigned_to: ''
   });
 
+  const [currentCondition, setCurrentCondition] = useState({
+    field: '',
+    operator: '',
+    value: ''
+  });
+
+  const [conditionsList, setConditionsList] = useState([]);
+
   useEffect(() => {
     fetchAutomations();
     fetchExecutions();
