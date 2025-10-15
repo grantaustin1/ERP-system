@@ -177,6 +177,7 @@ class MemberCreate(BaseModel):
     home_phone: Optional[str] = None
     work_phone: Optional[str] = None
     membership_type_id: str
+    sales_consultant_id: Optional[str] = None
     address: Optional[str] = None
     bank_account_number: Optional[str] = None
     bank_name: Optional[str] = None
