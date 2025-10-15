@@ -263,6 +263,21 @@ frontend:
       - working: true
         agent: "testing"
         comment: "✅ Automations page loads perfectly with correct title 'Automation & Triggers', proper layout, and all UI components visible. Page displays existing automations in card format with proper information."
+
+  - task: "Condition Builder Feature"
+    implemented: true
+    working: true
+    file: "/app/frontend/src/pages/Automations.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Added user-friendly condition builder with field, operator, value selection for filtering automation triggers"
+      - working: true
+        agent: "testing"
+        comment: "✅ Condition Builder fully functional: Conditions section appears after trigger selection with proper label 'Conditions (Optional - Only run if...)'. Field dropdown shows trigger-specific fields (Invoice Amount, Failure Reason for Payment Failed). Operator dropdown shows field-type appropriate operators (>=, <=, == for numbers; contains, == for text). Value input changes type based on field (number/text). Add/Remove condition buttons work correctly. Conditions display as blue badges in automation cards with proper format 'Field: Operator Value'. Multiple conditions supported with AND logic. Edit automation pre-loads existing conditions correctly."
   
   - task: "Automation Rule Creation Form"
     implemented: true
