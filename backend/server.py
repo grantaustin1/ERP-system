@@ -74,6 +74,8 @@ class MembershipType(BaseModel):
     price: float
     billing_frequency: str  # monthly, 6months, yearly, one-time
     duration_months: int
+    payment_type: str = "debit_order"  # paid_upfront, debit_order
+    rollover_enabled: bool = False  # If true, converts to monthly after term
     features: List[str] = []
     peak_hours_only: bool = False
     multi_site_access: bool = False
