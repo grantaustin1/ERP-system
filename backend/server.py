@@ -67,6 +67,20 @@ def generate_qr_code(data: str) -> str:
     img.save(buffered, format="PNG")
     return base64.b64encode(buffered.getvalue()).decode()
 
+def geocode_address(address: str) -> tuple:
+    """Geocode an address and return (latitude, longitude)"""
+    if not address or len(address.strip()) < 5:
+        return None, None
+    
+    try:
+        geolocator = Nominatim(user_agent="gym_access_hub")
+        location = geolocator.geocode(address, timeout=10)
+        if location:
+            return location.latitude, location.longitude
+        return None, None
+    except (GeocoderTimedOut, GeocoderServiceError):
+        return None, None
+
 # Models
 class MembershipType(BaseModel):
     model_config = ConfigDict(extra="ignore")
