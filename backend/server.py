@@ -1153,6 +1153,81 @@ async def get_payments(member_id: Optional[str] = None, current_user: User = Dep
             pay["payment_date"] = datetime.fromisoformat(pay["payment_date"])
     return payments
 
+@api_router.post("/invoices/{invoice_id}/mark-failed")
+async def mark_invoice_failed(
+    invoice_id: str,
+    failure_reason: Optional[str] = None,
+    current_user: User = Depends(get_current_user)
+):
+    """Mark an invoice payment as failed (e.g., debit order failed)"""
+    invoice = await db.invoices.find_one({"id": invoice_id})
+    if not invoice:
+        raise HTTPException(status_code=404, detail="Invoice not found")
+    
+    # Update invoice status
+    await db.invoices.update_one(
+        {"id": invoice_id},
+        {"$set": {
+            "status": "failed",
+            "failure_reason": failure_reason,
+            "failure_date": datetime.now(timezone.utc).isoformat()
+        }}
+    )
+    
+    # Get member details for trigger
+    member = await db.members.find_one({"id": invoice["member_id"]}, {"_id": 0})
+    if member:
+        # Mark member as debtor
+        await db.members.update_one(
+            {"id": member["id"]},
+            {"$set": {"is_debtor": True}}
+        )
+        
+        # Trigger automation: payment_failed
+        await trigger_automation("payment_failed", {
+            "member_id": member["id"],
+            "member_name": f"{member.get('first_name', '')} {member.get('last_name', '')}".strip(),
+            "email": member.get("email", ""),
+            "phone": member.get("phone_primary", ""),
+            "invoice_id": invoice_id,
+            "invoice_number": invoice["invoice_number"],
+            "amount": invoice["amount"],
+            "failure_reason": failure_reason or "Payment failed"
+        })
+    
+    return {"message": "Invoice marked as failed and automations triggered"}
+
+@api_router.post("/invoices/{invoice_id}/mark-overdue")
+async def mark_invoice_overdue(invoice_id: str, current_user: User = Depends(get_current_user)):
+    """Mark an invoice as overdue"""
+    invoice = await db.invoices.find_one({"id": invoice_id})
+    if not invoice:
+        raise HTTPException(status_code=404, detail="Invoice not found")
+    
+    # Update invoice status
+    await db.invoices.update_one(
+        {"id": invoice_id},
+        {"$set": {"status": "overdue"}}
+    )
+    
+    # Get member details for trigger
+    member = await db.members.find_one({"id": invoice["member_id"]}, {"_id": 0})
+    if member:
+        # Trigger automation: invoice_overdue
+        await trigger_automation("invoice_overdue", {
+            "member_id": member["id"],
+            "member_name": f"{member.get('first_name', '')} {member.get('last_name', '')}".strip(),
+            "email": member.get("email", ""),
+            "phone": member.get("phone_primary", ""),
+            "invoice_id": invoice_id,
+            "invoice_number": invoice["invoice_number"],
+            "amount": invoice["amount"],
+            "due_date": invoice.get("due_date", "")
+        })
+    
+    return {"message": "Invoice marked as overdue and automations triggered"}
+
+
 # Member Analytics and Geo-location
 @api_router.get("/analytics/member-distribution")
 async def get_member_distribution(current_user: User = Depends(get_current_user)):
