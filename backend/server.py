@@ -96,6 +96,11 @@ class MembershipTypeCreate(BaseModel):
     duration_months: int
     payment_type: str = "debit_order"
     rollover_enabled: bool = False
+    levy_enabled: bool = False
+    levy_frequency: str = "annual"
+    levy_timing: str = "anniversary"
+    levy_amount_type: str = "fixed"
+    levy_amount: float = 0.0
     features: List[str] = []
     peak_hours_only: bool = False
     multi_site_access: bool = False
