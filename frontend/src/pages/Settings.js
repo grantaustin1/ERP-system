@@ -81,6 +81,11 @@ export default function Settings() {
         duration_months: 1,
         payment_type: 'debit_order',
         rollover_enabled: false,
+        levy_enabled: false,
+        levy_frequency: 'annual',
+        levy_timing: 'anniversary',
+        levy_amount_type: 'fixed',
+        levy_amount: '',
         features: '',
         peak_hours_only: false,
         multi_site_access: false
