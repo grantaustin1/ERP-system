@@ -16,6 +16,7 @@ export default function Sidebar() {
     { path: '/members', icon: Users, label: 'Members', testId: 'nav-members' },
     { path: '/access', icon: ScanLine, label: 'Access Control', testId: 'nav-access' },
     { path: '/billing', icon: FileText, label: 'Billing', testId: 'nav-billing' },
+    { path: '/settings', icon: Settings, label: 'Settings', testId: 'nav-settings' },
   ];
 
   return (
