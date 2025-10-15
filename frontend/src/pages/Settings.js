@@ -342,10 +342,35 @@ export default function Settings() {
                                   </div>
                                 )}
                                 
+                                {membershipForm.payment_type === 'paid_upfront' && (
+                                  <div className="space-y-2">
+                                    <Label className="text-amber-200">Levy Payment Method</Label>
+                                    <Select
+                                      value={membershipForm.levy_payment_method}
+                                      onValueChange={(value) => setMembershipForm({ ...membershipForm, levy_payment_method: value })}
+                                    >
+                                      <SelectTrigger className="bg-slate-700/50 border-slate-600">
+                                        <SelectValue />
+                                      </SelectTrigger>
+                                      <SelectContent className="bg-slate-800 border-slate-700">
+                                        <SelectItem value="upfront">Pay Upfront with Membership</SelectItem>
+                                        <SelectItem value="debit_order">Debit Order (Recurring)</SelectItem>
+                                      </SelectContent>
+                                    </Select>
+                                    <p className="text-amber-300 text-xs mt-1">
+                                      {membershipForm.levy_payment_method === 'upfront' 
+                                        ? 'Levy will be included in upfront membership invoice'
+                                        : 'Levy will be billed separately on debit order schedule'}
+                                    </p>
+                                  </div>
+                                )}
+                                
                                 <div className="bg-amber-950/50 p-2 rounded">
                                   <p className="text-amber-200 text-xs font-medium">⚠️ Important:</p>
                                   <p className="text-amber-300 text-xs mt-1">
-                                    Levies are billed separately from regular membership fees to reduce payment failures and improve success rates.
+                                    {membershipForm.payment_type === 'debit_order' || membershipForm.levy_payment_method === 'debit_order'
+                                      ? 'Levies on debit order are billed separately from membership fees to reduce payment failures.'
+                                      : 'Levies paid upfront will be included in the initial membership invoice.'}
                                   </p>
                                 </div>
                               </div>
