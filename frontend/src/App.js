@@ -46,6 +46,7 @@ function App() {
           <Route path="/cancellations" element={<PrivateRoute><Cancellations /></PrivateRoute>} />
           <Route path="/levies" element={<PrivateRoute><Levies /></PrivateRoute>} />
           <Route path="/marketing" element={<PrivateRoute><Marketing /></PrivateRoute>} />
+          <Route path="/packages" element={<PrivateRoute><PackageSetup /></PrivateRoute>} />
           <Route path="/settings" element={<PrivateRoute><Settings /></PrivateRoute>} />
         </Routes>
       </BrowserRouter>
