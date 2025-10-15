@@ -8,6 +8,7 @@ import Members from '@/pages/Members';
 import AccessControl from '@/pages/AccessControl';
 import Billing from '@/pages/Billing';
 import MemberPortal from '@/pages/MemberPortal';
+import Settings from '@/pages/Settings';
 import { Toaster } from '@/components/ui/sonner';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
