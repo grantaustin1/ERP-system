@@ -82,6 +82,7 @@ class MembershipType(BaseModel):
     levy_timing: str = "anniversary"  # anniversary, fixed_dates (1 June, 1 Dec)
     levy_amount_type: str = "fixed"  # fixed, same_as_membership
     levy_amount: float = 0.0  # Only used if levy_amount_type is "fixed"
+    levy_payment_method: str = "debit_order"  # debit_order, upfront (for paid_upfront memberships)
     features: List[str] = []
     peak_hours_only: bool = False
     multi_site_access: bool = False
