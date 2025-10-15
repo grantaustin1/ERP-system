@@ -588,6 +588,12 @@ async def create_member(data: MemberCreate, current_user: User = Depends(get_cur
         member.latitude = lat
         member.longitude = lon
     
+    # Set consultant name if consultant_id provided
+    if member.sales_consultant_id:
+        consultant = await db.consultants.find_one({"id": member.sales_consultant_id}, {"_id": 0})
+        if consultant:
+            member.sales_consultant_name = f"{consultant['first_name']} {consultant['last_name']}"
+    
     doc = member.model_dump()
     doc["join_date"] = doc["join_date"].isoformat()
     if doc.get("expiry_date"):
