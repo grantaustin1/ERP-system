@@ -286,9 +286,13 @@ export default function Settings() {
                       <div key={type.id} className="p-4 rounded-lg bg-slate-700/30 hover:bg-slate-700/50 transition-all" data-testid={`membership-type-${type.id}`}>
                         <div className="flex items-start justify-between">
                           <div className="flex-1">
-                            <div className="flex items-center gap-3 mb-2">
+                            <div className="flex items-center gap-3 mb-2 flex-wrap">
                               <h3 className="text-white font-semibold text-lg">{type.name}</h3>
                               <Badge>{type.billing_frequency}</Badge>
+                              <Badge variant={type.payment_type === 'paid_upfront' ? 'default' : 'secondary'}>
+                                {type.payment_type === 'paid_upfront' ? 'Paid Upfront' : 'Debit Order'}
+                              </Badge>
+                              {type.rollover_enabled && <Badge className="bg-blue-500">Rollover Enabled</Badge>}
                               {type.multi_site_access && <Badge variant="secondary">Multi-Site</Badge>}
                               {type.peak_hours_only && <Badge variant="outline">Peak Hours</Badge>}
                             </div>
