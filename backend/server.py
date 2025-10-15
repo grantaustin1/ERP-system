@@ -102,6 +102,7 @@ class MembershipTypeCreate(BaseModel):
     levy_timing: str = "anniversary"
     levy_amount_type: str = "fixed"
     levy_amount: float = 0.0
+    levy_payment_method: str = "debit_order"
     features: List[str] = []
     peak_hours_only: bool = False
     multi_site_access: bool = False
