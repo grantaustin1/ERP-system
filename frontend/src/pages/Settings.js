@@ -264,8 +264,7 @@ export default function Settings() {
                         )}
                         
                         {/* Levy Configuration */}
-                        {membershipForm.payment_type === 'debit_order' && (
-                          <div className="p-4 rounded-lg bg-amber-900/20 border border-amber-500 space-y-4">
+                        <div className="p-4 rounded-lg bg-amber-900/20 border border-amber-500 space-y-4">
                             <div className="flex items-center justify-between">
                               <div>
                                 <Label className="text-amber-200">Enable Levy Charges</Label>
