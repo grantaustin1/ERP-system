@@ -111,7 +111,9 @@ class Member(BaseModel):
     first_name: str
     last_name: str
     email: EmailStr
-    phone: str
+    phone: str  # Mobile number
+    home_phone: Optional[str] = None
+    work_phone: Optional[str] = None
     membership_type_id: str
     membership_status: str = "active"  # active, suspended, cancelled
     join_date: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
@@ -119,7 +121,19 @@ class Member(BaseModel):
     qr_code: str = ""
     photo_url: Optional[str] = None
     is_debtor: bool = False
+    # Address and geo-location
     address: Optional[str] = None
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
+    # Banking details
+    bank_account_number: Optional[str] = None
+    bank_name: Optional[str] = None
+    bank_branch_code: Optional[str] = None
+    account_holder_name: Optional[str] = None
+    # Identification
+    id_number: Optional[str] = None  # Identity or Passport number
+    id_type: Optional[str] = None  # "id", "passport"
+    # Other
     emergency_contact: Optional[str] = None
     notes: Optional[str] = None
 
