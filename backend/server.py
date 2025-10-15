@@ -76,6 +76,12 @@ class MembershipType(BaseModel):
     duration_months: int
     payment_type: str = "debit_order"  # paid_upfront, debit_order
     rollover_enabled: bool = False  # If true, converts to monthly after term
+    # Levy configuration
+    levy_enabled: bool = False
+    levy_frequency: str = "annual"  # annual, biannual
+    levy_timing: str = "anniversary"  # anniversary, fixed_dates (1 June, 1 Dec)
+    levy_amount_type: str = "fixed"  # fixed, same_as_membership
+    levy_amount: float = 0.0  # Only used if levy_amount_type is "fixed"
     features: List[str] = []
     peak_hours_only: bool = False
     multi_site_access: bool = False
