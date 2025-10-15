@@ -11,16 +11,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
-import { Settings as SettingsIcon, Package, Users, Shield, Plus, Edit, Trash2 } from 'lucide-react';
+import { Package, Users, Shield, Plus, Edit } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function Settings() {
   const [membershipTypes, setMembershipTypes] = useState([]);
-  const [staffUsers, setStaffUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [membershipDialogOpen, setMembershipDialogOpen] = useState(false);
   const [staffDialogOpen, setStaffDialogOpen] = useState(false);
-  const [editingMembership, setEditingMembership] = useState(null);
   
   const [membershipForm, setMembershipForm] = useState({
     name: '',
@@ -37,14 +35,7 @@ export default function Settings() {
     email: '',
     password: '',
     full_name: '',
-    role: 'staff',
-    permissions: {
-      manage_members: false,
-      manage_billing: false,
-      manage_access: false,
-      manage_staff: false,
-      view_reports: false
-    }
+    role: 'staff'
   });
 
   useEffect(() => {
@@ -53,12 +44,8 @@ export default function Settings() {
 
   const fetchData = async () => {
     try {
-      const [typesRes, usersRes] = await Promise.all([
-        axios.get(`${API}/membership-types`),
-        axios.get(`${API}/users`)
-      ]);
-      setMembershipTypes(typesRes.data);
-      setStaffUsers(usersRes.data || []);
+      const response = await axios.get(`${API}/membership-types`);
+      setMembershipTypes(response.data);
     } catch (error) {
       toast.error('Failed to fetch data');
     } finally {
@@ -75,16 +62,10 @@ export default function Settings() {
         features: membershipForm.features.split('\n').filter(f => f.trim())
       };
 
-      if (editingMembership) {
-        await axios.put(`${API}/membership-types/${editingMembership.id}`, data);
-        toast.success('Membership type updated!');
-      } else {
-        await axios.post(`${API}/membership-types`, data);
-        toast.success('Membership type created!');
-      }
+      await axios.post(`${API}/membership-types`, data);
+      toast.success('Membership type created!');
 
       setMembershipDialogOpen(false);
-      setEditingMembership(null);
       setMembershipForm({
         name: '',
         description: '',
@@ -117,44 +98,10 @@ export default function Settings() {
         email: '',
         password: '',
         full_name: '',
-        role: 'staff',
-        permissions: {
-          manage_members: false,
-          manage_billing: false,
-          manage_access: false,
-          manage_staff: false,
-          view_reports: false
-        }
+        role: 'staff'
       });
-      fetchData();
     } catch (error) {
       toast.error('Failed to create staff user');
-    }
-  };
-
-  const editMembership = (membership) => {
-    setEditingMembership(membership);
-    setMembershipForm({
-      name: membership.name,
-      description: membership.description,
-      price: membership.price.toString(),
-      billing_frequency: membership.billing_frequency,
-      duration_months: membership.duration_months,
-      features: membership.features.join('\n'),
-      peak_hours_only: membership.peak_hours_only,
-      multi_site_access: membership.multi_site_access
-    });
-    setMembershipDialogOpen(true);
-  };
-
-  const deleteMembership = async (id) => {
-    if (!confirm('Are you sure you want to delete this membership type?')) return;
-    try {
-      await axios.delete(`${API}/membership-types/${id}`);
-      toast.success('Membership type deleted');
-      fetchData();
-    } catch (error) {
-      toast.error('Failed to delete membership type');
     }
   };
 
@@ -201,7 +148,7 @@ export default function Settings() {
                     </DialogTrigger>
                     <DialogContent className="bg-slate-800 border-slate-700 text-white max-w-2xl max-h-[90vh] overflow-y-auto">
                       <DialogHeader>
-                        <DialogTitle>{editingMembership ? 'Edit' : 'Create'} Membership Package</DialogTitle>
+                        <DialogTitle>Create Membership Package</DialogTitle>
                         <DialogDescription className="text-slate-400">
                           Configure membership details and pricing
                         </DialogDescription>
@@ -294,7 +241,7 @@ export default function Settings() {
                           />
                         </div>
                         <Button type="submit" className="w-full bg-gradient-to-r from-emerald-500 to-teal-600">
-                          {editingMembership ? 'Update' : 'Create'} Package
+                          Create Package
                         </Button>
                       </form>
                     </DialogContent>
@@ -329,24 +276,6 @@ export default function Settings() {
                               </ul>
                             )}
                           </div>
-                          <div className="flex gap-2">
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => editMembership(type)}
-                              className="border-blue-500 text-blue-400 hover:bg-blue-500/10"
-                            >
-                              <Edit className="w-4 h-4" />
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => deleteMembership(type.id)}
-                              className="border-red-500 text-red-400 hover:bg-red-500/10"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </Button>
-                          </div>
                         </div>
                       </div>
                     ))}
@@ -374,7 +303,7 @@ export default function Settings() {
                       <DialogHeader>
                         <DialogTitle>Add Staff User</DialogTitle>
                         <DialogDescription className="text-slate-400">
-                          Create a new staff account
+                          Create a new staff account with role-based access
                         </DialogDescription>
                       </DialogHeader>
                       <form onSubmit={handleStaffSubmit} className="space-y-4">
@@ -435,19 +364,8 @@ export default function Settings() {
                   </Dialog>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-3">
-                    {staffUsers.map((user) => (
-                      <div key={user.id} className="p-4 rounded-lg bg-slate-700/30 hover:bg-slate-700/50 transition-all flex items-center justify-between">
-                        <div>
-                          <p className="text-white font-medium">{user.full_name}</p>
-                          <p className="text-slate-400 text-sm">{user.email}</p>
-                        </div>
-                        <Badge>{user.role}</Badge>
-                      </div>
-                    ))}
-                    {staffUsers.length === 0 && (
-                      <p className="text-slate-400 text-center py-8">No staff users yet</p>
-                    )}
+                  <div className="text-center text-slate-400 py-8">
+                    Staff management functionality - Create staff accounts with role-based permissions
                   </div>
                 </CardContent>
               </Card>
@@ -458,18 +376,27 @@ export default function Settings() {
               <Card className="bg-slate-800/50 border-slate-700 backdrop-blur-lg">
                 <CardHeader>
                   <CardTitle className="text-white">Role Permissions</CardTitle>
-                  <CardDescription className="text-slate-400">Configure access rights for different roles</CardDescription>
+                  <CardDescription className="text-slate-400">Configure access rights for different staff roles</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-6">
-                    {['admin', 'manager', 'staff', 'trainer'].map((role) => (
+                    {[{role: 'admin', desc: 'Full system access'}, {role: 'manager', desc: 'Manage operations'}, {role: 'staff', desc: 'Reception duties'}, {role: 'trainer', desc: 'Member training'}].map(({role, desc}) => (
                       <div key={role} className="p-4 rounded-lg bg-slate-700/30">
-                        <h3 className="text-white font-semibold mb-4 capitalize">{role}</h3>
+                        <div className="mb-4">
+                          <h3 className="text-white font-semibold capitalize">{role}</h3>
+                          <p className="text-slate-400 text-sm">{desc}</p>
+                        </div>
                         <div className="space-y-3">
-                          {['manage_members', 'manage_billing', 'manage_access', 'manage_staff', 'view_reports'].map((perm) => (
-                            <div key={perm} className="flex items-center justify-between">
-                              <span className="text-slate-300 text-sm capitalize">{perm.replace('_', ' ')}</span>
-                              <Switch defaultChecked={role === 'admin'} />
+                          {[
+                            {key: 'manage_members', label: 'Manage Members'},
+                            {key: 'manage_billing', label: 'Manage Billing'},
+                            {key: 'manage_access', label: 'Access Control'},
+                            {key: 'manage_staff', label: 'Manage Staff'},
+                            {key: 'view_reports', label: 'View Reports'}
+                          ].map(({key, label}) => (
+                            <div key={key} className="flex items-center justify-between">
+                              <span className="text-slate-300 text-sm">{label}</span>
+                              <Switch defaultChecked={role === 'admin' || (role === 'manager' && key !== 'manage_staff')} />
                             </div>
                           ))}
                         </div>
