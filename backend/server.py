@@ -906,6 +906,16 @@ async def create_member(data: MemberCreate, current_user: User = Depends(get_cur
             membership_type["name"]
         )
     
+    # Trigger automation: member_joined
+    await trigger_automation("member_joined", {
+        "member_id": member.id,
+        "member_name": member.full_name,
+        "email": member.email,
+        "phone": member.phone_primary,
+        "membership_type": membership_type["name"],
+        "join_date": member.join_date.isoformat()
+    })
+    
     return member
 
 async def schedule_member_levies(member: Member, membership_type: dict):
