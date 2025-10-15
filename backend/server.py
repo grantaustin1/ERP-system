@@ -237,6 +237,14 @@ async def login(credentials: UserLogin):
 async def get_me(current_user: User = Depends(get_current_user)):
     return current_user
 
+@api_router.get("/users", response_model=List[User])
+async def get_users(current_user: User = Depends(get_current_user)):
+    users = await db.users.find({}, {"_id": 0, "password": 0}).to_list(1000)
+    for u in users:
+        if isinstance(u.get("created_at"), str):
+            u["created_at"] = datetime.fromisoformat(u["created_at"])
+    return users
+
 # Membership Types Routes
 @api_router.post("/membership-types", response_model=MembershipType)
 async def create_membership_type(data: MembershipTypeCreate, current_user: User = Depends(get_current_user)):
