@@ -74,8 +74,16 @@ export default function Members() {
         last_name: '',
         email: '',
         phone: '',
+        home_phone: '',
+        work_phone: '',
         membership_type_id: '',
         address: '',
+        bank_account_number: '',
+        bank_name: '',
+        bank_branch_code: '',
+        account_holder_name: '',
+        id_number: '',
+        id_type: 'id',
         emergency_contact: '',
         notes: ''
       });
