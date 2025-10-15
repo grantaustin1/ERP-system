@@ -18,6 +18,7 @@ export default function Sidebar() {
     { path: '/billing', icon: FileText, label: 'Billing', testId: 'nav-billing' },
     { path: '/levies', icon: DollarSign, label: 'Levies', testId: 'nav-levies' },
     { path: '/cancellations', icon: UserX, label: 'Cancellations', testId: 'nav-cancellations' },
+    { path: '/packages', icon: Package, label: 'Package Setup', testId: 'nav-packages' },
     { path: '/marketing', icon: TrendingUp, label: 'Marketing', testId: 'nav-marketing' },
     { path: '/settings', icon: Settings, label: 'Settings', testId: 'nav-settings' },
   ];
