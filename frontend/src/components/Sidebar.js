@@ -1,5 +1,5 @@
 import { useNavigate, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Users, ScanLine, FileText, UserX, Settings, LogOut, Dumbbell } from 'lucide-react';
+import { LayoutDashboard, Users, ScanLine, FileText, UserX, DollarSign, Settings, LogOut, Dumbbell } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 export default function Sidebar() {
