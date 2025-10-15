@@ -101,3 +101,270 @@
 #====================================================================================================
 # Testing Data - Main Agent and testing sub agent both should log testing data below this section
 #====================================================================================================
+
+
+user_problem_statement: |
+  Complete the Automation and Trigger Engine for the ERP360 gym management application.
+  This feature enables "If this, then do that" workflows to automate tasks like:
+  - Send SMS/WhatsApp/Email when payment fails
+  - Send welcome messages when members join
+  - Create follow-up tasks for staff
+  - Update member status automatically
+  - Handle invoice overdue notifications
+
+backend:
+  - task: "Automation CRUD API Endpoints"
+    implemented: true
+    working: "NA"
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Created endpoints for GET, POST, PUT, DELETE automation rules at lines 1450-1550"
+  
+  - task: "Automation Toggle (Enable/Disable)"
+    implemented: true
+    working: "NA"
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Created toggle endpoint to enable/disable automation rules"
+  
+  - task: "Automation Execution History API"
+    implemented: true
+    working: "NA"
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Created endpoint to fetch automation execution logs with optional filtering"
+  
+  - task: "Test Automation API"
+    implemented: true
+    working: "NA"
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "medium"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Created endpoint to test automation rules with sample data"
+  
+  - task: "Automation Trigger Execution Logic"
+    implemented: true
+    working: "NA"
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Implemented execute_automation(), check_automation_conditions(), and execute_action() helper functions"
+  
+  - task: "Action Executors (SMS, WhatsApp, Email, Status Update, Task Creation)"
+    implemented: true
+    working: "NA"
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Implemented action executors with mock implementations for SMS/WhatsApp/Email. Real integrations pending external service setup."
+  
+  - task: "Trigger Integration - Member Joined"
+    implemented: true
+    working: "NA"
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Integrated trigger_automation() call in create_member endpoint (line ~920)"
+  
+  - task: "Trigger Integration - Payment Failed"
+    implemented: true
+    working: "NA"
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Created mark_invoice_failed endpoint with trigger integration"
+  
+  - task: "Trigger Integration - Invoice Overdue"
+    implemented: true
+    working: "NA"
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Created mark_invoice_overdue endpoint with trigger integration"
+
+frontend:
+  - task: "Automations Page Component"
+    implemented: true
+    working: "NA"
+    file: "/app/frontend/src/pages/Automations.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Created complete Automations page with rule creation, listing, editing, deletion, and execution history view"
+  
+  - task: "Automation Rule Creation Form"
+    implemented: true
+    working: "NA"
+    file: "/app/frontend/src/pages/Automations.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Implemented form with trigger selection, action builder (SMS, WhatsApp, Email, Status Update, Task), and conditions"
+  
+  - task: "Automation Actions UI"
+    implemented: true
+    working: "NA"
+    file: "/app/frontend/src/pages/Automations.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Created UI to add/remove multiple actions with delay configuration and dynamic fields based on action type"
+  
+  - task: "Automation List Display"
+    implemented: true
+    working: "NA"
+    file: "/app/frontend/src/pages/Automations.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Implemented card-based display showing triggers, actions, execution count, and control buttons"
+  
+  - task: "Automation Toggle, Edit, Delete, Test"
+    implemented: true
+    working: "NA"
+    file: "/app/frontend/src/pages/Automations.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Added buttons and handlers for enable/disable, edit, delete, and test automation functionality"
+  
+  - task: "Execution History Tab"
+    implemented: true
+    working: "NA"
+    file: "/app/frontend/src/pages/Automations.js"
+    stuck_count: 0
+    priority: "medium"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Created tab to view automation execution history with status badges"
+  
+  - task: "Automations Route in App.js"
+    implemented: true
+    working: "NA"
+    file: "/app/frontend/src/App.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Added /automations route with PrivateRoute wrapper"
+  
+  - task: "Automations Navigation Link"
+    implemented: true
+    working: "NA"
+    file: "/app/frontend/src/components/Sidebar.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Added Automations link with Zap icon to sidebar navigation"
+
+metadata:
+  created_by: "main_agent"
+  version: "1.0"
+  test_sequence: 0
+  run_ui: true
+
+test_plan:
+  current_focus:
+    - "Automation CRUD API Endpoints"
+    - "Automation Trigger Execution Logic"
+    - "Trigger Integration - Member Joined"
+    - "Trigger Integration - Payment Failed"
+    - "Automations Page Component"
+    - "Automation Rule Creation Form"
+  stuck_tasks: []
+  test_all: true
+  test_priority: "high_first"
+
+agent_communication:
+  - agent: "main"
+    message: |
+      Automation Engine implementation completed. 
+      
+      Backend features:
+      - Full CRUD API for automation rules
+      - Trigger execution engine with condition checking
+      - Action executors for SMS, WhatsApp, Email, Status Update, Task Creation (SMS/WhatsApp/Email are mocked, real integration pending)
+      - Integrated triggers into member_joined, payment_failed, and invoice_overdue events
+      - Execution history tracking
+      - Test endpoint for automation validation
+      
+      Frontend features:
+      - Complete Automations page with tabs for rules and execution history
+      - Visual rule builder with trigger and action selection
+      - Support for multiple actions with delays
+      - Dynamic form fields based on action type
+      - Enable/disable toggle, edit, delete, and test functionality
+      - Execution history view with status badges
+      
+      Testing priority:
+      1. Test automation CRUD operations (create, list, update, delete)
+      2. Test automation toggle (enable/disable)
+      3. Test creating automation with different trigger types
+      4. Test adding multiple actions to a single automation
+      5. Test member registration triggering member_joined automation
+      6. Test marking invoice as failed triggering payment_failed automation
+      7. Test execution history display
+      8. Test automation test endpoint with sample data
+      
+      Please test all backend endpoints first, then test the frontend UI and end-to-end workflows.
