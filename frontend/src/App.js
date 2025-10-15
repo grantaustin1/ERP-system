@@ -48,6 +48,7 @@ function App() {
           <Route path="/levies" element={<PrivateRoute><Levies /></PrivateRoute>} />
           <Route path="/marketing" element={<PrivateRoute><Marketing /></PrivateRoute>} />
           <Route path="/packages" element={<PrivateRoute><PackageSetup /></PrivateRoute>} />
+          <Route path="/automations" element={<PrivateRoute><Automations /></PrivateRoute>} />
           <Route path="/settings" element={<PrivateRoute><Settings /></PrivateRoute>} />
         </Routes>
       </BrowserRouter>
