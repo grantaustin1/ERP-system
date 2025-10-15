@@ -838,6 +838,15 @@ async def create_member(data: MemberCreate, current_user: User = Depends(get_cur
     if membership_type.get("levy_enabled", False):
         await schedule_member_levies(member, membership_type)
     
+    # Calculate commission if consultant assigned
+    if member.sales_consultant_id:
+        await calculate_commission(
+            member.id,
+            member.sales_consultant_id,
+            membership_type["price"],
+            membership_type["name"]
+        )
+    
     return member
 
 async def schedule_member_levies(member: Member, membership_type: dict):
