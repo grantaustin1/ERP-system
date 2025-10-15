@@ -150,6 +150,9 @@ class Member(BaseModel):
     qr_code: str = ""
     photo_url: Optional[str] = None
     is_debtor: bool = False
+    # Sales consultant
+    sales_consultant_id: Optional[str] = None
+    sales_consultant_name: Optional[str] = None
     # Address and geo-location
     address: Optional[str] = None
     latitude: Optional[float] = None
