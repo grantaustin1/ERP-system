@@ -117,8 +117,13 @@ class MembershipTypeCreate(BaseModel):
     price: float
     billing_frequency: str
     duration_months: int
+    duration_days: int = 0
     payment_type: str = "debit_order"
     rollover_enabled: bool = False
+    is_base_membership: bool = True
+    base_membership_id: Optional[str] = None
+    variation_type: Optional[str] = None
+    discount_percentage: float = 0.0
     levy_enabled: bool = False
     levy_frequency: str = "annual"
     levy_timing: str = "anniversary"
