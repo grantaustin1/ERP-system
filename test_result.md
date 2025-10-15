@@ -353,14 +353,14 @@ metadata:
 
 test_plan:
   current_focus:
-    - "Automation CRUD API Endpoints"
-    - "Automation Trigger Execution Logic"
-    - "Trigger Integration - Member Joined"
-    - "Trigger Integration - Payment Failed"
     - "Automations Page Component"
     - "Automation Rule Creation Form"
+    - "Automation Actions UI"
+    - "Automation List Display"
+    - "Automation Toggle, Edit, Delete, Test"
+    - "Execution History Tab"
   stuck_tasks: []
-  test_all: true
+  test_all: false
   test_priority: "high_first"
 
 agent_communication:
