@@ -90,8 +90,14 @@ class MembershipType(BaseModel):
     price: float
     billing_frequency: str  # monthly, 6months, yearly, one-time
     duration_months: int
+    duration_days: int = 0  # For sub-month durations (1 day, 3 day, 1 week, etc)
     payment_type: str = "debit_order"  # paid_upfront, debit_order
     rollover_enabled: bool = False  # If true, converts to monthly after term
+    # Base membership and variations
+    is_base_membership: bool = True
+    base_membership_id: Optional[str] = None  # If this is a variation, links to base
+    variation_type: Optional[str] = None  # student, corporate, promo, senior, etc
+    discount_percentage: float = 0.0  # Discount applied from base price
     # Levy configuration
     levy_enabled: bool = False
     levy_frequency: str = "annual"  # annual, biannual
