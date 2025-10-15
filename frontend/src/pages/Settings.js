@@ -221,6 +221,35 @@ export default function Settings() {
                           </Select>
                         </div>
                         <div className="space-y-2">
+                          <Label>Payment Type</Label>
+                          <Select
+                            value={membershipForm.payment_type}
+                            onValueChange={(value) => setMembershipForm({ ...membershipForm, payment_type: value })}
+                          >
+                            <SelectTrigger className="bg-slate-700/50 border-slate-600">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent className="bg-slate-800 border-slate-700">
+                              <SelectItem value="paid_upfront">Paid Upfront (Full term payment)</SelectItem>
+                              <SelectItem value="debit_order">Debit Order (Recurring)</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        {membershipForm.payment_type === 'debit_order' && membershipForm.billing_frequency !== 'monthly' && (
+                          <div className="p-4 rounded-lg bg-blue-900/20 border border-blue-500">
+                            <div className="flex items-center justify-between mb-2">
+                              <Label className="text-blue-200">Rollover to Monthly After Term</Label>
+                              <Switch
+                                checked={membershipForm.rollover_enabled}
+                                onCheckedChange={(checked) => setMembershipForm({ ...membershipForm, rollover_enabled: checked })}
+                              />
+                            </div>
+                            <p className="text-blue-300 text-xs">
+                              When enabled, membership automatically converts to monthly recurring after the initial term ends
+                            </p>
+                          </div>
+                        )}
+                        <div className="space-y-2">
                           <Label>Features (one per line)</Label>
                           <textarea
                             value={membershipForm.features}
