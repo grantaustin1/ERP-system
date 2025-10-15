@@ -33,6 +33,7 @@ export default function Settings() {
     levy_timing: 'anniversary',
     levy_amount_type: 'fixed',
     levy_amount: '',
+    levy_payment_method: 'debit_order',
     features: '',
     peak_hours_only: false,
     multi_site_access: false
