@@ -1448,6 +1448,316 @@ async def approve_cancellation_admin(data: ApprovalAction, current_user: User = 
     
     return {"message": "Cancellation approved and completed. Member status updated."}
 
+# ============= AUTOMATION & TRIGGERS ENDPOINTS =============
+
+@api_router.get("/automations")
+async def get_automations(current_user: User = Depends(get_current_user)):
+    """Get all automation rules"""
+    automations = await db.automations.find({}, {"_id": 0}).to_list(length=None)
+    return automations
+
+@api_router.get("/automations/{automation_id}")
+async def get_automation(automation_id: str, current_user: User = Depends(get_current_user)):
+    """Get a specific automation rule"""
+    automation = await db.automations.find_one({"id": automation_id}, {"_id": 0})
+    if not automation:
+        raise HTTPException(status_code=404, detail="Automation not found")
+    return automation
+
+@api_router.post("/automations")
+async def create_automation(automation: AutomationCreate, current_user: User = Depends(get_current_user)):
+    """Create a new automation rule"""
+    new_automation = Automation(
+        **automation.dict(),
+        created_by=current_user.email
+    )
+    
+    automation_dict = new_automation.dict()
+    automation_dict["created_at"] = automation_dict["created_at"].isoformat()
+    if automation_dict.get("last_triggered"):
+        automation_dict["last_triggered"] = automation_dict["last_triggered"].isoformat()
+    
+    await db.automations.insert_one(automation_dict)
+    return new_automation
+
+@api_router.put("/automations/{automation_id}")
+async def update_automation(
+    automation_id: str,
+    automation_data: AutomationCreate,
+    current_user: User = Depends(get_current_user)
+):
+    """Update an automation rule"""
+    existing = await db.automations.find_one({"id": automation_id})
+    if not existing:
+        raise HTTPException(status_code=404, detail="Automation not found")
+    
+    update_data = automation_data.dict()
+    await db.automations.update_one(
+        {"id": automation_id},
+        {"$set": update_data}
+    )
+    
+    updated = await db.automations.find_one({"id": automation_id}, {"_id": 0})
+    return updated
+
+@api_router.delete("/automations/{automation_id}")
+async def delete_automation(automation_id: str, current_user: User = Depends(get_current_user)):
+    """Delete an automation rule"""
+    result = await db.automations.delete_one({"id": automation_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Automation not found")
+    return {"message": "Automation deleted successfully"}
+
+@api_router.post("/automations/{automation_id}/toggle")
+async def toggle_automation(automation_id: str, current_user: User = Depends(get_current_user)):
+    """Enable/disable an automation rule"""
+    automation = await db.automations.find_one({"id": automation_id})
+    if not automation:
+        raise HTTPException(status_code=404, detail="Automation not found")
+    
+    new_status = not automation.get("enabled", True)
+    await db.automations.update_one(
+        {"id": automation_id},
+        {"$set": {"enabled": new_status}}
+    )
+    
+    return {"message": f"Automation {'enabled' if new_status else 'disabled'}", "enabled": new_status}
+
+@api_router.get("/automation-executions")
+async def get_automation_executions(
+    limit: int = 50,
+    automation_id: Optional[str] = None,
+    current_user: User = Depends(get_current_user)
+):
+    """Get automation execution history"""
+    query = {}
+    if automation_id:
+        query["automation_id"] = automation_id
+    
+    executions = await db.automation_executions.find(query, {"_id": 0}).sort("created_at", -1).limit(limit).to_list(length=None)
+    return executions
+
+@api_router.post("/automations/test/{automation_id}")
+async def test_automation(
+    automation_id: str,
+    test_data: dict,
+    current_user: User = Depends(get_current_user)
+):
+    """Test an automation rule with sample data"""
+    automation = await db.automations.find_one({"id": automation_id})
+    if not automation:
+        raise HTTPException(status_code=404, detail="Automation not found")
+    
+    # Execute the automation with test data
+    try:
+        result = await execute_automation(automation, test_data, is_test=True)
+        return {
+            "success": True,
+            "message": "Test execution completed",
+            "result": result
+        }
+    except Exception as e:
+        return {
+            "success": False,
+            "message": f"Test execution failed: {str(e)}",
+            "error": str(e)
+        }
+
+# ============= AUTOMATION TRIGGER EXECUTION LOGIC =============
+
+async def execute_automation(automation: dict, trigger_data: dict, is_test: bool = False):
+    """Execute an automation rule"""
+    try:
+        # Check conditions
+        if automation.get("conditions"):
+            conditions_met = check_automation_conditions(automation["conditions"], trigger_data)
+            if not conditions_met:
+                return {"skipped": True, "reason": "Conditions not met"}
+        
+        results = []
+        
+        # Execute each action
+        for action in automation.get("actions", []):
+            action_type = action.get("type")
+            delay_minutes = action.get("delay_minutes", 0)
+            
+            # Calculate scheduled time
+            scheduled_for = datetime.now(timezone.utc)
+            if delay_minutes > 0:
+                from datetime import timedelta
+                scheduled_for = scheduled_for + timedelta(minutes=delay_minutes)
+            
+            # Create execution record
+            execution = AutomationExecution(
+                automation_id=automation["id"],
+                automation_name=automation["name"],
+                trigger_data=trigger_data,
+                scheduled_for=scheduled_for,
+                status="pending" if delay_minutes > 0 else "completed",
+                executed_at=datetime.now(timezone.utc) if delay_minutes == 0 else None
+            )
+            
+            execution_dict = execution.dict()
+            execution_dict["created_at"] = execution_dict["created_at"].isoformat()
+            execution_dict["scheduled_for"] = execution_dict["scheduled_for"].isoformat()
+            if execution_dict.get("executed_at"):
+                execution_dict["executed_at"] = execution_dict["executed_at"].isoformat()
+            
+            # If no delay and not test, execute immediately
+            if delay_minutes == 0 and not is_test:
+                action_result = await execute_action(action, trigger_data)
+                execution_dict["result"] = action_result
+                execution_dict["status"] = "completed"
+            
+            if not is_test:
+                await db.automation_executions.insert_one(execution_dict)
+            
+            results.append({
+                "action_type": action_type,
+                "scheduled_for": execution_dict["scheduled_for"],
+                "status": execution_dict["status"]
+            })
+        
+        # Update automation stats
+        if not is_test:
+            await db.automations.update_one(
+                {"id": automation["id"]},
+                {
+                    "$set": {"last_triggered": datetime.now(timezone.utc).isoformat()},
+                    "$inc": {"execution_count": 1}
+                }
+            )
+        
+        return {
+            "executed": True,
+            "actions_executed": len(results),
+            "results": results
+        }
+        
+    except Exception as e:
+        logger.error(f"Error executing automation {automation.get('id')}: {str(e)}")
+        return {
+            "executed": False,
+            "error": str(e)
+        }
+
+def check_automation_conditions(conditions: dict, trigger_data: dict) -> bool:
+    """Check if automation conditions are met"""
+    # Simple condition checking - can be extended
+    for key, expected_value in conditions.items():
+        actual_value = trigger_data.get(key)
+        
+        # Handle different condition types
+        if isinstance(expected_value, dict):
+            # Complex conditions like {"operator": ">=", "value": 100}
+            operator = expected_value.get("operator", "==")
+            value = expected_value.get("value")
+            
+            if operator == "==":
+                if actual_value != value:
+                    return False
+            elif operator == ">":
+                if not (actual_value and actual_value > value):
+                    return False
+            elif operator == ">=":
+                if not (actual_value and actual_value >= value):
+                    return False
+            elif operator == "<":
+                if not (actual_value and actual_value < value):
+                    return False
+            elif operator == "<=":
+                if not (actual_value and actual_value <= value):
+                    return False
+            elif operator == "contains":
+                if not (actual_value and value in str(actual_value)):
+                    return False
+        else:
+            # Simple equality check
+            if actual_value != expected_value:
+                return False
+    
+    return True
+
+async def execute_action(action: dict, trigger_data: dict):
+    """Execute a specific automation action"""
+    action_type = action.get("type")
+    
+    if action_type == "send_sms":
+        # SMS action - placeholder for now
+        phone = trigger_data.get("phone") or action.get("phone")
+        message = action.get("message", "").format(**trigger_data)
+        # TODO: Integrate SMS service (Twilio, etc.)
+        logger.info(f"SMS Action (Mock): Sending to {phone}: {message}")
+        return {"type": "sms", "status": "sent_mock", "phone": phone, "message": message}
+    
+    elif action_type == "send_whatsapp":
+        # WhatsApp action - placeholder for now
+        phone = trigger_data.get("phone") or action.get("phone")
+        message = action.get("message", "").format(**trigger_data)
+        # TODO: Integrate WhatsApp Business API
+        logger.info(f"WhatsApp Action (Mock): Sending to {phone}: {message}")
+        return {"type": "whatsapp", "status": "sent_mock", "phone": phone, "message": message}
+    
+    elif action_type == "send_email":
+        # Email action - placeholder for now
+        email = trigger_data.get("email") or action.get("email")
+        subject = action.get("subject", "").format(**trigger_data)
+        body = action.get("body", "").format(**trigger_data)
+        # TODO: Integrate email service (SendGrid, AWS SES, etc.)
+        logger.info(f"Email Action (Mock): Sending to {email}: {subject}")
+        return {"type": "email", "status": "sent_mock", "email": email, "subject": subject}
+    
+    elif action_type == "update_member_status":
+        # Update member status
+        member_id = trigger_data.get("member_id")
+        new_status = action.get("status")
+        if member_id and new_status:
+            await db.members.update_one(
+                {"id": member_id},
+                {"$set": {"membership_status": new_status}}
+            )
+            return {"type": "update_status", "status": "completed", "member_id": member_id}
+    
+    elif action_type == "create_task":
+        # Create a follow-up task
+        task_data = {
+            "id": str(uuid.uuid4()),
+            "title": action.get("task_title", "Follow-up required"),
+            "description": action.get("task_description", "").format(**trigger_data),
+            "assigned_to": action.get("assigned_to"),
+            "due_date": action.get("due_date"),
+            "related_member_id": trigger_data.get("member_id"),
+            "status": "pending",
+            "created_at": datetime.now(timezone.utc).isoformat()
+        }
+        await db.tasks.insert_one(task_data)
+        return {"type": "create_task", "status": "completed", "task_id": task_data["id"]}
+    
+    else:
+        logger.warning(f"Unknown action type: {action_type}")
+        return {"type": action_type, "status": "unknown_action"}
+
+# ============= TRIGGER HELPERS =============
+
+async def trigger_automation(trigger_type: str, trigger_data: dict):
+    """Trigger all enabled automations for a specific event type"""
+    automations = await db.automations.find({
+        "trigger_type": trigger_type,
+        "enabled": True
+    }).to_list(length=None)
+    
+    results = []
+    for automation in automations:
+        result = await execute_automation(automation, trigger_data)
+        results.append({
+            "automation_id": automation["id"],
+            "automation_name": automation["name"],
+            "result": result
+        })
+    
+    return results
+
+
 # Include the router in the main app
 app.include_router(api_router)
 
