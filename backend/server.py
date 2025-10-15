@@ -142,8 +142,16 @@ class MemberCreate(BaseModel):
     last_name: str
     email: EmailStr
     phone: str
+    home_phone: Optional[str] = None
+    work_phone: Optional[str] = None
     membership_type_id: str
     address: Optional[str] = None
+    bank_account_number: Optional[str] = None
+    bank_name: Optional[str] = None
+    bank_branch_code: Optional[str] = None
+    account_holder_name: Optional[str] = None
+    id_number: Optional[str] = None
+    id_type: Optional[str] = None
     emergency_contact: Optional[str] = None
     notes: Optional[str] = None
 
