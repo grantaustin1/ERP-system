@@ -237,6 +237,19 @@ class ApprovalAction(BaseModel):
     comments: Optional[str] = None
     rejection_reason: Optional[str] = None
 
+class Levy(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    member_id: str
+    member_name: str
+    levy_type: str  # annual, biannual
+    amount: float
+    due_date: datetime
+    status: str = "pending"  # pending, paid, overdue
+    invoice_id: Optional[str] = None
+    paid_date: Optional[datetime] = None
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
 # Auth dependency
 async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)):
     token = credentials.credentials
