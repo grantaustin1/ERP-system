@@ -11,6 +11,7 @@ import MemberPortal from '@/pages/MemberPortal';
 import Settings from '@/pages/Settings';
 import Cancellations from '@/pages/Cancellations';
 import Levies from '@/pages/Levies';
+import Marketing from '@/pages/Marketing';
 import { Toaster } from '@/components/ui/sonner';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
