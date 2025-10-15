@@ -396,6 +396,7 @@ export default function Settings() {
                                 {type.payment_type === 'paid_upfront' ? 'Paid Upfront' : 'Debit Order'}
                               </Badge>
                               {type.rollover_enabled && <Badge className="bg-blue-500">Rollover Enabled</Badge>}
+                              {type.levy_enabled && <Badge className="bg-amber-500">{type.levy_frequency === 'annual' ? 'Annual' : 'Bi-annual'} Levy</Badge>}
                               {type.multi_site_access && <Badge variant="secondary">Multi-Site</Badge>}
                               {type.peak_hours_only && <Badge variant="outline">Peak Hours</Badge>}
                             </div>
