@@ -88,6 +88,8 @@ class MembershipTypeCreate(BaseModel):
     price: float
     billing_frequency: str
     duration_months: int
+    payment_type: str = "debit_order"
+    rollover_enabled: bool = False
     features: List[str] = []
     peak_hours_only: bool = False
     multi_site_access: bool = False
