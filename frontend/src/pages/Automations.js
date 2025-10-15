@@ -304,6 +304,59 @@ export default function Automations() {
     setFormData({ ...formData, actions: newActions });
   };
 
+  const addCondition = () => {
+    if (!currentCondition.field || !currentCondition.operator || !currentCondition.value) {
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: 'Please fill all condition fields'
+      });
+      return;
+    }
+
+    const newCondition = { ...currentCondition };
+    const updatedConditions = [...conditionsList, newCondition];
+    setConditionsList(updatedConditions);
+    
+    // Convert conditions array to object for backend
+    const conditionsObj = {};
+    updatedConditions.forEach(cond => {
+      if (cond.operator === '==') {
+        // Simple equality
+        conditionsObj[cond.field] = cond.value;
+      } else {
+        // Complex operator
+        conditionsObj[cond.field] = {
+          operator: cond.operator,
+          value: cond.value
+        };
+      }
+    });
+    
+    setFormData({ ...formData, conditions: conditionsObj });
+    setCurrentCondition({ field: '', operator: '', value: '' });
+  };
+
+  const removeCondition = (index) => {
+    const updatedConditions = conditionsList.filter((_, i) => i !== index);
+    setConditionsList(updatedConditions);
+    
+    // Convert back to object
+    const conditionsObj = {};
+    updatedConditions.forEach(cond => {
+      if (cond.operator === '==') {
+        conditionsObj[cond.field] = cond.value;
+      } else {
+        conditionsObj[cond.field] = {
+          operator: cond.operator,
+          value: cond.value
+        };
+      }
+    });
+    
+    setFormData({ ...formData, conditions: conditionsObj });
+  };
+
   const resetForm = () => {
     setFormData({
       name: '',
@@ -326,6 +379,8 @@ export default function Automations() {
       task_description: '',
       assigned_to: ''
     });
+    setCurrentCondition({ field: '', operator: '', value: '' });
+    setConditionsList([]);
     setEditingAutomation(null);
   };
 
