@@ -563,6 +563,227 @@ async def create_membership_variation(base_id: str, data: MembershipVariationCre
     
     return variation
 
+async def calculate_commission(member_id: str, consultant_id: str, membership_price: float, membership_type_name: str):
+    """Calculate and create commission for a sale"""
+    # Get consultant
+    consultant = await db.consultants.find_one({"id": consultant_id}, {"_id": 0})
+    if not consultant:
+        return
+    
+    # Get applicable commission structures
+    structures = await db.commission_structures.find({
+        "status": "active",
+        "$or": [
+            {"applies_to": "all"},
+            {"membership_type_id": membership_type_name}
+        ]
+    }, {"_id": 0}).to_list(100)
+    
+    if not structures:
+        return
+    
+    # Use first applicable structure (can be enhanced for multiple)
+    structure = structures[0]
+    
+    # Calculate commission amount
+    commission_amount = 0.0
+    if structure["commission_type"] == "fixed":
+        commission_amount = structure["fixed_amount"]
+    elif structure["commission_type"] == "percentage":
+        commission_amount = membership_price * (structure["percentage"] / 100)
+    elif structure["commission_type"] == "tiered":
+        # Get consultant's month sales to determine tier
+        month_start = datetime.now(timezone.utc).replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        month_sales = await db.members.count_documents({
+            "sales_consultant_id": consultant_id,
+            "join_date": {"$gte": month_start.isoformat()}
+        })
+        
+        # Find applicable tier
+        for tier in structure["tiers"]:
+            if tier["min_sales"] <= month_sales < tier.get("max_sales", float('inf')):
+                commission_amount = membership_price * (tier["rate"] / 100)
+                break
+    
+    # Get member info
+    member = await db.members.find_one({"id": member_id}, {"_id": 0})
+    
+    # Create commission record
+    commission = Commission(
+        consultant_id=consultant_id,
+        consultant_name=f"{consultant['first_name']} {consultant['last_name']}",
+        member_id=member_id,
+        member_name=f"{member['first_name']} {member['last_name']}",
+        membership_type=membership_type_name,
+        sale_amount=membership_price,
+        commission_amount=commission_amount,
+        commission_structure_id=structure["id"],
+        commission_structure_name=structure["name"],
+        commission_type=structure["commission_type"],
+        sale_date=datetime.now(timezone.utc)
+    )
+    
+    comm_doc = commission.model_dump()
+    comm_doc["sale_date"] = comm_doc["sale_date"].isoformat()
+    comm_doc["created_at"] = comm_doc["created_at"].isoformat()
+    await db.commissions.insert_one(comm_doc)
+
+# Consultant Routes
+@api_router.post("/consultants", response_model=Consultant)
+async def create_consultant(data: ConsultantCreate, current_user: User = Depends(get_current_user)):
+    consultant = Consultant(**data.model_dump())
+    doc = consultant.model_dump()
+    doc["hire_date"] = doc["hire_date"].isoformat()
+    doc["created_at"] = doc["created_at"].isoformat()
+    await db.consultants.insert_one(doc)
+    return consultant
+
+@api_router.get("/consultants", response_model=List[Consultant])
+async def get_consultants(status: Optional[str] = None, current_user: User = Depends(get_current_user)):
+    query = {"status": status} if status else {}
+    consultants = await db.consultants.find(query, {"_id": 0}).to_list(1000)
+    for c in consultants:
+        if isinstance(c.get("hire_date"), str):
+            c["hire_date"] = datetime.fromisoformat(c["hire_date"])
+        if isinstance(c.get("created_at"), str):
+            c["created_at"] = datetime.fromisoformat(c["created_at"])
+    return consultants
+
+# Commission Structure Routes
+@api_router.post("/commission-structures", response_model=CommissionStructure)
+async def create_commission_structure(data: CommissionStructureCreate, current_user: User = Depends(get_current_user)):
+    structure = CommissionStructure(**data.model_dump())
+    doc = structure.model_dump()
+    doc["created_at"] = doc["created_at"].isoformat()
+    await db.commission_structures.insert_one(doc)
+    return structure
+
+@api_router.get("/commission-structures", response_model=List[CommissionStructure])
+async def get_commission_structures(current_user: User = Depends(get_current_user)):
+    structures = await db.commission_structures.find({"status": "active"}, {"_id": 0}).to_list(1000)
+    for s in structures:
+        if isinstance(s.get("created_at"), str):
+            s["created_at"] = datetime.fromisoformat(s["created_at"])
+    return structures
+
+# Commission Routes
+@api_router.get("/commissions")
+async def get_commissions(consultant_id: Optional[str] = None, current_user: User = Depends(get_current_user)):
+    query = {"consultant_id": consultant_id} if consultant_id else {}
+    commissions = await db.commissions.find(query, {"_id": 0}).sort("sale_date", -1).to_list(1000)
+    for c in commissions:
+        if isinstance(c.get("sale_date"), str):
+            c["sale_date"] = datetime.fromisoformat(c["sale_date"])
+        if isinstance(c.get("created_at"), str):
+            c["created_at"] = datetime.fromisoformat(c["created_at"])
+        if c.get("payment_date") and isinstance(c["payment_date"], str):
+            c["payment_date"] = datetime.fromisoformat(c["payment_date"])
+    return commissions
+
+@api_router.get("/commissions/dashboard")
+async def get_commission_dashboard(current_user: User = Depends(get_current_user)):
+    """Get commission dashboard with performance metrics"""
+    # Current month dates
+    now = datetime.now(timezone.utc)
+    current_month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    
+    # Previous month dates
+    if now.month == 1:
+        prev_month_start = current_month_start.replace(year=now.year - 1, month=12)
+        prev_month_end = current_month_start
+    else:
+        prev_month_start = current_month_start.replace(month=now.month - 1)
+        prev_month_end = current_month_start
+    
+    # Get all consultants
+    consultants = await db.consultants.find({"status": "active"}, {"_id": 0}).to_list(1000)
+    
+    dashboard_data = []
+    
+    for consultant in consultants:
+        consultant_id = consultant["id"]
+        
+        # Current month sales
+        current_month_members = await db.members.find({
+            "sales_consultant_id": consultant_id,
+            "join_date": {"$gte": current_month_start.isoformat()}
+        }, {"_id": 0}).to_list(1000)
+        
+        # Previous month sales
+        prev_month_members = await db.members.find({
+            "sales_consultant_id": consultant_id,
+            "join_date": {
+                "$gte": prev_month_start.isoformat(),
+                "$lt": prev_month_end.isoformat()
+            }
+        }, {"_id": 0}).to_list(1000)
+        
+        # Calculate totals
+        current_month_sales = len(current_month_members)
+        prev_month_sales = len(prev_month_members)
+        
+        # Get membership prices for revenue calculation
+        current_month_revenue = 0.0
+        for member in current_month_members:
+            membership = await db.membership_types.find_one({"id": member["membership_type_id"]}, {"_id": 0})
+            if membership:
+                current_month_revenue += membership["price"]
+        
+        prev_month_revenue = 0.0
+        for member in prev_month_members:
+            membership = await db.membership_types.find_one({"id": member["membership_type_id"]}, {"_id": 0})
+            if membership:
+                prev_month_revenue += membership["price"]
+        
+        # Get commissions
+        current_month_commissions = await db.commissions.find({
+            "consultant_id": consultant_id,
+            "sale_date": {"$gte": current_month_start.isoformat()}
+        }, {"_id": 0}).to_list(1000)
+        
+        current_month_commission_total = sum([c["commission_amount"] for c in current_month_commissions])
+        
+        # Calculate changes
+        sales_change = current_month_sales - prev_month_sales
+        sales_change_pct = (sales_change / prev_month_sales * 100) if prev_month_sales > 0 else 0
+        
+        revenue_change = current_month_revenue - prev_month_revenue
+        revenue_change_pct = (revenue_change / prev_month_revenue * 100) if prev_month_revenue > 0 else 0
+        
+        dashboard_data.append({
+            "consultant_id": consultant_id,
+            "consultant_name": f"{consultant['first_name']} {consultant['last_name']}",
+            "target_monthly_sales": consultant.get("target_monthly_sales", 0),
+            "current_month": {
+                "sales_count": current_month_sales,
+                "revenue": current_month_revenue,
+                "commission_total": current_month_commission_total,
+                "avg_deal_size": current_month_revenue / current_month_sales if current_month_sales > 0 else 0
+            },
+            "previous_month": {
+                "sales_count": prev_month_sales,
+                "revenue": prev_month_revenue
+            },
+            "change": {
+                "sales_count": sales_change,
+                "sales_pct": sales_change_pct,
+                "revenue": revenue_change,
+                "revenue_pct": revenue_change_pct
+            },
+            "target_progress": (current_month_sales / consultant.get("target_monthly_sales", 1) * 100) if consultant.get("target_monthly_sales", 0) > 0 else 0
+        })
+    
+    # Sort by current month sales
+    dashboard_data.sort(key=lambda x: x["current_month"]["sales_count"], reverse=True)
+    
+    return {
+        "consultants": dashboard_data,
+        "period": {
+            "current_month": current_month_start.strftime("%B %Y"),
+            "previous_month": prev_month_start.strftime("%B %Y")
+        }
+    }
+
 # Members Routes
 @api_router.post("/members", response_model=Member)
 async def create_member(data: MemberCreate, current_user: User = Depends(get_current_user)):
