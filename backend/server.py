@@ -636,6 +636,88 @@ async def get_dashboard_stats(current_user: User = Depends(get_current_user)):
         "today_access_count": today_access
     }
 
+# Levy Routes
+@api_router.get("/levies", response_model=List[Levy])
+async def get_levies(status: Optional[str] = None, current_user: User = Depends(get_current_user)):
+    query = {"status": status} if status else {}
+    levies = await db.levies.find(query, {"_id": 0}).sort("due_date", 1).to_list(1000)
+    
+    for levy in levies:
+        if isinstance(levy.get("due_date"), str):
+            levy["due_date"] = datetime.fromisoformat(levy["due_date"])
+        if isinstance(levy.get("created_at"), str):
+            levy["created_at"] = datetime.fromisoformat(levy["created_at"])
+        if levy.get("paid_date") and isinstance(levy["paid_date"], str):
+            levy["paid_date"] = datetime.fromisoformat(levy["paid_date"])
+    
+    return levies
+
+@api_router.post("/levies/{levy_id}/generate-invoice")
+async def generate_levy_invoice(levy_id: str, current_user: User = Depends(get_current_user)):
+    """Generate a separate invoice for a levy payment"""
+    levy = await db.levies.find_one({"id": levy_id})
+    if not levy:
+        raise HTTPException(status_code=404, detail="Levy not found")
+    
+    if levy["status"] == "paid":
+        raise HTTPException(status_code=400, detail="Levy already paid")
+    
+    # Get invoice count for member
+    count = await db.invoices.count_documents({"member_id": levy["member_id"]})
+    invoice_number = f"LEV-{levy['member_id'][:8]}-{str(count + 1).zfill(3)}"
+    
+    invoice = Invoice(
+        member_id=levy["member_id"],
+        invoice_number=invoice_number,
+        amount=levy["amount"],
+        description=f"{levy['levy_type'].capitalize()} Levy - Separate Billing",
+        due_date=datetime.fromisoformat(levy["due_date"]) if isinstance(levy["due_date"], str) else levy["due_date"]
+    )
+    
+    invoice_doc = invoice.model_dump()
+    invoice_doc["due_date"] = invoice_doc["due_date"].isoformat()
+    invoice_doc["created_at"] = invoice_doc["created_at"].isoformat()
+    await db.invoices.insert_one(invoice_doc)
+    
+    # Update levy with invoice ID
+    await db.levies.update_one(
+        {"id": levy_id},
+        {"$set": {"invoice_id": invoice.id}}
+    )
+    
+    return {"message": "Levy invoice generated", "invoice_id": invoice.id}
+
+@api_router.post("/levies/{levy_id}/mark-paid")
+async def mark_levy_paid(levy_id: str, current_user: User = Depends(get_current_user)):
+    """Mark a levy as paid (called after payment is processed)"""
+    result = await db.levies.update_one(
+        {"id": levy_id},
+        {"$set": {
+            "status": "paid",
+            "paid_date": datetime.now(timezone.utc).isoformat()
+        }}
+    )
+    
+    if result.modified_count == 0:
+        raise HTTPException(status_code=404, detail="Levy not found")
+    
+    return {"message": "Levy marked as paid"}
+
+@api_router.get("/levies/member/{member_id}", response_model=List[Levy])
+async def get_member_levies(member_id: str, current_user: User = Depends(get_current_user)):
+    """Get all levies for a specific member"""
+    levies = await db.levies.find({"member_id": member_id}, {"_id": 0}).sort("due_date", 1).to_list(100)
+    
+    for levy in levies:
+        if isinstance(levy.get("due_date"), str):
+            levy["due_date"] = datetime.fromisoformat(levy["due_date"])
+        if isinstance(levy.get("created_at"), str):
+            levy["created_at"] = datetime.fromisoformat(levy["created_at"])
+        if levy.get("paid_date") and isinstance(levy["paid_date"], str):
+            levy["paid_date"] = datetime.fromisoformat(levy["paid_date"])
+    
+    return levies
+
 # Cancellation Request Routes
 @api_router.post("/cancellations", response_model=CancellationRequest)
 async def create_cancellation_request(data: CancellationRequestCreate, current_user: User = Depends(get_current_user)):
