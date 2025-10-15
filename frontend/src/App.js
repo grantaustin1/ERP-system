@@ -40,6 +40,7 @@ function App() {
           <Route path="/members" element={<PrivateRoute><Members /></PrivateRoute>} />
           <Route path="/access" element={<PrivateRoute><AccessControl /></PrivateRoute>} />
           <Route path="/billing" element={<PrivateRoute><Billing /></PrivateRoute>} />
+          <Route path="/cancellations" element={<PrivateRoute><Cancellations /></PrivateRoute>} />
           <Route path="/settings" element={<PrivateRoute><Settings /></PrivateRoute>} />
         </Routes>
       </BrowserRouter>
