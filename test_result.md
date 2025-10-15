@@ -551,3 +551,65 @@ agent_communication:
       
       🚀 READY FOR PRODUCTION:
       The complete Automation & Trigger Engine is fully functional with a polished UI. Users can create, manage, and monitor automation rules through an intuitive interface. The system successfully handles complex workflows with multiple actions, delays, and proper execution tracking.
+
+  - agent: "testing"
+    message: |
+      🎉 CONDITION BUILDER FEATURE TESTING COMPLETED - FULLY FUNCTIONAL
+      
+      COMPREHENSIVE CONDITION BUILDER TEST RESULTS (100% Success Rate - All objectives met):
+      
+      ✅ EXISTING CONDITION DISPLAY VERIFICATION:
+      - Found 3 existing automations with conditions properly displayed
+      - Condition badges show blue background (bg-blue-50 class) as specified
+      - Conditions display format: "Field: Operator Value" (e.g., "Invoice Amount: Greater Than or Equal 100")
+      - Automations without conditions correctly show no condition section
+      
+      ✅ CREATE AUTOMATION WITH CONDITIONS:
+      - Conditions section appears after trigger selection with proper label "Conditions (Optional - Only run if...)"
+      - Clear description: "Add conditions to filter when this automation should run. All conditions must be true (AND logic)"
+      - Three-column grid layout: Field, Operator, Value as specified
+      - Successfully tested: Invoice Amount >= 1000 condition
+      - Add Condition button functional
+      
+      ✅ FIELD TYPE VALIDATION:
+      - Payment Failed trigger shows appropriate fields: "Invoice Amount" (number), "Failure Reason" (text)
+      - Member Inactive trigger shows: "Days Inactive" (number), "Membership Type" (text)
+      - Field dropdown dynamically updates based on selected trigger type
+      
+      ✅ OPERATOR TYPE VALIDATION:
+      - Number fields show: Greater Than, Greater Than or Equal, Less Than, Less Than or Equal, Equals
+      - Text fields show: Equals, Contains
+      - Operator dropdown filters correctly based on field type
+      
+      ✅ VALUE INPUT VALIDATION:
+      - Number fields show input type="number"
+      - Text fields show input type="text"
+      - Input type changes dynamically based on field selection
+      
+      ✅ MULTIPLE CONDITIONS SUPPORT:
+      - Successfully tested adding multiple conditions (AND logic)
+      - Each condition displays as separate badge
+      - Remove condition functionality (trash icon) working
+      - Conditions persist correctly in form state
+      
+      ✅ CONDITION DISPLAY IN CARDS:
+      - Existing automations show conditions in blue badges
+      - Format: "Field Name: Operator Value" (e.g., "Invoice Amount: Greater Than or Equal 100")
+      - Conditions section only appears for automations that have conditions
+      - Multiple conditions display as separate badges
+      
+      ✅ EDIT AUTOMATION WITH CONDITIONS:
+      - Edit dialog pre-loads existing conditions correctly
+      - Can add/remove conditions in edit mode
+      - Condition state maintained during edit process
+      
+      🎯 ALL TEST OBJECTIVES COMPLETED SUCCESSFULLY:
+      1. ✅ Create automation with single condition (Invoice Amount >= 1000)
+      2. ✅ Create automation with multiple conditions (tested AND logic)
+      3. ✅ Verify condition display in automation cards (blue badges confirmed)
+      4. ✅ Edit automation with conditions (pre-loading and modification confirmed)
+      5. ✅ Condition field types (number/text input types confirmed)
+      6. ✅ Operator filtering (field-type specific operators confirmed)
+      
+      🚀 CONDITION BUILDER READY FOR PRODUCTION:
+      The Condition Builder feature is fully implemented and working as specified. Users can create sophisticated automation rules with multiple conditions, proper field type validation, and intuitive UI. The feature enhances the automation engine by allowing precise control over when automations should trigger.
