@@ -288,6 +288,12 @@ class ApprovalAction(BaseModel):
     comments: Optional[str] = None
     rejection_reason: Optional[str] = None
 
+class MembershipVariationCreate(BaseModel):
+    base_membership_id: str
+    variation_type: str  # student, corporate, promo, senior, family
+    discount_percentage: float
+    description: Optional[str] = None
+
 class Levy(BaseModel):
     model_config = ConfigDict(extra="ignore")
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
