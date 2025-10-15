@@ -392,6 +392,33 @@ export default function Automations() {
     return ACTION_TYPES.find(a => a.value === actionType)?.label || actionType;
   };
 
+  const getFieldLabel = (field, triggerType) => {
+    const fields = CONDITION_FIELDS[triggerType] || [];
+    return fields.find(f => f.value === field)?.label || field;
+  };
+
+  const getOperatorLabel = (operator) => {
+    return OPERATORS.find(op => op.value === operator)?.label || operator;
+  };
+
+  const getAvailableOperators = () => {
+    if (!currentCondition.field || !formData.trigger_type) return [];
+    
+    const fields = CONDITION_FIELDS[formData.trigger_type] || [];
+    const field = fields.find(f => f.value === currentCondition.field);
+    if (!field) return OPERATORS;
+    
+    return OPERATORS.filter(op => op.types.includes(field.type));
+  };
+
+  const getFieldType = () => {
+    if (!currentCondition.field || !formData.trigger_type) return 'text';
+    
+    const fields = CONDITION_FIELDS[formData.trigger_type] || [];
+    const field = fields.find(f => f.value === currentCondition.field);
+    return field?.type || 'text';
+  };
+
   return (
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
