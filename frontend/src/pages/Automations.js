@@ -471,7 +471,11 @@ export default function Automations() {
                 <Label htmlFor="trigger">Trigger (When this happens...)</Label>
                 <Select
                   value={formData.trigger_type}
-                  onValueChange={(value) => setFormData({ ...formData, trigger_type: value })}
+                  onValueChange={(value) => {
+                    setFormData({ ...formData, trigger_type: value });
+                    setConditionsList([]);
+                    setCurrentCondition({ field: '', operator: '', value: '' });
+                  }}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Select a trigger event" />
@@ -488,6 +492,105 @@ export default function Automations() {
                   </SelectContent>
                 </Select>
               </div>
+
+              {/* Conditions Builder */}
+              {formData.trigger_type && (
+                <div className="space-y-2">
+                  <Label>Conditions (Optional - Only run if...)</Label>
+                  <p className="text-xs text-gray-500 mb-2">
+                    Add conditions to filter when this automation should run. All conditions must be true (AND logic).
+                  </p>
+                  
+                  {/* Existing Conditions */}
+                  {conditionsList.length > 0 && (
+                    <div className="space-y-2 mb-4">
+                      {conditionsList.map((condition, index) => (
+                        <Card key={index}>
+                          <CardContent className="p-3 flex items-center justify-between">
+                            <div className="flex items-center space-x-2">
+                              <Badge variant="outline">
+                                {getFieldLabel(condition.field, formData.trigger_type)}
+                              </Badge>
+                              <span className="text-sm text-gray-500">{getOperatorLabel(condition.operator)}</span>
+                              <Badge variant="secondary">{condition.value}</Badge>
+                            </div>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => removeCondition(index)}
+                            >
+                              <Trash2 className="h-4 w-4 text-red-500" />
+                            </Button>
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Add New Condition */}
+                  <Card>
+                    <CardContent className="p-4 space-y-3">
+                      <div className="grid grid-cols-3 gap-2">
+                        <div className="space-y-2">
+                          <Label htmlFor="condition-field">Field</Label>
+                          <Select
+                            value={currentCondition.field}
+                            onValueChange={(value) => setCurrentCondition({ ...currentCondition, field: value, operator: '', value: '' })}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select field" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {(CONDITION_FIELDS[formData.trigger_type] || []).map((field) => (
+                                <SelectItem key={field.value} value={field.value}>
+                                  {field.label}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label htmlFor="condition-operator">Operator</Label>
+                          <Select
+                            value={currentCondition.operator}
+                            onValueChange={(value) => setCurrentCondition({ ...currentCondition, operator: value })}
+                            disabled={!currentCondition.field}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select operator" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {getAvailableOperators().map((op) => (
+                                <SelectItem key={op.value} value={op.value}>
+                                  {op.label}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label htmlFor="condition-value">Value</Label>
+                          <Input
+                            id="condition-value"
+                            type={getFieldType()}
+                            value={currentCondition.value}
+                            onChange={(e) => setCurrentCondition({ ...currentCondition, value: e.target.value })}
+                            placeholder="Enter value"
+                            disabled={!currentCondition.operator}
+                          />
+                        </div>
+                      </div>
+
+                      <Button onClick={addCondition} variant="outline" className="w-full" size="sm">
+                        <Plus className="mr-2 h-4 w-4" />
+                        Add Condition
+                      </Button>
+                    </CardContent>
+                  </Card>
+                </div>
+              )}
 
               {/* Actions */}
               <div className="space-y-2">
