@@ -552,6 +552,162 @@ async def get_dashboard_stats(current_user: User = Depends(get_current_user)):
         "today_access_count": today_access
     }
 
+# Cancellation Request Routes
+@api_router.post("/cancellations", response_model=CancellationRequest)
+async def create_cancellation_request(data: CancellationRequestCreate, current_user: User = Depends(get_current_user)):
+    # Get member details
+    member = await db.members.find_one({"id": data.member_id}, {"_id": 0})
+    if not member:
+        raise HTTPException(status_code=404, detail="Member not found")
+    
+    # Get membership type
+    membership_type = await db.membership_types.find_one({"id": member["membership_type_id"]}, {"_id": 0})
+    
+    cancellation = CancellationRequest(
+        member_id=data.member_id,
+        member_name=f"{member['first_name']} {member['last_name']}",
+        membership_type=membership_type["name"] if membership_type else "Unknown",
+        reason=data.reason,
+        requested_by=current_user.email,
+        request_source=data.request_source
+    )
+    
+    doc = cancellation.model_dump()
+    doc["created_at"] = doc["created_at"].isoformat()
+    await db.cancellation_requests.insert_one(doc)
+    
+    return cancellation
+
+@api_router.get("/cancellations", response_model=List[CancellationRequest])
+async def get_cancellation_requests(status: Optional[str] = None, current_user: User = Depends(get_current_user)):
+    query = {"status": status} if status else {}
+    requests = await db.cancellation_requests.find(query, {"_id": 0}).sort("created_at", -1).to_list(1000)
+    
+    for req in requests:
+        if isinstance(req.get("created_at"), str):
+            req["created_at"] = datetime.fromisoformat(req["created_at"])
+        if req.get("completed_at") and isinstance(req["completed_at"], str):
+            req["completed_at"] = datetime.fromisoformat(req["completed_at"])
+    
+    return requests
+
+@api_router.post("/cancellations/approve-staff")
+async def approve_cancellation_staff(data: ApprovalAction, current_user: User = Depends(get_current_user)):
+    """Staff level approval - first level"""
+    request = await db.cancellation_requests.find_one({"id": data.request_id})
+    if not request:
+        raise HTTPException(status_code=404, detail="Cancellation request not found")
+    
+    if data.action == "reject":
+        await db.cancellation_requests.update_one(
+            {"id": data.request_id},
+            {"$set": {
+                "status": "rejected",
+                "rejection_reason": data.rejection_reason,
+                "completed_at": datetime.now(timezone.utc).isoformat()
+            }}
+        )
+        return {"message": "Request rejected"}
+    
+    # Approve at staff level
+    approval_data = {
+        "approved_by": current_user.email,
+        "approved_at": datetime.now(timezone.utc).isoformat(),
+        "comments": data.comments
+    }
+    
+    await db.cancellation_requests.update_one(
+        {"id": data.request_id},
+        {"$set": {
+            "status": "staff_approved",
+            "staff_approval": approval_data
+        }}
+    )
+    
+    return {"message": "Staff approval completed. Awaiting manager approval."}
+
+@api_router.post("/cancellations/approve-manager")
+async def approve_cancellation_manager(data: ApprovalAction, current_user: User = Depends(get_current_user)):
+    """Manager level approval - second level"""
+    request = await db.cancellation_requests.find_one({"id": data.request_id})
+    if not request:
+        raise HTTPException(status_code=404, detail="Cancellation request not found")
+    
+    if request["status"] != "staff_approved":
+        raise HTTPException(status_code=400, detail="Request must be staff approved first")
+    
+    if data.action == "reject":
+        await db.cancellation_requests.update_one(
+            {"id": data.request_id},
+            {"$set": {
+                "status": "rejected",
+                "rejection_reason": data.rejection_reason,
+                "completed_at": datetime.now(timezone.utc).isoformat()
+            }}
+        )
+        return {"message": "Request rejected by manager"}
+    
+    approval_data = {
+        "approved_by": current_user.email,
+        "approved_at": datetime.now(timezone.utc).isoformat(),
+        "comments": data.comments
+    }
+    
+    await db.cancellation_requests.update_one(
+        {"id": data.request_id},
+        {"$set": {
+            "status": "manager_approved",
+            "manager_approval": approval_data
+        }}
+    )
+    
+    return {"message": "Manager approval completed. Awaiting admin approval."}
+
+@api_router.post("/cancellations/approve-admin")
+async def approve_cancellation_admin(data: ApprovalAction, current_user: User = Depends(get_current_user)):
+    """Admin level approval - final level"""
+    request = await db.cancellation_requests.find_one({"id": data.request_id})
+    if not request:
+        raise HTTPException(status_code=404, detail="Cancellation request not found")
+    
+    if request["status"] != "manager_approved":
+        raise HTTPException(status_code=400, detail="Request must be manager approved first")
+    
+    if data.action == "reject":
+        await db.cancellation_requests.update_one(
+            {"id": data.request_id},
+            {"$set": {
+                "status": "rejected",
+                "rejection_reason": data.rejection_reason,
+                "completed_at": datetime.now(timezone.utc).isoformat()
+            }}
+        )
+        return {"message": "Request rejected by admin"}
+    
+    approval_data = {
+        "approved_by": current_user.email,
+        "approved_at": datetime.now(timezone.utc).isoformat(),
+        "comments": data.comments
+    }
+    
+    # Final approval - cancel the membership
+    await db.cancellation_requests.update_one(
+        {"id": data.request_id},
+        {"$set": {
+            "status": "completed",
+            "admin_approval": approval_data,
+            "completed_at": datetime.now(timezone.utc).isoformat()
+        }}
+    )
+    
+    # Update member status
+    await db.members.update_one(
+        {"id": request["member_id"]},
+        {"$set": {"membership_status": "cancelled"}}
+    )
+    
+    return {"message": "Cancellation approved and completed. Member status updated."}
+
 # Include the router in the main app
 app.include_router(api_router)
 
