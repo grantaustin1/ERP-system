@@ -298,6 +298,76 @@ class MembershipVariationCreate(BaseModel):
     discount_percentage: float
     description: Optional[str] = None
 
+class Consultant(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    first_name: str
+    last_name: str
+    email: EmailStr
+    phone: str
+    employee_id: Optional[str] = None
+    status: str = "active"  # active, inactive
+    hire_date: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    target_monthly_sales: float = 0.0  # Monthly sales target
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+class ConsultantCreate(BaseModel):
+    first_name: str
+    last_name: str
+    email: EmailStr
+    phone: str
+    employee_id: Optional[str] = None
+    target_monthly_sales: float = 0.0
+
+class CommissionStructure(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    name: str
+    description: str
+    commission_type: str  # fixed, percentage, tiered
+    # For fixed commission
+    fixed_amount: float = 0.0
+    # For percentage commission
+    percentage: float = 0.0
+    # For tiered commission (JSON string of tiers)
+    tiers: List[dict] = []  # [{"min_sales": 0, "max_sales": 5000, "rate": 5}, ...]
+    # Commission frequency
+    frequency: str = "one_time"  # one_time, recurring_monthly
+    applies_to: str = "all"  # all, membership_type_id
+    membership_type_id: Optional[str] = None
+    status: str = "active"
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+class CommissionStructureCreate(BaseModel):
+    name: str
+    description: str
+    commission_type: str
+    fixed_amount: float = 0.0
+    percentage: float = 0.0
+    tiers: List[dict] = []
+    frequency: str = "one_time"
+    applies_to: str = "all"
+    membership_type_id: Optional[str] = None
+
+class Commission(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    consultant_id: str
+    consultant_name: str
+    member_id: str
+    member_name: str
+    membership_type: str
+    sale_amount: float
+    commission_amount: float
+    commission_structure_id: str
+    commission_structure_name: str
+    commission_type: str
+    sale_date: datetime
+    payment_status: str = "pending"  # pending, paid
+    payment_date: Optional[datetime] = None
+    notes: Optional[str] = None
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
 class Levy(BaseModel):
     model_config = ConfigDict(extra="ignore")
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
