@@ -376,7 +376,7 @@ export default function Settings() {
                               </div>
                             )}
                           </div>
-                        )}
+                        </div>
                         
                         <div className="space-y-2">
                           <Label>Features (one per line)</Label>
