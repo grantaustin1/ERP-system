@@ -896,6 +896,26 @@ export default function Automations() {
                         <span className="text-sm font-medium">Trigger:</span>{' '}
                         <Badge variant="outline">{getTriggerLabel(automation.trigger_type)}</Badge>
                       </div>
+                      
+                      {/* Display Conditions */}
+                      {automation.conditions && Object.keys(automation.conditions).length > 0 && (
+                        <div>
+                          <span className="text-sm font-medium">Conditions:</span>
+                          <div className="flex flex-wrap gap-2 mt-1">
+                            {Object.entries(automation.conditions).map(([field, value], index) => {
+                              const displayValue = typeof value === 'object' 
+                                ? `${getOperatorLabel(value.operator)} ${value.value}`
+                                : `= ${value}`;
+                              return (
+                                <Badge key={index} variant="outline" className="bg-blue-50">
+                                  {getFieldLabel(field, automation.trigger_type)}: {displayValue}
+                                </Badge>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+                      
                       <div>
                         <span className="text-sm font-medium">Actions ({automation.actions?.length || 0}):</span>
                         <div className="flex flex-wrap gap-2 mt-1">
