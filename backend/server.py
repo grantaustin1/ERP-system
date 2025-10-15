@@ -15,6 +15,8 @@ from io import BytesIO
 import base64
 import jwt
 from passlib.context import CryptContext
+from geopy.geocoders import Nominatim
+from geopy.exc import GeocoderTimedOut, GeocoderServiceError
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
