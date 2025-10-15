@@ -66,6 +66,7 @@ export default function Settings() {
       const data = {
         ...membershipForm,
         price: parseFloat(membershipForm.price),
+        levy_amount: membershipForm.levy_amount ? parseFloat(membershipForm.levy_amount) : 0,
         features: membershipForm.features.split('\n').filter(f => f.trim())
       };
 
