@@ -443,3 +443,25 @@ agent_communication:
       
       🚀 READY FOR PRODUCTION:
       All backend automation functionality is working correctly. SMS/WhatsApp/Email actions are mocked and ready for real service integration. The automation engine successfully handles complex workflows with conditions, multiple actions, and proper execution tracking.
+
+  
+  - agent: "main"
+    message: |
+      Backend testing complete - all 9 backend tasks verified and working.
+      Starting frontend testing now.
+      
+      Frontend testing agent should focus on:
+      1. Navigation to /automations page
+      2. Creating automation rules with different trigger types
+      3. Adding multiple actions (SMS, WhatsApp, Email, Status Update, Task)
+      4. Testing action form fields (dynamic fields based on action type)
+      5. Editing existing automation rules
+      6. Toggling automations on/off
+      7. Deleting automation rules
+      8. Testing automation test button
+      9. Viewing execution history tab
+      10. End-to-end: Create automation -> Create member -> Verify execution history
+      
+      Test user credentials:
+      - Email: admin@gym.com
+      - Password: admin123
