@@ -143,99 +143,212 @@ export default function Members() {
                   </DialogDescription>
                 </DialogHeader>
                 <form onSubmit={handleSubmit} className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="first_name">First Name</Label>
-                      <Input
-                        id="first_name"
-                        data-testid="first-name-input"
-                        value={formData.first_name}
-                        onChange={(e) => setFormData({ ...formData, first_name: e.target.value })}
-                        required
-                        className="bg-slate-700/50 border-slate-600"
-                      />
+                  {/* Personal Information */}
+                  <div className="border-b border-slate-600 pb-3">
+                    <h3 className="text-white font-semibold mb-3">Personal Information</h3>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="first_name">First Name</Label>
+                        <Input
+                          id="first_name"
+                          data-testid="first-name-input"
+                          value={formData.first_name}
+                          onChange={(e) => setFormData({ ...formData, first_name: e.target.value })}
+                          required
+                          className="bg-slate-700/50 border-slate-600"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="last_name">Last Name</Label>
+                        <Input
+                          id="last_name"
+                          data-testid="last-name-input"
+                          value={formData.last_name}
+                          onChange={(e) => setFormData({ ...formData, last_name: e.target.value })}
+                          required
+                          className="bg-slate-700/50 border-slate-600"
+                        />
+                      </div>
                     </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="last_name">Last Name</Label>
-                      <Input
-                        id="last_name"
-                        data-testid="last-name-input"
-                        value={formData.last_name}
-                        onChange={(e) => setFormData({ ...formData, last_name: e.target.value })}
-                        required
-                        className="bg-slate-700/50 border-slate-600"
-                      />
+                    <div className="grid grid-cols-2 gap-4 mt-3">
+                      <div className="space-y-2">
+                        <Label htmlFor="id_type">ID Type</Label>
+                        <Select
+                          value={formData.id_type}
+                          onValueChange={(value) => setFormData({ ...formData, id_type: value })}
+                        >
+                          <SelectTrigger className="bg-slate-700/50 border-slate-600">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent className="bg-slate-800 border-slate-700">
+                            <SelectItem value="id">ID Number</SelectItem>
+                            <SelectItem value="passport">Passport</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="id_number">ID/Passport Number</Label>
+                        <Input
+                          id="id_number"
+                          value={formData.id_number}
+                          onChange={(e) => setFormData({ ...formData, id_number: e.target.value })}
+                          className="bg-slate-700/50 border-slate-600"
+                        />
+                      </div>
                     </div>
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="email">Email</Label>
-                    <Input
-                      id="email"
-                      type="email"
-                      data-testid="member-email-input"
-                      value={formData.email}
-                      onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                      required
-                      className="bg-slate-700/50 border-slate-600"
-                    />
+
+                  {/* Contact Information */}
+                  <div className="border-b border-slate-600 pb-3">
+                    <h3 className="text-white font-semibold mb-3">Contact Information</h3>
+                    <div className="space-y-3">
+                      <div className="space-y-2">
+                        <Label htmlFor="email">Email</Label>
+                        <Input
+                          id="email"
+                          type="email"
+                          data-testid="member-email-input"
+                          value={formData.email}
+                          onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                          required
+                          className="bg-slate-700/50 border-slate-600"
+                        />
+                      </div>
+                      <div className="grid grid-cols-3 gap-3">
+                        <div className="space-y-2">
+                          <Label htmlFor="phone">Mobile</Label>
+                          <Input
+                            id="phone"
+                            data-testid="phone-input"
+                            value={formData.phone}
+                            onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                            required
+                            className="bg-slate-700/50 border-slate-600"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="home_phone">Home Phone</Label>
+                          <Input
+                            id="home_phone"
+                            value={formData.home_phone}
+                            onChange={(e) => setFormData({ ...formData, home_phone: e.target.value })}
+                            className="bg-slate-700/50 border-slate-600"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="work_phone">Work Phone</Label>
+                          <Input
+                            id="work_phone"
+                            value={formData.work_phone}
+                            onChange={(e) => setFormData({ ...formData, work_phone: e.target.value })}
+                            className="bg-slate-700/50 border-slate-600"
+                          />
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="address">Home Address (will be geo-located for marketing)</Label>
+                        <Input
+                          id="address"
+                          value={formData.address}
+                          onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                          placeholder="Full street address, city, postal code"
+                          className="bg-slate-700/50 border-slate-600"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="emergency_contact">Emergency Contact</Label>
+                        <Input
+                          id="emergency_contact"
+                          value={formData.emergency_contact}
+                          onChange={(e) => setFormData({ ...formData, emergency_contact: e.target.value })}
+                          className="bg-slate-700/50 border-slate-600"
+                        />
+                      </div>
+                    </div>
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="phone">Phone</Label>
-                    <Input
-                      id="phone"
-                      data-testid="phone-input"
-                      value={formData.phone}
-                      onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                      required
-                      className="bg-slate-700/50 border-slate-600"
-                    />
+
+                  {/* Banking Details */}
+                  <div className="border-b border-slate-600 pb-3">
+                    <h3 className="text-white font-semibold mb-3">Banking Details</h3>
+                    <div className="space-y-3">
+                      <div className="space-y-2">
+                        <Label htmlFor="account_holder_name">Account Holder Name</Label>
+                        <Input
+                          id="account_holder_name"
+                          value={formData.account_holder_name}
+                          onChange={(e) => setFormData({ ...formData, account_holder_name: e.target.value })}
+                          className="bg-slate-700/50 border-slate-600"
+                        />
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="space-y-2">
+                          <Label htmlFor="bank_name">Bank Name</Label>
+                          <Input
+                            id="bank_name"
+                            value={formData.bank_name}
+                            onChange={(e) => setFormData({ ...formData, bank_name: e.target.value })}
+                            placeholder="e.g. FNB, Standard Bank"
+                            className="bg-slate-700/50 border-slate-600"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="bank_branch_code">Branch Code</Label>
+                          <Input
+                            id="bank_branch_code"
+                            value={formData.bank_branch_code}
+                            onChange={(e) => setFormData({ ...formData, bank_branch_code: e.target.value })}
+                            className="bg-slate-700/50 border-slate-600"
+                          />
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="bank_account_number">Account Number</Label>
+                        <Input
+                          id="bank_account_number"
+                          value={formData.bank_account_number}
+                          onChange={(e) => setFormData({ ...formData, bank_account_number: e.target.value })}
+                          className="bg-slate-700/50 border-slate-600"
+                        />
+                      </div>
+                    </div>
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="membership_type">Membership Type</Label>
-                    <Select
-                      value={formData.membership_type_id}
-                      onValueChange={(value) => setFormData({ ...formData, membership_type_id: value })}
-                      required
-                    >
-                      <SelectTrigger className="bg-slate-700/50 border-slate-600" data-testid="membership-type-select">
-                        <SelectValue placeholder="Select membership type" />
-                      </SelectTrigger>
-                      <SelectContent className="bg-slate-800 border-slate-700">
-                        {membershipTypes.map((type) => (
-                          <SelectItem key={type.id} value={type.id}>
-                            {type.name} - R{type.price}/{type.billing_frequency}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+
+                  {/* Membership */}
+                  <div className="border-b border-slate-600 pb-3">
+                    <h3 className="text-white font-semibold mb-3">Membership</h3>
+                    <div className="space-y-2">
+                      <Label htmlFor="membership_type">Membership Type</Label>
+                      <Select
+                        value={formData.membership_type_id}
+                        onValueChange={(value) => setFormData({ ...formData, membership_type_id: value })}
+                        required
+                      >
+                        <SelectTrigger className="bg-slate-700/50 border-slate-600" data-testid="membership-type-select">
+                          <SelectValue placeholder="Select membership type" />
+                        </SelectTrigger>
+                        <SelectContent className="bg-slate-800 border-slate-700">
+                          {membershipTypes.map((type) => (
+                            <SelectItem key={type.id} value={type.id}>
+                              {type.name} - R{type.price}/{type.billing_frequency}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="address">Address</Label>
-                    <Input
-                      id="address"
-                      value={formData.address}
-                      onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                      className="bg-slate-700/50 border-slate-600"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="emergency_contact">Emergency Contact</Label>
-                    <Input
-                      id="emergency_contact"
-                      value={formData.emergency_contact}
-                      onChange={(e) => setFormData({ ...formData, emergency_contact: e.target.value })}
-                      className="bg-slate-700/50 border-slate-600"
-                    />
-                  </div>
+
+                  {/* Notes */}
                   <div className="space-y-2">
                     <Label htmlFor="notes">Notes</Label>
-                    <Input
+                    <textarea
                       id="notes"
                       value={formData.notes}
                       onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                      className="bg-slate-700/50 border-slate-600"
+                      rows={2}
+                      className="w-full bg-slate-700/50 border-slate-600 rounded-md p-2 text-white border"
                     />
                   </div>
+
                   <Button type="submit" className="w-full bg-gradient-to-r from-emerald-500 to-teal-600" data-testid="submit-member-button">
                     Create Member
                   </Button>
