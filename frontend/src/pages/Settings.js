@@ -260,6 +260,98 @@ export default function Settings() {
                             </p>
                           </div>
                         )}
+                        
+                        {/* Levy Configuration */}
+                        {membershipForm.payment_type === 'debit_order' && (
+                          <div className="p-4 rounded-lg bg-amber-900/20 border border-amber-500 space-y-4">
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <Label className="text-amber-200">Enable Levy Charges</Label>
+                                <p className="text-amber-300 text-xs mt-1">Annual or bi-annual levies billed separately</p>
+                              </div>
+                              <Switch
+                                checked={membershipForm.levy_enabled}
+                                onCheckedChange={(checked) => setMembershipForm({ ...membershipForm, levy_enabled: checked })}
+                              />
+                            </div>
+                            
+                            {membershipForm.levy_enabled && (
+                              <div className="space-y-3 pt-2 border-t border-amber-500/30">
+                                <div className="grid grid-cols-2 gap-3">
+                                  <div className="space-y-2">
+                                    <Label className="text-amber-200">Levy Frequency</Label>
+                                    <Select
+                                      value={membershipForm.levy_frequency}
+                                      onValueChange={(value) => setMembershipForm({ ...membershipForm, levy_frequency: value })}
+                                    >
+                                      <SelectTrigger className="bg-slate-700/50 border-slate-600">
+                                        <SelectValue />
+                                      </SelectTrigger>
+                                      <SelectContent className="bg-slate-800 border-slate-700">
+                                        <SelectItem value="annual">Annual</SelectItem>
+                                        <SelectItem value="biannual">Bi-annual (Half-year)</SelectItem>
+                                      </SelectContent>
+                                    </Select>
+                                  </div>
+                                  
+                                  <div className="space-y-2">
+                                    <Label className="text-amber-200">Levy Timing</Label>
+                                    <Select
+                                      value={membershipForm.levy_timing}
+                                      onValueChange={(value) => setMembershipForm({ ...membershipForm, levy_timing: value })}
+                                    >
+                                      <SelectTrigger className="bg-slate-700/50 border-slate-600">
+                                        <SelectValue />
+                                      </SelectTrigger>
+                                      <SelectContent className="bg-slate-800 border-slate-700">
+                                        <SelectItem value="anniversary">Membership Anniversary</SelectItem>
+                                        <SelectItem value="fixed_dates">Fixed Dates (1 June & 1 Dec)</SelectItem>
+                                      </SelectContent>
+                                    </Select>
+                                  </div>
+                                </div>
+                                
+                                <div className="space-y-2">
+                                  <Label className="text-amber-200">Levy Amount</Label>
+                                  <Select
+                                    value={membershipForm.levy_amount_type}
+                                    onValueChange={(value) => setMembershipForm({ ...membershipForm, levy_amount_type: value })}
+                                  >
+                                    <SelectTrigger className="bg-slate-700/50 border-slate-600">
+                                      <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent className="bg-slate-800 border-slate-700">
+                                      <SelectItem value="fixed">Fixed Amount</SelectItem>
+                                      <SelectItem value="same_as_membership">Same as Membership Fee</SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                </div>
+                                
+                                {membershipForm.levy_amount_type === 'fixed' && (
+                                  <div className="space-y-2">
+                                    <Label className="text-amber-200">Levy Amount (R)</Label>
+                                    <Input
+                                      type="number"
+                                      step="0.01"
+                                      value={membershipForm.levy_amount}
+                                      onChange={(e) => setMembershipForm({ ...membershipForm, levy_amount: e.target.value })}
+                                      placeholder="150.00"
+                                      className="bg-slate-700/50 border-slate-600"
+                                    />
+                                  </div>
+                                )}
+                                
+                                <div className="bg-amber-950/50 p-2 rounded">
+                                  <p className="text-amber-200 text-xs font-medium">⚠️ Important:</p>
+                                  <p className="text-amber-300 text-xs mt-1">
+                                    Levies are billed separately from regular membership fees to reduce payment failures and improve success rates.
+                                  </p>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                        
                         <div className="space-y-2">
                           <Label>Features (one per line)</Label>
                           <textarea
