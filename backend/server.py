@@ -1218,7 +1218,7 @@ async def mark_invoice_overdue(invoice_id: str, current_user: User = Depends(get
             "member_id": member["id"],
             "member_name": f"{member.get('first_name', '')} {member.get('last_name', '')}".strip(),
             "email": member.get("email", ""),
-            "phone": member.get("phone_primary", ""),
+            "phone": member.get("phone", ""),
             "invoice_id": invoice_id,
             "invoice_number": invoice["invoice_number"],
             "amount": invoice["amount"],
