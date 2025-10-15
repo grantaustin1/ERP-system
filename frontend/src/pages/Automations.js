@@ -32,6 +32,42 @@ const ACTION_TYPES = [
   { value: 'create_task', label: 'Create Task', icon: '✅' }
 ];
 
+const CONDITION_FIELDS = {
+  'member_joined': [
+    { value: 'membership_type', label: 'Membership Type', type: 'text' },
+    { value: 'join_date', label: 'Join Date', type: 'date' }
+  ],
+  'payment_failed': [
+    { value: 'amount', label: 'Invoice Amount', type: 'number' },
+    { value: 'failure_reason', label: 'Failure Reason', type: 'text' }
+  ],
+  'invoice_overdue': [
+    { value: 'amount', label: 'Invoice Amount', type: 'number' },
+    { value: 'days_overdue', label: 'Days Overdue', type: 'number' }
+  ],
+  'membership_expiring': [
+    { value: 'days_until_expiry', label: 'Days Until Expiry', type: 'number' },
+    { value: 'membership_type', label: 'Membership Type', type: 'text' }
+  ],
+  'member_inactive': [
+    { value: 'days_inactive', label: 'Days Inactive', type: 'number' },
+    { value: 'membership_type', label: 'Membership Type', type: 'text' }
+  ],
+  'cancellation_requested': [
+    { value: 'cancellation_reason', label: 'Cancellation Reason', type: 'text' },
+    { value: 'membership_type', label: 'Membership Type', type: 'text' }
+  ]
+};
+
+const OPERATORS = [
+  { value: '==', label: 'Equals', types: ['text', 'number', 'date'] },
+  { value: '>', label: 'Greater Than', types: ['number', 'date'] },
+  { value: '>=', label: 'Greater Than or Equal', types: ['number', 'date'] },
+  { value: '<', label: 'Less Than', types: ['number', 'date'] },
+  { value: '<=', label: 'Less Than or Equal', types: ['number', 'date'] },
+  { value: 'contains', label: 'Contains', types: ['text'] }
+];
+
 export default function Automations() {
   const [automations, setAutomations] = useState([]);
   const [executions, setExecutions] = useState([]);
