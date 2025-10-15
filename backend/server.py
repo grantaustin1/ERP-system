@@ -381,6 +381,65 @@ class Levy(BaseModel):
     paid_date: Optional[datetime] = None
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
+class Automation(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    name: str
+    description: str
+    trigger_type: str  # payment_failed, member_joined, member_inactive, membership_expiring, invoice_overdue
+    conditions: dict = {}  # Additional filters like membership_type, amount_threshold, days_inactive
+    actions: List[dict] = []  # List of actions: [{type: "send_whatsapp", delay_minutes: 1, message: "..."}]
+    enabled: bool = True
+    created_by: str
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    last_triggered: Optional[datetime] = None
+    execution_count: int = 0
+
+class AutomationCreate(BaseModel):
+    name: str
+    description: str
+    trigger_type: str
+    conditions: dict = {}
+    actions: List[dict] = []
+
+class AutomationExecution(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    automation_id: str
+    automation_name: str
+    trigger_data: dict  # Info about what triggered it
+    scheduled_for: datetime  # When the action should execute
+    executed_at: Optional[datetime] = None
+    status: str = "pending"  # pending, completed, failed
+    result: Optional[dict] = None
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+class Lead(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    source: str  # facebook, instagram, whatsapp, walk_in, referral
+    full_name: str
+    email: Optional[str] = None
+    phone: str
+    message: Optional[str] = None
+    interest: Optional[str] = None
+    assigned_to_consultant_id: Optional[str] = None
+    assigned_to_consultant_name: Optional[str] = None
+    status: str = "new"  # new, contacted, qualified, converted, lost
+    follow_up_date: Optional[datetime] = None
+    notes: Optional[str] = None
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+class LeadCreate(BaseModel):
+    source: str
+    full_name: str
+    email: Optional[str] = None
+    phone: str
+    message: Optional[str] = None
+    interest: Optional[str] = None
+    assigned_to_consultant_id: Optional[str] = None
+
 # Auth dependency
 async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)):
     token = credentials.credentials
