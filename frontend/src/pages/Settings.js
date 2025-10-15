@@ -26,6 +26,8 @@ export default function Settings() {
     price: '',
     billing_frequency: 'monthly',
     duration_months: 1,
+    payment_type: 'debit_order',
+    rollover_enabled: false,
     features: '',
     peak_hours_only: false,
     multi_site_access: false
