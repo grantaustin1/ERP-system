@@ -909,9 +909,9 @@ async def create_member(data: MemberCreate, current_user: User = Depends(get_cur
     # Trigger automation: member_joined
     await trigger_automation("member_joined", {
         "member_id": member.id,
-        "member_name": member.full_name,
+        "member_name": f"{member.first_name} {member.last_name}",
         "email": member.email,
-        "phone": member.phone_primary,
+        "phone": member.phone,
         "membership_type": membership_type["name"],
         "join_date": member.join_date.isoformat()
     })
