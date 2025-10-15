@@ -358,6 +358,41 @@ async def get_users(current_user: User = Depends(get_current_user)):
             u["created_at"] = datetime.fromisoformat(u["created_at"])
     return users
 
+# Duration Templates (predefined common durations)
+DURATION_TEMPLATES = [
+    {"name": "Single Visit", "days": 1, "months": 0},
+    {"name": "2 Day Pass", "days": 2, "months": 0},
+    {"name": "3 Day Pass", "days": 3, "months": 0},
+    {"name": "1 Week", "days": 7, "months": 0},
+    {"name": "2 Week", "days": 14, "months": 0},
+    {"name": "1 Month", "days": 0, "months": 1},
+    {"name": "3 Month", "days": 0, "months": 3},
+    {"name": "6 Month", "days": 0, "months": 6},
+    {"name": "12 Month", "days": 0, "months": 12},
+    {"name": "24 Month", "days": 0, "months": 24},
+    {"name": "36 Month", "days": 0, "months": 36},
+]
+
+VARIATION_TYPES = [
+    {"value": "student", "label": "Student Discount", "typical_discount": 15},
+    {"value": "corporate", "label": "Corporate Rate", "typical_discount": 10},
+    {"value": "senior", "label": "Senior Citizen", "typical_discount": 20},
+    {"value": "family", "label": "Family Package", "typical_discount": 25},
+    {"value": "promo", "label": "Promotional Offer", "typical_discount": 30},
+    {"value": "early_bird", "label": "Early Bird Special", "typical_discount": 15},
+    {"value": "referral", "label": "Referral Discount", "typical_discount": 10},
+]
+
+@api_router.get("/membership-types/templates/durations")
+async def get_duration_templates():
+    """Get predefined duration templates"""
+    return DURATION_TEMPLATES
+
+@api_router.get("/membership-types/templates/variations")
+async def get_variation_types():
+    """Get predefined variation types"""
+    return VARIATION_TYPES
+
 # Membership Types Routes
 @api_router.post("/membership-types", response_model=MembershipType)
 async def create_membership_type(data: MembershipTypeCreate, current_user: User = Depends(get_current_user)):
