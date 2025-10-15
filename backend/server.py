@@ -419,6 +419,76 @@ async def get_membership_type(type_id: str):
         membership_type["created_at"] = datetime.fromisoformat(membership_type["created_at"])
     return MembershipType(**membership_type)
 
+@api_router.get("/membership-types/base/list")
+async def get_base_memberships():
+    """Get only base memberships (no variations)"""
+    base_memberships = await db.membership_types.find(
+        {"is_base_membership": True, "status": "active"}, 
+        {"_id": 0}
+    ).to_list(1000)
+    for bm in base_memberships:
+        if isinstance(bm.get("created_at"), str):
+            bm["created_at"] = datetime.fromisoformat(bm["created_at"])
+    return base_memberships
+
+@api_router.get("/membership-types/{type_id}/variations")
+async def get_membership_variations(type_id: str):
+    """Get all variations of a base membership"""
+    variations = await db.membership_types.find(
+        {"base_membership_id": type_id, "status": "active"},
+        {"_id": 0}
+    ).to_list(1000)
+    for var in variations:
+        if isinstance(var.get("created_at"), str):
+            var["created_at"] = datetime.fromisoformat(var["created_at"])
+    return variations
+
+@api_router.post("/membership-types/{base_id}/create-variation", response_model=MembershipType)
+async def create_membership_variation(base_id: str, data: MembershipVariationCreate, current_user: User = Depends(get_current_user)):
+    """Create a variation of a base membership with discount"""
+    # Get base membership
+    base = await db.membership_types.find_one({"id": base_id})
+    if not base:
+        raise HTTPException(status_code=404, detail="Base membership not found")
+    
+    # Calculate discounted price
+    base_price = base["price"]
+    discounted_price = base_price * (1 - data.discount_percentage / 100)
+    
+    # Get variation label
+    variation_label = next((v["label"] for v in VARIATION_TYPES if v["value"] == data.variation_type), data.variation_type.title())
+    
+    # Create variation with inherited properties
+    variation = MembershipType(
+        name=f"{base['name']} - {variation_label}",
+        description=data.description or f"{variation_label} - {data.discount_percentage}% off",
+        price=discounted_price,
+        billing_frequency=base["billing_frequency"],
+        duration_months=base["duration_months"],
+        duration_days=base.get("duration_days", 0),
+        payment_type=base["payment_type"],
+        rollover_enabled=base.get("rollover_enabled", False),
+        is_base_membership=False,
+        base_membership_id=base_id,
+        variation_type=data.variation_type,
+        discount_percentage=data.discount_percentage,
+        levy_enabled=base.get("levy_enabled", False),
+        levy_frequency=base.get("levy_frequency", "annual"),
+        levy_timing=base.get("levy_timing", "anniversary"),
+        levy_amount_type=base.get("levy_amount_type", "fixed"),
+        levy_amount=base.get("levy_amount", 0.0),
+        levy_payment_method=base.get("levy_payment_method", "debit_order"),
+        features=base.get("features", []),
+        peak_hours_only=base.get("peak_hours_only", False),
+        multi_site_access=base.get("multi_site_access", False),
+    )
+    
+    doc = variation.model_dump()
+    doc["created_at"] = doc["created_at"].isoformat()
+    await db.membership_types.insert_one(doc)
+    
+    return variation
+
 # Members Routes
 @api_router.post("/members", response_model=Member)
 async def create_member(data: MemberCreate, current_user: User = Depends(get_current_user)):
