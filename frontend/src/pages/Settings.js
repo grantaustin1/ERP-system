@@ -405,7 +405,22 @@ export default function Settings() {
                               <span className="text-emerald-400 font-bold text-xl">R {type.price.toFixed(2)}</span>
                               <span className="text-slate-400 text-sm">•</span>
                               <span className="text-slate-400 text-sm">{type.duration_months} month{type.duration_months !== 1 ? 's' : ''}</span>
+                              {type.levy_enabled && (
+                                <>
+                                  <span className="text-slate-400 text-sm">•</span>
+                                  <span className="text-amber-400 text-sm font-medium">
+                                    Levy: R {type.levy_amount_type === 'same_as_membership' ? type.price.toFixed(2) : (type.levy_amount || 0).toFixed(2)}
+                                  </span>
+                                </>
+                              )}
                             </div>
+                            {type.levy_enabled && (
+                              <div className="mb-3 p-2 rounded bg-amber-900/20 border border-amber-500/30">
+                                <p className="text-amber-300 text-xs">
+                                  📋 {type.levy_frequency === 'annual' ? 'Annual' : 'Bi-annual'} levy charged {type.levy_timing === 'anniversary' ? 'on membership anniversary' : 'on 1 June & 1 December'} - Billed separately
+                                </p>
+                              </div>
+                            )}
                             {type.features && type.features.length > 0 && (
                               <ul className="space-y-1">
                                 {type.features.map((feature, idx) => (
