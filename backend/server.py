@@ -652,6 +652,43 @@ async def get_payments(member_id: Optional[str] = None, current_user: User = Dep
             pay["payment_date"] = datetime.fromisoformat(pay["payment_date"])
     return payments
 
+# Member Analytics and Geo-location
+@api_router.get("/analytics/member-distribution")
+async def get_member_distribution(current_user: User = Depends(get_current_user)):
+    """Get member distribution with geo-location for marketing analytics"""
+    members = await db.members.find({}, {"_id": 0, "id": 1, "first_name": 1, "last_name": 1, 
+                                          "address": 1, "latitude": 1, "longitude": 1, 
+                                          "membership_status": 1}).to_list(10000)
+    
+    # Filter members with valid geo-location
+    geo_members = [m for m in members if m.get("latitude") and m.get("longitude")]
+    
+    return {
+        "total_members": len(members),
+        "geo_located_members": len(geo_members),
+        "members": geo_members
+    }
+
+@api_router.post("/members/{member_id}/geocode")
+async def geocode_member_address(member_id: str, current_user: User = Depends(get_current_user)):
+    """Manually trigger geocoding for a member's address"""
+    member = await db.members.find_one({"id": member_id}, {"_id": 0})
+    if not member:
+        raise HTTPException(status_code=404, detail="Member not found")
+    
+    if not member.get("address"):
+        raise HTTPException(status_code=400, detail="Member has no address")
+    
+    lat, lon = geocode_address(member["address"])
+    if lat and lon:
+        await db.members.update_one(
+            {"id": member_id},
+            {"$set": {"latitude": lat, "longitude": lon}}
+        )
+        return {"message": "Geocoding successful", "latitude": lat, "longitude": lon}
+    else:
+        raise HTTPException(status_code=400, detail="Could not geocode address")
+
 # Dashboard Stats
 @api_router.get("/dashboard/stats")
 async def get_dashboard_stats(current_user: User = Depends(get_current_user)):
