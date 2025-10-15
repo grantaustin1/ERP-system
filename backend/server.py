@@ -1,15 +1,20 @@
-from fastapi import FastAPI, APIRouter
+from fastapi import FastAPI, APIRouter, HTTPException, Depends, status
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
 import os
 import logging
 from pathlib import Path
-from pydantic import BaseModel, Field, ConfigDict
-from typing import List
+from pydantic import BaseModel, Field, ConfigDict, EmailStr
+from typing import List, Optional
 import uuid
-from datetime import datetime, timezone
-
+from datetime import datetime, timezone, timedelta
+import qrcode
+from io import BytesIO
+import base64
+import jwt
+from passlib.context import CryptContext
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
@@ -25,46 +30,487 @@ app = FastAPI()
 # Create a router with the /api prefix
 api_router = APIRouter(prefix="/api")
 
+# Security
+security = HTTPBearer()
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+SECRET_KEY = os.environ.get("JWT_SECRET", "your-secret-key-change-in-production")
+ALGORITHM = "HS256"
 
-# Define Models
-class StatusCheck(BaseModel):
-    model_config = ConfigDict(extra="ignore")  # Ignore MongoDB's _id field
-    
+# Utility Functions
+def hash_password(password: str) -> str:
+    return pwd_context.hash(password)
+
+def verify_password(plain_password: str, hashed_password: str) -> bool:
+    return pwd_context.verify(plain_password, hashed_password)
+
+def create_access_token(data: dict, expires_delta: timedelta = timedelta(days=7)):
+    to_encode = data.copy()
+    expire = datetime.now(timezone.utc) + expires_delta
+    to_encode.update({"exp": expire})
+    return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+
+def decode_token(token: str):
+    try:
+        return jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+    except jwt.PyJWTError:
+        return None
+
+def generate_qr_code(data: str) -> str:
+    """Generate QR code and return as base64 string"""
+    qr = qrcode.QRCode(version=1, box_size=10, border=5)
+    qr.add_data(data)
+    qr.make(fit=True)
+    img = qr.make_image(fill_color="black", back_color="white")
+    buffered = BytesIO()
+    img.save(buffered, format="PNG")
+    return base64.b64encode(buffered.getvalue()).decode()
+
+# Models
+class MembershipType(BaseModel):
+    model_config = ConfigDict(extra="ignore")
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
-    client_name: str
+    name: str
+    description: str
+    price: float
+    billing_frequency: str  # monthly, 6months, yearly, one-time
+    duration_months: int
+    features: List[str] = []
+    peak_hours_only: bool = False
+    multi_site_access: bool = False
+    status: str = "active"
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+class MembershipTypeCreate(BaseModel):
+    name: str
+    description: str
+    price: float
+    billing_frequency: str
+    duration_months: int
+    features: List[str] = []
+    peak_hours_only: bool = False
+    multi_site_access: bool = False
+
+class Member(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    first_name: str
+    last_name: str
+    email: EmailStr
+    phone: str
+    membership_type_id: str
+    membership_status: str = "active"  # active, suspended, cancelled
+    join_date: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    expiry_date: Optional[datetime] = None
+    qr_code: str = ""
+    photo_url: Optional[str] = None
+    is_debtor: bool = False
+    address: Optional[str] = None
+    emergency_contact: Optional[str] = None
+    notes: Optional[str] = None
+
+class MemberCreate(BaseModel):
+    first_name: str
+    last_name: str
+    email: EmailStr
+    phone: str
+    membership_type_id: str
+    address: Optional[str] = None
+    emergency_contact: Optional[str] = None
+    notes: Optional[str] = None
+
+class AccessLog(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    member_id: str
+    member_name: str
+    access_method: str  # qr_code, fingerprint, facial_recognition, manual_override
     timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    status: str  # granted, denied
+    reason: Optional[str] = None
+    override_by: Optional[str] = None
 
-class StatusCheckCreate(BaseModel):
-    client_name: str
+class AccessLogCreate(BaseModel):
+    member_id: str
+    access_method: str
+    reason: Optional[str] = None
+    override_by: Optional[str] = None
 
-# Add your routes to the router instead of directly to app
-@api_router.get("/")
-async def root():
-    return {"message": "Hello World"}
+class Invoice(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    member_id: str
+    invoice_number: str
+    amount: float
+    description: str
+    due_date: datetime
+    paid_date: Optional[datetime] = None
+    status: str = "pending"  # pending, paid, overdue, cancelled
+    payment_method: Optional[str] = None
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
-@api_router.post("/status", response_model=StatusCheck)
-async def create_status_check(input: StatusCheckCreate):
-    status_dict = input.model_dump()
-    status_obj = StatusCheck(**status_dict)
-    
-    # Convert to dict and serialize datetime to ISO string for MongoDB
-    doc = status_obj.model_dump()
-    doc['timestamp'] = doc['timestamp'].isoformat()
-    
-    _ = await db.status_checks.insert_one(doc)
-    return status_obj
+class InvoiceCreate(BaseModel):
+    member_id: str
+    amount: float
+    description: str
+    due_date: datetime
 
-@api_router.get("/status", response_model=List[StatusCheck])
-async def get_status_checks():
-    # Exclude MongoDB's _id field from the query results
-    status_checks = await db.status_checks.find({}, {"_id": 0}).to_list(1000)
+class Payment(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    invoice_id: str
+    member_id: str
+    amount: float
+    payment_method: str  # cash, card, debit_order, eft
+    payment_date: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    status: str = "completed"
+    reference: Optional[str] = None
+
+class PaymentCreate(BaseModel):
+    invoice_id: str
+    member_id: str
+    amount: float
+    payment_method: str
+    reference: Optional[str] = None
+
+class User(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    email: EmailStr
+    password: str
+    full_name: str
+    role: str = "admin"  # admin, staff, member
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+class UserCreate(BaseModel):
+    email: EmailStr
+    password: str
+    full_name: str
+
+class UserLogin(BaseModel):
+    email: EmailStr
+    password: str
+
+class Token(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+
+# Auth dependency
+async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)):
+    token = credentials.credentials
+    payload = decode_token(token)
+    if not payload:
+        raise HTTPException(status_code=401, detail="Invalid token")
+    user = await db.users.find_one({"email": payload.get("sub")}, {"_id": 0})
+    if not user:
+        raise HTTPException(status_code=401, detail="User not found")
+    return User(**user)
+
+# Auth Routes
+@api_router.post("/auth/register", response_model=Token)
+async def register(user_data: UserCreate):
+    # Check if user exists
+    existing = await db.users.find_one({"email": user_data.email})
+    if existing:
+        raise HTTPException(status_code=400, detail="Email already registered")
     
-    # Convert ISO string timestamps back to datetime objects
-    for check in status_checks:
-        if isinstance(check['timestamp'], str):
-            check['timestamp'] = datetime.fromisoformat(check['timestamp'])
+    user_dict = user_data.model_dump()
+    user_dict["password"] = hash_password(user_dict["password"])
+    user = User(**user_dict)
     
-    return status_checks
+    doc = user.model_dump()
+    doc["created_at"] = doc["created_at"].isoformat()
+    await db.users.insert_one(doc)
+    
+    token = create_access_token({"sub": user.email, "role": user.role})
+    return Token(access_token=token)
+
+@api_router.post("/auth/login", response_model=Token)
+async def login(credentials: UserLogin):
+    user = await db.users.find_one({"email": credentials.email}, {"_id": 0})
+    if not user or not verify_password(credentials.password, user["password"]):
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+    
+    token = create_access_token({"sub": user["email"], "role": user["role"]})
+    return Token(access_token=token)
+
+@api_router.get("/auth/me", response_model=User)
+async def get_me(current_user: User = Depends(get_current_user)):
+    return current_user
+
+# Membership Types Routes
+@api_router.post("/membership-types", response_model=MembershipType)
+async def create_membership_type(data: MembershipTypeCreate, current_user: User = Depends(get_current_user)):
+    membership = MembershipType(**data.model_dump())
+    doc = membership.model_dump()
+    doc["created_at"] = doc["created_at"].isoformat()
+    await db.membership_types.insert_one(doc)
+    return membership
+
+@api_router.get("/membership-types", response_model=List[MembershipType])
+async def get_membership_types():
+    types = await db.membership_types.find({"status": "active"}, {"_id": 0}).to_list(1000)
+    for t in types:
+        if isinstance(t.get("created_at"), str):
+            t["created_at"] = datetime.fromisoformat(t["created_at"])
+    return types
+
+@api_router.get("/membership-types/{type_id}", response_model=MembershipType)
+async def get_membership_type(type_id: str):
+    membership_type = await db.membership_types.find_one({"id": type_id}, {"_id": 0})
+    if not membership_type:
+        raise HTTPException(status_code=404, detail="Membership type not found")
+    if isinstance(membership_type.get("created_at"), str):
+        membership_type["created_at"] = datetime.fromisoformat(membership_type["created_at"])
+    return MembershipType(**membership_type)
+
+# Members Routes
+@api_router.post("/members", response_model=Member)
+async def create_member(data: MemberCreate, current_user: User = Depends(get_current_user)):
+    # Check if membership type exists
+    membership_type = await db.membership_types.find_one({"id": data.membership_type_id})
+    if not membership_type:
+        raise HTTPException(status_code=404, detail="Membership type not found")
+    
+    member_dict = data.model_dump()
+    member = Member(**member_dict)
+    
+    # Calculate expiry date
+    duration_months = membership_type["duration_months"]
+    member.expiry_date = datetime.now(timezone.utc) + timedelta(days=30 * duration_months)
+    
+    # Generate QR code
+    qr_data = f"MEMBER:{member.id}:{member.email}"
+    member.qr_code = generate_qr_code(qr_data)
+    
+    doc = member.model_dump()
+    doc["join_date"] = doc["join_date"].isoformat()
+    if doc.get("expiry_date"):
+        doc["expiry_date"] = doc["expiry_date"].isoformat()
+    await db.members.insert_one(doc)
+    
+    # Create first invoice
+    invoice = Invoice(
+        member_id=member.id,
+        invoice_number=f"INV-{member.id[:8]}-001",
+        amount=membership_type["price"],
+        description=f"Membership: {membership_type['name']}",
+        due_date=datetime.now(timezone.utc) + timedelta(days=7)
+    )
+    invoice_doc = invoice.model_dump()
+    invoice_doc["due_date"] = invoice_doc["due_date"].isoformat()
+    invoice_doc["created_at"] = invoice_doc["created_at"].isoformat()
+    await db.invoices.insert_one(invoice_doc)
+    
+    return member
+
+@api_router.get("/members", response_model=List[Member])
+async def get_members(current_user: User = Depends(get_current_user)):
+    members = await db.members.find({}, {"_id": 0}).to_list(1000)
+    for m in members:
+        if isinstance(m.get("join_date"), str):
+            m["join_date"] = datetime.fromisoformat(m["join_date"])
+        if m.get("expiry_date") and isinstance(m["expiry_date"], str):
+            m["expiry_date"] = datetime.fromisoformat(m["expiry_date"])
+    return members
+
+@api_router.get("/members/{member_id}", response_model=Member)
+async def get_member(member_id: str):
+    member = await db.members.find_one({"id": member_id}, {"_id": 0})
+    if not member:
+        raise HTTPException(status_code=404, detail="Member not found")
+    if isinstance(member.get("join_date"), str):
+        member["join_date"] = datetime.fromisoformat(member["join_date"])
+    if member.get("expiry_date") and isinstance(member["expiry_date"], str):
+        member["expiry_date"] = datetime.fromisoformat(member["expiry_date"])
+    return Member(**member)
+
+@api_router.put("/members/{member_id}/block")
+async def block_member(member_id: str, current_user: User = Depends(get_current_user)):
+    result = await db.members.update_one(
+        {"id": member_id},
+        {"$set": {"is_debtor": True, "membership_status": "suspended"}}
+    )
+    if result.modified_count == 0:
+        raise HTTPException(status_code=404, detail="Member not found")
+    return {"message": "Member blocked successfully"}
+
+@api_router.put("/members/{member_id}/unblock")
+async def unblock_member(member_id: str, current_user: User = Depends(get_current_user)):
+    result = await db.members.update_one(
+        {"id": member_id},
+        {"$set": {"is_debtor": False, "membership_status": "active"}}
+    )
+    if result.modified_count == 0:
+        raise HTTPException(status_code=404, detail="Member not found")
+    return {"message": "Member unblocked successfully"}
+
+# Access Control Routes
+@api_router.post("/access/validate")
+async def validate_access(data: AccessLogCreate):
+    member = await db.members.find_one({"id": data.member_id}, {"_id": 0})
+    if not member:
+        raise HTTPException(status_code=404, detail="Member not found")
+    
+    member_obj = Member(**member)
+    
+    # Check if member is blocked
+    if member_obj.is_debtor or member_obj.membership_status != "active":
+        if not data.override_by:
+            access_log = AccessLog(
+                member_id=member_obj.id,
+                member_name=f"{member_obj.first_name} {member_obj.last_name}",
+                access_method=data.access_method,
+                status="denied",
+                reason="Member is blocked or suspended"
+            )
+            log_doc = access_log.model_dump()
+            log_doc["timestamp"] = log_doc["timestamp"].isoformat()
+            await db.access_logs.insert_one(log_doc)
+            return {"access": "denied", "reason": "Member is blocked or suspended", "member": member_obj}
+    
+    # Check expiry
+    if member_obj.expiry_date and member_obj.expiry_date < datetime.now(timezone.utc):
+        if not data.override_by:
+            access_log = AccessLog(
+                member_id=member_obj.id,
+                member_name=f"{member_obj.first_name} {member_obj.last_name}",
+                access_method=data.access_method,
+                status="denied",
+                reason="Membership expired"
+            )
+            log_doc = access_log.model_dump()
+            log_doc["timestamp"] = log_doc["timestamp"].isoformat()
+            await db.access_logs.insert_one(log_doc)
+            return {"access": "denied", "reason": "Membership expired", "member": member_obj}
+    
+    # Grant access
+    access_log = AccessLog(
+        member_id=member_obj.id,
+        member_name=f"{member_obj.first_name} {member_obj.last_name}",
+        access_method=data.access_method,
+        status="granted",
+        reason=data.reason,
+        override_by=data.override_by
+    )
+    log_doc = access_log.model_dump()
+    log_doc["timestamp"] = log_doc["timestamp"].isoformat()
+    await db.access_logs.insert_one(log_doc)
+    
+    return {"access": "granted", "member": member_obj}
+
+@api_router.get("/access/logs", response_model=List[AccessLog])
+async def get_access_logs(limit: int = 100, current_user: User = Depends(get_current_user)):
+    logs = await db.access_logs.find({}, {"_id": 0}).sort("timestamp", -1).to_list(limit)
+    for log in logs:
+        if isinstance(log.get("timestamp"), str):
+            log["timestamp"] = datetime.fromisoformat(log["timestamp"])
+    return logs
+
+# Invoice Routes
+@api_router.post("/invoices", response_model=Invoice)
+async def create_invoice(data: InvoiceCreate, current_user: User = Depends(get_current_user)):
+    # Get invoice count for member
+    count = await db.invoices.count_documents({"member_id": data.member_id})
+    invoice_number = f"INV-{data.member_id[:8]}-{str(count + 1).zfill(3)}"
+    
+    invoice = Invoice(
+        invoice_number=invoice_number,
+        **data.model_dump()
+    )
+    doc = invoice.model_dump()
+    doc["due_date"] = doc["due_date"].isoformat()
+    doc["created_at"] = doc["created_at"].isoformat()
+    await db.invoices.insert_one(doc)
+    return invoice
+
+@api_router.get("/invoices", response_model=List[Invoice])
+async def get_invoices(member_id: Optional[str] = None, current_user: User = Depends(get_current_user)):
+    query = {"member_id": member_id} if member_id else {}
+    invoices = await db.invoices.find(query, {"_id": 0}).sort("created_at", -1).to_list(1000)
+    for inv in invoices:
+        if isinstance(inv.get("due_date"), str):
+            inv["due_date"] = datetime.fromisoformat(inv["due_date"])
+        if isinstance(inv.get("created_at"), str):
+            inv["created_at"] = datetime.fromisoformat(inv["created_at"])
+        if inv.get("paid_date") and isinstance(inv["paid_date"], str):
+            inv["paid_date"] = datetime.fromisoformat(inv["paid_date"])
+    return invoices
+
+# Payment Routes
+@api_router.post("/payments", response_model=Payment)
+async def create_payment(data: PaymentCreate, current_user: User = Depends(get_current_user)):
+    # Check if invoice exists
+    invoice = await db.invoices.find_one({"id": data.invoice_id})
+    if not invoice:
+        raise HTTPException(status_code=404, detail="Invoice not found")
+    
+    payment = Payment(**data.model_dump())
+    doc = payment.model_dump()
+    doc["payment_date"] = doc["payment_date"].isoformat()
+    await db.payments.insert_one(doc)
+    
+    # Update invoice status
+    await db.invoices.update_one(
+        {"id": data.invoice_id},
+        {"$set": {
+            "status": "paid",
+            "paid_date": datetime.now(timezone.utc).isoformat(),
+            "payment_method": data.payment_method
+        }}
+    )
+    
+    # Check if member should be unblocked
+    unpaid_invoices = await db.invoices.count_documents({
+        "member_id": data.member_id,
+        "status": {"$in": ["pending", "overdue"]}
+    })
+    
+    if unpaid_invoices == 0:
+        await db.members.update_one(
+            {"id": data.member_id},
+            {"$set": {"is_debtor": False}}
+        )
+    
+    return payment
+
+@api_router.get("/payments", response_model=List[Payment])
+async def get_payments(member_id: Optional[str] = None, current_user: User = Depends(get_current_user)):
+    query = {"member_id": member_id} if member_id else {}
+    payments = await db.payments.find(query, {"_id": 0}).sort("payment_date", -1).to_list(1000)
+    for pay in payments:
+        if isinstance(pay.get("payment_date"), str):
+            pay["payment_date"] = datetime.fromisoformat(pay["payment_date"])
+    return payments
+
+# Dashboard Stats
+@api_router.get("/dashboard/stats")
+async def get_dashboard_stats(current_user: User = Depends(get_current_user)):
+    total_members = await db.members.count_documents({})
+    active_members = await db.members.count_documents({"membership_status": "active"})
+    blocked_members = await db.members.count_documents({"is_debtor": True})
+    
+    pending_invoices = await db.invoices.count_documents({"status": "pending"})
+    overdue_invoices = await db.invoices.count_documents({"status": "overdue"})
+    
+    # Total revenue (paid invoices)
+    paid_invoices = await db.invoices.find({"status": "paid"}, {"_id": 0, "amount": 1}).to_list(10000)
+    total_revenue = sum([inv.get("amount", 0) for inv in paid_invoices])
+    
+    # Today's access count
+    today_start = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
+    today_access = await db.access_logs.count_documents({
+        "timestamp": {"$gte": today_start.isoformat()}
+    })
+    
+    return {
+        "total_members": total_members,
+        "active_members": active_members,
+        "blocked_members": blocked_members,
+        "pending_invoices": pending_invoices,
+        "overdue_invoices": overdue_invoices,
+        "total_revenue": total_revenue,
+        "today_access_count": today_access
+    }
 
 # Include the router in the main app
 app.include_router(api_router)
