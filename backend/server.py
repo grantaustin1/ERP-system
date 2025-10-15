@@ -365,7 +365,67 @@ async def create_member(data: MemberCreate, current_user: User = Depends(get_cur
     invoice_doc["created_at"] = invoice_doc["created_at"].isoformat()
     await db.invoices.insert_one(invoice_doc)
     
+    # Schedule levies if enabled
+    if membership_type.get("levy_enabled", False):
+        await schedule_member_levies(member, membership_type)
+    
     return member
+
+async def schedule_member_levies(member: Member, membership_type: dict):
+    """Schedule levy payments for a member based on membership type configuration"""
+    levy_frequency = membership_type.get("levy_frequency", "annual")
+    levy_timing = membership_type.get("levy_timing", "anniversary")
+    levy_amount_type = membership_type.get("levy_amount_type", "fixed")
+    levy_amount = membership_type.get("levy_amount", 0.0)
+    
+    # Calculate levy amount
+    if levy_amount_type == "same_as_membership":
+        levy_amount = membership_type["price"]
+    
+    join_date = member.join_date
+    current_year = datetime.now(timezone.utc).year
+    
+    if levy_timing == "anniversary":
+        # Schedule on membership anniversary
+        if levy_frequency == "annual":
+            # Annual levy on anniversary
+            levy_due = join_date.replace(year=current_year + 1)
+        else:  # biannual
+            # First levy after 6 months, then annually
+            levy_due = join_date + timedelta(days=183)  # ~6 months
+    else:  # fixed_dates (1 June and 1 December)
+        # Determine next levy date
+        now = datetime.now(timezone.utc)
+        june_1 = datetime(now.year, 6, 1, tzinfo=timezone.utc)
+        dec_1 = datetime(now.year, 12, 1, tzinfo=timezone.utc)
+        
+        if levy_frequency == "biannual":
+            # Next due date is whichever comes next
+            if now < june_1:
+                levy_due = june_1
+            elif now < dec_1:
+                levy_due = dec_1
+            else:
+                levy_due = datetime(now.year + 1, 6, 1, tzinfo=timezone.utc)
+        else:  # annual - use June 1
+            if now < june_1:
+                levy_due = june_1
+            else:
+                levy_due = datetime(now.year + 1, 6, 1, tzinfo=timezone.utc)
+    
+    # Create levy record
+    levy = Levy(
+        member_id=member.id,
+        member_name=f"{member.first_name} {member.last_name}",
+        levy_type=levy_frequency,
+        amount=levy_amount,
+        due_date=levy_due
+    )
+    
+    levy_doc = levy.model_dump()
+    levy_doc["due_date"] = levy_doc["due_date"].isoformat()
+    levy_doc["created_at"] = levy_doc["created_at"].isoformat()
+    await db.levies.insert_one(levy_doc)
 
 @api_router.get("/members", response_model=List[Member])
 async def get_members(current_user: User = Depends(get_current_user)):
