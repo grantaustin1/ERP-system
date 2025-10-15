@@ -386,6 +386,12 @@ async def create_member(data: MemberCreate, current_user: User = Depends(get_cur
     qr_data = f"MEMBER:{member.id}:{member.email}"
     member.qr_code = generate_qr_code(qr_data)
     
+    # Geocode address if provided
+    if member.address:
+        lat, lon = geocode_address(member.address)
+        member.latitude = lat
+        member.longitude = lon
+    
     doc = member.model_dump()
     doc["join_date"] = doc["join_date"].isoformat()
     if doc.get("expiry_date"):
