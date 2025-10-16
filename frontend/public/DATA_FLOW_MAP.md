@@ -470,8 +470,15 @@ db.commissions.insert_one({
 
 ---
 
-#### Step 8: Process Debit Order Payment
-**Component:** Payment processing function
+#### Step 8: Process Debit Order Payment with DoBilling API
+**Component:** Payment processing function with DoBilling API integration
+
+**DoBilling API Configuration:**
+- **Host:** `api.beta.dobilling.com`
+- **Protocol:** HTTPS
+- **Authentication:** Basic HTTP Authentication
+- **API Version:** V2
+- **Data Format:** JSON
 
 **Process Flow:**
 
@@ -481,32 +488,214 @@ member = db.members.find_one({"id": invoice.member_id})
 bank_details = {
   "account_number": member.bank_account_number,
   "bank_name": member.bank_name,
-  "branch_code": member.bank_branch_code
+  "branch_code": member.bank_branch_code,
+  "account_holder_name": `${member.first_name} ${member.last_name}`,
+  "email": member.email,
+  "phone": member.phone
 }
 ```
 
-**B. Prepare Debit Order Request**
+**B. Check/Create Payment Method in DoBilling**
+
+**API Call 1: Check if Payment Method Exists**
+```http
+GET https://api.beta.dobilling.com/v2/paymentmethods
+Authorization: Basic {base64_encoded_credentials}
+Content-Type: application/json
+```
+
+**Response:**
 ```json
 {
-  "account_number": "1234567890",
-  "bank_code": "051001",
-  "amount": 500.00,
-  "reference": "INV-uuid-mem-001",
-  "description": "Gym Membership Fee",
-  "member_name": "John Doe"
+  "data": [
+    {
+      "Token": "pm_token_123",
+      "Type": "BankAccount",
+      "BankAccount": {
+        "AccountNumber": "1234567890",
+        "BranchCode": "051001",
+        "DebitMethod": "debit_order",
+        "DebitMethodType": "NAEDO"
+      }
+    }
+  ]
 }
 ```
 
-**C. Submit to Payment Gateway**
+**If Payment Method Doesn't Exist, Create It:**
+
+**API Call 2: Add Bank Account Payment Method**
+```http
+POST https://api.beta.dobilling.com/v2/paymentmethods/bankaccount
+Authorization: Basic {base64_encoded_credentials}
+Content-Type: application/json
+
+{
+  "FirstName": "John",
+  "LastName": "Doe",
+  "Email": "john.doe@email.com",
+  "MobileNumber": "+27123456789",
+  "AccountNumber": "1234567890",
+  "AccountHolder": "John Doe",
+  "BranchCode": "051001",
+  "BankName": "Standard Bank",
+  "AccountType": "Current",
+  "DebitMethod": "debit_order",
+  "DebitMethodType": "NAEDO"
+}
 ```
-If Payment Gateway Connected:
-  - Submit API request to bank
-  - Wait for response
-  
-If Mock Mode:
-  - Simulate 80% success rate
-  - Return simulated response
+
+**Response:**
+```json
+{
+  "Token": "pm_token_456",
+  "isSuccess": true,
+  "ErrorMessage": null
+}
 ```
+
+**Store Payment Method Token:**
+```javascript
+db.members.update_one(
+  {"id": "uuid-member-789"},
+  {"$set": {"payment_method_token": "pm_token_456"}}
+)
+```
+
+**C. Create or Get Today's Batch**
+
+**API Call 3: List Batches**
+```http
+GET https://api.beta.dobilling.com/v2/batches
+Authorization: Basic {base64_encoded_credentials}
+```
+
+**Response:**
+```json
+{
+  "data": [
+    {
+      "BatchToken": "batch_token_2025_10_22",
+      "batchID": 12345,
+      "Description": "Daily Debit Orders - 2025-10-22",
+      "CreatedDate": "2025-10-22T00:00:00Z",
+      "TotalLines": 45,
+      "TotalAmount": 22500.00
+    }
+  ]
+}
+```
+
+**If No Batch for Today, Create New Batch:**
+```javascript
+// Note: Batch creation might be handled through a separate process
+// or automatically when first line is added. Check DoBilling docs.
+current_batch_token = "batch_token_2025_10_22"
+```
+
+**D. Add Invoice to Batch**
+
+**API Call 4: Append Batch Line**
+```http
+POST https://api.beta.dobilling.com/v2/batches/{BatchToken}/lines
+Authorization: Basic {base64_encoded_credentials}
+Content-Type: application/json
+
+{
+  "ExtRef": "uuid-invoice-001",
+  "Amount": 500.00,
+  "Ref": "INV-uuid-mem-001",
+  "Memo": "Gym Membership Fee - Premium Monthly",
+  "PaymentMethodToken": "pm_token_456",
+  "Email": "john.doe@email.com",
+  "MobileNumber": "+27123456789"
+}
+```
+
+**Response:**
+```json
+{
+  "batchLineID": 789,
+  "BatchToken": "batch_token_2025_10_22",
+  "batchID": 12345,
+  "ExtRef": "uuid-invoice-001",
+  "Amount": 500.00,
+  "Ref": "INV-uuid-mem-001",
+  "Memo": "Gym Membership Fee - Premium Monthly",
+  "PaymentMethodToken": "pm_token_456",
+  "isSuccess": true,
+  "ErrorMessage": null
+}
+```
+
+**Store Batch Line Reference:**
+```javascript
+db.invoices.update_one(
+  {"id": "uuid-invoice-001"},
+  {"$set": {
+    "batch_token": "batch_token_2025_10_22",
+    "batch_line_id": 789,
+    "processing_status": "queued"
+  }}
+)
+```
+
+**E. Batch Processing (Scheduled)**
+
+**Note:** Batch processing is typically triggered:
+- Automatically at end of day (e.g., 11:59 PM)
+- Manually via DoBilling dashboard
+- Via API call (if submit endpoint exists)
+
+**During Processing:**
+1. DoBilling submits all batch lines to respective banks
+2. Each line is processed individually
+3. Results are updated in batch line records
+
+**F. Check Batch Line Status (Next Day)**
+
+**API Call 5: Get Batch Line Status**
+```http
+GET https://api.beta.dobilling.com/v2/batches/line?batchLineID=789
+Authorization: Basic {base64_encoded_credentials}
+```
+
+**Response (Success):**
+```json
+{
+  "batchLineID": 789,
+  "BatchToken": "batch_token_2025_10_22",
+  "batchID": 12345,
+  "ExtRef": "uuid-invoice-001",
+  "Amount": 500.00,
+  "Ref": "INV-uuid-mem-001",
+  "PaymentMethodToken": "pm_token_456",
+  "isSuccess": true,
+  "ErrorMessage": null,
+  "ProcessedDate": "2025-10-23T02:30:00Z",
+  "TransactionID": "TXN_BANK_123456"
+}
+```
+
+**Response (Failure):**
+```json
+{
+  "batchLineID": 789,
+  "BatchToken": "batch_token_2025_10_22",
+  "batchID": 12345,
+  "ExtRef": "uuid-invoice-001",
+  "Amount": 500.00,
+  "Ref": "INV-uuid-mem-001",
+  "PaymentMethodToken": "pm_token_456",
+  "isSuccess": false,
+  "ErrorMessage": "Insufficient funds in account",
+  "ProcessedDate": "2025-10-23T02:30:00Z"
+}
+```
+
+**G. Update Internal Records Based on Status**
+
+This leads to either Step 9A (Success) or Step 9B (Failure) below.
 
 ---
 
@@ -767,6 +956,429 @@ If Mock Mode:
 
 ---
 
+## DoBilling API Integration Details
+
+### Batch Processing Workflow
+
+#### Daily Batch Cycle
+
+**Morning (6:00 AM) - Batch Status Check:**
+```javascript
+// Scheduled job checks previous day's batch results
+async function checkBatchResults() {
+  // Get yesterday's batch token
+  const yesterday = new Date();
+  yesterday.setDate(yesterday.getDate() - 1);
+  const batchToken = `batch_token_${yesterday.toISOString().split('T')[0]}`;
+  
+  // API Call: Get all batch lines
+  const response = await fetch(
+    `https://api.beta.dobilling.com/v2/batches/lines?BatchToken=${batchToken}`,
+    {
+      method: 'GET',
+      headers: {
+        'Authorization': `Basic ${base64Credentials}`,
+        'Content-Type': 'application/json'
+      }
+    }
+  );
+  
+  const batchLines = await response.json();
+  
+  // Process each batch line result
+  for (const line of batchLines.data) {
+    await processLineResult(line);
+  }
+}
+```
+
+**Process Line Results:**
+```javascript
+async function processLineResult(batchLine) {
+  const invoice = await db.invoices.find_one({
+    "batch_line_id": batchLine.batchLineID
+  });
+  
+  if (!invoice) return;
+  
+  if (batchLine.isSuccess) {
+    // Success Path - Update invoice as paid
+    await updateInvoicePaid(invoice.id, batchLine.TransactionID);
+  } else {
+    // Failure Path - Mark as failed and trigger automation
+    await updateInvoiceFailed(
+      invoice.id, 
+      batchLine.ErrorMessage
+    );
+  }
+}
+```
+
+**Throughout Day (6:00 AM - 11:00 PM) - Queue Payments:**
+```javascript
+// When invoice becomes due or manual payment needed
+async function queuePaymentForBatch(invoice, member) {
+  // Get or create today's batch token
+  const today = new Date().toISOString().split('T')[0];
+  const batchToken = `batch_token_${today}`;
+  
+  // Get or create payment method token
+  let paymentMethodToken = member.payment_method_token;
+  
+  if (!paymentMethodToken) {
+    paymentMethodToken = await createPaymentMethod(member);
+  }
+  
+  // Add to batch
+  const batchLine = await addToBatch(
+    batchToken,
+    invoice,
+    paymentMethodToken,
+    member
+  );
+  
+  // Store batch reference
+  await db.invoices.update_one(
+    {"id": invoice.id},
+    {"$set": {
+      "batch_token": batchToken,
+      "batch_line_id": batchLine.batchLineID,
+      "processing_status": "queued"
+    }}
+  );
+}
+```
+
+**End of Day (11:00 PM) - Batch Submission:**
+```javascript
+// Batch is automatically processed by DoBilling
+// No manual submission needed if using automatic processing
+// OR manually trigger via DoBilling dashboard
+// Results available next morning
+```
+
+---
+
+### DoBilling API Endpoints Used
+
+#### 1. Payment Method Management
+
+**List Payment Methods:**
+```http
+GET https://api.beta.dobilling.com/v2/paymentmethods
+Authorization: Basic {credentials}
+```
+
+**Add Bank Account:**
+```http
+POST https://api.beta.dobilling.com/v2/paymentmethods/bankaccount
+Authorization: Basic {credentials}
+Content-Type: application/json
+
+Body: {
+  "FirstName": string,
+  "LastName": string,
+  "Email": string,
+  "MobileNumber": string,
+  "AccountNumber": string,
+  "AccountHolder": string,
+  "BranchCode": string,
+  "BankName": string,
+  "AccountType": "Current" | "Savings",
+  "DebitMethod": "debit_order",
+  "DebitMethodType": "NAEDO"
+}
+
+Response: {
+  "Token": string,
+  "isSuccess": boolean,
+  "ErrorMessage": string | null
+}
+```
+
+**Get Payment Method:**
+```http
+GET https://api.beta.dobilling.com/v2/paymentmethods/{token}
+Authorization: Basic {credentials}
+```
+
+**Delete Payment Method:**
+```http
+DELETE https://api.beta.dobilling.com/v2/paymentmethods/{token}
+Authorization: Basic {credentials}
+```
+
+#### 2. Batch Management
+
+**List All Batches:**
+```http
+GET https://api.beta.dobilling.com/v2/batches
+Authorization: Basic {credentials}
+
+Response: {
+  "data": [
+    {
+      "BatchToken": string,
+      "batchID": integer,
+      "Description": string,
+      "CreatedDate": datetime,
+      "TotalLines": integer,
+      "TotalAmount": number
+    }
+  ]
+}
+```
+
+**Get Specific Batch:**
+```http
+GET https://api.beta.dobilling.com/v2/batches/get?BatchToken={token}
+Authorization: Basic {credentials}
+```
+
+**List Batch Lines:**
+```http
+GET https://api.beta.dobilling.com/v2/batches/lines?BatchToken={token}&page={page}&page_size={size}
+Authorization: Basic {credentials}
+
+Response: {
+  "data": [
+    {
+      "batchLineID": integer,
+      "BatchToken": string,
+      "batchID": integer,
+      "ExtRef": string,
+      "Amount": number,
+      "Ref": string,
+      "Memo": string,
+      "PaymentMethodToken": string,
+      "isSuccess": boolean,
+      "ErrorMessage": string | null,
+      "ProcessedDate": datetime,
+      "TransactionID": string
+    }
+  ],
+  "pagination": {
+    "page": integer,
+    "page_size": integer,
+    "total": integer
+  }
+}
+```
+
+**Get Single Batch Line:**
+```http
+GET https://api.beta.dobilling.com/v2/batches/line?batchLineID={id}
+Authorization: Basic {credentials}
+```
+
+**Add Line to Batch:**
+```http
+POST https://api.beta.dobilling.com/v2/batches/{BatchToken}/lines
+Authorization: Basic {credentials}
+Content-Type: application/json
+
+Body: {
+  "ExtRef": string,           // Your invoice ID
+  "Amount": number,            // Amount to debit
+  "Ref": string,              // Invoice number
+  "Memo": string,             // Description
+  "PaymentMethodToken": string,
+  "Email": string,
+  "MobileNumber": string
+}
+
+Response: {
+  "batchLineID": integer,
+  "BatchToken": string,
+  "batchID": integer,
+  "ExtRef": string,
+  "Amount": number,
+  "Ref": string,
+  "Memo": string,
+  "PaymentMethodToken": string,
+  "isSuccess": boolean,
+  "ErrorMessage": string | null
+}
+```
+
+#### 3. DebiCheck Mandate Management (Optional - for DebiCheck)
+
+**Initiate DebiCheck Mandate:**
+```http
+POST https://api.beta.dobilling.com/v2/paymentmethods/debicheck
+Authorization: Basic {credentials}
+Content-Type: application/json
+
+Body: {
+  "PaymentMethodToken": string,
+  "ContractReference": string,
+  "MaximumCollectionAmount": number,
+  "InstalmentAmount": number,
+  "InstalmentOccurence": integer,
+  "Frequency": "Monthly" | "Weekly" | "Quarterly",
+  "DebtorName": string,
+  "DebtorIDNumber": string,
+  "DebtorEmail": string,
+  "DebtorMobile": string
+}
+
+Response: {
+  "MandateToken": string,
+  "isSuccess": boolean,
+  "ErrorMessage": string | null
+}
+```
+
+**Amend DebiCheck Mandate:**
+```http
+PUT https://api.beta.dobilling.com/v2/paymentmethods/debicheck
+Authorization: Basic {credentials}
+Content-Type: application/json
+
+Body: {
+  "MandateToken": string,
+  "MaximumCollectionAmount": number,
+  "InstalmentAmount": number,
+  // ... other fields to amend
+}
+```
+
+**Cancel DebiCheck Mandate:**
+```http
+DELETE https://api.beta.dobilling.com/v2/paymentmethods/debicheck/{token}
+Authorization: Basic {credentials}
+```
+
+---
+
+### Error Handling and Retry Logic
+
+**Common Error Codes and Responses:**
+
+```javascript
+const ERROR_HANDLERS = {
+  "Insufficient funds in account": {
+    action: "trigger_automation",
+    retry: false,
+    notification: "immediate"
+  },
+  "Account closed": {
+    action: "suspend_member",
+    retry: false,
+    notification: "immediate"
+  },
+  "Invalid account details": {
+    action: "request_update",
+    retry: false,
+    notification: "immediate"
+  },
+  "Account blocked": {
+    action: "manual_review",
+    retry: true,
+    retry_delay: 7, // days
+    notification: "delayed"
+  },
+  "Bank system unavailable": {
+    action: "retry",
+    retry: true,
+    retry_delay: 1, // days
+    notification: "none"
+  },
+  "Transaction limit exceeded": {
+    action: "split_payment",
+    retry: true,
+    notification: "staff"
+  }
+};
+```
+
+**Retry Logic:**
+```javascript
+async function handleFailedPayment(invoice, errorMessage) {
+  const errorConfig = ERROR_HANDLERS[errorMessage] || {
+    action: "manual_review",
+    retry: false,
+    notification: "immediate"
+  };
+  
+  if (errorConfig.retry) {
+    // Schedule retry
+    const retryDate = new Date();
+    retryDate.setDate(retryDate.getDate() + errorConfig.retry_delay);
+    
+    await db.invoices.update_one(
+      {"id": invoice.id},
+      {"$set": {
+        "retry_scheduled": retryDate.toISOString(),
+        "retry_count": (invoice.retry_count || 0) + 1
+      }}
+    );
+  }
+  
+  // Trigger appropriate automation
+  if (errorConfig.notification === "immediate") {
+    await trigger_automation("payment_failed", {
+      member_id: invoice.member_id,
+      invoice_id: invoice.id,
+      amount: invoice.amount,
+      failure_reason: errorMessage
+    });
+  }
+}
+```
+
+---
+
+### Database Schema Updates for DoBilling Integration
+
+**Additional Fields for Members Collection:**
+```javascript
+{
+  "payment_method_token": "pm_token_456",  // DoBilling payment method token
+  "mandate_token": "mandate_token_789",     // For DebiCheck (optional)
+  "mandate_status": "active",               // active, pending, suspended, cancelled
+  "last_payment_sync": "2025-10-22T06:15:00Z"
+}
+```
+
+**Additional Fields for Invoices Collection:**
+```javascript
+{
+  "batch_token": "batch_token_2025_10_22",
+  "batch_line_id": 789,
+  "processing_status": "queued",  // queued, processing, completed, failed
+  "transaction_id": "TXN_BANK_123456",  // From successful payment
+  "retry_count": 0,
+  "retry_scheduled": null,
+  "last_sync_attempt": "2025-10-23T06:00:00Z"
+}
+```
+
+**New Collection: Payment Sync Log:**
+```javascript
+db.payment_sync_logs.insert_one({
+  "id": "uuid-sync-log-001",
+  "sync_type": "batch_check",
+  "batch_token": "batch_token_2025_10_22",
+  "sync_date": "2025-10-23T06:00:00Z",
+  "lines_checked": 45,
+  "lines_success": 38,
+  "lines_failed": 7,
+  "total_amount_success": 19000.00,
+  "total_amount_failed": 3500.00,
+  "sync_duration_ms": 2345,
+  "errors": [
+    {
+      "batch_line_id": 789,
+      "invoice_id": "uuid-invoice-001",
+      "error_message": "Insufficient funds in account"
+    }
+  ]
+})
+```
+
+---
+
 ## Data Entities Summary
 
 ### Collections Involved:
@@ -825,9 +1437,10 @@ Automation Execution
 
 ---
 
-## Data Flow Timeline
+## Data Flow Timeline with DoBilling Integration
 
 ```
+DAY 1 - MEMBER REGISTRATION:
 T+0 min:    Member Registration Form Submitted
 T+0.5 sec:  Member Record Created in DB
 T+0.5 sec:  QR Code Generated
@@ -838,24 +1451,166 @@ T+1.1 sec:  Commission Calculated
 T+1.2 sec:  member_joined Automation Triggered
 T+1.3 sec:  Welcome SMS Sent
 T+6 min:    Welcome Email Sent (5 min delay)
-T+7 days:   Invoice Due Date Reached
-T+7d+6am:   Debit Order Processing Starts
-T+7d+6am:   Payment Gateway Called
-T+7d+6am+5s: Payment Response Received
 
-IF SUCCESS:
-  T+7d+6am+6s: Invoice Updated to "Paid"
-  T+7d+6am+7s: Payment Record Created
-  T+7d+6am+8s: Next Invoice Generated
-  
-IF FAILED:
-  T+7d+6am+6s: Invoice Updated to "Failed"
-  T+7d+6am+7s: Member Marked as Debtor
-  T+7d+6am+8s: payment_failed Automation Triggered
-  T+7d+6am+9s: Alert SMS Sent
-  T+7d+6am+14m: Alert Email Sent (5 min delay)
-  T+7d+6am+19m: Follow-up Task Created (10 min delay)
+T+5 sec:    Check Payment Method in DoBilling
+T+6 sec:    Create Payment Method (if not exists)
+            API Call: POST /v2/paymentmethods/bankaccount
+            Response: Payment Method Token stored
+
+DAY 8 - INVOICE DUE, BATCH QUEUEING:
+T+7d+6am:   Daily Job: Check Due Invoices
+T+7d+6am+1s: Get Today's Batch Token (batch_token_2025_10_22)
+T+7d+6am+2s: For Each Due Invoice:
+T+7d+6am+3s:   - Get Payment Method Token
+T+7d+6am+4s:   - API Call: POST /v2/batches/{BatchToken}/lines
+T+7d+6am+5s:   - Response: Batch Line Created (batchLineID: 789)
+T+7d+6am+6s:   - Update Invoice with batch_token and batch_line_id
+T+7d+6am+7s:   - Mark invoice processing_status: "queued"
+
+T+7d+11pm:  End of Day - DoBilling Batch Auto-Processing Begins
+            (All queued batch lines submitted to banks)
+
+DAY 9 - BATCH RESULTS CHECK:
+T+8d+6am:   Daily Job: Check Previous Day's Batch Results
+T+8d+6am+1s: API Call: GET /v2/batches/lines?BatchToken=batch_token_2025_10_22
+T+8d+6am+2s: Receive Batch Lines with Status
+T+8d+6am+3s: Process Each Line Result:
+
+IF SUCCESS (Line #789):
+  T+8d+6am+4s: Update Invoice Status to "Paid"
+  T+8d+6am+5s: Create Payment Record
+               - transaction_id: "TXN_BANK_123456"
+               - amount: 500.00
+               - payment_date: 2025-10-23T02:30:00Z
+  T+8d+6am+6s: Update Member Status
+               - is_debtor: False (if all invoices paid)
+  T+8d+6am+7s: Generate Next Invoice (for recurring)
+               - invoice_number: INV-uuid-mem-002
+               - due_date: +1 month
+  T+8d+6am+8s: Payment Success Flow Complete
+
+IF FAILED (Line #789):
+  T+8d+6am+4s: Update Invoice Status to "Failed"
+               - failure_reason: "Insufficient funds in account"
+               - failure_date: 2025-10-23T02:30:00Z
+  T+8d+6am+5s: Update Member Status
+               - is_debtor: True
+  T+8d+6am+6s: Trigger Automation: payment_failed
+  T+8d+6am+7s: Check Active Automations
+  T+8d+6am+8s: Execute Automation Actions:
+  T+8d+6am+9s:   - Action 1: Send SMS (immediate)
+  T+8d+6am+14m:  - Action 2: Send Email (5 min delay)
+  T+8d+6am+19m:  - Action 3: Create Follow-up Task (10 min delay)
+  T+8d+6am+20m: Log Automation Execution
+  T+8d+6am+21m: Update Automation Stats
+  T+8d+6am+22m: Check Error Type for Retry Logic
+  T+8d+6am+23m: Schedule Retry (if applicable)
+               - retry_scheduled: +7 days (if retriable error)
+  T+8d+6am+24m: Payment Failed Flow Complete
+
+DAY 15 - RETRY SCHEDULED PAYMENT (If Applicable):
+T+14d+6am:  Daily Job: Check Scheduled Retries
+T+14d+6am+1s: Find Invoices with retry_scheduled = today
+T+14d+6am+2s: Re-queue to Today's Batch
+T+14d+6am+3s: API Call: POST /v2/batches/{BatchToken}/lines
+            (Same process repeats as Day 8)
+
+ONGOING - BATCH SYNC LOG:
+Every 6am:  Create Payment Sync Log Entry
+            - batch_token
+            - lines_checked, lines_success, lines_failed
+            - total_amount_success, total_amount_failed
+            - error details for failed lines
 ```
+
+---
+
+### DoBilling API Call Sequence Diagram
+
+```
+Member Registration → Invoice Created (T+0)
+         ↓
+    [7 Days Pass]
+         ↓
+Daily Job (6 AM) ────────────────────────────────────┐
+         ↓                                           │
+Check Due Invoices                                   │
+         ↓                                           │
+Get Member Bank Details                              │
+         ↓                                           │
+┌────────────────────────────────────┐              │
+│  DoBilling API Call #1             │              │
+│  GET /v2/paymentmethods            │              │
+│  (Check if payment method exists)  │              │
+└────────────────────────────────────┘              │
+         ↓                                           │
+    [If Not Found]                                   │
+         ↓                                           │
+┌────────────────────────────────────┐              │
+│  DoBilling API Call #2             │              │
+│  POST /v2/paymentmethods/bankaccount│             │
+│  (Create payment method)           │              │
+│  Response: payment_method_token    │              │
+└────────────────────────────────────┘              │
+         ↓                                           │
+Store Token in Member Record                         │
+         ↓                                           │
+Get Today's Batch Token                              │
+         ↓                                           │
+┌────────────────────────────────────┐              │
+│  DoBilling API Call #3             │              │
+│  POST /v2/batches/{token}/lines    │              │
+│  (Add invoice to batch)            │              │
+│  Body: {                           │              │
+│    ExtRef: invoice_id,             │              │
+│    Amount: 500.00,                 │              │
+│    PaymentMethodToken: token       │              │
+│  }                                 │              │
+│  Response: batch_line_id           │              │
+└────────────────────────────────────┘              │
+         ↓                                           │
+Store batch_line_id in Invoice                       │
+         ↓                                           │
+Mark Invoice: processing_status = "queued"           │
+         ↓                                           │
+[End of Day - 11 PM]                                 │
+         ↓                                           │
+DoBilling Auto-Process Batch                         │
+         ↓                                           │
+[Next Day - 6 AM] ←──────────────────────────────────┘
+         ↓
+┌────────────────────────────────────┐
+│  DoBilling API Call #4             │
+│  GET /v2/batches/lines             │
+│  ?BatchToken=yesterday_token       │
+│  (Get all batch line results)      │
+│  Response: Array of batch lines    │
+│    with isSuccess and ErrorMessage │
+└────────────────────────────────────┘
+         ↓
+Process Each Line Result
+         ↓
+    ┌────┴────┐
+    ↓         ↓
+isSuccess  isSuccess
+= true     = false
+    ↓         ↓
+Update     Update
+Invoice    Invoice
+to Paid    to Failed
+    ↓         ↓
+Create     Trigger
+Payment    payment_failed
+Record     Automation
+    ↓         ↓
+Generate   Send Alerts
+Next       Create Tasks
+Invoice    Mark Debtor
+```
+
+---
+
+## Data Flow Timeline
 
 ---
 
