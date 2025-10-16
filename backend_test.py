@@ -1002,7 +1002,802 @@ class MembershipVariationTester:
         
         print("\n" + "=" * 60)
 
+class PaymentOptionsAndGroupsTester:
+    def __init__(self):
+        self.token = None
+        self.headers = {}
+        self.test_results = []
+        self.premium_individual_id = None
+        self.family_package_id = None
+        self.created_payment_options = []
+        self.created_members = []
+        self.created_group_id = None
+        
+    def log_result(self, test_name, success, message, details=None):
+        """Log test result"""
+        result = {
+            "test": test_name,
+            "success": success,
+            "message": message,
+            "timestamp": datetime.now().isoformat(),
+            "details": details or {}
+        }
+        self.test_results.append(result)
+        status = "✅ PASS" if success else "❌ FAIL"
+        print(f"{status}: {test_name} - {message}")
+        if details and not success:
+            print(f"   Details: {details}")
+    
+    def authenticate(self):
+        """Authenticate and get token"""
+        try:
+            response = requests.post(f"{API_BASE}/auth/login", json={
+                "email": TEST_EMAIL,
+                "password": TEST_PASSWORD
+            })
+            
+            if response.status_code == 200:
+                data = response.json()
+                self.token = data["access_token"]
+                self.headers = {"Authorization": f"Bearer {self.token}"}
+                self.log_result("Authentication", True, "Successfully authenticated")
+                return True
+            else:
+                self.log_result("Authentication", False, f"Failed to authenticate: {response.status_code}", 
+                              {"response": response.text})
+                return False
+        except Exception as e:
+            self.log_result("Authentication", False, f"Authentication error: {str(e)}")
+            return False
+    
+    def test_create_individual_membership(self):
+        """Test 1 - Individual Membership Creation"""
+        print("\n=== Test 1: Create Individual Membership ===")
+        
+        membership_data = {
+            "name": "Premium Individual",
+            "description": "Individual gym membership",
+            "price": 500.00,
+            "billing_frequency": "monthly",
+            "duration_months": 12,
+            "duration_days": 0,
+            "payment_type": "debit_order",
+            "is_base_membership": True,
+            "max_members": 1,
+            "features": ["Gym", "Classes"],
+            "peak_hours_only": False,
+            "multi_site_access": False,
+            "levy_enabled": False,
+            "levy_frequency": "annual",
+            "levy_timing": "anniversary",
+            "levy_amount_type": "fixed",
+            "levy_amount": 0.0,
+            "levy_payment_method": "debit_order"
+        }
+        
+        try:
+            response = requests.post(f"{API_BASE}/membership-types", 
+                                   json=membership_data, headers=self.headers)
+            if response.status_code == 200:
+                membership = response.json()
+                self.premium_individual_id = membership["id"]
+                
+                # Verify max_members
+                if membership["max_members"] == 1:
+                    self.log_result("Individual Membership Creation", True, 
+                                  f"Individual membership created with max_members=1",
+                                  {"membership_id": self.premium_individual_id, "price": membership["price"]})
+                else:
+                    self.log_result("Individual Membership Creation", False, 
+                                  f"max_members incorrect: {membership['max_members']} (expected 1)")
+                return True
+            else:
+                self.log_result("Individual Membership Creation", False, 
+                              f"Failed to create membership: {response.status_code}",
+                              {"response": response.text})
+                return False
+        except Exception as e:
+            self.log_result("Individual Membership Creation", False, f"Error: {str(e)}")
+            return False
+    
+    def test_create_family_membership(self):
+        """Test 2 - Family Membership Creation"""
+        print("\n=== Test 2: Create Family Membership ===")
+        
+        membership_data = {
+            "name": "Family Package",
+            "description": "Family membership for up to 4 members",
+            "price": 1200.00,
+            "billing_frequency": "monthly",
+            "duration_months": 12,
+            "duration_days": 0,
+            "payment_type": "debit_order",
+            "is_base_membership": True,
+            "max_members": 4,
+            "features": ["Gym", "Classes", "Pool"],
+            "peak_hours_only": False,
+            "multi_site_access": True,
+            "levy_enabled": False,
+            "levy_frequency": "annual",
+            "levy_timing": "anniversary",
+            "levy_amount_type": "fixed",
+            "levy_amount": 0.0,
+            "levy_payment_method": "debit_order"
+        }
+        
+        try:
+            response = requests.post(f"{API_BASE}/membership-types", 
+                                   json=membership_data, headers=self.headers)
+            if response.status_code == 200:
+                membership = response.json()
+                self.family_package_id = membership["id"]
+                
+                # Verify max_members and multi_site_access
+                if membership["max_members"] == 4 and membership["multi_site_access"] == True:
+                    self.log_result("Family Membership Creation", True, 
+                                  f"Family membership created with max_members=4 and multi_site_access=True",
+                                  {"membership_id": self.family_package_id, "price": membership["price"]})
+                else:
+                    self.log_result("Family Membership Creation", False, 
+                                  f"Properties incorrect: max_members={membership['max_members']}, multi_site={membership['multi_site_access']}")
+                return True
+            else:
+                self.log_result("Family Membership Creation", False, 
+                              f"Failed to create family membership: {response.status_code}",
+                              {"response": response.text})
+                return False
+        except Exception as e:
+            self.log_result("Family Membership Creation", False, f"Error: {str(e)}")
+            return False
+    
+    def test_create_upfront_payment_option(self):
+        """Test 3 - Upfront Payment Option"""
+        print("\n=== Test 3: Create Upfront Payment Option ===")
+        
+        payment_option_data = {
+            "membership_type_id": self.premium_individual_id,
+            "payment_name": "Annual Upfront Saver",
+            "payment_type": "single",
+            "payment_frequency": "one-time",
+            "installment_amount": 5400.00,
+            "number_of_installments": 1,
+            "auto_renewal_enabled": False,
+            "auto_renewal_frequency": "monthly",
+            "description": "Pay upfront and save 10%",
+            "display_order": 1,
+            "is_default": False
+        }
+        
+        try:
+            response = requests.post(f"{API_BASE}/payment-options", 
+                                   json=payment_option_data, headers=self.headers)
+            if response.status_code == 200:
+                payment_option = response.json()
+                option_id = payment_option["id"]
+                self.created_payment_options.append(option_id)
+                
+                # Verify total_amount calculation
+                expected_total = 5400.00 * 1  # 5400.00
+                actual_total = payment_option["total_amount"]
+                
+                if abs(actual_total - expected_total) < 0.01:
+                    self.log_result("Upfront Payment Option", True, 
+                                  f"Upfront payment option created with correct total_amount: R{actual_total}",
+                                  {"option_id": option_id, "payment_type": payment_option["payment_type"]})
+                else:
+                    self.log_result("Upfront Payment Option", False, 
+                                  f"Total amount incorrect: R{actual_total} (expected R{expected_total})")
+                return option_id
+            else:
+                self.log_result("Upfront Payment Option", False, 
+                              f"Failed to create payment option: {response.status_code}",
+                              {"response": response.text})
+                return None
+        except Exception as e:
+            self.log_result("Upfront Payment Option", False, f"Error: {str(e)}")
+            return None
+    
+    def test_create_monthly_recurring_option(self):
+        """Test 4 - Monthly Recurring with Auto-Renewal"""
+        print("\n=== Test 4: Create Monthly Recurring Payment Option ===")
+        
+        payment_option_data = {
+            "membership_type_id": self.premium_individual_id,
+            "payment_name": "Monthly Budget Plan",
+            "payment_type": "recurring",
+            "payment_frequency": "monthly",
+            "installment_amount": 500.00,
+            "number_of_installments": 12,
+            "auto_renewal_enabled": True,
+            "auto_renewal_frequency": "monthly",
+            "auto_renewal_price": 500.00,
+            "description": "Pay monthly, auto-renews month-to-month",
+            "display_order": 2,
+            "is_default": True
+        }
+        
+        try:
+            response = requests.post(f"{API_BASE}/payment-options", 
+                                   json=payment_option_data, headers=self.headers)
+            if response.status_code == 200:
+                payment_option = response.json()
+                option_id = payment_option["id"]
+                self.created_payment_options.append(option_id)
+                
+                # Verify total_amount and auto-renewal settings
+                expected_total = 500.00 * 12  # 6000.00
+                actual_total = payment_option["total_amount"]
+                
+                if (abs(actual_total - expected_total) < 0.01 and 
+                    payment_option["auto_renewal_enabled"] == True and
+                    payment_option["auto_renewal_price"] == 500.00):
+                    self.log_result("Monthly Recurring Payment Option", True, 
+                                  f"Monthly recurring option created with auto-renewal: R{actual_total}",
+                                  {"option_id": option_id, "auto_renewal": payment_option["auto_renewal_enabled"]})
+                else:
+                    self.log_result("Monthly Recurring Payment Option", False, 
+                                  f"Settings incorrect: total={actual_total}, auto_renewal={payment_option['auto_renewal_enabled']}")
+                return option_id
+            else:
+                self.log_result("Monthly Recurring Payment Option", False, 
+                              f"Failed to create payment option: {response.status_code}",
+                              {"response": response.text})
+                return None
+        except Exception as e:
+            self.log_result("Monthly Recurring Payment Option", False, f"Error: {str(e)}")
+            return None
+    
+    def test_create_quarterly_payment_option(self):
+        """Test 5 - Quarterly Payment"""
+        print("\n=== Test 5: Create Quarterly Payment Option ===")
+        
+        payment_option_data = {
+            "membership_type_id": self.premium_individual_id,
+            "payment_name": "Quarterly Flex",
+            "payment_type": "recurring",
+            "payment_frequency": "quarterly",
+            "installment_amount": 1500.00,
+            "number_of_installments": 4,
+            "auto_renewal_enabled": True,
+            "auto_renewal_frequency": "same_frequency",
+            "description": "Pay quarterly, auto-renews for another year",
+            "display_order": 3,
+            "is_default": False
+        }
+        
+        try:
+            response = requests.post(f"{API_BASE}/payment-options", 
+                                   json=payment_option_data, headers=self.headers)
+            if response.status_code == 200:
+                payment_option = response.json()
+                option_id = payment_option["id"]
+                self.created_payment_options.append(option_id)
+                
+                # Verify total_amount
+                expected_total = 1500.00 * 4  # 6000.00
+                actual_total = payment_option["total_amount"]
+                
+                if (abs(actual_total - expected_total) < 0.01 and 
+                    payment_option["auto_renewal_frequency"] == "same_frequency"):
+                    self.log_result("Quarterly Payment Option", True, 
+                                  f"Quarterly payment option created: R{actual_total}",
+                                  {"option_id": option_id, "frequency": payment_option["payment_frequency"]})
+                else:
+                    self.log_result("Quarterly Payment Option", False, 
+                                  f"Settings incorrect: total={actual_total}, renewal_freq={payment_option['auto_renewal_frequency']}")
+                return option_id
+            else:
+                self.log_result("Quarterly Payment Option", False, 
+                              f"Failed to create payment option: {response.status_code}",
+                              {"response": response.text})
+                return None
+        except Exception as e:
+            self.log_result("Quarterly Payment Option", False, f"Error: {str(e)}")
+            return None
+    
+    def test_get_payment_options(self):
+        """Test 6 - Get Payment Options"""
+        print("\n=== Test 6: Get Payment Options ===")
+        
+        try:
+            response = requests.get(f"{API_BASE}/payment-options/{self.premium_individual_id}", 
+                                  headers=self.headers)
+            if response.status_code == 200:
+                options = response.json()
+                
+                if len(options) >= 3:
+                    # Check if sorted by display_order
+                    display_orders = [opt["display_order"] for opt in options]
+                    is_sorted = display_orders == sorted(display_orders)
+                    
+                    if is_sorted:
+                        self.log_result("Get Payment Options", True, 
+                                      f"Retrieved {len(options)} payment options, sorted by display_order",
+                                      {"options_count": len(options), "display_orders": display_orders})
+                    else:
+                        self.log_result("Get Payment Options", False, 
+                                      f"Options not sorted by display_order: {display_orders}")
+                else:
+                    self.log_result("Get Payment Options", False, 
+                                  f"Expected at least 3 options, got {len(options)}")
+                return True
+            else:
+                self.log_result("Get Payment Options", False, 
+                              f"Failed to get payment options: {response.status_code}",
+                              {"response": response.text})
+                return False
+        except Exception as e:
+            self.log_result("Get Payment Options", False, f"Error: {str(e)}")
+            return False
+    
+    def test_create_members_for_group(self):
+        """Create members for group testing"""
+        print("\n=== Creating Members for Group Testing ===")
+        
+        members_data = [
+            {
+                "first_name": "John",
+                "last_name": "Smith",
+                "email": f"john.smith.{int(time.time())}@example.com",
+                "phone": "+27123456789",
+                "membership_type_id": self.family_package_id
+            },
+            {
+                "first_name": "Jane",
+                "last_name": "Smith",
+                "email": f"jane.smith.{int(time.time())}@example.com",
+                "phone": "+27123456790",
+                "membership_type_id": self.family_package_id
+            },
+            {
+                "first_name": "Bob",
+                "last_name": "Smith",
+                "email": f"bob.smith.{int(time.time())}@example.com",
+                "phone": "+27123456791",
+                "membership_type_id": self.family_package_id
+            },
+            {
+                "first_name": "Alice",
+                "last_name": "Smith",
+                "email": f"alice.smith.{int(time.time())}@example.com",
+                "phone": "+27123456792",
+                "membership_type_id": self.family_package_id
+            },
+            {
+                "first_name": "Charlie",
+                "last_name": "Smith",
+                "email": f"charlie.smith.{int(time.time())}@example.com",
+                "phone": "+27123456793",
+                "membership_type_id": self.family_package_id
+            }
+        ]
+        
+        created_members = []
+        for i, member_data in enumerate(members_data):
+            try:
+                response = requests.post(f"{API_BASE}/members", 
+                                       json=member_data, headers=self.headers)
+                if response.status_code == 200:
+                    member = response.json()
+                    created_members.append(member["id"])
+                    self.created_members.append(member["id"])
+                    self.log_result(f"Create Member {i+1}", True, 
+                                  f"Member {member['first_name']} {member['last_name']} created",
+                                  {"member_id": member["id"]})
+                else:
+                    self.log_result(f"Create Member {i+1}", False, 
+                                  f"Failed to create member: {response.status_code}")
+            except Exception as e:
+                self.log_result(f"Create Member {i+1}", False, f"Error: {str(e)}")
+        
+        return created_members
+    
+    def test_create_membership_group(self):
+        """Test 7 - Create Membership Group"""
+        print("\n=== Test 7: Create Membership Group ===")
+        
+        # Create members first
+        members = self.test_create_members_for_group()
+        if not members:
+            self.log_result("Create Membership Group", False, "No members available for group creation")
+            return None
+        
+        primary_member_id = members[0]
+        
+        group_data = {
+            "membership_type_id": self.family_package_id,
+            "primary_member_id": primary_member_id,
+            "group_name": "Smith Family",
+            "max_members": 4
+        }
+        
+        try:
+            response = requests.post(f"{API_BASE}/membership-groups", 
+                                   json=group_data, headers=self.headers)
+            if response.status_code == 200:
+                group = response.json()
+                self.created_group_id = group["id"]
+                
+                # Verify group creation
+                if (group["current_member_count"] == 1 and 
+                    group["max_members"] == 4 and
+                    group["primary_member_id"] == primary_member_id):
+                    self.log_result("Create Membership Group", True, 
+                                  f"Group created with current_member_count=1",
+                                  {"group_id": self.created_group_id, "group_name": group["group_name"]})
+                else:
+                    self.log_result("Create Membership Group", False, 
+                                  f"Group properties incorrect: count={group['current_member_count']}, max={group['max_members']}")
+                return self.created_group_id
+            else:
+                self.log_result("Create Membership Group", False, 
+                              f"Failed to create group: {response.status_code}",
+                              {"response": response.text})
+                return None
+        except Exception as e:
+            self.log_result("Create Membership Group", False, f"Error: {str(e)}")
+            return None
+    
+    def test_get_group_details(self):
+        """Test 8 - Get Group Details"""
+        print("\n=== Test 8: Get Group Details ===")
+        
+        if not self.created_group_id:
+            self.log_result("Get Group Details", False, "No group ID available")
+            return False
+        
+        try:
+            response = requests.get(f"{API_BASE}/membership-groups/{self.created_group_id}", 
+                                  headers=self.headers)
+            if response.status_code == 200:
+                group = response.json()
+                self.log_result("Get Group Details", True, 
+                              f"Retrieved group details: {group['group_name']}",
+                              {"group_id": group["id"], "member_count": group["current_member_count"]})
+                return True
+            else:
+                self.log_result("Get Group Details", False, 
+                              f"Failed to get group details: {response.status_code}",
+                              {"response": response.text})
+                return False
+        except Exception as e:
+            self.log_result("Get Group Details", False, f"Error: {str(e)}")
+            return False
+    
+    def test_get_group_members(self):
+        """Test 9 - Get Group Members"""
+        print("\n=== Test 9: Get Group Members ===")
+        
+        if not self.created_group_id:
+            self.log_result("Get Group Members", False, "No group ID available")
+            return False
+        
+        try:
+            response = requests.get(f"{API_BASE}/membership-groups/{self.created_group_id}/members", 
+                                  headers=self.headers)
+            if response.status_code == 200:
+                members = response.json()
+                if len(members) >= 1:
+                    # Check if primary member is in the list
+                    primary_members = [m for m in members if m.get("is_primary_member") == True]
+                    if primary_members:
+                        self.log_result("Get Group Members", True, 
+                                      f"Retrieved {len(members)} group members with 1 primary member",
+                                      {"members_count": len(members), "primary_count": len(primary_members)})
+                    else:
+                        self.log_result("Get Group Members", False, 
+                                      "No primary member found in group")
+                else:
+                    self.log_result("Get Group Members", False, 
+                                  f"Expected at least 1 member, got {len(members)}")
+                return True
+            else:
+                self.log_result("Get Group Members", False, 
+                              f"Failed to get group members: {response.status_code}",
+                              {"response": response.text})
+                return False
+        except Exception as e:
+            self.log_result("Get Group Members", False, f"Error: {str(e)}")
+            return False
+    
+    def test_add_member_to_group(self):
+        """Test 10 - Add Member to Group"""
+        print("\n=== Test 10: Add Member to Group ===")
+        
+        if not self.created_group_id or len(self.created_members) < 2:
+            self.log_result("Add Member to Group", False, "No group or insufficient members available")
+            return False
+        
+        second_member_id = self.created_members[1]
+        
+        try:
+            response = requests.post(f"{API_BASE}/membership-groups/{self.created_group_id}/add-member", 
+                                   params={"member_id": second_member_id}, headers=self.headers)
+            if response.status_code == 200:
+                self.log_result("Add Member to Group", True, 
+                              "Member added to group successfully",
+                              {"member_id": second_member_id})
+                
+                # Verify member count increased
+                group_response = requests.get(f"{API_BASE}/membership-groups/{self.created_group_id}", 
+                                            headers=self.headers)
+                if group_response.status_code == 200:
+                    group = group_response.json()
+                    if group["current_member_count"] == 2:
+                        self.log_result("Verify Member Count Increase", True, 
+                                      f"Member count increased to {group['current_member_count']}")
+                    else:
+                        self.log_result("Verify Member Count Increase", False, 
+                                      f"Member count incorrect: {group['current_member_count']} (expected 2)")
+                return True
+            else:
+                self.log_result("Add Member to Group", False, 
+                              f"Failed to add member: {response.status_code}",
+                              {"response": response.text})
+                return False
+        except Exception as e:
+            self.log_result("Add Member to Group", False, f"Error: {str(e)}")
+            return False
+    
+    def test_add_members_until_full(self):
+        """Test 11 - Add Members Until Full"""
+        print("\n=== Test 11: Add Members Until Full ===")
+        
+        if not self.created_group_id or len(self.created_members) < 4:
+            self.log_result("Add Members Until Full", False, "Insufficient members for full group test")
+            return False
+        
+        # Add third and fourth members
+        for i in range(2, 4):
+            member_id = self.created_members[i]
+            try:
+                response = requests.post(f"{API_BASE}/membership-groups/{self.created_group_id}/add-member", 
+                                       params={"member_id": member_id}, headers=self.headers)
+                if response.status_code == 200:
+                    self.log_result(f"Add Member {i+1} to Group", True, f"Member {i+1} added successfully")
+                else:
+                    self.log_result(f"Add Member {i+1} to Group", False, f"Failed to add member {i+1}")
+            except Exception as e:
+                self.log_result(f"Add Member {i+1} to Group", False, f"Error adding member {i+1}: {str(e)}")
+        
+        # Now try to add fifth member (should fail)
+        if len(self.created_members) >= 5:
+            fifth_member_id = self.created_members[4]
+            try:
+                response = requests.post(f"{API_BASE}/membership-groups/{self.created_group_id}/add-member", 
+                                       params={"member_id": fifth_member_id}, headers=self.headers)
+                if response.status_code == 400:
+                    response_data = response.json()
+                    if "full" in response_data.get("detail", "").lower():
+                        self.log_result("Test Group Full Error", True, 
+                                      "Correctly rejected adding member to full group",
+                                      {"error_message": response_data.get("detail")})
+                    else:
+                        self.log_result("Test Group Full Error", False, 
+                                      f"Wrong error message: {response_data.get('detail')}")
+                else:
+                    self.log_result("Test Group Full Error", False, 
+                                  f"Expected 400 error, got {response.status_code}")
+            except Exception as e:
+                self.log_result("Test Group Full Error", False, f"Error: {str(e)}")
+        
+        return True
+    
+    def test_remove_non_primary_member(self):
+        """Test 12 - Remove Non-Primary Member"""
+        print("\n=== Test 12: Remove Non-Primary Member ===")
+        
+        if not self.created_group_id or len(self.created_members) < 2:
+            self.log_result("Remove Non-Primary Member", False, "No group or insufficient members")
+            return False
+        
+        second_member_id = self.created_members[1]
+        
+        try:
+            response = requests.delete(f"{API_BASE}/membership-groups/{self.created_group_id}/remove-member/{second_member_id}", 
+                                     headers=self.headers)
+            if response.status_code == 200:
+                self.log_result("Remove Non-Primary Member", True, 
+                              "Non-primary member removed successfully",
+                              {"member_id": second_member_id})
+                
+                # Verify member count decreased
+                group_response = requests.get(f"{API_BASE}/membership-groups/{self.created_group_id}", 
+                                            headers=self.headers)
+                if group_response.status_code == 200:
+                    group = group_response.json()
+                    self.log_result("Verify Member Count Decrease", True, 
+                                  f"Member count after removal: {group['current_member_count']}")
+                return True
+            else:
+                self.log_result("Remove Non-Primary Member", False, 
+                              f"Failed to remove member: {response.status_code}",
+                              {"response": response.text})
+                return False
+        except Exception as e:
+            self.log_result("Remove Non-Primary Member", False, f"Error: {str(e)}")
+            return False
+    
+    def test_remove_primary_member_error(self):
+        """Test 13 - Try Removing Primary Member"""
+        print("\n=== Test 13: Try Removing Primary Member ===")
+        
+        if not self.created_group_id or not self.created_members:
+            self.log_result("Remove Primary Member Error", False, "No group or members available")
+            return False
+        
+        primary_member_id = self.created_members[0]  # First member is primary
+        
+        try:
+            response = requests.delete(f"{API_BASE}/membership-groups/{self.created_group_id}/remove-member/{primary_member_id}", 
+                                     headers=self.headers)
+            if response.status_code == 400:
+                response_data = response.json()
+                if "primary" in response_data.get("detail", "").lower():
+                    self.log_result("Remove Primary Member Error", True, 
+                                  "Correctly rejected removing primary member",
+                                  {"error_message": response_data.get("detail")})
+                else:
+                    self.log_result("Remove Primary Member Error", False, 
+                                  f"Wrong error message: {response_data.get('detail')}")
+            else:
+                self.log_result("Remove Primary Member Error", False, 
+                              f"Expected 400 error, got {response.status_code}")
+            return True
+        except Exception as e:
+            self.log_result("Remove Primary Member Error", False, f"Error: {str(e)}")
+            return False
+    
+    def test_update_payment_option(self):
+        """Test 14 - Update Payment Option"""
+        print("\n=== Test 14: Update Payment Option ===")
+        
+        if not self.created_payment_options:
+            self.log_result("Update Payment Option", False, "No payment options available to update")
+            return False
+        
+        option_id = self.created_payment_options[1]  # Monthly option
+        
+        update_data = {
+            "installment_amount": 550.00,
+            "auto_renewal_price": 550.00
+        }
+        
+        try:
+            response = requests.put(f"{API_BASE}/payment-options/{option_id}", 
+                                  json=update_data, headers=self.headers)
+            if response.status_code == 200:
+                updated_option = response.json()
+                
+                # Verify total_amount recalculated
+                expected_total = 550.00 * 12  # 6600.00
+                actual_total = updated_option["total_amount"]
+                
+                if (abs(actual_total - expected_total) < 0.01 and 
+                    updated_option["installment_amount"] == 550.00):
+                    self.log_result("Update Payment Option", True, 
+                                  f"Payment option updated, total recalculated: R{actual_total}",
+                                  {"option_id": option_id, "new_installment": updated_option["installment_amount"]})
+                else:
+                    self.log_result("Update Payment Option", False, 
+                                  f"Update failed: total={actual_total}, installment={updated_option['installment_amount']}")
+                return True
+            else:
+                self.log_result("Update Payment Option", False, 
+                              f"Failed to update payment option: {response.status_code}",
+                              {"response": response.text})
+                return False
+        except Exception as e:
+            self.log_result("Update Payment Option", False, f"Error: {str(e)}")
+            return False
+    
+    def test_delete_payment_option(self):
+        """Test 15 - Delete Payment Option"""
+        print("\n=== Test 15: Delete Payment Option (Soft Delete) ===")
+        
+        if not self.created_payment_options:
+            self.log_result("Delete Payment Option", False, "No payment options available to delete")
+            return False
+        
+        option_id = self.created_payment_options[0]  # Upfront option
+        
+        try:
+            response = requests.delete(f"{API_BASE}/payment-options/{option_id}", 
+                                     headers=self.headers)
+            if response.status_code == 200:
+                self.log_result("Delete Payment Option", True, 
+                              "Payment option soft deleted successfully",
+                              {"option_id": option_id})
+                
+                # Verify it's no longer in active list
+                get_response = requests.get(f"{API_BASE}/payment-options/{self.premium_individual_id}", 
+                                          headers=self.headers)
+                if get_response.status_code == 200:
+                    active_options = get_response.json()
+                    deleted_option_found = any(opt["id"] == option_id for opt in active_options)
+                    
+                    if not deleted_option_found:
+                        self.log_result("Verify Soft Delete", True, 
+                                      "Deleted option no longer appears in active list")
+                    else:
+                        self.log_result("Verify Soft Delete", False, 
+                                      "Deleted option still appears in active list")
+                return True
+            else:
+                self.log_result("Delete Payment Option", False, 
+                              f"Failed to delete payment option: {response.status_code}",
+                              {"response": response.text})
+                return False
+        except Exception as e:
+            self.log_result("Delete Payment Option", False, f"Error: {str(e)}")
+            return False
+    
+    def run_all_tests(self):
+        """Run all payment options and membership groups tests"""
+        print("🚀 Starting Payment Options and Membership Groups Tests")
+        print(f"Testing against: {API_BASE}")
+        print("=" * 70)
+        
+        # Authenticate first
+        if not self.authenticate():
+            print("❌ Authentication failed. Cannot proceed with tests.")
+            return
+        
+        # Part 1: Create Base Memberships
+        if not self.test_create_individual_membership():
+            print("❌ Failed to create individual membership. Cannot proceed.")
+            return
+        
+        if not self.test_create_family_membership():
+            print("❌ Failed to create family membership. Cannot proceed.")
+            return
+        
+        # Part 2: Create Payment Options
+        self.test_create_upfront_payment_option()
+        self.test_create_monthly_recurring_option()
+        self.test_create_quarterly_payment_option()
+        self.test_get_payment_options()
+        
+        # Part 3: Membership Groups
+        self.test_create_membership_group()
+        self.test_get_group_details()
+        self.test_get_group_members()
+        self.test_add_member_to_group()
+        self.test_add_members_until_full()
+        self.test_remove_non_primary_member()
+        self.test_remove_primary_member_error()
+        
+        # Part 4: Update and Delete Payment Options
+        self.test_update_payment_option()
+        self.test_delete_payment_option()
+        
+        # Print summary
+        self.print_summary()
+    
+    def print_summary(self):
+        """Print test summary"""
+        print("\n" + "=" * 70)
+        print("🏁 PAYMENT OPTIONS AND MEMBERSHIP GROUPS TEST SUMMARY")
+        print("=" * 70)
+        
+        total_tests = len(self.test_results)
+        passed_tests = len([r for r in self.test_results if r["success"]])
+        failed_tests = total_tests - passed_tests
+        
+        print(f"Total Tests: {total_tests}")
+        print(f"✅ Passed: {passed_tests}")
+        print(f"❌ Failed: {failed_tests}")
+        print(f"Success Rate: {(passed_tests/total_tests*100):.1f}%")
+        
+        if failed_tests > 0:
+            print("\n❌ FAILED TESTS:")
+            for result in self.test_results:
+                if not result["success"]:
+                    print(f"  - {result['test']}: {result['message']}")
+        
+        print("\n" + "=" * 70)
+
 if __name__ == "__main__":
-    # Run membership variation tests as requested
-    variation_tester = MembershipVariationTester()
-    variation_tester.run_membership_variation_tests()
+    # Run payment options and membership groups tests as requested
+    tester = PaymentOptionsAndGroupsTester()
+    tester.run_all_tests()
