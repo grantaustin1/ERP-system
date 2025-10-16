@@ -467,7 +467,11 @@ metadata:
 
 test_plan:
   current_focus:
-    - "Membership Variation Creation Fix"
+    - "Payment Options CRUD API"
+    - "Multiple Payment Options per Membership"
+    - "Auto-Renewal Configuration"
+    - "Membership Groups for Multiple Members"
+    - "Max Members Enforcement"
   stuck_tasks: []
   test_all: false
   test_priority: "high_first"
