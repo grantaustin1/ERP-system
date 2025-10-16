@@ -1437,9 +1437,10 @@ Automation Execution
 
 ---
 
-## Data Flow Timeline
+## Data Flow Timeline with DoBilling Integration
 
 ```
+DAY 1 - MEMBER REGISTRATION:
 T+0 min:    Member Registration Form Submitted
 T+0.5 sec:  Member Record Created in DB
 T+0.5 sec:  QR Code Generated
@@ -1450,24 +1451,166 @@ T+1.1 sec:  Commission Calculated
 T+1.2 sec:  member_joined Automation Triggered
 T+1.3 sec:  Welcome SMS Sent
 T+6 min:    Welcome Email Sent (5 min delay)
-T+7 days:   Invoice Due Date Reached
-T+7d+6am:   Debit Order Processing Starts
-T+7d+6am:   Payment Gateway Called
-T+7d+6am+5s: Payment Response Received
 
-IF SUCCESS:
-  T+7d+6am+6s: Invoice Updated to "Paid"
-  T+7d+6am+7s: Payment Record Created
-  T+7d+6am+8s: Next Invoice Generated
-  
-IF FAILED:
-  T+7d+6am+6s: Invoice Updated to "Failed"
-  T+7d+6am+7s: Member Marked as Debtor
-  T+7d+6am+8s: payment_failed Automation Triggered
-  T+7d+6am+9s: Alert SMS Sent
-  T+7d+6am+14m: Alert Email Sent (5 min delay)
-  T+7d+6am+19m: Follow-up Task Created (10 min delay)
+T+5 sec:    Check Payment Method in DoBilling
+T+6 sec:    Create Payment Method (if not exists)
+            API Call: POST /v2/paymentmethods/bankaccount
+            Response: Payment Method Token stored
+
+DAY 8 - INVOICE DUE, BATCH QUEUEING:
+T+7d+6am:   Daily Job: Check Due Invoices
+T+7d+6am+1s: Get Today's Batch Token (batch_token_2025_10_22)
+T+7d+6am+2s: For Each Due Invoice:
+T+7d+6am+3s:   - Get Payment Method Token
+T+7d+6am+4s:   - API Call: POST /v2/batches/{BatchToken}/lines
+T+7d+6am+5s:   - Response: Batch Line Created (batchLineID: 789)
+T+7d+6am+6s:   - Update Invoice with batch_token and batch_line_id
+T+7d+6am+7s:   - Mark invoice processing_status: "queued"
+
+T+7d+11pm:  End of Day - DoBilling Batch Auto-Processing Begins
+            (All queued batch lines submitted to banks)
+
+DAY 9 - BATCH RESULTS CHECK:
+T+8d+6am:   Daily Job: Check Previous Day's Batch Results
+T+8d+6am+1s: API Call: GET /v2/batches/lines?BatchToken=batch_token_2025_10_22
+T+8d+6am+2s: Receive Batch Lines with Status
+T+8d+6am+3s: Process Each Line Result:
+
+IF SUCCESS (Line #789):
+  T+8d+6am+4s: Update Invoice Status to "Paid"
+  T+8d+6am+5s: Create Payment Record
+               - transaction_id: "TXN_BANK_123456"
+               - amount: 500.00
+               - payment_date: 2025-10-23T02:30:00Z
+  T+8d+6am+6s: Update Member Status
+               - is_debtor: False (if all invoices paid)
+  T+8d+6am+7s: Generate Next Invoice (for recurring)
+               - invoice_number: INV-uuid-mem-002
+               - due_date: +1 month
+  T+8d+6am+8s: Payment Success Flow Complete
+
+IF FAILED (Line #789):
+  T+8d+6am+4s: Update Invoice Status to "Failed"
+               - failure_reason: "Insufficient funds in account"
+               - failure_date: 2025-10-23T02:30:00Z
+  T+8d+6am+5s: Update Member Status
+               - is_debtor: True
+  T+8d+6am+6s: Trigger Automation: payment_failed
+  T+8d+6am+7s: Check Active Automations
+  T+8d+6am+8s: Execute Automation Actions:
+  T+8d+6am+9s:   - Action 1: Send SMS (immediate)
+  T+8d+6am+14m:  - Action 2: Send Email (5 min delay)
+  T+8d+6am+19m:  - Action 3: Create Follow-up Task (10 min delay)
+  T+8d+6am+20m: Log Automation Execution
+  T+8d+6am+21m: Update Automation Stats
+  T+8d+6am+22m: Check Error Type for Retry Logic
+  T+8d+6am+23m: Schedule Retry (if applicable)
+               - retry_scheduled: +7 days (if retriable error)
+  T+8d+6am+24m: Payment Failed Flow Complete
+
+DAY 15 - RETRY SCHEDULED PAYMENT (If Applicable):
+T+14d+6am:  Daily Job: Check Scheduled Retries
+T+14d+6am+1s: Find Invoices with retry_scheduled = today
+T+14d+6am+2s: Re-queue to Today's Batch
+T+14d+6am+3s: API Call: POST /v2/batches/{BatchToken}/lines
+            (Same process repeats as Day 8)
+
+ONGOING - BATCH SYNC LOG:
+Every 6am:  Create Payment Sync Log Entry
+            - batch_token
+            - lines_checked, lines_success, lines_failed
+            - total_amount_success, total_amount_failed
+            - error details for failed lines
 ```
+
+---
+
+### DoBilling API Call Sequence Diagram
+
+```
+Member Registration → Invoice Created (T+0)
+         ↓
+    [7 Days Pass]
+         ↓
+Daily Job (6 AM) ────────────────────────────────────┐
+         ↓                                           │
+Check Due Invoices                                   │
+         ↓                                           │
+Get Member Bank Details                              │
+         ↓                                           │
+┌────────────────────────────────────┐              │
+│  DoBilling API Call #1             │              │
+│  GET /v2/paymentmethods            │              │
+│  (Check if payment method exists)  │              │
+└────────────────────────────────────┘              │
+         ↓                                           │
+    [If Not Found]                                   │
+         ↓                                           │
+┌────────────────────────────────────┐              │
+│  DoBilling API Call #2             │              │
+│  POST /v2/paymentmethods/bankaccount│             │
+│  (Create payment method)           │              │
+│  Response: payment_method_token    │              │
+└────────────────────────────────────┘              │
+         ↓                                           │
+Store Token in Member Record                         │
+         ↓                                           │
+Get Today's Batch Token                              │
+         ↓                                           │
+┌────────────────────────────────────┐              │
+│  DoBilling API Call #3             │              │
+│  POST /v2/batches/{token}/lines    │              │
+│  (Add invoice to batch)            │              │
+│  Body: {                           │              │
+│    ExtRef: invoice_id,             │              │
+│    Amount: 500.00,                 │              │
+│    PaymentMethodToken: token       │              │
+│  }                                 │              │
+│  Response: batch_line_id           │              │
+└────────────────────────────────────┘              │
+         ↓                                           │
+Store batch_line_id in Invoice                       │
+         ↓                                           │
+Mark Invoice: processing_status = "queued"           │
+         ↓                                           │
+[End of Day - 11 PM]                                 │
+         ↓                                           │
+DoBilling Auto-Process Batch                         │
+         ↓                                           │
+[Next Day - 6 AM] ←──────────────────────────────────┘
+         ↓
+┌────────────────────────────────────┐
+│  DoBilling API Call #4             │
+│  GET /v2/batches/lines             │
+│  ?BatchToken=yesterday_token       │
+│  (Get all batch line results)      │
+│  Response: Array of batch lines    │
+│    with isSuccess and ErrorMessage │
+└────────────────────────────────────┘
+         ↓
+Process Each Line Result
+         ↓
+    ┌────┴────┐
+    ↓         ↓
+isSuccess  isSuccess
+= true     = false
+    ↓         ↓
+Update     Update
+Invoice    Invoice
+to Paid    to Failed
+    ↓         ↓
+Create     Trigger
+Payment    payment_failed
+Record     Automation
+    ↓         ↓
+Generate   Send Alerts
+Next       Create Tasks
+Invoice    Mark Debtor
+```
+
+---
+
+## Data Flow Timeline
 
 ---
 
