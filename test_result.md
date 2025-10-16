@@ -248,6 +248,21 @@ backend:
         agent: "testing"
         comment: "✅ Invoice overdue trigger working correctly: POST /api/invoices/{id}/mark-overdue successfully triggers invoice_overdue automations. Updates invoice status to 'overdue' and executes automations with proper trigger_data including member details, invoice info, and due_date. Fixed phone field name bug."
 
+  - task: "Membership Variation Creation Fix"
+    implemented: true
+    working: true
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Fixed MembershipVariationCreate Pydantic model by removing base_membership_id from request body since it's passed as URL path parameter"
+      - working: true
+        agent: "testing"
+        comment: "✅ Membership variation creation working perfectly: All percentage variations (10%, 15%, 20%) create successfully with correct price calculations (base_price * (1 - discount_percentage / 100)). Naming convention follows '{Base Name} - {Variation Label}' format correctly. All properties inherited from base membership properly. Edge cases tested: 0% discount (R500.00), 100% discount (R0.00), duplicate variation types allowed. Variations list API returns all created variations correctly linked to base membership. No 400/422 validation errors encountered."
+
 frontend:
   - task: "Automations Page Component"
     implemented: true
