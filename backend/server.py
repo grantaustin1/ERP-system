@@ -156,6 +156,11 @@ class Member(BaseModel):
     # Sales consultant
     sales_consultant_id: Optional[str] = None
     sales_consultant_name: Optional[str] = None
+    # Membership group (for family/corporate packages)
+    membership_group_id: Optional[str] = None
+    is_primary_member: bool = True  # True if primary payer
+    # Payment option selected
+    selected_payment_option_id: Optional[str] = None
     # Address and geo-location
     address: Optional[str] = None
     latitude: Optional[float] = None
