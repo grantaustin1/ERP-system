@@ -699,6 +699,219 @@ async def create_membership_variation(base_id: str, data: MembershipVariationCre
     
     return variation
 
+
+# ============= PAYMENT OPTIONS ENDPOINTS =============
+
+@api_router.get("/payment-options/{membership_type_id}")
+async def get_payment_options(membership_type_id: str):
+    """Get all payment options for a membership type"""
+    options = await db.payment_options.find(
+        {"membership_type_id": membership_type_id, "is_active": True},
+        {"_id": 0}
+    ).sort("display_order", 1).to_list(100)
+    
+    for opt in options:
+        if isinstance(opt.get("created_at"), str):
+            opt["created_at"] = datetime.fromisoformat(opt["created_at"])
+    
+    return options
+
+@api_router.post("/payment-options", response_model=PaymentOption)
+async def create_payment_option(data: PaymentOptionCreate, current_user: User = Depends(get_current_user)):
+    """Create a new payment option for a membership type"""
+    # Verify membership type exists
+    membership = await db.membership_types.find_one({"id": data.membership_type_id})
+    if not membership:
+        raise HTTPException(status_code=404, detail="Membership type not found")
+    
+    # Calculate total amount
+    total_amount = data.installment_amount * data.number_of_installments
+    
+    # Create payment option
+    payment_option = PaymentOption(
+        **data.dict(),
+        total_amount=total_amount
+    )
+    
+    # Prepare for MongoDB
+    option_dict = payment_option.dict()
+    option_dict["created_at"] = option_dict["created_at"].isoformat()
+    
+    await db.payment_options.insert_one(option_dict)
+    
+    return payment_option
+
+@api_router.put("/payment-options/{option_id}")
+async def update_payment_option(
+    option_id: str,
+    data: PaymentOptionUpdate,
+    current_user: User = Depends(get_current_user)
+):
+    """Update a payment option"""
+    existing = await db.payment_options.find_one({"id": option_id})
+    if not existing:
+        raise HTTPException(status_code=404, detail="Payment option not found")
+    
+    # Update fields
+    update_data = {k: v for k, v in data.dict().items() if v is not None}
+    
+    # Recalculate total if installment fields changed
+    if "installment_amount" in update_data or "number_of_installments" in update_data:
+        installment_amount = update_data.get("installment_amount", existing["installment_amount"])
+        number_of_installments = update_data.get("number_of_installments", existing["number_of_installments"])
+        update_data["total_amount"] = installment_amount * number_of_installments
+    
+    await db.payment_options.update_one(
+        {"id": option_id},
+        {"$set": update_data}
+    )
+    
+    updated = await db.payment_options.find_one({"id": option_id}, {"_id": 0})
+    return updated
+
+@api_router.delete("/payment-options/{option_id}")
+async def delete_payment_option(option_id: str, current_user: User = Depends(get_current_user)):
+    """Delete a payment option (soft delete by setting is_active to False)"""
+    result = await db.payment_options.update_one(
+        {"id": option_id},
+        {"$set": {"is_active": False}}
+    )
+    
+    if result.modified_count == 0:
+        raise HTTPException(status_code=404, detail="Payment option not found")
+    
+    return {"message": "Payment option deleted successfully"}
+
+# ============= MEMBERSHIP GROUPS ENDPOINTS =============
+
+@api_router.get("/membership-groups/{group_id}")
+async def get_membership_group(group_id: str, current_user: User = Depends(get_current_user)):
+    """Get membership group details"""
+    group = await db.membership_groups.find_one({"id": group_id}, {"_id": 0})
+    if not group:
+        raise HTTPException(status_code=404, detail="Membership group not found")
+    
+    if isinstance(group.get("created_at"), str):
+        group["created_at"] = datetime.fromisoformat(group["created_at"])
+    
+    return group
+
+@api_router.get("/membership-groups/{group_id}/members")
+async def get_group_members(group_id: str, current_user: User = Depends(get_current_user)):
+    """Get all members in a membership group"""
+    members = await db.members.find(
+        {"membership_group_id": group_id},
+        {"_id": 0}
+    ).to_list(100)
+    
+    return members
+
+@api_router.post("/membership-groups", response_model=MembershipGroup)
+async def create_membership_group(data: MembershipGroupCreate, current_user: User = Depends(get_current_user)):
+    """Create a new membership group"""
+    # Verify membership type exists
+    membership = await db.membership_types.find_one({"id": data.membership_type_id})
+    if not membership:
+        raise HTTPException(status_code=404, detail="Membership type not found")
+    
+    # Verify primary member exists
+    member = await db.members.find_one({"id": data.primary_member_id})
+    if not member:
+        raise HTTPException(status_code=404, detail="Primary member not found")
+    
+    # Create group
+    group = MembershipGroup(
+        **data.dict(),
+        current_member_count=1
+    )
+    
+    group_dict = group.dict()
+    group_dict["created_at"] = group_dict["created_at"].isoformat()
+    
+    await db.membership_groups.insert_one(group_dict)
+    
+    # Update primary member with group ID
+    await db.members.update_one(
+        {"id": data.primary_member_id},
+        {"$set": {
+            "membership_group_id": group.id,
+            "is_primary_member": True
+        }}
+    )
+    
+    return group
+
+@api_router.post("/membership-groups/{group_id}/add-member")
+async def add_member_to_group(
+    group_id: str,
+    member_id: str,
+    current_user: User = Depends(get_current_user)
+):
+    """Add a member to an existing group"""
+    # Get group
+    group = await db.membership_groups.find_one({"id": group_id})
+    if not group:
+        raise HTTPException(status_code=404, detail="Group not found")
+    
+    # Check if group is full
+    if group["current_member_count"] >= group["max_members"]:
+        raise HTTPException(status_code=400, detail="Group is full")
+    
+    # Verify member exists
+    member = await db.members.find_one({"id": member_id})
+    if not member:
+        raise HTTPException(status_code=404, detail="Member not found")
+    
+    # Update member with group ID
+    await db.members.update_one(
+        {"id": member_id},
+        {"$set": {
+            "membership_group_id": group_id,
+            "is_primary_member": False
+        }}
+    )
+    
+    # Update group member count
+    await db.membership_groups.update_one(
+        {"id": group_id},
+        {"$inc": {"current_member_count": 1}}
+    )
+    
+    return {"message": "Member added to group successfully"}
+
+@api_router.delete("/membership-groups/{group_id}/remove-member/{member_id}")
+async def remove_member_from_group(
+    group_id: str,
+    member_id: str,
+    current_user: User = Depends(get_current_user)
+):
+    """Remove a member from a group"""
+    # Verify member is in group
+    member = await db.members.find_one({"id": member_id, "membership_group_id": group_id})
+    if not member:
+        raise HTTPException(status_code=404, detail="Member not in this group")
+    
+    # Check if primary member
+    if member.get("is_primary_member"):
+        raise HTTPException(status_code=400, detail="Cannot remove primary member. Transfer ownership first.")
+    
+    # Remove member from group
+    await db.members.update_one(
+        {"id": member_id},
+        {"$set": {
+            "membership_group_id": None,
+            "is_primary_member": True
+        }}
+    )
+    
+    # Update group member count
+    await db.membership_groups.update_one(
+        {"id": group_id},
+        {"$inc": {"current_member_count": -1}}
+    )
+    
+    return {"message": "Member removed from group successfully"}
+
 async def calculate_commission(member_id: str, consultant_id: str, membership_price: float, membership_type_name: str):
     """Calculate and create commission for a sale"""
     # Get consultant
