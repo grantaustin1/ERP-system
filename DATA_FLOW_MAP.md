@@ -956,6 +956,429 @@ This leads to either Step 9A (Success) or Step 9B (Failure) below.
 
 ---
 
+## DoBilling API Integration Details
+
+### Batch Processing Workflow
+
+#### Daily Batch Cycle
+
+**Morning (6:00 AM) - Batch Status Check:**
+```javascript
+// Scheduled job checks previous day's batch results
+async function checkBatchResults() {
+  // Get yesterday's batch token
+  const yesterday = new Date();
+  yesterday.setDate(yesterday.getDate() - 1);
+  const batchToken = `batch_token_${yesterday.toISOString().split('T')[0]}`;
+  
+  // API Call: Get all batch lines
+  const response = await fetch(
+    `https://api.beta.dobilling.com/v2/batches/lines?BatchToken=${batchToken}`,
+    {
+      method: 'GET',
+      headers: {
+        'Authorization': `Basic ${base64Credentials}`,
+        'Content-Type': 'application/json'
+      }
+    }
+  );
+  
+  const batchLines = await response.json();
+  
+  // Process each batch line result
+  for (const line of batchLines.data) {
+    await processLineResult(line);
+  }
+}
+```
+
+**Process Line Results:**
+```javascript
+async function processLineResult(batchLine) {
+  const invoice = await db.invoices.find_one({
+    "batch_line_id": batchLine.batchLineID
+  });
+  
+  if (!invoice) return;
+  
+  if (batchLine.isSuccess) {
+    // Success Path - Update invoice as paid
+    await updateInvoicePaid(invoice.id, batchLine.TransactionID);
+  } else {
+    // Failure Path - Mark as failed and trigger automation
+    await updateInvoiceFailed(
+      invoice.id, 
+      batchLine.ErrorMessage
+    );
+  }
+}
+```
+
+**Throughout Day (6:00 AM - 11:00 PM) - Queue Payments:**
+```javascript
+// When invoice becomes due or manual payment needed
+async function queuePaymentForBatch(invoice, member) {
+  // Get or create today's batch token
+  const today = new Date().toISOString().split('T')[0];
+  const batchToken = `batch_token_${today}`;
+  
+  // Get or create payment method token
+  let paymentMethodToken = member.payment_method_token;
+  
+  if (!paymentMethodToken) {
+    paymentMethodToken = await createPaymentMethod(member);
+  }
+  
+  // Add to batch
+  const batchLine = await addToBatch(
+    batchToken,
+    invoice,
+    paymentMethodToken,
+    member
+  );
+  
+  // Store batch reference
+  await db.invoices.update_one(
+    {"id": invoice.id},
+    {"$set": {
+      "batch_token": batchToken,
+      "batch_line_id": batchLine.batchLineID,
+      "processing_status": "queued"
+    }}
+  );
+}
+```
+
+**End of Day (11:00 PM) - Batch Submission:**
+```javascript
+// Batch is automatically processed by DoBilling
+// No manual submission needed if using automatic processing
+// OR manually trigger via DoBilling dashboard
+// Results available next morning
+```
+
+---
+
+### DoBilling API Endpoints Used
+
+#### 1. Payment Method Management
+
+**List Payment Methods:**
+```http
+GET https://api.beta.dobilling.com/v2/paymentmethods
+Authorization: Basic {credentials}
+```
+
+**Add Bank Account:**
+```http
+POST https://api.beta.dobilling.com/v2/paymentmethods/bankaccount
+Authorization: Basic {credentials}
+Content-Type: application/json
+
+Body: {
+  "FirstName": string,
+  "LastName": string,
+  "Email": string,
+  "MobileNumber": string,
+  "AccountNumber": string,
+  "AccountHolder": string,
+  "BranchCode": string,
+  "BankName": string,
+  "AccountType": "Current" | "Savings",
+  "DebitMethod": "debit_order",
+  "DebitMethodType": "NAEDO"
+}
+
+Response: {
+  "Token": string,
+  "isSuccess": boolean,
+  "ErrorMessage": string | null
+}
+```
+
+**Get Payment Method:**
+```http
+GET https://api.beta.dobilling.com/v2/paymentmethods/{token}
+Authorization: Basic {credentials}
+```
+
+**Delete Payment Method:**
+```http
+DELETE https://api.beta.dobilling.com/v2/paymentmethods/{token}
+Authorization: Basic {credentials}
+```
+
+#### 2. Batch Management
+
+**List All Batches:**
+```http
+GET https://api.beta.dobilling.com/v2/batches
+Authorization: Basic {credentials}
+
+Response: {
+  "data": [
+    {
+      "BatchToken": string,
+      "batchID": integer,
+      "Description": string,
+      "CreatedDate": datetime,
+      "TotalLines": integer,
+      "TotalAmount": number
+    }
+  ]
+}
+```
+
+**Get Specific Batch:**
+```http
+GET https://api.beta.dobilling.com/v2/batches/get?BatchToken={token}
+Authorization: Basic {credentials}
+```
+
+**List Batch Lines:**
+```http
+GET https://api.beta.dobilling.com/v2/batches/lines?BatchToken={token}&page={page}&page_size={size}
+Authorization: Basic {credentials}
+
+Response: {
+  "data": [
+    {
+      "batchLineID": integer,
+      "BatchToken": string,
+      "batchID": integer,
+      "ExtRef": string,
+      "Amount": number,
+      "Ref": string,
+      "Memo": string,
+      "PaymentMethodToken": string,
+      "isSuccess": boolean,
+      "ErrorMessage": string | null,
+      "ProcessedDate": datetime,
+      "TransactionID": string
+    }
+  ],
+  "pagination": {
+    "page": integer,
+    "page_size": integer,
+    "total": integer
+  }
+}
+```
+
+**Get Single Batch Line:**
+```http
+GET https://api.beta.dobilling.com/v2/batches/line?batchLineID={id}
+Authorization: Basic {credentials}
+```
+
+**Add Line to Batch:**
+```http
+POST https://api.beta.dobilling.com/v2/batches/{BatchToken}/lines
+Authorization: Basic {credentials}
+Content-Type: application/json
+
+Body: {
+  "ExtRef": string,           // Your invoice ID
+  "Amount": number,            // Amount to debit
+  "Ref": string,              // Invoice number
+  "Memo": string,             // Description
+  "PaymentMethodToken": string,
+  "Email": string,
+  "MobileNumber": string
+}
+
+Response: {
+  "batchLineID": integer,
+  "BatchToken": string,
+  "batchID": integer,
+  "ExtRef": string,
+  "Amount": number,
+  "Ref": string,
+  "Memo": string,
+  "PaymentMethodToken": string,
+  "isSuccess": boolean,
+  "ErrorMessage": string | null
+}
+```
+
+#### 3. DebiCheck Mandate Management (Optional - for DebiCheck)
+
+**Initiate DebiCheck Mandate:**
+```http
+POST https://api.beta.dobilling.com/v2/paymentmethods/debicheck
+Authorization: Basic {credentials}
+Content-Type: application/json
+
+Body: {
+  "PaymentMethodToken": string,
+  "ContractReference": string,
+  "MaximumCollectionAmount": number,
+  "InstalmentAmount": number,
+  "InstalmentOccurence": integer,
+  "Frequency": "Monthly" | "Weekly" | "Quarterly",
+  "DebtorName": string,
+  "DebtorIDNumber": string,
+  "DebtorEmail": string,
+  "DebtorMobile": string
+}
+
+Response: {
+  "MandateToken": string,
+  "isSuccess": boolean,
+  "ErrorMessage": string | null
+}
+```
+
+**Amend DebiCheck Mandate:**
+```http
+PUT https://api.beta.dobilling.com/v2/paymentmethods/debicheck
+Authorization: Basic {credentials}
+Content-Type: application/json
+
+Body: {
+  "MandateToken": string,
+  "MaximumCollectionAmount": number,
+  "InstalmentAmount": number,
+  // ... other fields to amend
+}
+```
+
+**Cancel DebiCheck Mandate:**
+```http
+DELETE https://api.beta.dobilling.com/v2/paymentmethods/debicheck/{token}
+Authorization: Basic {credentials}
+```
+
+---
+
+### Error Handling and Retry Logic
+
+**Common Error Codes and Responses:**
+
+```javascript
+const ERROR_HANDLERS = {
+  "Insufficient funds in account": {
+    action: "trigger_automation",
+    retry: false,
+    notification: "immediate"
+  },
+  "Account closed": {
+    action: "suspend_member",
+    retry: false,
+    notification: "immediate"
+  },
+  "Invalid account details": {
+    action: "request_update",
+    retry: false,
+    notification: "immediate"
+  },
+  "Account blocked": {
+    action: "manual_review",
+    retry: true,
+    retry_delay: 7, // days
+    notification: "delayed"
+  },
+  "Bank system unavailable": {
+    action: "retry",
+    retry: true,
+    retry_delay: 1, // days
+    notification: "none"
+  },
+  "Transaction limit exceeded": {
+    action: "split_payment",
+    retry: true,
+    notification: "staff"
+  }
+};
+```
+
+**Retry Logic:**
+```javascript
+async function handleFailedPayment(invoice, errorMessage) {
+  const errorConfig = ERROR_HANDLERS[errorMessage] || {
+    action: "manual_review",
+    retry: false,
+    notification: "immediate"
+  };
+  
+  if (errorConfig.retry) {
+    // Schedule retry
+    const retryDate = new Date();
+    retryDate.setDate(retryDate.getDate() + errorConfig.retry_delay);
+    
+    await db.invoices.update_one(
+      {"id": invoice.id},
+      {"$set": {
+        "retry_scheduled": retryDate.toISOString(),
+        "retry_count": (invoice.retry_count || 0) + 1
+      }}
+    );
+  }
+  
+  // Trigger appropriate automation
+  if (errorConfig.notification === "immediate") {
+    await trigger_automation("payment_failed", {
+      member_id: invoice.member_id,
+      invoice_id: invoice.id,
+      amount: invoice.amount,
+      failure_reason: errorMessage
+    });
+  }
+}
+```
+
+---
+
+### Database Schema Updates for DoBilling Integration
+
+**Additional Fields for Members Collection:**
+```javascript
+{
+  "payment_method_token": "pm_token_456",  // DoBilling payment method token
+  "mandate_token": "mandate_token_789",     // For DebiCheck (optional)
+  "mandate_status": "active",               // active, pending, suspended, cancelled
+  "last_payment_sync": "2025-10-22T06:15:00Z"
+}
+```
+
+**Additional Fields for Invoices Collection:**
+```javascript
+{
+  "batch_token": "batch_token_2025_10_22",
+  "batch_line_id": 789,
+  "processing_status": "queued",  // queued, processing, completed, failed
+  "transaction_id": "TXN_BANK_123456",  // From successful payment
+  "retry_count": 0,
+  "retry_scheduled": null,
+  "last_sync_attempt": "2025-10-23T06:00:00Z"
+}
+```
+
+**New Collection: Payment Sync Log:**
+```javascript
+db.payment_sync_logs.insert_one({
+  "id": "uuid-sync-log-001",
+  "sync_type": "batch_check",
+  "batch_token": "batch_token_2025_10_22",
+  "sync_date": "2025-10-23T06:00:00Z",
+  "lines_checked": 45,
+  "lines_success": 38,
+  "lines_failed": 7,
+  "total_amount_success": 19000.00,
+  "total_amount_failed": 3500.00,
+  "sync_duration_ms": 2345,
+  "errors": [
+    {
+      "batch_line_id": 789,
+      "invoice_id": "uuid-invoice-001",
+      "error_message": "Insufficient funds in account"
+    }
+  ]
+})
+```
+
+---
+
 ## Data Entities Summary
 
 ### Collections Involved:
