@@ -604,6 +604,405 @@ class AutomationTester:
         
         print("\n" + "=" * 60)
 
+class MembershipVariationTester:
+    def __init__(self):
+        self.token = None
+        self.headers = {}
+        self.test_results = []
+        self.base_membership_id = None
+        
+    def log_result(self, test_name, success, message, details=None):
+        """Log test result"""
+        result = {
+            "test": test_name,
+            "success": success,
+            "message": message,
+            "timestamp": datetime.now().isoformat(),
+            "details": details or {}
+        }
+        self.test_results.append(result)
+        status = "✅ PASS" if success else "❌ FAIL"
+        print(f"{status}: {test_name} - {message}")
+        if details and not success:
+            print(f"   Details: {details}")
+    
+    def authenticate(self):
+        """Authenticate and get token"""
+        try:
+            response = requests.post(f"{API_BASE}/auth/login", json={
+                "email": TEST_EMAIL,
+                "password": TEST_PASSWORD
+            })
+            
+            if response.status_code == 200:
+                data = response.json()
+                self.token = data["access_token"]
+                self.headers = {"Authorization": f"Bearer {self.token}"}
+                self.log_result("Authentication", True, "Successfully authenticated")
+                return True
+            else:
+                self.log_result("Authentication", False, f"Failed to authenticate: {response.status_code}", 
+                              {"response": response.text})
+                return False
+        except Exception as e:
+            self.log_result("Authentication", False, f"Authentication error: {str(e)}")
+            return False
+    
+    def create_base_membership(self):
+        """Create a base membership for testing variations"""
+        print("\n=== Creating Base Membership ===")
+        
+        base_membership_data = {
+            "name": "Premium Test Base",
+            "description": "Test base membership",
+            "price": 500.00,
+            "billing_frequency": "monthly",
+            "duration_months": 12,
+            "duration_days": 0,
+            "payment_type": "debit_order",
+            "is_base_membership": True,
+            "features": ["Gym Access", "Classes"],
+            "peak_hours_only": False,
+            "multi_site_access": False
+        }
+        
+        try:
+            response = requests.post(f"{API_BASE}/membership-types", 
+                                   json=base_membership_data, headers=self.headers)
+            if response.status_code == 200:
+                membership = response.json()
+                self.base_membership_id = membership["id"]
+                self.log_result("Create Base Membership", True, 
+                              f"Base membership created successfully",
+                              {"membership_id": self.base_membership_id, "price": membership["price"]})
+                return True
+            else:
+                self.log_result("Create Base Membership", False, 
+                              f"Failed to create base membership: {response.status_code}",
+                              {"response": response.text})
+                return False
+        except Exception as e:
+            self.log_result("Create Base Membership", False, f"Error creating base membership: {str(e)}")
+            return False
+    
+    def test_student_discount_variation(self):
+        """Test creating student discount variation (10%)"""
+        print("\n=== Testing Student Discount Variation (10%) ===")
+        
+        variation_data = {
+            "variation_type": "student",
+            "discount_percentage": 10.0,
+            "description": "Student discount"
+        }
+        
+        try:
+            response = requests.post(f"{API_BASE}/membership-types/{self.base_membership_id}/create-variation", 
+                                   json=variation_data, headers=self.headers)
+            if response.status_code == 200:
+                variation = response.json()
+                expected_price = 500.00 * (1 - 10.0 / 100)  # 450.00
+                actual_price = variation["price"]
+                
+                # Check price calculation
+                if abs(actual_price - expected_price) < 0.01:
+                    self.log_result("Student Variation Price Calculation", True, 
+                                  f"Price calculated correctly: R{actual_price} (expected R{expected_price})")
+                else:
+                    self.log_result("Student Variation Price Calculation", False, 
+                                  f"Price calculation incorrect: R{actual_price} (expected R{expected_price})")
+                
+                # Check naming convention
+                expected_name = "Premium Test Base - Student Discount"
+                if variation["name"] == expected_name:
+                    self.log_result("Student Variation Naming", True, 
+                                  f"Naming convention correct: {variation['name']}")
+                else:
+                    self.log_result("Student Variation Naming", False, 
+                                  f"Naming incorrect: {variation['name']} (expected {expected_name})")
+                
+                # Check inheritance of properties
+                if (variation["billing_frequency"] == "monthly" and 
+                    variation["duration_months"] == 12 and
+                    variation["is_base_membership"] == False and
+                    variation["base_membership_id"] == self.base_membership_id):
+                    self.log_result("Student Variation Property Inheritance", True, 
+                                  "All properties inherited correctly from base membership")
+                else:
+                    self.log_result("Student Variation Property Inheritance", False, 
+                                  "Property inheritance failed")
+                
+                self.log_result("Create Student Variation", True, "Student variation created successfully",
+                              {"variation_id": variation["id"], "discount": variation["discount_percentage"]})
+                return variation["id"]
+            else:
+                self.log_result("Create Student Variation", False, 
+                              f"Failed to create student variation: {response.status_code}",
+                              {"response": response.text})
+                return None
+        except Exception as e:
+            self.log_result("Create Student Variation", False, f"Error creating student variation: {str(e)}")
+            return None
+    
+    def test_corporate_discount_variation(self):
+        """Test creating corporate discount variation (15%)"""
+        print("\n=== Testing Corporate Discount Variation (15%) ===")
+        
+        variation_data = {
+            "variation_type": "corporate",
+            "discount_percentage": 15.0,
+            "description": "Corporate discount"
+        }
+        
+        try:
+            response = requests.post(f"{API_BASE}/membership-types/{self.base_membership_id}/create-variation", 
+                                   json=variation_data, headers=self.headers)
+            if response.status_code == 200:
+                variation = response.json()
+                expected_price = 500.00 * (1 - 15.0 / 100)  # 425.00
+                actual_price = variation["price"]
+                
+                # Check price calculation
+                if abs(actual_price - expected_price) < 0.01:
+                    self.log_result("Corporate Variation Price Calculation", True, 
+                                  f"Price calculated correctly: R{actual_price} (expected R{expected_price})")
+                else:
+                    self.log_result("Corporate Variation Price Calculation", False, 
+                                  f"Price calculation incorrect: R{actual_price} (expected R{expected_price})")
+                
+                # Check naming convention
+                expected_name = "Premium Test Base - Corporate Rate"
+                if variation["name"] == expected_name:
+                    self.log_result("Corporate Variation Naming", True, 
+                                  f"Naming convention correct: {variation['name']}")
+                else:
+                    self.log_result("Corporate Variation Naming", False, 
+                                  f"Naming incorrect: {variation['name']} (expected {expected_name})")
+                
+                self.log_result("Create Corporate Variation", True, "Corporate variation created successfully",
+                              {"variation_id": variation["id"], "discount": variation["discount_percentage"]})
+                return variation["id"]
+            else:
+                self.log_result("Create Corporate Variation", False, 
+                              f"Failed to create corporate variation: {response.status_code}",
+                              {"response": response.text})
+                return None
+        except Exception as e:
+            self.log_result("Create Corporate Variation", False, f"Error creating corporate variation: {str(e)}")
+            return None
+    
+    def test_senior_discount_variation(self):
+        """Test creating senior discount variation (20%)"""
+        print("\n=== Testing Senior Discount Variation (20%) ===")
+        
+        variation_data = {
+            "variation_type": "senior",
+            "discount_percentage": 20.0,
+            "description": "Senior citizen discount"
+        }
+        
+        try:
+            response = requests.post(f"{API_BASE}/membership-types/{self.base_membership_id}/create-variation", 
+                                   json=variation_data, headers=self.headers)
+            if response.status_code == 200:
+                variation = response.json()
+                expected_price = 500.00 * (1 - 20.0 / 100)  # 400.00
+                actual_price = variation["price"]
+                
+                # Check price calculation
+                if abs(actual_price - expected_price) < 0.01:
+                    self.log_result("Senior Variation Price Calculation", True, 
+                                  f"Price calculated correctly: R{actual_price} (expected R{expected_price})")
+                else:
+                    self.log_result("Senior Variation Price Calculation", False, 
+                                  f"Price calculation incorrect: R{actual_price} (expected R{expected_price})")
+                
+                # Check naming convention
+                expected_name = "Premium Test Base - Senior Citizen"
+                if variation["name"] == expected_name:
+                    self.log_result("Senior Variation Naming", True, 
+                                  f"Naming convention correct: {variation['name']}")
+                else:
+                    self.log_result("Senior Variation Naming", False, 
+                                  f"Naming incorrect: {variation['name']} (expected {expected_name})")
+                
+                self.log_result("Create Senior Variation", True, "Senior variation created successfully",
+                              {"variation_id": variation["id"], "discount": variation["discount_percentage"]})
+                return variation["id"]
+            else:
+                self.log_result("Create Senior Variation", False, 
+                              f"Failed to create senior variation: {response.status_code}",
+                              {"response": response.text})
+                return None
+        except Exception as e:
+            self.log_result("Create Senior Variation", False, f"Error creating senior variation: {str(e)}")
+            return None
+    
+    def test_variations_list(self):
+        """Test retrieving variations list"""
+        print("\n=== Testing Variations List ===")
+        
+        try:
+            response = requests.get(f"{API_BASE}/membership-types/{self.base_membership_id}/variations", 
+                                  headers=self.headers)
+            if response.status_code == 200:
+                variations = response.json()
+                if len(variations) >= 3:
+                    self.log_result("Get Variations List", True, 
+                                  f"Retrieved {len(variations)} variations successfully")
+                    
+                    # Check that all variations have correct base_membership_id
+                    all_correct = all(v.get("base_membership_id") == self.base_membership_id for v in variations)
+                    if all_correct:
+                        self.log_result("Variations Base ID Check", True, 
+                                      "All variations correctly linked to base membership")
+                    else:
+                        self.log_result("Variations Base ID Check", False, 
+                                      "Some variations not correctly linked to base membership")
+                    
+                    # Check variation types
+                    variation_types = [v.get("variation_type") for v in variations]
+                    expected_types = ["student", "corporate", "senior"]
+                    if all(vt in variation_types for vt in expected_types):
+                        self.log_result("Variation Types Check", True, 
+                                      f"All expected variation types found: {variation_types}")
+                    else:
+                        self.log_result("Variation Types Check", False, 
+                                      f"Missing variation types. Found: {variation_types}")
+                    
+                else:
+                    self.log_result("Get Variations List", False, 
+                                  f"Expected at least 3 variations, got {len(variations)}")
+            else:
+                self.log_result("Get Variations List", False, 
+                              f"Failed to get variations: {response.status_code}",
+                              {"response": response.text})
+        except Exception as e:
+            self.log_result("Get Variations List", False, f"Error getting variations list: {str(e)}")
+    
+    def test_edge_cases(self):
+        """Test edge cases for variation creation"""
+        print("\n=== Testing Edge Cases ===")
+        
+        # Test 0% discount
+        try:
+            zero_discount_data = {
+                "variation_type": "promo",
+                "discount_percentage": 0.0,
+                "description": "No discount promo"
+            }
+            
+            response = requests.post(f"{API_BASE}/membership-types/{self.base_membership_id}/create-variation", 
+                                   json=zero_discount_data, headers=self.headers)
+            if response.status_code == 200:
+                variation = response.json()
+                if variation["price"] == 500.00:  # Same as base price
+                    self.log_result("Zero Discount Test", True, 
+                                  f"0% discount variation created correctly with price R{variation['price']}")
+                else:
+                    self.log_result("Zero Discount Test", False, 
+                                  f"0% discount price incorrect: R{variation['price']} (expected R500.00)")
+            else:
+                self.log_result("Zero Discount Test", False, 
+                              f"Failed to create 0% discount variation: {response.status_code}")
+        except Exception as e:
+            self.log_result("Zero Discount Test", False, f"Error testing 0% discount: {str(e)}")
+        
+        # Test 100% discount
+        try:
+            full_discount_data = {
+                "variation_type": "family",
+                "discount_percentage": 100.0,
+                "description": "Full discount family"
+            }
+            
+            response = requests.post(f"{API_BASE}/membership-types/{self.base_membership_id}/create-variation", 
+                                   json=full_discount_data, headers=self.headers)
+            if response.status_code == 200:
+                variation = response.json()
+                if variation["price"] == 0.00:  # Free membership
+                    self.log_result("Full Discount Test", True, 
+                                  f"100% discount variation created correctly with price R{variation['price']}")
+                else:
+                    self.log_result("Full Discount Test", False, 
+                                  f"100% discount price incorrect: R{variation['price']} (expected R0.00)")
+            else:
+                self.log_result("Full Discount Test", False, 
+                              f"Failed to create 100% discount variation: {response.status_code}")
+        except Exception as e:
+            self.log_result("Full Discount Test", False, f"Error testing 100% discount: {str(e)}")
+        
+        # Test duplicate variation type
+        try:
+            duplicate_data = {
+                "variation_type": "student",  # Already created
+                "discount_percentage": 25.0,
+                "description": "Duplicate student discount"
+            }
+            
+            response = requests.post(f"{API_BASE}/membership-types/{self.base_membership_id}/create-variation", 
+                                   json=duplicate_data, headers=self.headers)
+            if response.status_code == 200:
+                self.log_result("Duplicate Variation Test", True, 
+                              "Duplicate variation type allowed (system allows multiple)")
+            elif response.status_code == 400:
+                self.log_result("Duplicate Variation Test", True, 
+                              "Duplicate variation type correctly rejected")
+            else:
+                self.log_result("Duplicate Variation Test", False, 
+                              f"Unexpected response for duplicate: {response.status_code}")
+        except Exception as e:
+            self.log_result("Duplicate Variation Test", False, f"Error testing duplicate variation: {str(e)}")
+    
+    def run_membership_variation_tests(self):
+        """Run all membership variation tests"""
+        print("🚀 Starting Membership Variation Tests")
+        print(f"Testing against: {API_BASE}")
+        print("=" * 60)
+        
+        # Authenticate first
+        if not self.authenticate():
+            print("❌ Authentication failed. Cannot proceed with tests.")
+            return
+        
+        # Create base membership
+        if not self.create_base_membership():
+            print("❌ Failed to create base membership. Cannot proceed with variation tests.")
+            return
+        
+        # Run variation tests
+        self.test_student_discount_variation()
+        self.test_corporate_discount_variation()
+        self.test_senior_discount_variation()
+        self.test_variations_list()
+        self.test_edge_cases()
+        
+        # Print summary
+        self.print_summary()
+    
+    def print_summary(self):
+        """Print test summary"""
+        print("\n" + "=" * 60)
+        print("🏁 MEMBERSHIP VARIATION TEST SUMMARY")
+        print("=" * 60)
+        
+        total_tests = len(self.test_results)
+        passed_tests = len([r for r in self.test_results if r["success"]])
+        failed_tests = total_tests - passed_tests
+        
+        print(f"Total Tests: {total_tests}")
+        print(f"✅ Passed: {passed_tests}")
+        print(f"❌ Failed: {failed_tests}")
+        print(f"Success Rate: {(passed_tests/total_tests*100):.1f}%")
+        
+        if failed_tests > 0:
+            print("\n❌ FAILED TESTS:")
+            for result in self.test_results:
+                if not result["success"]:
+                    print(f"  - {result['test']}: {result['message']}")
+        
+        print("\n" + "=" * 60)
+
 if __name__ == "__main__":
-    tester = AutomationTester()
-    tester.run_all_tests()
+    # Run membership variation tests as requested
+    variation_tester = MembershipVariationTester()
+    variation_tester.run_membership_variation_tests()
