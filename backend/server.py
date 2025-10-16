@@ -297,6 +297,76 @@ class MembershipVariationCreate(BaseModel):
     discount_percentage: float
     description: Optional[str] = None
 
+
+# ============= PAYMENT OPTIONS MODELS =============
+
+class PaymentOption(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    membership_type_id: str  # Links to membership variation or base
+    payment_name: str  # e.g., "Upfront Saver", "Monthly Budget Plan"
+    payment_type: str  # "single", "recurring"
+    payment_frequency: str  # "one-time", "monthly", "quarterly", "bi-annual", "annual"
+    installment_amount: float  # Amount per installment
+    number_of_installments: int  # Total number of payments
+    total_amount: float  # Total cost (calculated or set)
+    # Auto-renewal settings
+    auto_renewal_enabled: bool = False
+    auto_renewal_frequency: str = "monthly"  # "monthly", "same_frequency", "none"
+    auto_renewal_price: Optional[float] = None  # Price after auto-renewal (if different)
+    # Description and display
+    description: Optional[str] = None
+    display_order: int = 0  # For sorting payment options
+    is_default: bool = False  # Default selected option
+    is_active: bool = True
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+class PaymentOptionCreate(BaseModel):
+    membership_type_id: str
+    payment_name: str
+    payment_type: str
+    payment_frequency: str
+    installment_amount: float
+    number_of_installments: int
+    auto_renewal_enabled: bool = False
+    auto_renewal_frequency: str = "monthly"
+    auto_renewal_price: Optional[float] = None
+    description: Optional[str] = None
+    display_order: int = 0
+    is_default: bool = False
+
+class PaymentOptionUpdate(BaseModel):
+    payment_name: Optional[str] = None
+    installment_amount: Optional[float] = None
+    number_of_installments: Optional[int] = None
+    auto_renewal_enabled: Optional[bool] = None
+    auto_renewal_frequency: Optional[str] = None
+    auto_renewal_price: Optional[float] = None
+    description: Optional[str] = None
+    display_order: Optional[int] = None
+    is_default: Optional[bool] = None
+    is_active: Optional[bool] = None
+
+# ============= MULTIPLE MEMBERS MODELS =============
+
+class MembershipGroup(BaseModel):
+    """Represents a group of members sharing one membership (e.g., family package)"""
+    model_config = ConfigDict(extra="ignore")
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    membership_type_id: str
+    primary_member_id: str  # The member who owns the membership
+    group_name: Optional[str] = None  # e.g., "Smith Family"
+    max_members: int = 1  # Maximum members allowed in this group
+    current_member_count: int = 1
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+class MembershipGroupCreate(BaseModel):
+    membership_type_id: str
+    primary_member_id: str
+    group_name: Optional[str] = None
+    max_members: int = 1
+
+
 class Consultant(BaseModel):
     model_config = ConfigDict(extra="ignore")
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
