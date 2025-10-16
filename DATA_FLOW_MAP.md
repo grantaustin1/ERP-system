@@ -470,8 +470,15 @@ db.commissions.insert_one({
 
 ---
 
-#### Step 8: Process Debit Order Payment
-**Component:** Payment processing function
+#### Step 8: Process Debit Order Payment with DoBilling API
+**Component:** Payment processing function with DoBilling API integration
+
+**DoBilling API Configuration:**
+- **Host:** `api.beta.dobilling.com`
+- **Protocol:** HTTPS
+- **Authentication:** Basic HTTP Authentication
+- **API Version:** V2
+- **Data Format:** JSON
 
 **Process Flow:**
 
@@ -481,32 +488,214 @@ member = db.members.find_one({"id": invoice.member_id})
 bank_details = {
   "account_number": member.bank_account_number,
   "bank_name": member.bank_name,
-  "branch_code": member.bank_branch_code
+  "branch_code": member.bank_branch_code,
+  "account_holder_name": `${member.first_name} ${member.last_name}`,
+  "email": member.email,
+  "phone": member.phone
 }
 ```
 
-**B. Prepare Debit Order Request**
+**B. Check/Create Payment Method in DoBilling**
+
+**API Call 1: Check if Payment Method Exists**
+```http
+GET https://api.beta.dobilling.com/v2/paymentmethods
+Authorization: Basic {base64_encoded_credentials}
+Content-Type: application/json
+```
+
+**Response:**
 ```json
 {
-  "account_number": "1234567890",
-  "bank_code": "051001",
-  "amount": 500.00,
-  "reference": "INV-uuid-mem-001",
-  "description": "Gym Membership Fee",
-  "member_name": "John Doe"
+  "data": [
+    {
+      "Token": "pm_token_123",
+      "Type": "BankAccount",
+      "BankAccount": {
+        "AccountNumber": "1234567890",
+        "BranchCode": "051001",
+        "DebitMethod": "debit_order",
+        "DebitMethodType": "NAEDO"
+      }
+    }
+  ]
 }
 ```
 
-**C. Submit to Payment Gateway**
+**If Payment Method Doesn't Exist, Create It:**
+
+**API Call 2: Add Bank Account Payment Method**
+```http
+POST https://api.beta.dobilling.com/v2/paymentmethods/bankaccount
+Authorization: Basic {base64_encoded_credentials}
+Content-Type: application/json
+
+{
+  "FirstName": "John",
+  "LastName": "Doe",
+  "Email": "john.doe@email.com",
+  "MobileNumber": "+27123456789",
+  "AccountNumber": "1234567890",
+  "AccountHolder": "John Doe",
+  "BranchCode": "051001",
+  "BankName": "Standard Bank",
+  "AccountType": "Current",
+  "DebitMethod": "debit_order",
+  "DebitMethodType": "NAEDO"
+}
 ```
-If Payment Gateway Connected:
-  - Submit API request to bank
-  - Wait for response
-  
-If Mock Mode:
-  - Simulate 80% success rate
-  - Return simulated response
+
+**Response:**
+```json
+{
+  "Token": "pm_token_456",
+  "isSuccess": true,
+  "ErrorMessage": null
+}
 ```
+
+**Store Payment Method Token:**
+```javascript
+db.members.update_one(
+  {"id": "uuid-member-789"},
+  {"$set": {"payment_method_token": "pm_token_456"}}
+)
+```
+
+**C. Create or Get Today's Batch**
+
+**API Call 3: List Batches**
+```http
+GET https://api.beta.dobilling.com/v2/batches
+Authorization: Basic {base64_encoded_credentials}
+```
+
+**Response:**
+```json
+{
+  "data": [
+    {
+      "BatchToken": "batch_token_2025_10_22",
+      "batchID": 12345,
+      "Description": "Daily Debit Orders - 2025-10-22",
+      "CreatedDate": "2025-10-22T00:00:00Z",
+      "TotalLines": 45,
+      "TotalAmount": 22500.00
+    }
+  ]
+}
+```
+
+**If No Batch for Today, Create New Batch:**
+```javascript
+// Note: Batch creation might be handled through a separate process
+// or automatically when first line is added. Check DoBilling docs.
+current_batch_token = "batch_token_2025_10_22"
+```
+
+**D. Add Invoice to Batch**
+
+**API Call 4: Append Batch Line**
+```http
+POST https://api.beta.dobilling.com/v2/batches/{BatchToken}/lines
+Authorization: Basic {base64_encoded_credentials}
+Content-Type: application/json
+
+{
+  "ExtRef": "uuid-invoice-001",
+  "Amount": 500.00,
+  "Ref": "INV-uuid-mem-001",
+  "Memo": "Gym Membership Fee - Premium Monthly",
+  "PaymentMethodToken": "pm_token_456",
+  "Email": "john.doe@email.com",
+  "MobileNumber": "+27123456789"
+}
+```
+
+**Response:**
+```json
+{
+  "batchLineID": 789,
+  "BatchToken": "batch_token_2025_10_22",
+  "batchID": 12345,
+  "ExtRef": "uuid-invoice-001",
+  "Amount": 500.00,
+  "Ref": "INV-uuid-mem-001",
+  "Memo": "Gym Membership Fee - Premium Monthly",
+  "PaymentMethodToken": "pm_token_456",
+  "isSuccess": true,
+  "ErrorMessage": null
+}
+```
+
+**Store Batch Line Reference:**
+```javascript
+db.invoices.update_one(
+  {"id": "uuid-invoice-001"},
+  {"$set": {
+    "batch_token": "batch_token_2025_10_22",
+    "batch_line_id": 789,
+    "processing_status": "queued"
+  }}
+)
+```
+
+**E. Batch Processing (Scheduled)**
+
+**Note:** Batch processing is typically triggered:
+- Automatically at end of day (e.g., 11:59 PM)
+- Manually via DoBilling dashboard
+- Via API call (if submit endpoint exists)
+
+**During Processing:**
+1. DoBilling submits all batch lines to respective banks
+2. Each line is processed individually
+3. Results are updated in batch line records
+
+**F. Check Batch Line Status (Next Day)**
+
+**API Call 5: Get Batch Line Status**
+```http
+GET https://api.beta.dobilling.com/v2/batches/line?batchLineID=789
+Authorization: Basic {base64_encoded_credentials}
+```
+
+**Response (Success):**
+```json
+{
+  "batchLineID": 789,
+  "BatchToken": "batch_token_2025_10_22",
+  "batchID": 12345,
+  "ExtRef": "uuid-invoice-001",
+  "Amount": 500.00,
+  "Ref": "INV-uuid-mem-001",
+  "PaymentMethodToken": "pm_token_456",
+  "isSuccess": true,
+  "ErrorMessage": null,
+  "ProcessedDate": "2025-10-23T02:30:00Z",
+  "TransactionID": "TXN_BANK_123456"
+}
+```
+
+**Response (Failure):**
+```json
+{
+  "batchLineID": 789,
+  "BatchToken": "batch_token_2025_10_22",
+  "batchID": 12345,
+  "ExtRef": "uuid-invoice-001",
+  "Amount": 500.00,
+  "Ref": "INV-uuid-mem-001",
+  "PaymentMethodToken": "pm_token_456",
+  "isSuccess": false,
+  "ErrorMessage": "Insufficient funds in account",
+  "ProcessedDate": "2025-10-23T02:30:00Z"
+}
+```
+
+**G. Update Internal Records Based on Status**
+
+This leads to either Step 9A (Success) or Step 9B (Failure) below.
 
 ---
 
