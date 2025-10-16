@@ -293,7 +293,6 @@ class ApprovalAction(BaseModel):
     rejection_reason: Optional[str] = None
 
 class MembershipVariationCreate(BaseModel):
-    base_membership_id: str
     variation_type: str  # student, corporate, promo, senior, family
     discount_percentage: float
     description: Optional[str] = None
