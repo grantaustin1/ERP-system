@@ -263,6 +263,66 @@ backend:
         agent: "testing"
         comment: "✅ Membership variation creation working perfectly: All percentage variations (10%, 15%, 20%) create successfully with correct price calculations (base_price * (1 - discount_percentage / 100)). Naming convention follows '{Base Name} - {Variation Label}' format correctly. All properties inherited from base membership properly. Edge cases tested: 0% discount (R500.00), 100% discount (R0.00), duplicate variation types allowed. Variations list API returns all created variations correctly linked to base membership. No 400/422 validation errors encountered."
 
+  - task: "Payment Options CRUD API"
+    implemented: true
+    working: true
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "testing"
+        comment: "✅ Payment Options CRUD fully functional: POST /api/payment-options creates options with correct total_amount calculation (installment_amount * number_of_installments). GET /api/payment-options/{membership_type_id} returns options sorted by display_order. PUT /api/payment-options/{option_id} updates and recalculates totals correctly. DELETE /api/payment-options/{option_id} performs soft delete (is_active=False). Auto-renewal settings (enabled, frequency, price) save and retrieve properly."
+
+  - task: "Multiple Payment Options per Membership"
+    implemented: true
+    working: true
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "testing"
+        comment: "✅ Multiple payment options working perfectly: Created 3 different payment options for single membership (Upfront Saver R5400 one-time, Monthly Budget R500x12=R6000 with auto-renewal, Quarterly Flex R1500x4=R6000). Each option has unique payment_type (single/recurring), payment_frequency (one-time/monthly/quarterly), and auto-renewal configurations. Display ordering and default selection work correctly."
+
+  - task: "Auto-Renewal Configuration"
+    implemented: true
+    working: true
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "testing"
+        comment: "✅ Auto-renewal configuration working correctly: auto_renewal_enabled flag controls renewal behavior. auto_renewal_frequency supports 'monthly', 'same_frequency' options. auto_renewal_price allows different pricing after renewal period. Monthly option tested with auto_renewal_enabled=true, auto_renewal_frequency='monthly', auto_renewal_price=500.00. Quarterly option tested with auto_renewal_frequency='same_frequency' for yearly renewal cycles."
+
+  - task: "Membership Groups for Multiple Members"
+    implemented: true
+    working: true
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "testing"
+        comment: "✅ Membership Groups fully functional: POST /api/membership-groups creates group with primary_member_id and max_members limit. GET /api/membership-groups/{group_id} returns group details with current_member_count. GET /api/membership-groups/{group_id}/members returns all group members with is_primary_member flag. POST /api/membership-groups/{group_id}/add-member adds members until max_members reached, then correctly returns 400 'Group is full' error. DELETE /api/membership-groups/{group_id}/remove-member/{member_id} removes non-primary members and updates count, but correctly prevents primary member removal with 400 'Cannot remove primary member' error."
+
+  - task: "Max Members Enforcement"
+    implemented: true
+    working: true
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "testing"
+        comment: "✅ Max members enforcement working perfectly: Individual membership created with max_members=1. Family membership created with max_members=4. Membership groups respect max_members limit - successfully added 4 members to family group, then correctly rejected 5th member with 'Group is full' error. current_member_count tracks accurately and prevents exceeding max_members limit."
+
 frontend:
   - task: "Automations Page Component"
     implemented: true
