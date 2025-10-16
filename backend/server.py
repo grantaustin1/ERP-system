@@ -98,6 +98,8 @@ class MembershipType(BaseModel):
     base_membership_id: Optional[str] = None  # If this is a variation, links to base
     variation_type: Optional[str] = None  # student, corporate, promo, senior, etc
     discount_percentage: float = 0.0  # Discount applied from base price
+    # Multiple members support
+    max_members: int = 1  # Maximum members allowed per membership (1 = individual, 2+ = group/family)
     # Levy configuration
     levy_enabled: bool = False
     levy_frequency: str = "annual"  # annual, biannual
