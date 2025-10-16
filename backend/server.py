@@ -126,6 +126,7 @@ class MembershipTypeCreate(BaseModel):
     base_membership_id: Optional[str] = None
     variation_type: Optional[str] = None
     discount_percentage: float = 0.0
+    max_members: int = 1
     levy_enabled: bool = False
     levy_frequency: str = "annual"
     levy_timing: str = "anniversary"
