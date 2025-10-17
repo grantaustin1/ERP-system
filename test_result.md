@@ -877,3 +877,27 @@ agent_communication:
       - working: true
         agent: "testing"
         comment: "✅ WhatsApp Integration (Mock Mode) - 100% SUCCESS (29/29 tests passed): All WhatsApp functionality working correctly in mock mode. Integration Status: Mock mode active (is_mocked=true, integrated=false) as expected. Templates: Retrieved 3 mock templates (payment_failed_alert, member_welcome, membership_renewal_reminder) all with APPROVED status. Phone Formatting: All SA number formats convert correctly to E.164 (+27XXXXXXXXX) - tested 0821234567, 27821234567, '082 123 4567', '+27821234567', '082-123-4567' formats. Invalid numbers (123, abc123) handled gracefully. Mock Message Sending: Test endpoint accepts all phone formats and returns mocked responses with proper formatting. Automation Integration: Created 4 WhatsApp automations for different trigger types (payment_failed, member_joined, invoice_overdue, membership_expiring). Template auto-selection logic working (payment_failed→payment_failed_alert, member_joined→member_welcome, etc.). Automation execution test successful in mock mode. All endpoints functional: GET /api/whatsapp/status, GET /api/whatsapp/templates, POST /api/whatsapp/test-message, POST /api/whatsapp/format-phone. **MOCKED** - Ready for production API key configuration."
+
+  - task: "Categorized Trigger Dropdown with Nested Menus"
+    implemented: true
+    working: "NA"
+    file: "/app/frontend/src/pages/Automations.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Updated trigger selection dropdown to display categorized triggers in nested menus using native HTML select with optgroup. Categories include: Bookings & Classes, Management & Staff, Member Points & Gamification, Payment Management, Retention & Engagement, Sales & Marketing, The Member Journey. Each category contains relevant trigger options."
+
+  - task: "Test Mode (Non-Live) Functionality"
+    implemented: true
+    working: "NA"
+    file: "/app/backend/server.py, /app/frontend/src/pages/Automations.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Added test_mode boolean field to Automation model (backend) and form (frontend). When test_mode=true, automation will NOT trigger automatically from live events. Updated trigger_automation() function to exclude test_mode automations from automatic execution. Added Test Mode toggle in automation form with visual badges. Test mode automations can only be tested manually using the test button. This allows users to configure, test, and perfect automations before setting them live."
