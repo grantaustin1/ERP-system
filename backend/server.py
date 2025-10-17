@@ -1680,6 +1680,12 @@ async def get_member_distribution(current_user: User = Depends(get_current_user)
     
     # Filter members with valid geo-location
     geo_members = [m for m in members if m.get("latitude") and m.get("longitude")]
+    
+    return {
+        "total_members": len(members),
+        "geo_located_members": len(geo_members),
+        "members": geo_members
+    }
 
 
 @api_router.get("/payment-report")
