@@ -2198,6 +2198,81 @@ async def trigger_automation(trigger_type: str, trigger_data: dict):
     return results
 
 
+
+
+# ============= RESPOND.IO WHATSAPP INTEGRATION ENDPOINTS =============
+
+@api_router.get("/whatsapp/status")
+async def get_whatsapp_status(current_user: User = Depends(get_current_user)):
+    """Get WhatsApp integration status"""
+    return {
+        "integrated": not respondio_service.is_mocked,
+        "is_mocked": respondio_service.is_mocked,
+        "api_key_configured": bool(respondio_service.api_key),
+        "channel_id_configured": bool(respondio_service.channel_id),
+        "base_url": respondio_service.base_url,
+        "message": "WhatsApp integration is active via respond.io" if not respondio_service.is_mocked 
+                   else "WhatsApp integration is in MOCK mode (set RESPOND_IO_API_KEY in .env to activate)"
+    }
+
+@api_router.get("/whatsapp/templates")
+async def list_whatsapp_templates(current_user: User = Depends(get_current_user)):
+    """List available WhatsApp message templates"""
+    try:
+        templates = await respondio_service.list_message_templates()
+        return {
+            "templates": templates,
+            "count": len(templates),
+            "is_mocked": respondio_service.is_mocked
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to fetch templates: {str(e)}")
+
+@api_router.post("/whatsapp/test-message")
+async def send_test_whatsapp_message(
+    phone: str,
+    template_name: str = "payment_failed_alert",
+    member_name: str = "Test Member",
+    current_user: User = Depends(get_current_user)
+):
+    """Send a test WhatsApp message"""
+    try:
+        # Format the test parameters
+        template_params = [member_name, "500.00", "INV-TEST-001", "2024-12-31"]
+        
+        result = await respondio_service.send_whatsapp_message(
+            contact_phone=phone,
+            template_name=template_name,
+            template_params=template_params,
+            first_name=member_name.split()[0] if " " in member_name else member_name,
+            last_name=member_name.split()[1] if " " in member_name and len(member_name.split()) > 1 else None,
+            email="test@example.com"
+        )
+        
+        return {
+            "success": True,
+            "message": "Test message sent successfully" if not respondio_service.is_mocked 
+                      else "Test message logged (MOCK mode)",
+            "result": result,
+            "formatted_phone": respondio_service.format_phone_number(phone)
+        }
+    except Exception as e:
+        logger.error(f"Test message failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to send test message: {str(e)}")
+
+@api_router.post("/whatsapp/format-phone")
+async def format_phone_number_endpoint(phone: str):
+    """Test phone number formatting (no auth required for testing)"""
+    try:
+        formatted = respondio_service.format_phone_number(phone)
+        return {
+            "original": phone,
+            "formatted": formatted,
+            "valid": len(formatted.replace("+", "")) == 11
+        }
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Invalid phone number: {str(e)}")
+
 # Include the router in the main app
 app.include_router(api_router)
 
