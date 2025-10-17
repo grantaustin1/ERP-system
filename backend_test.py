@@ -2759,7 +2759,610 @@ class TestModeAutomationTester:
         print("\n" + "=" * 60)
 
 
+class PaymentReportEnhancementTester:
+    def __init__(self):
+        self.token = None
+        self.headers = {}
+        self.test_results = []
+        self.created_members = []
+        self.created_invoices = []
+        self.created_payments = []
+        self.created_sources = []
+        
+    def log_result(self, test_name, success, message, details=None):
+        """Log test result"""
+        result = {
+            "test": test_name,
+            "success": success,
+            "message": message,
+            "timestamp": datetime.now().isoformat(),
+            "details": details or {}
+        }
+        self.test_results.append(result)
+        status = "✅ PASS" if success else "❌ FAIL"
+        print(f"{status}: {test_name} - {message}")
+        if details and not success:
+            print(f"   Details: {details}")
+    
+    def authenticate(self):
+        """Authenticate and get token"""
+        try:
+            response = requests.post(f"{API_BASE}/auth/login", json={
+                "email": TEST_EMAIL,
+                "password": TEST_PASSWORD
+            })
+            
+            if response.status_code == 200:
+                data = response.json()
+                self.token = data["access_token"]
+                self.headers = {"Authorization": f"Bearer {self.token}"}
+                self.log_result("Authentication", True, "Successfully authenticated")
+                return True
+            else:
+                self.log_result("Authentication", False, f"Failed to authenticate: {response.status_code}", 
+                              {"response": response.text})
+                return False
+        except Exception as e:
+            self.log_result("Authentication", False, f"Authentication error: {str(e)}")
+            return False
+    
+    def test_payment_sources_crud(self):
+        """Test Payment Source Management API CRUD operations"""
+        print("\n=== Testing Payment Source Management API ===")
+        
+        # Test 1: GET payment sources (should have default sources)
+        try:
+            response = requests.get(f"{API_BASE}/payment-sources", headers=self.headers)
+            if response.status_code == 200:
+                sources = response.json()
+                expected_sources = ["Walk-in", "Online", "Social Media", "Phone-in", "Referral", "Canvassing", "Flyers"]
+                source_names = [s["name"] for s in sources]
+                
+                # Check if default sources exist
+                missing_sources = [s for s in expected_sources if s not in source_names]
+                if not missing_sources:
+                    self.log_result("GET Payment Sources - Default Sources", True, 
+                                  f"All {len(expected_sources)} default payment sources found",
+                                  {"sources": source_names})
+                else:
+                    self.log_result("GET Payment Sources - Default Sources", False, 
+                                  f"Missing default sources: {missing_sources}")
+                
+                # Check sorting by display_order
+                display_orders = [s.get("display_order", 0) for s in sources]
+                is_sorted = display_orders == sorted(display_orders)
+                if is_sorted:
+                    self.log_result("Payment Sources Sorting", True, "Sources sorted by display_order")
+                else:
+                    self.log_result("Payment Sources Sorting", False, f"Sources not sorted: {display_orders}")
+                    
+            else:
+                self.log_result("GET Payment Sources", False, f"Failed to get sources: {response.status_code}",
+                              {"response": response.text})
+        except Exception as e:
+            self.log_result("GET Payment Sources", False, f"Error: {str(e)}")
+        
+        # Test 2: POST create new payment source
+        new_source_data = {
+            "name": "Test Source - WhatsApp",
+            "description": "Test payment source via WhatsApp",
+            "is_active": True,
+            "display_order": 10
+        }
+        
+        try:
+            response = requests.post(f"{API_BASE}/payment-sources", 
+                                   json=new_source_data, headers=self.headers)
+            if response.status_code == 200:
+                created_source = response.json()
+                source_id = created_source["id"]
+                self.created_sources.append(source_id)
+                
+                if (created_source["name"] == new_source_data["name"] and 
+                    created_source["description"] == new_source_data["description"]):
+                    self.log_result("POST Create Payment Source", True, 
+                                  f"Payment source created successfully",
+                                  {"source_id": source_id, "name": created_source["name"]})
+                else:
+                    self.log_result("POST Create Payment Source", False, 
+                                  "Created source data doesn't match input")
+            else:
+                self.log_result("POST Create Payment Source", False, 
+                              f"Failed to create source: {response.status_code}",
+                              {"response": response.text})
+                return None
+        except Exception as e:
+            self.log_result("POST Create Payment Source", False, f"Error: {str(e)}")
+            return None
+        
+        # Test 3: PUT update payment source
+        update_data = {
+            "name": "Test Source - WhatsApp Updated",
+            "description": "Updated description for WhatsApp source",
+            "display_order": 15
+        }
+        
+        try:
+            response = requests.put(f"{API_BASE}/payment-sources/{source_id}", 
+                                  json=update_data, headers=self.headers)
+            if response.status_code == 200:
+                updated_source = response.json()
+                if (updated_source["name"] == update_data["name"] and 
+                    updated_source["description"] == update_data["description"]):
+                    self.log_result("PUT Update Payment Source", True, 
+                                  f"Payment source updated successfully",
+                                  {"updated_name": updated_source["name"]})
+                else:
+                    self.log_result("PUT Update Payment Source", False, 
+                                  "Updated source data doesn't match input")
+            else:
+                self.log_result("PUT Update Payment Source", False, 
+                              f"Failed to update source: {response.status_code}",
+                              {"response": response.text})
+        except Exception as e:
+            self.log_result("PUT Update Payment Source", False, f"Error: {str(e)}")
+        
+        # Test 4: DELETE soft delete payment source
+        try:
+            response = requests.delete(f"{API_BASE}/payment-sources/{source_id}", 
+                                     headers=self.headers)
+            if response.status_code == 200:
+                self.log_result("DELETE Payment Source", True, 
+                              "Payment source soft deleted successfully")
+                
+                # Verify it's no longer in active list
+                get_response = requests.get(f"{API_BASE}/payment-sources", headers=self.headers)
+                if get_response.status_code == 200:
+                    active_sources = get_response.json()
+                    active_ids = [s["id"] for s in active_sources]
+                    if source_id not in active_ids:
+                        self.log_result("Verify Soft Delete", True, 
+                                      "Deleted source no longer appears in active list")
+                    else:
+                        self.log_result("Verify Soft Delete", False, 
+                                      "Deleted source still appears in active list")
+            else:
+                self.log_result("DELETE Payment Source", False, 
+                              f"Failed to delete source: {response.status_code}",
+                              {"response": response.text})
+        except Exception as e:
+            self.log_result("DELETE Payment Source", False, f"Error: {str(e)}")
+        
+        return source_id
+    
+    def test_member_model_enhancements(self):
+        """Test Member Model Enhancements with new fields"""
+        print("\n=== Testing Member Model Enhancements ===")
+        
+        # Get membership type for member creation
+        try:
+            response = requests.get(f"{API_BASE}/membership-types", headers=self.headers)
+            if response.status_code != 200:
+                self.log_result("Get Membership Types", False, "Failed to get membership types")
+                return None
+            
+            membership_types = response.json()
+            if not membership_types:
+                self.log_result("Get Membership Types", False, "No membership types found")
+                return None
+            
+            membership_type_id = membership_types[0]["id"]
+            
+            # Create member with new fields
+            member_data = {
+                "first_name": "Sarah",
+                "last_name": "Johnson",
+                "email": f"sarah.johnson.test.{int(time.time())}@example.com",
+                "phone": "+27823456789",
+                "membership_type_id": membership_type_id,
+                "source": "Online",  # New field
+                "referred_by": "John Smith",  # New field
+                "contract_start_date": "2024-01-01T00:00:00Z",  # New field
+                "contract_end_date": "2024-12-31T23:59:59Z"  # New field
+            }
+            
+            response = requests.post(f"{API_BASE}/members", json=member_data, headers=self.headers)
+            if response.status_code == 200:
+                member = response.json()
+                member_id = member["id"]
+                self.created_members.append(member_id)
+                
+                # Verify new fields are stored
+                if (member.get("source") == "Online" and 
+                    member.get("referred_by") == "John Smith" and
+                    member.get("contract_start_date") and
+                    member.get("contract_end_date")):
+                    self.log_result("Create Member with New Fields", True, 
+                                  f"Member created with new fields successfully",
+                                  {"member_id": member_id, "source": member.get("source"), 
+                                   "referred_by": member.get("referred_by")})
+                else:
+                    self.log_result("Create Member with New Fields", False, 
+                                  "New fields not stored correctly",
+                                  {"source": member.get("source"), "referred_by": member.get("referred_by")})
+                
+                # Test GET member to verify fields are retrieved
+                get_response = requests.get(f"{API_BASE}/members/{member_id}", headers=self.headers)
+                if get_response.status_code == 200:
+                    retrieved_member = get_response.json()
+                    if (retrieved_member.get("source") == "Online" and 
+                        retrieved_member.get("referred_by") == "John Smith"):
+                        self.log_result("GET Member New Fields", True, 
+                                      "New fields retrieved correctly from database")
+                    else:
+                        self.log_result("GET Member New Fields", False, 
+                                      "New fields not retrieved correctly")
+                
+                # Test GET all members includes new fields
+                all_response = requests.get(f"{API_BASE}/members", headers=self.headers)
+                if all_response.status_code == 200:
+                    all_members = all_response.json()
+                    test_member = next((m for m in all_members if m["id"] == member_id), None)
+                    if test_member and test_member.get("source") == "Online":
+                        self.log_result("GET All Members New Fields", True, 
+                                      "New fields included in members list")
+                    else:
+                        self.log_result("GET All Members New Fields", False, 
+                                      "New fields not included in members list")
+                
+                return member_id
+            else:
+                self.log_result("Create Member with New Fields", False, 
+                              f"Failed to create member: {response.status_code}",
+                              {"response": response.text})
+                return None
+                
+        except Exception as e:
+            self.log_result("Member Model Enhancement Test", False, f"Error: {str(e)}")
+            return None
+    
+    def test_invoice_model_enhancements(self, member_id):
+        """Test Invoice Model Enhancements with new fields"""
+        print("\n=== Testing Invoice Model Enhancements ===")
+        
+        if not member_id:
+            self.log_result("Invoice Enhancement Test", False, "No member ID provided")
+            return None
+        
+        # Create invoice with new fields
+        invoice_data = {
+            "member_id": member_id,
+            "amount": 500.00,
+            "description": "Monthly membership fee - Test",
+            "due_date": (datetime.now(timezone.utc) + timedelta(days=7)).isoformat()
+        }
+        
+        try:
+            response = requests.post(f"{API_BASE}/invoices", json=invoice_data, headers=self.headers)
+            if response.status_code == 200:
+                invoice = response.json()
+                invoice_id = invoice["id"]
+                self.created_invoices.append(invoice_id)
+                
+                self.log_result("Create Invoice", True, 
+                              f"Invoice created successfully",
+                              {"invoice_id": invoice_id, "amount": invoice["amount"]})
+                
+                return invoice_id
+            else:
+                self.log_result("Create Invoice", False, 
+                              f"Failed to create invoice: {response.status_code}",
+                              {"response": response.text})
+                return None
+                
+        except Exception as e:
+            self.log_result("Invoice Model Enhancement Test", False, f"Error: {str(e)}")
+            return None
+    
+    def test_automatic_debt_calculation(self, member_id, invoice_id):
+        """Test Automatic Debt Calculation functionality"""
+        print("\n=== Testing Automatic Debt Calculation ===")
+        
+        if not member_id or not invoice_id:
+            self.log_result("Debt Calculation Test", False, "Missing member_id or invoice_id")
+            return
+        
+        try:
+            # Step 1: Check initial member debt (should be 0)
+            member_response = requests.get(f"{API_BASE}/members/{member_id}", headers=self.headers)
+            if member_response.status_code == 200:
+                member = member_response.json()
+                initial_debt = member.get("debt_amount", 0)
+                initial_debtor = member.get("is_debtor", False)
+                
+                self.log_result("Initial Debt Check", True, 
+                              f"Initial debt: R{initial_debt}, is_debtor: {initial_debtor}")
+            
+            # Step 2: Mark invoice as failed
+            response = requests.post(f"{API_BASE}/invoices/{invoice_id}/mark-failed", 
+                                   json={"failure_reason": "Debit order failed - Test"}, 
+                                   headers=self.headers)
+            
+            if response.status_code == 200:
+                self.log_result("Mark Invoice Failed", True, "Invoice marked as failed successfully")
+                
+                # Wait a moment for debt calculation
+                time.sleep(1)
+                
+                # Check member debt after failed invoice
+                member_response = requests.get(f"{API_BASE}/members/{member_id}", headers=self.headers)
+                if member_response.status_code == 200:
+                    member = member_response.json()
+                    debt_after_failed = member.get("debt_amount", 0)
+                    is_debtor_after_failed = member.get("is_debtor", False)
+                    
+                    if debt_after_failed > 0 and is_debtor_after_failed:
+                        self.log_result("Debt Calculation After Failed", True, 
+                                      f"Debt calculated correctly: R{debt_after_failed}, is_debtor: {is_debtor_after_failed}")
+                    else:
+                        self.log_result("Debt Calculation After Failed", False, 
+                                      f"Debt not calculated: R{debt_after_failed}, is_debtor: {is_debtor_after_failed}")
+            else:
+                self.log_result("Mark Invoice Failed", False, 
+                              f"Failed to mark invoice as failed: {response.status_code}")
+                return
+            
+            # Step 3: Create another invoice and mark as overdue
+            invoice_data2 = {
+                "member_id": member_id,
+                "amount": 300.00,
+                "description": "Additional fee - Test",
+                "due_date": (datetime.now(timezone.utc) + timedelta(days=5)).isoformat()
+            }
+            
+            response2 = requests.post(f"{API_BASE}/invoices", json=invoice_data2, headers=self.headers)
+            if response2.status_code == 200:
+                invoice2 = response2.json()
+                invoice2_id = invoice2["id"]
+                self.created_invoices.append(invoice2_id)
+                
+                # Mark second invoice as overdue
+                overdue_response = requests.post(f"{API_BASE}/invoices/{invoice2_id}/mark-overdue", 
+                                               headers=self.headers)
+                
+                if overdue_response.status_code == 200:
+                    self.log_result("Mark Invoice Overdue", True, "Second invoice marked as overdue")
+                    
+                    # Wait for debt recalculation
+                    time.sleep(1)
+                    
+                    # Check total debt (should include both invoices)
+                    member_response = requests.get(f"{API_BASE}/members/{member_id}", headers=self.headers)
+                    if member_response.status_code == 200:
+                        member = member_response.json()
+                        total_debt = member.get("debt_amount", 0)
+                        expected_debt = 500.00 + 300.00  # Both invoices
+                        
+                        if abs(total_debt - expected_debt) < 0.01:
+                            self.log_result("Total Debt Calculation", True, 
+                                          f"Total debt calculated correctly: R{total_debt}")
+                        else:
+                            self.log_result("Total Debt Calculation", False, 
+                                          f"Total debt incorrect: R{total_debt} (expected R{expected_debt})")
+            
+            # Step 4: Create payment to reduce debt
+            payment_data = {
+                "invoice_id": invoice_id,
+                "member_id": member_id,
+                "amount": 500.00,
+                "payment_method": "card",
+                "reference": "TEST-PAYMENT-001"
+            }
+            
+            payment_response = requests.post(f"{API_BASE}/payments", json=payment_data, headers=self.headers)
+            if payment_response.status_code == 200:
+                payment = payment_response.json()
+                payment_id = payment["id"]
+                self.created_payments.append(payment_id)
+                
+                self.log_result("Create Payment", True, 
+                              f"Payment created successfully: R{payment['amount']}")
+                
+                # Wait for debt recalculation
+                time.sleep(1)
+                
+                # Check debt after payment (should be reduced)
+                member_response = requests.get(f"{API_BASE}/members/{member_id}", headers=self.headers)
+                if member_response.status_code == 200:
+                    member = member_response.json()
+                    debt_after_payment = member.get("debt_amount", 0)
+                    expected_remaining_debt = 300.00  # Only second invoice remains
+                    
+                    if abs(debt_after_payment - expected_remaining_debt) < 0.01:
+                        self.log_result("Debt Reduction After Payment", True, 
+                                      f"Debt reduced correctly: R{debt_after_payment}")
+                    else:
+                        self.log_result("Debt Reduction After Payment", False, 
+                                      f"Debt not reduced correctly: R{debt_after_payment} (expected R{expected_remaining_debt})")
+            else:
+                self.log_result("Create Payment", False, 
+                              f"Failed to create payment: {payment_response.status_code}")
+                
+        except Exception as e:
+            self.log_result("Automatic Debt Calculation Test", False, f"Error: {str(e)}")
+    
+    def test_payment_report_api(self, member_id):
+        """Test Payment Report API with various filters"""
+        print("\n=== Testing Payment Report API ===")
+        
+        try:
+            # Test 1: GET payment report without filters
+            response = requests.get(f"{API_BASE}/payment-report", headers=self.headers)
+            if response.status_code == 200:
+                report_data = response.json()
+                records = report_data.get("records", [])
+                total_records = report_data.get("total_records", 0)
+                
+                self.log_result("GET Payment Report - No Filters", True, 
+                              f"Retrieved {len(records)} records, total: {total_records}")
+                
+                # Verify response structure
+                if records:
+                    first_record = records[0]
+                    expected_fields = [
+                        "member_id", "member_name", "membership_number", "email", "phone",
+                        "membership_type", "membership_type_id", "membership_status",
+                        "invoice_id", "invoice_number", "amount", "status", "payment_method",
+                        "payment_gateway", "status_message", "debt", "is_debtor",
+                        "due_date", "paid_date", "start_date", "end_renewal_date",
+                        "contract_start_date", "contract_end_date", "source", "referred_by",
+                        "sales_consultant_id", "sales_consultant_name"
+                    ]
+                    
+                    missing_fields = [field for field in expected_fields if field not in first_record]
+                    if not missing_fields:
+                        self.log_result("Payment Report Structure", True, 
+                                      "All expected fields present in report")
+                    else:
+                        self.log_result("Payment Report Structure", False, 
+                                      f"Missing fields: {missing_fields}")
+            else:
+                self.log_result("GET Payment Report - No Filters", False, 
+                              f"Failed to get report: {response.status_code}")
+                return
+            
+            # Test 2: Filter by member_id
+            if member_id:
+                response = requests.get(f"{API_BASE}/payment-report?member_id={member_id}", 
+                                      headers=self.headers)
+                if response.status_code == 200:
+                    filtered_data = response.json()
+                    filtered_records = filtered_data.get("records", [])
+                    
+                    # All records should be for the specified member
+                    member_ids = [r.get("member_id") for r in filtered_records]
+                    if all(mid == member_id for mid in member_ids):
+                        self.log_result("Payment Report - Member Filter", True, 
+                                      f"Member filter working: {len(filtered_records)} records for member")
+                    else:
+                        self.log_result("Payment Report - Member Filter", False, 
+                                      "Member filter not working correctly")
+                else:
+                    self.log_result("Payment Report - Member Filter", False, 
+                                  f"Failed to filter by member: {response.status_code}")
+            
+            # Test 3: Filter by status
+            response = requests.get(f"{API_BASE}/payment-report?status=failed", headers=self.headers)
+            if response.status_code == 200:
+                status_data = response.json()
+                status_records = status_data.get("records", [])
+                
+                if status_records:
+                    statuses = [r.get("status") for r in status_records]
+                    if all(status == "failed" for status in statuses):
+                        self.log_result("Payment Report - Status Filter", True, 
+                                      f"Status filter working: {len(status_records)} failed records")
+                    else:
+                        self.log_result("Payment Report - Status Filter", False, 
+                                      f"Status filter not working: found statuses {set(statuses)}")
+                else:
+                    self.log_result("Payment Report - Status Filter", True, 
+                                  "Status filter working (no failed records found)")
+            else:
+                self.log_result("Payment Report - Status Filter", False, 
+                              f"Failed to filter by status: {response.status_code}")
+            
+            # Test 4: Filter by source
+            response = requests.get(f"{API_BASE}/payment-report?source=Online", headers=self.headers)
+            if response.status_code == 200:
+                source_data = response.json()
+                source_records = source_data.get("records", [])
+                
+                if source_records:
+                    sources = [r.get("source") for r in source_records]
+                    if all(source == "Online" for source in sources):
+                        self.log_result("Payment Report - Source Filter", True, 
+                                      f"Source filter working: {len(source_records)} Online records")
+                    else:
+                        self.log_result("Payment Report - Source Filter", False, 
+                                      f"Source filter not working: found sources {set(sources)}")
+                else:
+                    self.log_result("Payment Report - Source Filter", True, 
+                                  "Source filter working (no Online records found)")
+            else:
+                self.log_result("Payment Report - Source Filter", False, 
+                              f"Failed to filter by source: {response.status_code}")
+            
+            # Test 5: Filter by date range
+            start_date = (datetime.now(timezone.utc) - timedelta(days=30)).isoformat()
+            end_date = datetime.now(timezone.utc).isoformat()
+            
+            response = requests.get(f"{API_BASE}/payment-report?start_date={start_date}&end_date={end_date}", 
+                                  headers=self.headers)
+            if response.status_code == 200:
+                date_data = response.json()
+                date_records = date_data.get("records", [])
+                
+                self.log_result("Payment Report - Date Range Filter", True, 
+                              f"Date range filter working: {len(date_records)} records in last 30 days")
+            else:
+                self.log_result("Payment Report - Date Range Filter", False, 
+                              f"Failed to filter by date range: {response.status_code}")
+            
+            # Test 6: Multiple filters
+            multi_filter_url = f"{API_BASE}/payment-report?status=pending&source=Online"
+            response = requests.get(multi_filter_url, headers=self.headers)
+            if response.status_code == 200:
+                multi_data = response.json()
+                multi_records = multi_data.get("records", [])
+                
+                self.log_result("Payment Report - Multiple Filters", True, 
+                              f"Multiple filters working: {len(multi_records)} records")
+            else:
+                self.log_result("Payment Report - Multiple Filters", False, 
+                              f"Failed with multiple filters: {response.status_code}")
+                
+        except Exception as e:
+            self.log_result("Payment Report API Test", False, f"Error: {str(e)}")
+    
+    def run_payment_report_enhancement_tests(self):
+        """Run all payment report enhancement tests"""
+        print("🚀 Starting Payment Report Enhancement Backend Tests")
+        print(f"Testing against: {API_BASE}")
+        print("=" * 60)
+        
+        # Authenticate first
+        if not self.authenticate():
+            print("❌ Authentication failed. Cannot proceed with tests.")
+            return
+        
+        # Run all test suites
+        self.test_payment_sources_crud()
+        member_id = self.test_member_model_enhancements()
+        invoice_id = self.test_invoice_model_enhancements(member_id)
+        self.test_automatic_debt_calculation(member_id, invoice_id)
+        self.test_payment_report_api(member_id)
+        
+        # Print summary
+        self.print_summary()
+    
+    def print_summary(self):
+        """Print test summary"""
+        print("\n" + "=" * 60)
+        print("🏁 PAYMENT REPORT ENHANCEMENT TEST SUMMARY")
+        print("=" * 60)
+        
+        total_tests = len(self.test_results)
+        passed_tests = len([r for r in self.test_results if r["success"]])
+        failed_tests = total_tests - passed_tests
+        
+        print(f"Total Tests: {total_tests}")
+        print(f"✅ Passed: {passed_tests}")
+        print(f"❌ Failed: {failed_tests}")
+        print(f"Success Rate: {(passed_tests/total_tests*100):.1f}%")
+        
+        if failed_tests > 0:
+            print("\n❌ FAILED TESTS:")
+            for result in self.test_results:
+                if not result["success"]:
+                    print(f"  - {result['test']}: {result['message']}")
+        
+        print("\n" + "=" * 60)
+
+
 if __name__ == "__main__":
-    # Run test mode automation tests as requested
-    tester = TestModeAutomationTester()
-    tester.run_test_mode_tests()
+    # Run payment report enhancement tests (NEW FEATURES)
+    print("🎯 TESTING NEW PAYMENT REPORT ENHANCEMENT FEATURES")
+    print("=" * 80)
+    payment_report_tester = PaymentReportEnhancementTester()
+    payment_report_tester.run_payment_report_enhancement_tests()
