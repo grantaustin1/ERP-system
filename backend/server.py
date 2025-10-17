@@ -1048,6 +1048,31 @@ async def delete_payment_source(source_id: str, current_user: User = Depends(get
     return {"message": "Payment source deleted successfully"}
 
 
+async def calculate_member_debt(member_id: str):
+    """Calculate total debt for a member based on overdue/failed invoices"""
+    # Get all overdue or failed invoices for the member
+    invoices = await db.invoices.find({
+        "member_id": member_id,
+        "status": {"$in": ["overdue", "failed"]},
+        "paid_date": None
+    }, {"_id": 0}).to_list(100)
+    
+    # Calculate total debt
+    total_debt = sum(invoice.get("amount", 0) for invoice in invoices)
+    
+    # Update member's debt amount and debtor status
+    await db.members.update_one(
+        {"id": member_id},
+        {"$set": {
+            "debt_amount": total_debt,
+            "is_debtor": total_debt > 0
+        }}
+    )
+    
+    return total_debt
+
+
+
 async def calculate_commission(member_id: str, consultant_id: str, membership_price: float, membership_type_name: str):
     """Calculate and create commission for a sale"""
     # Get consultant
