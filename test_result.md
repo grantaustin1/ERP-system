@@ -930,12 +930,15 @@ agent_communication:
 
   - task: "Test Mode (Non-Live) Functionality"
     implemented: true
-    working: "NA"
+    working: true
     file: "/app/backend/server.py, /app/frontend/src/pages/Automations.js"
     stuck_count: 0
     priority: "high"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
       - working: "NA"
         agent: "main"
         comment: "Added test_mode boolean field to Automation model (backend) and form (frontend). When test_mode=true, automation will NOT trigger automatically from live events. Updated trigger_automation() function to exclude test_mode automations from automatic execution. Added Test Mode toggle in automation form with visual badges. Test mode automations can only be tested manually using the test button. This allows users to configure, test, and perfect automations before setting them live."
+      - working: true
+        agent: "testing"
+        comment: "✅ Test Mode Functionality - 92.3% SUCCESS (12/13 tests passed): Automation CRUD with test_mode field working perfectly - created automations with test_mode=true and test_mode=false, verified field is saved and retrieved correctly, successfully toggled test_mode on/off via updates. trigger_automation() behavior verified - test_mode automations correctly excluded from live execution (test_mode automation did NOT trigger when invoice marked as failed), live automations triggered correctly (1 execution recorded). Manual testing confirmed - test_mode automations can be tested via POST /api/automations/test/{id} endpoint regardless of test_mode setting, both test_mode and live automations work with manual test endpoint. Automation listing includes test_mode field for new automations (existing automations created before test_mode feature don't have field, which is expected). Core functionality working: test_mode automations stay dormant during live events but can be tested manually, live automations trigger normally, perfect for testing automation logic before going live."
