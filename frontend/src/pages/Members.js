@@ -15,6 +15,7 @@ import { toast } from 'sonner';
 export default function Members() {
   const [members, setMembers] = useState([]);
   const [membershipTypes, setMembershipTypes] = useState([]);
+  const [paymentOptions, setPaymentOptions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [qrDialogOpen, setQrDialogOpen] = useState(false);
@@ -27,6 +28,7 @@ export default function Members() {
     home_phone: '',
     work_phone: '',
     membership_type_id: '',
+    selected_payment_option_id: '',
     address: '',
     bank_account_number: '',
     bank_name: '',
