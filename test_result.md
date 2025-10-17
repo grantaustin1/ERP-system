@@ -539,13 +539,16 @@ frontend:
 metadata:
   created_by: "main_agent"
   version: "1.0"
-  test_sequence: 2
-  run_ui: true
+  test_sequence: 3
+  run_ui: false
 
 test_plan:
   current_focus:
-    - "Categorized Trigger Dropdown with Nested Menus"
-    - "Test Mode (Non-Live) Functionality"
+    - "Payment Source Management API"
+    - "Member Model Enhancement - Source & Debt Tracking"
+    - "Invoice Model Enhancement - Payment Gateway & Status"
+    - "Automatic Debt Calculation"
+    - "Payment Report API"
   stuck_tasks: []
   test_all: false
   test_priority: "high_first"
