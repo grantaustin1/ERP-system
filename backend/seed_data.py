@@ -157,7 +157,7 @@ async def seed_data():
             "display_order": 7,
             "created_at": datetime.now(timezone.utc).isoformat()
         }
-    ]
+        ]
     
         # Insert payment sources
         await db.payment_sources.insert_many(payment_sources)
