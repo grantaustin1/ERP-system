@@ -1818,14 +1818,6 @@ async def get_payment_report(
         "data": report_data
     }
 
-
-    
-    return {
-        "total_members": len(members),
-        "geo_located_members": len(geo_members),
-        "members": geo_members
-    }
-
 @api_router.post("/members/{member_id}/geocode")
 async def geocode_member_address(member_id: str, current_user: User = Depends(get_current_user)):
     """Manually trigger geocoding for a member's address"""
