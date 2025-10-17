@@ -292,7 +292,8 @@ export default function Automations() {
       trigger_type: automation.trigger_type,
       conditions: automation.conditions || {},
       actions: automation.actions || [],
-      enabled: automation.enabled
+      enabled: automation.enabled,
+      test_mode: automation.test_mode || false
     });
     
     // Convert conditions object to array for UI
