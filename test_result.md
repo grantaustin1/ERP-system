@@ -104,14 +104,17 @@
 
 
 user_problem_statement: |
-  Complete the Automation and Trigger Engine for the ERP360 gym management application.
-  This feature enables "If this, then do that" workflows to automate tasks like:
-  - Send SMS/WhatsApp/Email when payment fails
-  - Send welcome messages when members join
-  - Create follow-up tasks for staff
-  - Update member status automatically
-  - Handle invoice overdue notifications
-
+  Enhanced payment report system for the ERP360 gym management application.
+  This phase adds comprehensive payment tracking and source management features:
+  - Payment source management (Walk-in, Online, Social Media, Phone-in, Referral, Canvassing, Flyers)
+  - Source tracking for member acquisition
+  - Referral tracking
+  - Automatic debt calculation based on overdue/failed payments
+  - Payment gateway tracking
+  - Contract date tracking
+  - Enhanced payment report API with filtering capabilities
+  - Future: Dashboard analytics for payment duration metrics
+  
 backend:
   - task: "Automation CRUD API Endpoints"
     implemented: true
