@@ -17,6 +17,7 @@ import jwt
 from passlib.context import CryptContext
 from geopy.geocoders import Nominatim
 from geopy.exc import GeocoderTimedOut, GeocoderServiceError
+from services.respondio_service import RespondIOService
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
@@ -25,6 +26,9 @@ load_dotenv(ROOT_DIR / '.env')
 mongo_url = os.environ['MONGO_URL']
 client = AsyncIOMotorClient(mongo_url)
 db = client[os.environ['DB_NAME']]
+
+# Initialize respond.io service
+respondio_service = RespondIOService()
 
 # Create the main app without a prefix
 app = FastAPI()
