@@ -20,12 +20,9 @@ async def seed_data():
     
     # Check if membership types already exist
     existing_types = await db.membership_types.count_documents({})
-    if existing_types > 0:
-        print(f"Found {existing_types} existing membership types. Skipping seed.")
-        return
-    
-    # Create default membership types
-    membership_types = [
+    if existing_types == 0:
+        # Create default membership types
+        membership_types = [
         {
             "id": str(uuid.uuid4()),
             "name": "Basic Monthly",
