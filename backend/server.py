@@ -157,9 +157,13 @@ class Member(BaseModel):
     qr_code: str = ""
     photo_url: Optional[str] = None
     is_debtor: bool = False
+    debt_amount: float = 0.0  # Calculated debt amount
     # Sales consultant
     sales_consultant_id: Optional[str] = None
     sales_consultant_name: Optional[str] = None
+    # Source and referral tracking
+    source: Optional[str] = None  # Walk-in, Online, Social Media, Phone-in, Referral, Canvassing, Flyers
+    referred_by: Optional[str] = None  # Name or ID of referrer
     # Membership group (for family/corporate packages)
     membership_group_id: Optional[str] = None
     is_primary_member: bool = True  # True if primary payer
@@ -177,6 +181,9 @@ class Member(BaseModel):
     # Identification
     id_number: Optional[str] = None  # Identity or Passport number
     id_type: Optional[str] = None  # "id", "passport"
+    # Contract dates
+    contract_start_date: Optional[datetime] = None
+    contract_end_date: Optional[datetime] = None
     # Other
     emergency_contact: Optional[str] = None
     notes: Optional[str] = None
