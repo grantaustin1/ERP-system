@@ -1961,7 +1961,7 @@ class WhatsAppIntegrationTester:
         
         for i, test_case in enumerate(test_cases):
             try:
-                response = requests.post(f"{API_BASE}/whatsapp/test-message", json={
+                response = requests.post(f"{API_BASE}/whatsapp/test-message", params={
                     "phone": test_case["phone"],
                     "template_name": test_case["template"],
                     "member_name": test_case["member"]
