@@ -960,6 +960,94 @@ async def remove_member_from_group(
     
     return {"message": "Member removed from group successfully"}
 
+
+# ============= PAYMENT SOURCES ENDPOINTS =============
+
+@api_router.get("/payment-sources")
+async def get_payment_sources(current_user: User = Depends(get_current_user)):
+    """Get all payment sources sorted by display order"""
+    sources = await db.payment_sources.find(
+        {"is_active": True},
+        {"_id": 0}
+    ).sort("display_order", 1).to_list(100)
+    
+    # Parse datetime fields
+    for source in sources:
+        if isinstance(source.get("created_at"), str):
+            source["created_at"] = datetime.fromisoformat(source["created_at"])
+        if isinstance(source.get("updated_at"), str):
+            source["updated_at"] = datetime.fromisoformat(source["updated_at"])
+    
+    return sources
+
+@api_router.post("/payment-sources", response_model=PaymentSource)
+async def create_payment_source(data: PaymentSourceCreate, current_user: User = Depends(get_current_user)):
+    """Create a new payment source"""
+    # Check if payment source with this name already exists
+    existing = await db.payment_sources.find_one({"name": data.name})
+    if existing:
+        raise HTTPException(status_code=400, detail="Payment source with this name already exists")
+    
+    source = PaymentSource(**data.dict())
+    
+    source_dict = source.dict()
+    source_dict["created_at"] = source_dict["created_at"].isoformat()
+    if source_dict.get("updated_at"):
+        source_dict["updated_at"] = source_dict["updated_at"].isoformat()
+    
+    await db.payment_sources.insert_one(source_dict)
+    
+    return source
+
+@api_router.put("/payment-sources/{source_id}", response_model=PaymentSource)
+async def update_payment_source(
+    source_id: str,
+    data: PaymentSourceUpdate,
+    current_user: User = Depends(get_current_user)
+):
+    """Update a payment source"""
+    # Get existing source
+    existing = await db.payment_sources.find_one({"id": source_id})
+    if not existing:
+        raise HTTPException(status_code=404, detail="Payment source not found")
+    
+    # Update fields
+    update_data = {k: v for k, v in data.dict().items() if v is not None}
+    update_data["updated_at"] = datetime.now(timezone.utc).isoformat()
+    
+    await db.payment_sources.update_one(
+        {"id": source_id},
+        {"$set": update_data}
+    )
+    
+    # Get updated source
+    updated = await db.payment_sources.find_one({"id": source_id}, {"_id": 0})
+    
+    # Parse datetime fields
+    if isinstance(updated.get("created_at"), str):
+        updated["created_at"] = datetime.fromisoformat(updated["created_at"])
+    if isinstance(updated.get("updated_at"), str):
+        updated["updated_at"] = datetime.fromisoformat(updated["updated_at"])
+    
+    return PaymentSource(**updated)
+
+@api_router.delete("/payment-sources/{source_id}")
+async def delete_payment_source(source_id: str, current_user: User = Depends(get_current_user)):
+    """Delete a payment source (soft delete by setting is_active to False)"""
+    result = await db.payment_sources.update_one(
+        {"id": source_id},
+        {"$set": {
+            "is_active": False,
+            "updated_at": datetime.now(timezone.utc).isoformat()
+        }}
+    )
+    
+    if result.modified_count == 0:
+        raise HTTPException(status_code=404, detail="Payment source not found")
+    
+    return {"message": "Payment source deleted successfully"}
+
+
 async def calculate_commission(member_id: str, consultant_id: str, membership_price: float, membership_type_name: str):
     """Calculate and create commission for a sale"""
     # Get consultant
