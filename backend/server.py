@@ -197,6 +197,8 @@ class MemberCreate(BaseModel):
     work_phone: Optional[str] = None
     membership_type_id: str
     sales_consultant_id: Optional[str] = None
+    source: Optional[str] = None  # Walk-in, Online, Social Media, Phone-in, Referral, Canvassing, Flyers
+    referred_by: Optional[str] = None
     address: Optional[str] = None
     bank_account_number: Optional[str] = None
     bank_name: Optional[str] = None
@@ -204,6 +206,8 @@ class MemberCreate(BaseModel):
     account_holder_name: Optional[str] = None
     id_number: Optional[str] = None
     id_type: Optional[str] = None
+    contract_start_date: Optional[datetime] = None
+    contract_end_date: Optional[str] = None
     emergency_contact: Optional[str] = None
     notes: Optional[str] = None
 
