@@ -90,11 +90,16 @@ async def seed_data():
         }
     ]
     
-    # Insert membership types
-    await db.membership_types.insert_many(membership_types)
-    print(f"✅ Created {len(membership_types)} membership types")
+        # Insert membership types
+        await db.membership_types.insert_many(membership_types)
+        print(f"✅ Created {len(membership_types)} membership types")
+    else:
+        print(f"Found {existing_types} existing membership types. Skipping membership types seed.")
     
-    # Create default payment sources
+    # Check if payment sources already exist
+    existing_sources = await db.payment_sources.count_documents({})
+    if existing_sources == 0:
+        # Create default payment sources
     payment_sources = [
         {
             "id": str(uuid.uuid4()),
