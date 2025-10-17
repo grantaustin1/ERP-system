@@ -1680,6 +1680,139 @@ async def get_member_distribution(current_user: User = Depends(get_current_user)
     
     # Filter members with valid geo-location
     geo_members = [m for m in members if m.get("latitude") and m.get("longitude")]
+
+
+@api_router.get("/payment-report")
+async def get_payment_report(
+    member_id: Optional[str] = None,
+    status: Optional[str] = None,
+    payment_gateway: Optional[str] = None,
+    source: Optional[str] = None,
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Get comprehensive payment report with member details, invoices, and analytics
+    Supports filtering by member, status, payment gateway, source, and date range
+    """
+    # Build query for invoices
+    invoice_query = {}
+    if member_id:
+        invoice_query["member_id"] = member_id
+    if status:
+        invoice_query["status"] = status
+    if payment_gateway:
+        invoice_query["payment_gateway"] = payment_gateway
+    if start_date:
+        invoice_query["created_at"] = {"$gte": start_date}
+    if end_date:
+        if "created_at" in invoice_query:
+            invoice_query["created_at"]["$lte"] = end_date
+        else:
+            invoice_query["created_at"] = {"$lte": end_date}
+    
+    # Get invoices
+    invoices = await db.invoices.find(invoice_query, {"_id": 0}).sort("created_at", -1).to_list(10000)
+    
+    # Get all unique member IDs
+    member_ids = list(set(inv["member_id"] for inv in invoices))
+    
+    # Get member details
+    members_query = {"id": {"$in": member_ids}}
+    if source:
+        members_query["source"] = source
+    
+    members = await db.members.find(members_query, {"_id": 0}).to_list(10000)
+    members_dict = {m["id"]: m for m in members}
+    
+    # Get membership types
+    membership_types = await db.membership_types.find({}, {"_id": 0}).to_list(1000)
+    membership_dict = {mt["id"]: mt for mt in membership_types}
+    
+    # Build comprehensive report
+    report_data = []
+    for invoice in invoices:
+        member = members_dict.get(invoice["member_id"])
+        if not member:
+            continue
+        
+        membership_type = membership_dict.get(member.get("membership_type_id"))
+        
+        # Parse dates
+        due_date = invoice.get("due_date")
+        if isinstance(due_date, str):
+            due_date = datetime.fromisoformat(due_date)
+        
+        paid_date = invoice.get("paid_date")
+        if paid_date and isinstance(paid_date, str):
+            paid_date = datetime.fromisoformat(paid_date)
+        
+        join_date = member.get("join_date")
+        if isinstance(join_date, str):
+            join_date = datetime.fromisoformat(join_date)
+        
+        expiry_date = member.get("expiry_date")
+        if expiry_date and isinstance(expiry_date, str):
+            expiry_date = datetime.fromisoformat(expiry_date)
+        
+        contract_start = member.get("contract_start_date")
+        if contract_start and isinstance(contract_start, str):
+            contract_start = datetime.fromisoformat(contract_start)
+        
+        contract_end = member.get("contract_end_date")
+        if contract_end and isinstance(contract_end, str):
+            contract_end = datetime.fromisoformat(contract_end)
+        
+        report_item = {
+            # Member info
+            "member_id": member["id"],
+            "member_name": f"{member.get('first_name', '')} {member.get('last_name', '')}".strip(),
+            "membership_number": member["id"][:8].upper(),  # First 8 chars as membership number
+            "email": member.get("email"),
+            "phone": member.get("phone"),
+            "membership_status": member.get("membership_status"),
+            
+            # Membership details
+            "membership_type": membership_type.get("name") if membership_type else "Unknown",
+            "membership_type_id": member.get("membership_type_id"),
+            
+            # Financial info
+            "invoice_id": invoice["id"],
+            "invoice_number": invoice.get("invoice_number"),
+            "amount": invoice.get("amount"),
+            "status": invoice.get("status"),
+            "payment_method": invoice.get("payment_method"),
+            "payment_gateway": invoice.get("payment_gateway"),
+            "status_message": invoice.get("status_message"),
+            "debt": member.get("debt_amount", 0),
+            "is_debtor": member.get("is_debtor", False),
+            
+            # Dates
+            "due_date": due_date.isoformat() if due_date else None,
+            "paid_date": paid_date.isoformat() if paid_date else None,
+            "start_date": join_date.isoformat() if join_date else None,
+            "end_renewal_date": expiry_date.isoformat() if expiry_date else None,
+            "contract_start_date": contract_start.isoformat() if contract_start else None,
+            "contract_end_date": contract_end.isoformat() if contract_end else None,
+            
+            # Source and referral
+            "source": member.get("source"),
+            "referred_by": member.get("referred_by"),
+            
+            # Sales consultant
+            "sales_consultant_id": member.get("sales_consultant_id"),
+            "sales_consultant_name": member.get("sales_consultant_name"),
+        }
+        
+        report_data.append(report_item)
+    
+    return {
+        "total_records": len(report_data),
+        "data": report_data
+    }
+
+
     
     return {
         "total_members": len(members),
