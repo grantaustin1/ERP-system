@@ -1581,17 +1581,8 @@ async def create_payment(data: PaymentCreate, current_user: User = Depends(get_c
         }}
     )
     
-    # Check if member should be unblocked
-    unpaid_invoices = await db.invoices.count_documents({
-        "member_id": data.member_id,
-        "status": {"$in": ["pending", "overdue"]}
-    })
-    
-    if unpaid_invoices == 0:
-        await db.members.update_one(
-            {"id": data.member_id},
-            {"$set": {"is_debtor": False}}
-        )
+    # Check if member should be unblocked and recalculate debt
+    await calculate_member_debt(data.member_id)
     
     return payment
 
