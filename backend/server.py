@@ -2070,12 +2070,73 @@ async def execute_action(action: dict, trigger_data: dict):
         return {"type": "sms", "status": "sent_mock", "phone": phone, "message": message}
     
     elif action_type == "send_whatsapp":
-        # WhatsApp action - placeholder for now
+        # WhatsApp action via respond.io
         phone = trigger_data.get("phone") or action.get("phone")
         message = action.get("message", "").format(**trigger_data)
-        # TODO: Integrate WhatsApp Business API
-        logger.info(f"WhatsApp Action (Mock): Sending to {phone}: {message}")
-        return {"type": "whatsapp", "status": "sent_mock", "phone": phone, "message": message}
+        
+        # Get member details for contact creation
+        first_name = trigger_data.get("member_name", "Member")
+        if " " in first_name:
+            parts = first_name.split(" ", 1)
+            first_name = parts[0]
+            last_name = parts[1]
+        else:
+            last_name = None
+        
+        email = trigger_data.get("email")
+        
+        try:
+            # Determine template name based on trigger type
+            template_name = action.get("template_name")
+            if not template_name:
+                # Auto-select template based on trigger type
+                trigger_type = trigger_data.get("trigger_type", "")
+                template_map = {
+                    "payment_failed": "payment_failed_alert",
+                    "member_joined": "member_welcome",
+                    "invoice_overdue": "invoice_overdue_reminder",
+                    "membership_expiring": "membership_renewal_reminder"
+                }
+                template_name = template_map.get(trigger_type, "general_notification")
+            
+            # Extract template parameters from trigger_data
+            # The message will be formatted by the template itself
+            template_params = []
+            if "{member_name}" in message or "member_name" in trigger_data:
+                template_params.append(trigger_data.get("member_name", ""))
+            if "{amount}" in message or "amount" in trigger_data:
+                template_params.append(str(trigger_data.get("amount", "")))
+            if "{invoice_number}" in message or "invoice_number" in trigger_data:
+                template_params.append(trigger_data.get("invoice_number", ""))
+            if "{due_date}" in message or "due_date" in trigger_data:
+                template_params.append(trigger_data.get("due_date", ""))
+            
+            # Send via respond.io
+            result = await respondio_service.send_whatsapp_message(
+                contact_phone=phone,
+                template_name=template_name,
+                template_params=template_params,
+                first_name=first_name,
+                last_name=last_name,
+                email=email
+            )
+            
+            return {
+                "type": "whatsapp",
+                "status": "sent" if not respondio_service.is_mocked else "sent_mock",
+                "phone": phone,
+                "message": message,
+                "message_id": result.get("messageId"),
+                "template_name": template_name
+            }
+        except Exception as e:
+            logger.error(f"Failed to send WhatsApp message: {str(e)}")
+            return {
+                "type": "whatsapp",
+                "status": "failed",
+                "phone": phone,
+                "error": str(e)
+            }
     
     elif action_type == "send_email":
         # Email action - placeholder for now
