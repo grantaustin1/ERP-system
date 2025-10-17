@@ -1628,11 +1628,8 @@ async def mark_invoice_failed(
     # Get member details for trigger
     member = await db.members.find_one({"id": invoice["member_id"]}, {"_id": 0})
     if member:
-        # Mark member as debtor
-        await db.members.update_one(
-            {"id": member["id"]},
-            {"$set": {"is_debtor": True}}
-        )
+        # Calculate and update member debt
+        await calculate_member_debt(member["id"])
         
         # Trigger automation: payment_failed
         await trigger_automation("payment_failed", {
@@ -1646,7 +1643,7 @@ async def mark_invoice_failed(
             "failure_reason": failure_reason or "Payment failed"
         })
     
-    return {"message": "Invoice marked as failed and automations triggered"}
+    return {"message": "Invoice marked as failed, debt calculated, and automations triggered"}
 
 @api_router.post("/invoices/{invoice_id}/mark-overdue")
 async def mark_invoice_overdue(invoice_id: str, current_user: User = Depends(get_current_user)):
