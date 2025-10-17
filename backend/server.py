@@ -483,6 +483,7 @@ class AutomationCreate(BaseModel):
     trigger_type: str
     conditions: dict = {}
     actions: List[dict] = []
+    test_mode: bool = False
 
 class AutomationExecution(BaseModel):
     model_config = ConfigDict(extra="ignore")
