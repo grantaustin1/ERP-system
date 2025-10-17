@@ -535,28 +535,32 @@ export default function Automations() {
               {/* Trigger Selection */}
               <div className="space-y-2">
                 <Label htmlFor="trigger">Trigger (When this happens...)</Label>
-                <Select
+                <select
+                  id="trigger"
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                   value={formData.trigger_type}
-                  onValueChange={(value) => {
-                    setFormData({ ...formData, trigger_type: value });
+                  onChange={(e) => {
+                    setFormData({ ...formData, trigger_type: e.target.value });
                     setConditionsList([]);
                     setCurrentCondition({ field: '', operator: '', value: '' });
                   }}
                 >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select a trigger event" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {TRIGGER_TYPES.map((trigger) => (
-                      <SelectItem key={trigger.value} value={trigger.value}>
-                        <div>
-                          <div className="font-medium">{trigger.label}</div>
-                          <div className="text-xs text-gray-500">{trigger.description}</div>
-                        </div>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                  <option value="">Select a trigger event...</option>
+                  {Object.entries(TRIGGER_CATEGORIES).map(([key, category]) => (
+                    <optgroup key={key} label={category.label}>
+                      {category.triggers.map((trigger) => (
+                        <option key={trigger.value} value={trigger.value}>
+                          {trigger.label}
+                        </option>
+                      ))}
+                    </optgroup>
+                  ))}
+                </select>
+                {formData.trigger_type && (
+                  <p className="text-xs text-gray-500 mt-1">
+                    {TRIGGER_TYPES.find(t => t.value === formData.trigger_type)?.description}
+                  </p>
+                )}
               </div>
 
               {/* Conditions Builder */}
