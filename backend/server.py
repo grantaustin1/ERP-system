@@ -237,9 +237,14 @@ class Invoice(BaseModel):
     description: str
     due_date: datetime
     paid_date: Optional[datetime] = None
-    status: str = "pending"  # pending, paid, overdue, cancelled
+    status: str = "pending"  # pending, paid, overdue, cancelled, failed
     payment_method: Optional[str] = None
+    payment_gateway: Optional[str] = None  # Stripe, PayPal, Manual, etc.
+    status_message: Optional[str] = None  # Additional status information
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    # For tracking debit order batches
+    batch_id: Optional[str] = None
+    batch_date: Optional[datetime] = None
 
 class InvoiceCreate(BaseModel):
     member_id: str
