@@ -2262,7 +2262,504 @@ class WhatsAppIntegrationTester:
         
         print("\n" + "=" * 60)
 
+
+class TestModeAutomationTester:
+    """Test the new test_mode functionality for automations"""
+    
+    def __init__(self):
+        self.token = None
+        self.headers = {}
+        self.test_results = []
+        self.test_automation_ids = []
+        
+    def log_result(self, test_name, success, message, details=None):
+        """Log test result"""
+        result = {
+            "test": test_name,
+            "success": success,
+            "message": message,
+            "timestamp": datetime.now().isoformat(),
+            "details": details or {}
+        }
+        self.test_results.append(result)
+        status = "✅ PASS" if success else "❌ FAIL"
+        print(f"{status}: {test_name} - {message}")
+        if details and not success:
+            print(f"   Details: {details}")
+    
+    def authenticate(self):
+        """Authenticate and get token"""
+        try:
+            response = requests.post(f"{API_BASE}/auth/login", json={
+                "email": TEST_EMAIL,
+                "password": TEST_PASSWORD
+            })
+            
+            if response.status_code == 200:
+                data = response.json()
+                self.token = data["access_token"]
+                self.headers = {"Authorization": f"Bearer {self.token}"}
+                self.log_result("Authentication", True, "Successfully authenticated")
+                return True
+            else:
+                self.log_result("Authentication", False, f"Failed to authenticate: {response.status_code}", 
+                              {"response": response.text})
+                return False
+        except Exception as e:
+            self.log_result("Authentication", False, f"Authentication error: {str(e)}")
+            return False
+    
+    def test_automation_crud_with_test_mode(self):
+        """Test 1: Test Automation CRUD with test_mode field"""
+        print("\n=== Test 1: Automation CRUD with test_mode field ===")
+        
+        # Create automation with test_mode=true
+        test_automation_data = {
+            "name": "Test Mode Automation - Payment Failed",
+            "description": "Test automation that should NOT trigger on live events",
+            "trigger_type": "payment_failed",
+            "test_mode": True,
+            "conditions": {},
+            "actions": [
+                {
+                    "type": "send_sms",
+                    "delay_minutes": 0,
+                    "message": "TEST MODE: Payment failed for {member_name} - Amount: R{amount}"
+                }
+            ]
+        }
+        
+        try:
+            response = requests.post(f"{API_BASE}/automations", 
+                                   json=test_automation_data, headers=self.headers)
+            if response.status_code == 200:
+                automation = response.json()
+                test_automation_id = automation["id"]
+                self.test_automation_ids.append(test_automation_id)
+                
+                # Verify test_mode field is saved correctly
+                if automation.get("test_mode") == True:
+                    self.log_result("Create Automation with test_mode=true", True, 
+                                  "Automation created with test_mode=true",
+                                  {"automation_id": test_automation_id})
+                else:
+                    self.log_result("Create Automation with test_mode=true", False, 
+                                  f"test_mode field incorrect: {automation.get('test_mode')}")
+            else:
+                self.log_result("Create Automation with test_mode=true", False, 
+                              f"Failed to create: {response.status_code}",
+                              {"response": response.text})
+                return None, None
+        except Exception as e:
+            self.log_result("Create Automation with test_mode=true", False, f"Error: {str(e)}")
+            return None, None
+        
+        # Create automation with test_mode=false (default)
+        live_automation_data = {
+            "name": "Live Mode Automation - Payment Failed",
+            "description": "Live automation that SHOULD trigger on live events",
+            "trigger_type": "payment_failed",
+            "test_mode": False,
+            "conditions": {},
+            "actions": [
+                {
+                    "type": "send_sms",
+                    "delay_minutes": 0,
+                    "message": "LIVE MODE: Payment failed for {member_name} - Amount: R{amount}"
+                }
+            ]
+        }
+        
+        try:
+            response = requests.post(f"{API_BASE}/automations", 
+                                   json=live_automation_data, headers=self.headers)
+            if response.status_code == 200:
+                automation = response.json()
+                live_automation_id = automation["id"]
+                self.test_automation_ids.append(live_automation_id)
+                
+                # Verify test_mode field is saved correctly
+                if automation.get("test_mode") == False:
+                    self.log_result("Create Automation with test_mode=false", True, 
+                                  "Automation created with test_mode=false",
+                                  {"automation_id": live_automation_id})
+                else:
+                    self.log_result("Create Automation with test_mode=false", False, 
+                                  f"test_mode field incorrect: {automation.get('test_mode')}")
+            else:
+                self.log_result("Create Automation with test_mode=false", False, 
+                              f"Failed to create: {response.status_code}",
+                              {"response": response.text})
+                return test_automation_id, None
+        except Exception as e:
+            self.log_result("Create Automation with test_mode=false", False, f"Error: {str(e)}")
+            return test_automation_id, None
+        
+        # Test retrieving automations and verify test_mode field is included
+        try:
+            response = requests.get(f"{API_BASE}/automations", headers=self.headers)
+            if response.status_code == 200:
+                automations = response.json()
+                
+                # Find our test automations
+                test_automation = next((a for a in automations if a["id"] == test_automation_id), None)
+                live_automation = next((a for a in automations if a["id"] == live_automation_id), None)
+                
+                if test_automation and live_automation:
+                    if (test_automation.get("test_mode") == True and 
+                        live_automation.get("test_mode") == False):
+                        self.log_result("Verify test_mode field in GET response", True, 
+                                      "test_mode field correctly retrieved for both automations")
+                    else:
+                        self.log_result("Verify test_mode field in GET response", False, 
+                                      f"test_mode fields incorrect: test={test_automation.get('test_mode')}, live={live_automation.get('test_mode')}")
+                else:
+                    self.log_result("Verify test_mode field in GET response", False, 
+                                  "Could not find created automations in list")
+            else:
+                self.log_result("Verify test_mode field in GET response", False, 
+                              f"Failed to get automations: {response.status_code}")
+        except Exception as e:
+            self.log_result("Verify test_mode field in GET response", False, f"Error: {str(e)}")
+        
+        # Test updating automation to toggle test_mode
+        try:
+            update_data = {
+                "name": "Test Mode Automation - Updated",
+                "description": "Updated test automation",
+                "trigger_type": "payment_failed",
+                "test_mode": False,  # Toggle from True to False
+                "conditions": {},
+                "actions": live_automation_data["actions"]
+            }
+            
+            response = requests.put(f"{API_BASE}/automations/{test_automation_id}", 
+                                  json=update_data, headers=self.headers)
+            if response.status_code == 200:
+                updated_automation = response.json()
+                if updated_automation.get("test_mode") == False:
+                    self.log_result("Update automation test_mode toggle", True, 
+                                  "Successfully toggled test_mode from True to False")
+                else:
+                    self.log_result("Update automation test_mode toggle", False, 
+                                  f"test_mode not updated correctly: {updated_automation.get('test_mode')}")
+            else:
+                self.log_result("Update automation test_mode toggle", False, 
+                              f"Failed to update: {response.status_code}")
+        except Exception as e:
+            self.log_result("Update automation test_mode toggle", False, f"Error: {str(e)}")
+        
+        return test_automation_id, live_automation_id
+    
+    def test_trigger_automation_behavior(self, test_automation_id, live_automation_id):
+        """Test 2: Test trigger_automation() behavior with test_mode"""
+        print("\n=== Test 2: trigger_automation() behavior with test_mode ===")
+        
+        # First, set the test automation back to test_mode=true
+        try:
+            update_data = {
+                "name": "Test Mode Automation - Payment Failed",
+                "description": "Test automation that should NOT trigger on live events",
+                "trigger_type": "payment_failed",
+                "test_mode": True,
+                "enabled": True,
+                "conditions": {},
+                "actions": [
+                    {
+                        "type": "send_sms",
+                        "delay_minutes": 0,
+                        "message": "TEST MODE: Payment failed for {member_name} - Amount: R{amount}"
+                    }
+                ]
+            }
+            
+            response = requests.put(f"{API_BASE}/automations/{test_automation_id}", 
+                                  json=update_data, headers=self.headers)
+            if response.status_code != 200:
+                self.log_result("Reset test automation to test_mode=true", False, 
+                              f"Failed to reset: {response.status_code}")
+                return
+        except Exception as e:
+            self.log_result("Reset test automation to test_mode=true", False, f"Error: {str(e)}")
+            return
+        
+        # Ensure live automation is enabled and not in test mode
+        try:
+            update_data = {
+                "name": "Live Mode Automation - Payment Failed",
+                "description": "Live automation that SHOULD trigger on live events",
+                "trigger_type": "payment_failed",
+                "test_mode": False,
+                "enabled": True,
+                "conditions": {},
+                "actions": [
+                    {
+                        "type": "send_sms",
+                        "delay_minutes": 0,
+                        "message": "LIVE MODE: Payment failed for {member_name} - Amount: R{amount}"
+                    }
+                ]
+            }
+            
+            response = requests.put(f"{API_BASE}/automations/{live_automation_id}", 
+                                  json=update_data, headers=self.headers)
+            if response.status_code != 200:
+                self.log_result("Ensure live automation is enabled", False, 
+                              f"Failed to update: {response.status_code}")
+                return
+        except Exception as e:
+            self.log_result("Ensure live automation is enabled", False, f"Error: {str(e)}")
+            return
+        
+        # Get current execution count before triggering
+        executions_before = 0
+        try:
+            response = requests.get(f"{API_BASE}/automation-executions", headers=self.headers)
+            if response.status_code == 200:
+                executions_before = len(response.json())
+        except:
+            pass
+        
+        # Trigger payment_failed event by marking an invoice as failed
+        try:
+            # Get invoices to test with
+            response = requests.get(f"{API_BASE}/invoices?limit=5", headers=self.headers)
+            if response.status_code != 200:
+                self.log_result("Get invoices for trigger test", False, "Failed to get invoices")
+                return
+            
+            invoices = response.json()
+            test_invoice = None
+            for invoice in invoices:
+                if invoice.get("status") == "pending":
+                    test_invoice = invoice
+                    break
+            
+            if not test_invoice:
+                self.log_result("Find pending invoice for trigger test", False, "No pending invoices found")
+                return
+            
+            invoice_id = test_invoice["id"]
+            
+            # Mark invoice as failed to trigger automations
+            response = requests.post(f"{API_BASE}/invoices/{invoice_id}/mark-failed", 
+                                   json={"failure_reason": "Test Mode Verification - Debit order failed"}, 
+                                   headers=self.headers)
+            
+            if response.status_code == 200:
+                self.log_result("Trigger payment_failed event", True, 
+                              "Invoice marked as failed, should trigger only live automations")
+                
+                # Wait for automation processing
+                time.sleep(3)
+                
+                # Check execution history
+                executions_response = requests.get(f"{API_BASE}/automation-executions", 
+                                                 headers=self.headers)
+                if executions_response.status_code == 200:
+                    all_executions = executions_response.json()
+                    new_executions = all_executions[:len(all_executions) - executions_before]
+                    
+                    # Check which automations were triggered
+                    test_mode_executions = [
+                        ex for ex in new_executions 
+                        if ex.get("automation_id") == test_automation_id
+                    ]
+                    
+                    live_mode_executions = [
+                        ex for ex in new_executions 
+                        if ex.get("automation_id") == live_automation_id
+                    ]
+                    
+                    # Verify test_mode automation was NOT triggered
+                    if len(test_mode_executions) == 0:
+                        self.log_result("Test mode automation excluded from live trigger", True, 
+                                      "test_mode automation correctly excluded from live execution")
+                    else:
+                        self.log_result("Test mode automation excluded from live trigger", False, 
+                                      f"test_mode automation incorrectly triggered {len(test_mode_executions)} times")
+                    
+                    # Verify live automation WAS triggered
+                    if len(live_mode_executions) > 0:
+                        self.log_result("Live mode automation triggered correctly", True, 
+                                      f"Live automation correctly triggered {len(live_mode_executions)} times")
+                    else:
+                        self.log_result("Live mode automation triggered correctly", False, 
+                                      "Live automation was not triggered when it should have been")
+                
+            else:
+                self.log_result("Trigger payment_failed event", False, 
+                              f"Failed to mark invoice as failed: {response.status_code}")
+                
+        except Exception as e:
+            self.log_result("Test trigger_automation behavior", False, f"Error: {str(e)}")
+    
+    def test_manual_testing_of_test_mode_automations(self, test_automation_id):
+        """Test 3: Test manual testing of test_mode automations"""
+        print("\n=== Test 3: Manual testing of test_mode automations ===")
+        
+        # Test the test endpoint with test_mode automation
+        test_data = {
+            "member_id": "test-member-testmode",
+            "member_name": "John Test Mode",
+            "email": "john.testmode@example.com",
+            "phone": "+27123456789",
+            "invoice_id": "test-invoice-testmode",
+            "invoice_number": "INV-TESTMODE-001",
+            "amount": 250.00,
+            "failure_reason": "Test mode verification"
+        }
+        
+        try:
+            response = requests.post(f"{API_BASE}/automations/test/{test_automation_id}", 
+                                   json=test_data, headers=self.headers)
+            if response.status_code == 200:
+                result = response.json()
+                success = result.get("success", False)
+                if success:
+                    self.log_result("Manual test of test_mode automation", True, 
+                                  "test_mode automation can be tested manually via test endpoint",
+                                  {"result": result.get("result")})
+                else:
+                    self.log_result("Manual test of test_mode automation", False, 
+                                  f"Test execution failed: {result.get('message')}",
+                                  {"error": result.get("error")})
+            else:
+                self.log_result("Manual test of test_mode automation", False, 
+                              f"Failed to test: {response.status_code}",
+                              {"response": response.text})
+        except Exception as e:
+            self.log_result("Manual test of test_mode automation", False, f"Error: {str(e)}")
+        
+        # Test that regular (non-test-mode) automations can also be tested manually
+        try:
+            # Get a live automation to test
+            response = requests.get(f"{API_BASE}/automations", headers=self.headers)
+            if response.status_code == 200:
+                automations = response.json()
+                live_automation = next((a for a in automations if not a.get("test_mode", False)), None)
+                
+                if live_automation:
+                    live_automation_id = live_automation["id"]
+                    
+                    response = requests.post(f"{API_BASE}/automations/test/{live_automation_id}", 
+                                           json=test_data, headers=self.headers)
+                    if response.status_code == 200:
+                        result = response.json()
+                        if result.get("success", False):
+                            self.log_result("Manual test of live automation", True, 
+                                          "Live automation can also be tested manually")
+                        else:
+                            self.log_result("Manual test of live automation", False, 
+                                          f"Live automation test failed: {result.get('message')}")
+                    else:
+                        self.log_result("Manual test of live automation", False, 
+                                      f"Failed to test live automation: {response.status_code}")
+                else:
+                    self.log_result("Find live automation for manual test", False, 
+                                  "No live automation found to test")
+        except Exception as e:
+            self.log_result("Manual test of live automation", False, f"Error: {str(e)}")
+    
+    def test_automation_listing_with_test_mode(self):
+        """Test 4: Test automation listing includes test_mode field"""
+        print("\n=== Test 4: Automation listing includes test_mode field ===")
+        
+        try:
+            response = requests.get(f"{API_BASE}/automations", headers=self.headers)
+            if response.status_code == 200:
+                automations = response.json()
+                
+                # Check that all automations have test_mode field
+                automations_with_test_mode = [a for a in automations if "test_mode" in a]
+                
+                if len(automations_with_test_mode) == len(automations):
+                    self.log_result("Automation listing includes test_mode field", True, 
+                                  f"All {len(automations)} automations include test_mode field")
+                    
+                    # Check for both test_mode values
+                    test_mode_true = [a for a in automations if a.get("test_mode") == True]
+                    test_mode_false = [a for a in automations if a.get("test_mode") == False]
+                    
+                    self.log_result("Test mode field values verification", True, 
+                                  f"Found {len(test_mode_true)} test_mode=true and {len(test_mode_false)} test_mode=false automations")
+                else:
+                    self.log_result("Automation listing includes test_mode field", False, 
+                                  f"Only {len(automations_with_test_mode)} of {len(automations)} automations have test_mode field")
+            else:
+                self.log_result("Automation listing includes test_mode field", False, 
+                              f"Failed to get automations: {response.status_code}")
+        except Exception as e:
+            self.log_result("Automation listing includes test_mode field", False, f"Error: {str(e)}")
+    
+    def cleanup_test_automations(self):
+        """Clean up test automations"""
+        print("\n=== Cleaning up test automations ===")
+        
+        for automation_id in self.test_automation_ids:
+            try:
+                response = requests.delete(f"{API_BASE}/automations/{automation_id}", 
+                                         headers=self.headers)
+                if response.status_code == 200:
+                    self.log_result(f"Cleanup automation {automation_id[:8]}", True, 
+                                  "Test automation deleted successfully")
+                else:
+                    self.log_result(f"Cleanup automation {automation_id[:8]}", False, 
+                                  f"Failed to delete: {response.status_code}")
+            except Exception as e:
+                self.log_result(f"Cleanup automation {automation_id[:8]}", False, f"Error: {str(e)}")
+    
+    def run_test_mode_tests(self):
+        """Run all test_mode functionality tests"""
+        print("🚀 Starting Test Mode Automation Tests")
+        print(f"Testing against: {API_BASE}")
+        print("=" * 60)
+        
+        # Authenticate first
+        if not self.authenticate():
+            print("❌ Authentication failed. Cannot proceed with tests.")
+            return
+        
+        # Run test mode specific tests
+        test_automation_id, live_automation_id = self.test_automation_crud_with_test_mode()
+        
+        if test_automation_id and live_automation_id:
+            self.test_trigger_automation_behavior(test_automation_id, live_automation_id)
+            self.test_manual_testing_of_test_mode_automations(test_automation_id)
+        
+        self.test_automation_listing_with_test_mode()
+        
+        # Cleanup
+        self.cleanup_test_automations()
+        
+        # Print summary
+        self.print_summary()
+    
+    def print_summary(self):
+        """Print test summary"""
+        print("\n" + "=" * 60)
+        print("🏁 TEST MODE AUTOMATION TEST SUMMARY")
+        print("=" * 60)
+        
+        total_tests = len(self.test_results)
+        passed_tests = len([r for r in self.test_results if r["success"]])
+        failed_tests = total_tests - passed_tests
+        
+        print(f"Total Tests: {total_tests}")
+        print(f"✅ Passed: {passed_tests}")
+        print(f"❌ Failed: {failed_tests}")
+        print(f"Success Rate: {(passed_tests/total_tests*100):.1f}%")
+        
+        if failed_tests > 0:
+            print("\n❌ FAILED TESTS:")
+            for result in self.test_results:
+                if not result["success"]:
+                    print(f"  - {result['test']}: {result['message']}")
+        
+        print("\n" + "=" * 60)
+
+
 if __name__ == "__main__":
-    # Run WhatsApp integration tests as requested
-    tester = WhatsAppIntegrationTester()
-    tester.run_whatsapp_integration_tests()
+    # Run test mode automation tests as requested
+    tester = TestModeAutomationTester()
+    tester.run_test_mode_tests()
