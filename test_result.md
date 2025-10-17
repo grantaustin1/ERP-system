@@ -477,12 +477,13 @@ frontend:
 metadata:
   created_by: "main_agent"
   version: "1.0"
-  test_sequence: 1
+  test_sequence: 2
   run_ui: true
 
 test_plan:
   current_focus:
-    - "WhatsApp Integration (respond.io) - Mock Mode Testing"
+    - "Categorized Trigger Dropdown with Nested Menus"
+    - "Test Mode (Non-Live) Functionality"
   stuck_tasks: []
   test_all: false
   test_priority: "high_first"
