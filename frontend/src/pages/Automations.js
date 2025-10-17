@@ -863,14 +863,41 @@ export default function Automations() {
                 </Card>
               </div>
 
-              {/* Enabled Toggle */}
-              <div className="flex items-center space-x-2">
-                <Switch
-                  id="enabled"
-                  checked={formData.enabled}
-                  onCheckedChange={(checked) => setFormData({ ...formData, enabled: checked })}
-                />
-                <Label htmlFor="enabled">Enable automation immediately</Label>
+              {/* Enabled and Test Mode Toggles */}
+              <div className="space-y-3 p-4 bg-gray-50 rounded-md">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-2">
+                    <Switch
+                      id="enabled"
+                      checked={formData.enabled}
+                      onCheckedChange={(checked) => setFormData({ ...formData, enabled: checked })}
+                    />
+                    <Label htmlFor="enabled" className="font-medium">Enable Automation</Label>
+                  </div>
+                  <Badge variant={formData.enabled ? 'default' : 'secondary'}>
+                    {formData.enabled ? 'Active' : 'Inactive'}
+                  </Badge>
+                </div>
+                
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-2">
+                    <Switch
+                      id="test_mode"
+                      checked={formData.test_mode}
+                      onCheckedChange={(checked) => setFormData({ ...formData, test_mode: checked })}
+                    />
+                    <Label htmlFor="test_mode" className="font-medium">Test Mode (Non-Live)</Label>
+                  </div>
+                  <Badge variant={formData.test_mode ? 'outline' : 'default'} className={formData.test_mode ? 'bg-yellow-100 text-yellow-800' : ''}>
+                    {formData.test_mode ? 'Test Only' : 'Live'}
+                  </Badge>
+                </div>
+                
+                <p className="text-xs text-gray-600 mt-2">
+                  {formData.test_mode 
+                    ? '⚠️ Test mode: This automation will NOT trigger automatically from live events. Use the test button to manually test it.'
+                    : '✓ Live mode: This automation will trigger automatically when events occur (if enabled).'}
+                </p>
               </div>
             </div>
 
