@@ -65,6 +65,21 @@ export default function Members() {
     }
   };
 
+  const fetchPaymentOptions = async (membershipTypeId) => {
+    try {
+      const response = await axios.get(`${API}/payment-options/${membershipTypeId}`);
+      setPaymentOptions(response.data);
+    } catch (error) {
+      console.error('Failed to fetch payment options:', error);
+      setPaymentOptions([]);
+    }
+  };
+
+  const handleMembershipTypeChange = (value) => {
+    setFormData({ ...formData, membership_type_id: value, selected_payment_option_id: '' });
+    fetchPaymentOptions(value);
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
