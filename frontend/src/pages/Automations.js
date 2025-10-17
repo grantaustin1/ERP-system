@@ -941,11 +941,16 @@ export default function Automations() {
                   <CardHeader>
                     <div className="flex items-start justify-between">
                       <div className="space-y-1 flex-1">
-                        <div className="flex items-center space-x-2">
+                        <div className="flex items-center space-x-2 flex-wrap">
                           <CardTitle>{automation.name}</CardTitle>
                           <Badge variant={automation.enabled ? 'default' : 'secondary'}>
                             {automation.enabled ? 'Enabled' : 'Disabled'}
                           </Badge>
+                          {automation.test_mode && (
+                            <Badge variant="outline" className="bg-yellow-100 text-yellow-800 border-yellow-300">
+                              🧪 Test Mode
+                            </Badge>
+                          )}
                         </div>
                         <CardDescription>{automation.description}</CardDescription>
                       </div>
