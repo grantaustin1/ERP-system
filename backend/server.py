@@ -2182,10 +2182,11 @@ async def execute_action(action: dict, trigger_data: dict):
 # ============= TRIGGER HELPERS =============
 
 async def trigger_automation(trigger_type: str, trigger_data: dict):
-    """Trigger all enabled automations for a specific event type"""
+    """Trigger all enabled automations for a specific event type (excludes test_mode automations)"""
     automations = await db.automations.find({
         "trigger_type": trigger_type,
-        "enabled": True
+        "enabled": True,
+        "test_mode": {"$ne": True}  # Exclude automations in test mode
     }).to_list(length=None)
     
     results = []
