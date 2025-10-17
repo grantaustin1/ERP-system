@@ -1661,6 +1661,9 @@ async def mark_invoice_overdue(invoice_id: str, current_user: User = Depends(get
     # Get member details for trigger
     member = await db.members.find_one({"id": invoice["member_id"]}, {"_id": 0})
     if member:
+        # Calculate and update member debt
+        await calculate_member_debt(member["id"])
+        
         # Trigger automation: invoice_overdue
         await trigger_automation("invoice_overdue", {
             "member_id": member["id"],
@@ -1673,7 +1676,7 @@ async def mark_invoice_overdue(invoice_id: str, current_user: User = Depends(get
             "due_date": invoice.get("due_date", "")
         })
     
-    return {"message": "Invoice marked as overdue and automations triggered"}
+    return {"message": "Invoice marked as overdue, debt calculated, and automations triggered"}
 
 
 # Member Analytics and Geo-location
