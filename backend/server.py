@@ -471,6 +471,7 @@ class Automation(BaseModel):
     conditions: dict = {}  # Additional filters like membership_type, amount_threshold, days_inactive
     actions: List[dict] = []  # List of actions: [{type: "send_whatsapp", delay_minutes: 1, message: "..."}]
     enabled: bool = True
+    test_mode: bool = False  # If true, automation runs in test/non-live mode
     created_by: str
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     last_triggered: Optional[datetime] = None
