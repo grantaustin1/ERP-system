@@ -491,6 +491,43 @@ test_plan:
 agent_communication:
   - agent: "main"
     message: |
+      Enhanced Automation Engine with categorized triggers and test mode functionality.
+      
+      NEW FEATURES IMPLEMENTED:
+      
+      1. Categorized Trigger Dropdown:
+         - Replaced flat trigger list with categorized nested menu using HTML <select> with <optgroup>
+         - Categories: Bookings & Classes, Management & Staff, Member Points & Gamification, Payment Management, Retention & Engagement, Sales & Marketing, The Member Journey
+         - Each category contains relevant trigger options for better organization and user experience
+         - Shows trigger description below dropdown after selection
+      
+      2. Test Mode (Non-Live) Functionality:
+         - Added test_mode boolean field to backend Automation model
+         - Added test_mode toggle in frontend automation form
+         - Updated trigger_automation() backend function to exclude test_mode automations from live execution
+         - When test_mode=true, automation will NOT trigger automatically
+         - Users can test automations manually using test button
+         - Visual indicators: Yellow "🧪 Test Mode" badge on automation cards, toggle switches with Active/Test Only badges
+         - Allows users to configure and test automations before going live
+      
+      3. Enhanced Automation Form UI:
+         - Improved toggles section with better visual indicators
+         - Shows "Active"/"Inactive" badge for enabled status
+         - Shows "Test Only"/"Live" badge for test_mode status
+         - Explanatory text below toggles to guide users
+      
+      TESTING PRIORITY:
+      1. Test categorized trigger dropdown displays all categories correctly
+      2. Test creating automation with test_mode enabled
+      3. Verify test_mode automations do NOT trigger on live events
+      4. Verify test_mode automations CAN be tested manually
+      5. Test enabling/disabling test_mode on existing automations
+      6. Test UI displays test mode badge correctly
+      
+      Please test backend first (API endpoints), then frontend UI and workflows.
+
+  - agent: "main"
+    message: |
       Automation Engine implementation completed. 
       
       Backend features:
