@@ -1024,6 +1024,74 @@ agent_communication:
       - Group Capacity: Proper error messages when attempting to exceed max_members ✓
       - Auto-Renewal Validation: Correctly handles different renewal frequencies and pricing ✓
       
+
+
+  - agent: "main"
+    message: |
+      Phase 1 of Payment Report Enhancement completed - Backend data models and APIs implemented.
+      
+      BACKEND IMPLEMENTATION COMPLETED:
+      
+      1. Payment Source Management:
+         - Created PaymentSource model with CRUD API endpoints at /api/payment-sources
+         - Supports GET (list), POST (create), PUT (update), DELETE (soft delete)
+         - Seeded 7 default payment sources: Walk-in, Online, Social Media, Phone-in, Referral, Canvassing, Flyers
+         - Admin users can manage payment sources, which appear as dropdowns for sales consultants
+      
+      2. Member Model Enhancements:
+         - Added source field (Optional[str]) - tracks how member was acquired
+         - Added referred_by field (Optional[str]) - tracks referrer name/ID
+         - Added debt_amount field (float, default 0.0) - automatically calculated debt
+         - Added contract_start_date and contract_end_date fields (Optional[datetime])
+         - Updated MemberCreate model to include source and referred_by
+      
+      3. Invoice Model Enhancements:
+         - Added payment_gateway field (Optional[str]) - tracks gateway used (Stripe, PayPal, etc.)
+         - Added status_message field (Optional[str]) - additional status information
+         - Added batch_id and batch_date fields for debit order batch tracking
+         - Updated status enum to include 'failed' status
+      
+      4. Automatic Debt Calculation:
+         - Created calculate_member_debt(member_id) async function
+         - Automatically calculates total debt from overdue/failed unpaid invoices
+         - Updates member's debt_amount and is_debtor fields
+         - Integrated into:
+           * mark_invoice_failed endpoint (line ~1628)
+           * mark_invoice_overdue endpoint (line ~1664)
+           * create_payment endpoint (line ~1584)
+         - Ensures debt is always accurate and up-to-date
+      
+      5. Comprehensive Payment Report API:
+         - Created GET /api/payment-report endpoint with extensive filtering:
+           * member_id, status, payment_gateway, source, start_date, end_date
+         - Returns comprehensive report with:
+           * Member info: name, membership number (first 8 chars), email, phone, status
+           * Membership details: type, type_id
+           * Financial info: invoice details, amount, status, payment gateway, debt
+           * Dates: due, paid, start, end/renewal, contract start/end
+           * Source and referral tracking
+           * Sales consultant information
+         - Joins data from members, invoices, and membership_types collections
+         - Returns paginated data with total_records count
+      
+      TESTING PRIORITY:
+      1. Test Payment Source CRUD operations (GET, POST, PUT, DELETE)
+      2. Test member creation with source and referred_by fields
+      3. Test invoice creation with payment_gateway field
+      4. Test automatic debt calculation when invoice marked as failed/overdue
+      5. Test automatic debt recalculation when payment is made
+      6. Test payment report API with various filters
+      7. Verify all new fields are properly stored and retrieved
+      
+      NEXT STEPS (Frontend - Phase 2):
+      - Create Payment Source management UI in Settings page
+      - Update member enrollment form with source dropdown
+      - Enhance Billing page with comprehensive payment report view
+      - Add filtering capabilities to payment report UI
+      - (Phase 3) Create analytics dashboard for payment duration metrics
+      
+      Please test backend first - all new API endpoints and automatic debt calculation logic.
+
       ✅ API ENDPOINTS TESTED:
       - POST /api/membership-types (with max_members support) ✓
       - POST /api/payment-options (create payment options) ✓
