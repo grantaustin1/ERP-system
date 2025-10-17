@@ -159,9 +159,11 @@ async def seed_data():
         }
     ]
     
-    # Insert payment sources
-    await db.payment_sources.insert_many(payment_sources)
-    print(f"✅ Created {len(payment_sources)} default payment sources")
+        # Insert payment sources
+        await db.payment_sources.insert_many(payment_sources)
+        print(f"✅ Created {len(payment_sources)} default payment sources")
+    else:
+        print(f"Found {existing_sources} existing payment sources. Skipping payment sources seed.")
     
     client.close()
 
