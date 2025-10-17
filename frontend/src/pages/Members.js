@@ -94,6 +94,7 @@ export default function Members() {
         home_phone: '',
         work_phone: '',
         membership_type_id: '',
+        selected_payment_option_id: '',
         address: '',
         bank_account_number: '',
         bank_name: '',
@@ -104,6 +105,7 @@ export default function Members() {
         emergency_contact: '',
         notes: ''
       });
+      setPaymentOptions([]);
       fetchMembers();
     } catch (error) {
       toast.error(error.response?.data?.detail || 'Failed to add member');
