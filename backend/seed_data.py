@@ -97,6 +97,70 @@ async def seed_data():
     await db.membership_types.insert_many(membership_types)
     print(f"✅ Created {len(membership_types)} membership types")
     
+    # Create default payment sources
+    payment_sources = [
+        {
+            "id": str(uuid.uuid4()),
+            "name": "Walk-in",
+            "description": "Member walked into the gym and signed up",
+            "is_active": True,
+            "display_order": 1,
+            "created_at": datetime.now(timezone.utc).isoformat()
+        },
+        {
+            "id": str(uuid.uuid4()),
+            "name": "Online",
+            "description": "Member signed up through website or app",
+            "is_active": True,
+            "display_order": 2,
+            "created_at": datetime.now(timezone.utc).isoformat()
+        },
+        {
+            "id": str(uuid.uuid4()),
+            "name": "Social Media",
+            "description": "Member came from social media campaign",
+            "is_active": True,
+            "display_order": 3,
+            "created_at": datetime.now(timezone.utc).isoformat()
+        },
+        {
+            "id": str(uuid.uuid4()),
+            "name": "Phone-in",
+            "description": "Member called and signed up over the phone",
+            "is_active": True,
+            "display_order": 4,
+            "created_at": datetime.now(timezone.utc).isoformat()
+        },
+        {
+            "id": str(uuid.uuid4()),
+            "name": "Referral",
+            "description": "Member was referred by existing member",
+            "is_active": True,
+            "display_order": 5,
+            "created_at": datetime.now(timezone.utc).isoformat()
+        },
+        {
+            "id": str(uuid.uuid4()),
+            "name": "Canvassing",
+            "description": "Member acquired through direct canvassing",
+            "is_active": True,
+            "display_order": 6,
+            "created_at": datetime.now(timezone.utc).isoformat()
+        },
+        {
+            "id": str(uuid.uuid4()),
+            "name": "Flyers",
+            "description": "Member responded to flyer marketing",
+            "is_active": True,
+            "display_order": 7,
+            "created_at": datetime.now(timezone.utc).isoformat()
+        }
+    ]
+    
+    # Insert payment sources
+    await db.payment_sources.insert_many(payment_sources)
+    print(f"✅ Created {len(payment_sources)} default payment sources")
+    
     client.close()
 
 if __name__ == "__main__":
