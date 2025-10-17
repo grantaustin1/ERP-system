@@ -335,24 +335,65 @@ export default function Members() {
                   {/* Membership */}
                   <div className="border-b border-slate-600 pb-3">
                     <h3 className="text-white font-semibold mb-3">Membership</h3>
-                    <div className="space-y-2">
-                      <Label htmlFor="membership_type">Membership Type</Label>
-                      <Select
-                        value={formData.membership_type_id}
-                        onValueChange={(value) => setFormData({ ...formData, membership_type_id: value })}
-                        required
-                      >
-                        <SelectTrigger className="bg-slate-700/50 border-slate-600" data-testid="membership-type-select">
-                          <SelectValue placeholder="Select membership type" />
-                        </SelectTrigger>
-                        <SelectContent className="bg-slate-800 border-slate-700">
-                          {membershipTypes.map((type) => (
-                            <SelectItem key={type.id} value={type.id}>
-                              {type.name} - R{type.price}/{type.billing_frequency}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                    <div className="space-y-3">
+                      <div className="space-y-2">
+                        <Label htmlFor="membership_type">Membership Type</Label>
+                        <Select
+                          value={formData.membership_type_id}
+                          onValueChange={handleMembershipTypeChange}
+                          required
+                        >
+                          <SelectTrigger className="bg-slate-700/50 border-slate-600" data-testid="membership-type-select">
+                            <SelectValue placeholder="Select membership type" />
+                          </SelectTrigger>
+                          <SelectContent className="bg-slate-800 border-slate-700">
+                            {membershipTypes.map((type) => (
+                              <SelectItem key={type.id} value={type.id}>
+                                {type.name} - R{type.price}/{type.billing_frequency}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      {/* Payment Options */}
+                      {formData.membership_type_id && paymentOptions.length > 0 && (
+                        <div className="space-y-2 mt-3 border-t border-slate-600 pt-3">
+                          <Label htmlFor="payment_option">Payment Plan</Label>
+                          <Select
+                            value={formData.selected_payment_option_id}
+                            onValueChange={(value) => setFormData({ ...formData, selected_payment_option_id: value })}
+                          >
+                            <SelectTrigger className="bg-slate-700/50 border-slate-600">
+                              <SelectValue placeholder="Select payment plan (optional)" />
+                            </SelectTrigger>
+                            <SelectContent className="bg-slate-800 border-slate-700">
+                              {paymentOptions.map((option) => (
+                                <SelectItem key={option.id} value={option.id}>
+                                  <div className="flex flex-col">
+                                    <span className="font-medium">{option.payment_name}</span>
+                                    <span className="text-xs text-slate-400">
+                                      R{option.installment_amount.toFixed(2)} × {option.number_of_installments} = R{option.total_amount.toFixed(2)}
+                                      {option.is_default && ' (Recommended)'}
+                                    </span>
+                                  </div>
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <p className="text-xs text-slate-400 mt-1">
+                            {paymentOptions.length} payment plan{paymentOptions.length > 1 ? 's' : ''} available for this membership
+                          </p>
+                        </div>
+                      )}
+
+                      {formData.membership_type_id && paymentOptions.length === 0 && (
+                        <div className="mt-3 p-3 bg-slate-700/30 rounded-md border border-slate-600">
+                          <p className="text-xs text-slate-400">
+                            No payment plans configured for this membership. Member will use default billing.
+                          </p>
+                        </div>
+                      )}
                     </div>
                   </div>
 
