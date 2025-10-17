@@ -145,7 +145,8 @@ export default function Automations() {
     trigger_type: '',
     conditions: {},
     actions: [],
-    enabled: true
+    enabled: true,
+    test_mode: false
   });
 
   const [currentAction, setCurrentAction] = useState({
