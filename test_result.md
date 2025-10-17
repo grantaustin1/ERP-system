@@ -326,6 +326,65 @@ backend:
         agent: "testing"
         comment: "✅ Max members enforcement working perfectly: Individual membership created with max_members=1. Family membership created with max_members=4. Membership groups respect max_members limit - successfully added 4 members to family group, then correctly rejected 5th member with 'Group is full' error. current_member_count tracks accurately and prevents exceeding max_members limit."
 
+  - task: "Payment Source Management API"
+    implemented: true
+    working: "NA"
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Created CRUD API endpoints for payment sources at /api/payment-sources. Endpoints: GET (list all active sources sorted by display_order), POST (create new source), PUT (update source), DELETE (soft delete). Added PaymentSource, PaymentSourceCreate, PaymentSourceUpdate Pydantic models. Seeded default payment sources: Walk-in, Online, Social Media, Phone-in, Referral, Canvassing, Flyers."
+  
+  - task: "Member Model Enhancement - Source & Debt Tracking"
+    implemented: true
+    working: "NA"
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Enhanced Member model with new fields: source (tracking acquisition source), referred_by (referral tracking), debt_amount (calculated debt), contract_start_date, contract_end_date. Updated MemberCreate model to include source and referred_by fields."
+  
+  - task: "Invoice Model Enhancement - Payment Gateway & Status"
+    implemented: true
+    working: "NA"
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Enhanced Invoice model with new fields: payment_gateway (Stripe, PayPal, Manual, etc.), status_message (additional status information), batch_id (for debit order batches), batch_date. Updated invoice status to include 'failed' status."
+  
+  - task: "Automatic Debt Calculation"
+    implemented: true
+    working: "NA"
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Implemented calculate_member_debt() async function that calculates total debt from overdue/failed unpaid invoices and updates member's debt_amount and is_debtor fields. Integrated into mark_invoice_failed, mark_invoice_overdue, and create_payment endpoints to automatically recalculate debt on payment status changes."
+  
+  - task: "Payment Report API"
+    implemented: true
+    working: "NA"
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Created comprehensive GET /api/payment-report endpoint with filtering support (member_id, status, payment_gateway, source, start_date, end_date). Returns detailed payment report including: member info (name, membership number, email, phone), membership details, financial info (invoice, amount, status, payment gateway, debt), dates (due, paid, start, end/renewal, contract), source and referral tracking, sales consultant info. Combines data from members, invoices, and membership_types collections."
 frontend:
   - task: "Automations Page Component"
     implemented: true
