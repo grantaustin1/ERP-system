@@ -100,7 +100,7 @@ async def seed_data():
     existing_sources = await db.payment_sources.count_documents({})
     if existing_sources == 0:
         # Create default payment sources
-    payment_sources = [
+        payment_sources = [
         {
             "id": str(uuid.uuid4()),
             "name": "Walk-in",
