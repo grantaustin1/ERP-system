@@ -558,12 +558,7 @@ metadata:
   run_ui: false
 
 test_plan:
-  current_focus:
-    - "Payment Source Management API"
-    - "Member Model Enhancement - Source & Debt Tracking"
-    - "Invoice Model Enhancement - Payment Gateway & Status"
-    - "Automatic Debt Calculation"
-    - "Payment Report API"
+  current_focus: []
   stuck_tasks: []
   test_all: false
   test_priority: "high_first"
