@@ -328,63 +328,78 @@ backend:
 
   - task: "Payment Source Management API"
     implemented: true
-    working: "NA"
+    working: true
     file: "/app/backend/server.py"
     stuck_count: 0
     priority: "high"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
       - working: "NA"
         agent: "main"
         comment: "Created CRUD API endpoints for payment sources at /api/payment-sources. Endpoints: GET (list all active sources sorted by display_order), POST (create new source), PUT (update source), DELETE (soft delete). Added PaymentSource, PaymentSourceCreate, PaymentSourceUpdate Pydantic models. Seeded default payment sources: Walk-in, Online, Social Media, Phone-in, Referral, Canvassing, Flyers."
+      - working: true
+        agent: "testing"
+        comment: "✅ Payment Source Management API - 100% SUCCESS (6/6 tests passed): GET /api/payment-sources successfully returns all 7 default payment sources (Walk-in, Online, Social Media, Phone-in, Referral, Canvassing, Flyers) sorted by display_order. POST /api/payment-sources creates new sources correctly with proper field validation. PUT /api/payment-sources/{id} updates source details successfully. DELETE /api/payment-sources/{id} performs soft delete (sets is_active=False) and removes from active list. All CRUD operations working perfectly with proper data validation and response handling."
   
   - task: "Member Model Enhancement - Source & Debt Tracking"
     implemented: true
-    working: "NA"
+    working: true
     file: "/app/backend/server.py"
     stuck_count: 0
     priority: "high"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
       - working: "NA"
         agent: "main"
         comment: "Enhanced Member model with new fields: source (tracking acquisition source), referred_by (referral tracking), debt_amount (calculated debt), contract_start_date, contract_end_date. Updated MemberCreate model to include source and referred_by fields."
+      - working: true
+        agent: "testing"
+        comment: "✅ Member Model Enhancement - 100% SUCCESS (3/3 tests passed): POST /api/members successfully creates members with new fields (source='Online', referred_by='John Smith', contract_start_date, contract_end_date). All new fields are properly stored in database and retrieved correctly. GET /api/members/{id} returns new fields accurately. GET /api/members includes new fields in member list. Field validation and data persistence working perfectly for source tracking and debt management fields."
   
   - task: "Invoice Model Enhancement - Payment Gateway & Status"
     implemented: true
-    working: "NA"
+    working: true
     file: "/app/backend/server.py"
     stuck_count: 0
     priority: "high"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
       - working: "NA"
         agent: "main"
         comment: "Enhanced Invoice model with new fields: payment_gateway (Stripe, PayPal, Manual, etc.), status_message (additional status information), batch_id (for debit order batches), batch_date. Updated invoice status to include 'failed' status."
+      - working: true
+        agent: "testing"
+        comment: "✅ Invoice Model Enhancement - 100% SUCCESS (1/1 tests passed): POST /api/invoices creates invoices successfully with enhanced model structure. New fields (payment_gateway, status_message, batch_id, batch_date) are available in the model and can be set through various endpoints like mark-failed and mark-overdue. Invoice creation and field handling working correctly."
   
   - task: "Automatic Debt Calculation"
     implemented: true
-    working: "NA"
+    working: true
     file: "/app/backend/server.py"
     stuck_count: 0
     priority: "high"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
       - working: "NA"
         agent: "main"
         comment: "Implemented calculate_member_debt() async function that calculates total debt from overdue/failed unpaid invoices and updates member's debt_amount and is_debtor fields. Integrated into mark_invoice_failed, mark_invoice_overdue, and create_payment endpoints to automatically recalculate debt on payment status changes."
+      - working: true
+        agent: "testing"
+        comment: "✅ Automatic Debt Calculation - 100% SUCCESS (7/7 tests passed): Initial member debt correctly starts at R0.0 with is_debtor=false. POST /api/invoices/{id}/mark-failed properly calculates debt (R500.0) and sets is_debtor=true. POST /api/invoices/{id}/mark-overdue adds to existing debt correctly (total R800.0 for both failed and overdue invoices). POST /api/payments reduces debt accurately (R300.0 remaining after R500.0 payment). Debt calculation engine working perfectly with real-time updates across all invoice status changes and payment processing."
   
   - task: "Payment Report API"
     implemented: true
-    working: "NA"
+    working: true
     file: "/app/backend/server.py"
     stuck_count: 0
     priority: "high"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
       - working: "NA"
         agent: "main"
         comment: "Created comprehensive GET /api/payment-report endpoint with filtering support (member_id, status, payment_gateway, source, start_date, end_date). Returns detailed payment report including: member info (name, membership number, email, phone), membership details, financial info (invoice, amount, status, payment gateway, debt), dates (due, paid, start, end/renewal, contract), source and referral tracking, sales consultant info. Combines data from members, invoices, and membership_types collections."
+      - working: true
+        agent: "testing"
+        comment: "✅ Payment Report API - 100% SUCCESS (7/7 tests passed): GET /api/payment-report returns comprehensive payment data with all expected fields (member_id, member_name, membership_number, email, phone, membership_type, invoice_id, amount, status, payment_gateway, debt, is_debtor, dates, source, referred_by, sales_consultant info). Filtering works correctly: member_id filter returns records for specific member, status filter (failed/pending/paid) works properly, source filter (Online/Walk-in etc.) functions correctly, date range filtering (start_date/end_date) operates as expected, multiple filters can be combined successfully. Report structure includes all required fields for comprehensive payment tracking and analysis."
 frontend:
   - task: "Automations Page Component"
     implemented: true
