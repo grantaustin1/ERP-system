@@ -15,14 +15,77 @@ import { Plus, Play, Edit, Trash2, Power, PowerOff, Activity } from 'lucide-reac
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:8001';
 
-const TRIGGER_TYPES = [
-  { value: 'member_joined', label: 'Member Joined', description: 'When a new member registers' },
-  { value: 'payment_failed', label: 'Payment Failed', description: 'When a debit order or payment fails' },
-  { value: 'invoice_overdue', label: 'Invoice Overdue', description: 'When an invoice becomes overdue' },
-  { value: 'membership_expiring', label: 'Membership Expiring', description: 'When membership is about to expire' },
-  { value: 'member_inactive', label: 'Member Inactive', description: 'When a member hasn\'t visited in X days' },
-  { value: 'cancellation_requested', label: 'Cancellation Requested', description: 'When a member requests cancellation' }
-];
+const TRIGGER_CATEGORIES = {
+  bookings: {
+    label: 'Bookings & Classes',
+    triggers: [
+      { value: 'booking_confirmed', label: 'Booking Confirmed', description: 'When a member confirms a booking' },
+      { value: 'class_reminder', label: 'Class Reminder', description: 'Remind member about their class' },
+      { value: 'waiting_list_added', label: 'Added to Waiting List', description: 'When member adds themselves to waiting list' },
+      { value: 'waiting_list_to_booking', label: 'Moved from Waiting List', description: 'When member moves from waiting list to booking' },
+    ]
+  },
+  management: {
+    label: 'Management & Staff',
+    triggers: [
+      { value: 'member_joined', label: 'New Member Joined', description: 'When a new member registers' },
+      { value: 'staff_notification_new_member', label: 'Staff: New Member Alert', description: 'Notify staff when a member joins' },
+    ]
+  },
+  gamification: {
+    label: 'Member Points & Gamification',
+    triggers: [
+      { value: 'member_attendance', label: 'Member Attendance', description: 'When a member checks in' },
+      { value: 'achievement_recorded', label: 'Achievement Recorded', description: 'When a member achieves a milestone' },
+      { value: 'attendance_streak_reminder', label: 'Attendance Streak Reminder', description: 'Remind about 6-day streak' },
+      { value: 'attendance_streak_extended', label: 'Attendance Streak Extended', description: 'When streak is extended' },
+      { value: 'points_milestone', label: 'Points Milestone Reached', description: 'When member reaches point threshold (e.g., 50 points)' },
+    ]
+  },
+  payments: {
+    label: 'Payment Management',
+    triggers: [
+      { value: 'payment_failed', label: 'Payment Failed', description: 'When a debit order or payment fails' },
+      { value: 'payment_method_expiring', label: 'Payment Method Expiring', description: 'Before payment method expires' },
+      { value: 'payment_received', label: 'Payment Received', description: 'When payment is successful' },
+      { value: 'invoice_overdue', label: 'Invoice Overdue', description: 'When an invoice becomes overdue' },
+      { value: 'product_purchased_app', label: 'Product Purchased (App)', description: 'When product is purchased in app' },
+      { value: 'product_purchased_till', label: 'Product Purchased (Till)', description: 'When product is purchased at till' },
+    ]
+  },
+  retention: {
+    label: 'Retention & Engagement',
+    triggers: [
+      { value: 'member_inactive_10_days', label: 'Inactive 10 Days', description: 'Member has not attended in 10 days' },
+      { value: 'member_inactive_14_days', label: 'Inactive 14 Days', description: 'Member has not attended in 14 days' },
+      { value: 'new_member_no_attendance_7_days', label: 'New Member: No Attendance 7 Days', description: 'New member has not attended 7 days after joining' },
+      { value: 'new_member_no_attendance_8_days', label: 'New Member: No Attendance 8 Days', description: 'New member has not attended 8 days after joining' },
+    ]
+  },
+  sales_marketing: {
+    label: 'Sales & Marketing',
+    triggers: [
+      { value: 'rejoin_prompt_3_months', label: '3 Month Re-join Prompt', description: 'Send re-join prompt after 3 months' },
+      { value: 'birthday_promotion', label: 'Birthday Promotion', description: '5 Days for 5 friends birthday offer' },
+      { value: 'appointment_attended', label: 'Appointment Attended', description: 'When member attends an appointment' },
+      { value: 'email_opened', label: 'Email Opened', description: 'When marketing email is opened' },
+      { value: 'referral_prompt', label: 'Referral Prompt', description: 'Send referral prompt 8 days after joining' },
+    ]
+  },
+  member_journey: {
+    label: 'The Member Journey',
+    triggers: [
+      { value: 'membership_expiring', label: 'Membership Expiring', description: 'When membership is about to expire' },
+      { value: 'member_birthday', label: 'Member Birthday', description: 'On member\'s birthday' },
+      { value: 'achievement_notification', label: 'Achievement Notification', description: 'When new achievement is recorded' },
+      { value: 'welcome_new_member', label: 'Welcome New Member', description: 'Send welcome message when member joins' },
+      { value: 'cancellation_requested', label: 'Cancellation Requested', description: 'When a member requests cancellation' },
+    ]
+  }
+};
+
+// Flatten all triggers for backward compatibility
+const TRIGGER_TYPES = Object.values(TRIGGER_CATEGORIES).flatMap(category => category.triggers);
 
 const ACTION_TYPES = [
   { value: 'send_sms', label: 'Send SMS', icon: '📱' },
