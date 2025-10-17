@@ -7,7 +7,7 @@ import Dashboard from '@/pages/Dashboard';
 import Members from '@/pages/Members';
 import AccessControl from '@/pages/AccessControl';
 import Billing from '@/pages/Billing';
-import MemberPortal from '@/pages/MemberPortal';
+import MemberPortal from '@/pages/MemberPortalEnhanced';
 import Settings from '@/pages/Settings';
 import Cancellations from '@/pages/Cancellations';
 import Levies from '@/pages/Levies';
