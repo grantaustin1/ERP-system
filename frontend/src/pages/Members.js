@@ -64,6 +64,10 @@ export default function Members() {
     try {
       const response = await axios.get(`${API}/membership-types`);
       setMembershipTypes(response.data);
+    } catch (error) {
+      console.error('Failed to fetch membership types:', error);
+    }
+  };
 
   const fetchPaymentSources = async () => {
     try {
