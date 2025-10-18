@@ -241,6 +241,10 @@ export default function Settings() {
                 <Shield className="w-4 h-4 mr-2" />
                 Access Rights
               </TabsTrigger>
+              <TabsTrigger value="field-config" className="data-[state=active]:bg-emerald-500">
+                <CheckSquare className="w-4 h-4 mr-2" />
+                Field Configuration
+              </TabsTrigger>
             </TabsList>
 
             {/* Membership Packages Tab */}
