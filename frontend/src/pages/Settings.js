@@ -11,14 +11,17 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
-import { Package, Users, Shield, Plus, Edit } from 'lucide-react';
+import { Package, Users, Shield, Plus, Edit, Tag, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function Settings() {
   const [membershipTypes, setMembershipTypes] = useState([]);
+  const [paymentSources, setPaymentSources] = useState([]);
   const [loading, setLoading] = useState(true);
   const [membershipDialogOpen, setMembershipDialogOpen] = useState(false);
   const [staffDialogOpen, setStaffDialogOpen] = useState(false);
+  const [sourceDialogOpen, setSourceDialogOpen] = useState(false);
+  const [editingSource, setEditingSource] = useState(null);
   
   const [membershipForm, setMembershipForm] = useState({
     name: '',
