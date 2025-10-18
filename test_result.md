@@ -376,7 +376,7 @@ backend:
   
   - task: "Payment Report API"
     implemented: true
-    working: true
+    working: "tested"
     file: "/app/backend/server.py"
     stuck_count: 0
     priority: "high"
