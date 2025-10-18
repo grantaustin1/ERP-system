@@ -43,7 +43,7 @@ function App() {
           <Route path="/" element={<PrivateRoute><Dashboard /></PrivateRoute>} />
           <Route path="/members" element={<PrivateRoute><Members /></PrivateRoute>} />
           <Route path="/access" element={<PrivateRoute><AccessControl /></PrivateRoute>} />
-          <Route path="/billing" element={<PrivateRoute><Billing /></PrivateRoute>} />
+          <Route path="/billing" element={<PrivateRoute><BillingEnhanced /></PrivateRoute>} />
           <Route path="/cancellations" element={<PrivateRoute><Cancellations /></PrivateRoute>} />
           <Route path="/levies" element={<PrivateRoute><Levies /></PrivateRoute>} />
           <Route path="/marketing" element={<PrivateRoute><Marketing /></PrivateRoute>} />
