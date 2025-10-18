@@ -54,6 +54,7 @@ function App() {
           <Route path="/packages" element={<PrivateRoute><PackageSetup /></PrivateRoute>} />
           <Route path="/automations" element={<PrivateRoute><Automations /></PrivateRoute>} />
           <Route path="/analytics" element={<PrivateRoute><Analytics /></PrivateRoute>} />
+          <Route path="/import" element={<PrivateRoute><DataImport /></PrivateRoute>} />
           <Route path="/settings" element={<PrivateRoute><Settings /></PrivateRoute>} />
         </Routes>
       </BrowserRouter>
