@@ -3712,6 +3712,224 @@ async def get_field_definitions(import_type: str, current_user: User = Depends(g
     else:
         raise HTTPException(status_code=400, detail="Invalid import type")
 
+# ===== FIELD CONFIGURATION ENDPOINTS =====
+
+@api_router.get("/field-configurations", response_model=List[FieldConfiguration])
+async def get_field_configurations(current_user: User = Depends(get_current_user)):
+    """Get all field configurations"""
+    configs = await db.field_configurations.find({}, {"_id": 0}).to_list(None)
+    if not configs:
+        # Initialize default configurations
+        await initialize_default_field_configs()
+        configs = await db.field_configurations.find({}, {"_id": 0}).to_list(None)
+    return [FieldConfiguration(**config) for config in configs]
+
+@api_router.put("/field-configurations/{field_name}")
+async def update_field_configuration(
+    field_name: str,
+    update: FieldConfigurationUpdate,
+    current_user: User = Depends(get_current_user)
+):
+    """Update a field configuration"""
+    update_data = update.model_dump(exclude_unset=True)
+    result = await db.field_configurations.update_one(
+        {"field_name": field_name},
+        {"$set": update_data}
+    )
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Field configuration not found")
+    
+    updated = await db.field_configurations.find_one({"field_name": field_name}, {"_id": 0})
+    return FieldConfiguration(**updated)
+
+@api_router.post("/field-configurations/reset-defaults")
+async def reset_field_configurations(current_user: User = Depends(get_current_user)):
+    """Reset all field configurations to defaults"""
+    await db.field_configurations.delete_many({})
+    await initialize_default_field_configs()
+    configs = await db.field_configurations.find({}, {"_id": 0}).to_list(None)
+    return {"message": "Field configurations reset to defaults", "count": len(configs)}
+
+async def initialize_default_field_configs():
+    """Initialize default field configurations"""
+    default_configs = [
+        # Basic Information
+        {
+            "field_name": "first_name",
+            "label": "First Name",
+            "is_required": True,
+            "field_type": "text",
+            "validation_rules": {"min_length": 2, "max_length": 50},
+            "error_message": "First name must be between 2 and 50 characters",
+            "category": "basic"
+        },
+        {
+            "field_name": "last_name",
+            "label": "Last Name",
+            "is_required": True,
+            "field_type": "text",
+            "validation_rules": {"min_length": 2, "max_length": 50},
+            "error_message": "Last name must be between 2 and 50 characters",
+            "category": "basic"
+        },
+        {
+            "field_name": "id_number",
+            "label": "ID Number",
+            "is_required": False,
+            "field_type": "text",
+            "validation_rules": {"min_length": 5, "max_length": 20},
+            "error_message": "ID number must be between 5 and 20 characters",
+            "category": "basic"
+        },
+        # Contact Information
+        {
+            "field_name": "email",
+            "label": "Email Address",
+            "is_required": True,
+            "field_type": "email",
+            "validation_rules": {"must_contain": ["@", "."], "pattern": "email"},
+            "error_message": "Email must contain @ and . (e.g., user@example.com)",
+            "category": "contact"
+        },
+        {
+            "field_name": "phone",
+            "label": "Mobile Phone",
+            "is_required": True,
+            "field_type": "phone",
+            "validation_rules": {"min_length": 10, "max_length": 15, "numeric_only": True},
+            "error_message": "Phone number must be 10-15 digits",
+            "category": "contact"
+        },
+        {
+            "field_name": "home_phone",
+            "label": "Home Phone",
+            "is_required": False,
+            "field_type": "phone",
+            "validation_rules": {"min_length": 10, "max_length": 15, "numeric_only": True},
+            "error_message": "Phone number must be 10-15 digits",
+            "category": "contact"
+        },
+        {
+            "field_name": "work_phone",
+            "label": "Work Phone",
+            "is_required": False,
+            "field_type": "phone",
+            "validation_rules": {"min_length": 10, "max_length": 15, "numeric_only": True},
+            "error_message": "Phone number must be 10-15 digits",
+            "category": "contact"
+        },
+        # Address Information
+        {
+            "field_name": "address",
+            "label": "Physical Address",
+            "is_required": False,
+            "field_type": "text",
+            "validation_rules": {"min_length": 5, "max_length": 200},
+            "error_message": "Address must be between 5 and 200 characters",
+            "category": "address"
+        },
+        {
+            "field_name": "postal_code",
+            "label": "Postal Code",
+            "is_required": False,
+            "field_type": "text",
+            "validation_rules": {"min_length": 4, "max_length": 10},
+            "error_message": "Postal code must be between 4 and 10 characters",
+            "category": "address"
+        },
+        # Emergency Contact
+        {
+            "field_name": "emergency_contact",
+            "label": "Emergency Contact",
+            "is_required": False,
+            "field_type": "text",
+            "validation_rules": {"min_length": 5, "max_length": 100},
+            "error_message": "Emergency contact must be between 5 and 100 characters",
+            "category": "contact"
+        },
+        # Banking Information
+        {
+            "field_name": "bank_account_number",
+            "label": "Bank Account Number",
+            "is_required": False,
+            "field_type": "text",
+            "validation_rules": {"min_length": 8, "max_length": 20, "numeric_only": True},
+            "error_message": "Account number must be 8-20 digits",
+            "category": "banking"
+        },
+        {
+            "field_name": "bank_name",
+            "label": "Bank Name",
+            "is_required": False,
+            "field_type": "text",
+            "validation_rules": {},
+            "error_message": None,
+            "category": "banking"
+        },
+        # Membership
+        {
+            "field_name": "membership_type_id",
+            "label": "Membership Type",
+            "is_required": True,
+            "field_type": "select",
+            "validation_rules": {},
+            "error_message": "Please select a membership type",
+            "category": "membership"
+        }
+    ]
+    
+    for config in default_configs:
+        config["id"] = str(uuid.uuid4())
+        await db.field_configurations.insert_one(config)
+
+@api_router.post("/members/validate-field")
+async def validate_field(
+    field_name: str,
+    value: str,
+    current_user: User = Depends(get_current_user)
+):
+    """Validate a single field value against its configuration"""
+    config = await db.field_configurations.find_one({"field_name": field_name}, {"_id": 0})
+    if not config:
+        return {"valid": True, "message": "No validation rules configured"}
+    
+    config_obj = FieldConfiguration(**config)
+    validation_rules = config_obj.validation_rules
+    
+    errors = []
+    
+    # Required check
+    if config_obj.is_required and not value:
+        errors.append(f"{config_obj.label} is required")
+    
+    if value:
+        # Email validation
+        if config_obj.field_type == "email":
+            if "@" not in value or "." not in value:
+                errors.append(config_obj.error_message or "Invalid email format")
+        
+        # Phone validation
+        if config_obj.field_type == "phone":
+            if validation_rules.get("numeric_only") and not value.replace("+", "").replace(" ", "").isdigit():
+                errors.append("Phone number must contain only digits")
+            if validation_rules.get("min_length") and len(value) < validation_rules["min_length"]:
+                errors.append(f"Must be at least {validation_rules['min_length']} characters")
+            if validation_rules.get("max_length") and len(value) > validation_rules["max_length"]:
+                errors.append(f"Must be at most {validation_rules['max_length']} characters")
+        
+        # Text validation
+        if config_obj.field_type == "text":
+            if validation_rules.get("min_length") and len(value) < validation_rules["min_length"]:
+                errors.append(f"Must be at least {validation_rules['min_length']} characters")
+            if validation_rules.get("max_length") and len(value) > validation_rules["max_length"]:
+                errors.append(f"Must be at most {validation_rules['max_length']} characters")
+    
+    return {
+        "valid": len(errors) == 0,
+        "errors": errors,
+        "message": errors[0] if errors else "Valid"
+    }
+
 # Include the router in the main app
 app.include_router(api_router)
 
