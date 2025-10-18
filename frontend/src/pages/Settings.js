@@ -49,14 +49,25 @@ export default function Settings() {
     role: 'staff'
   });
 
+  const [sourceForm, setSourceForm] = useState({
+    name: '',
+    description: '',
+    is_active: true,
+    display_order: 0
+  });
+
   useEffect(() => {
     fetchData();
   }, []);
 
   const fetchData = async () => {
     try {
-      const response = await axios.get(`${API}/membership-types`);
-      setMembershipTypes(response.data);
+      const [membershipsRes, sourcesRes] = await Promise.all([
+        axios.get(`${API}/membership-types`),
+        axios.get(`${API}/payment-sources`)
+      ]);
+      setMembershipTypes(membershipsRes.data);
+      setPaymentSources(sourcesRes.data);
     } catch (error) {
       toast.error('Failed to fetch data');
     } finally {
