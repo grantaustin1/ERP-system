@@ -1,5 +1,5 @@
 import { useNavigate, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Users, ScanLine, FileText, UserX, DollarSign, TrendingUp, Package, Settings, LogOut, Dumbbell, Zap } from 'lucide-react';
+import { LayoutDashboard, Users, ScanLine, FileText, UserX, DollarSign, TrendingUp, Package, Settings, LogOut, Dumbbell, Zap, BarChart3 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 export default function Sidebar() {
@@ -16,6 +16,7 @@ export default function Sidebar() {
     { path: '/members', icon: Users, label: 'Members', testId: 'nav-members' },
     { path: '/access', icon: ScanLine, label: 'Access Control', testId: 'nav-access' },
     { path: '/billing', icon: FileText, label: 'Billing', testId: 'nav-billing' },
+    { path: '/analytics', icon: BarChart3, label: 'Analytics', testId: 'nav-analytics' },
     { path: '/levies', icon: DollarSign, label: 'Levies', testId: 'nav-levies' },
     { path: '/cancellations', icon: UserX, label: 'Cancellations', testId: 'nav-cancellations' },
     { path: '/packages', icon: Package, label: 'Package Setup', testId: 'nav-packages' },
