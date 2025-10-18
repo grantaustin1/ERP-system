@@ -1437,6 +1437,68 @@ async def get_commission_dashboard(current_user: User = Depends(get_current_user
 # Members Routes
 @api_router.post("/members", response_model=Member)
 async def create_member(data: MemberCreate, current_user: User = Depends(get_current_user)):
+    # Check for duplicates
+    duplicates = []
+    
+    # Check email
+    if data.email:
+        email_exists = await db.members.find_one({"email": data.email.lower()}, {"_id": 0})
+        if email_exists:
+            duplicates.append({
+                "field": "email",
+                "value": data.email,
+                "existing_member": {
+                    "id": email_exists["id"],
+                    "name": f"{email_exists['first_name']} {email_exists['last_name']}",
+                    "email": email_exists.get("email"),
+                    "phone": email_exists.get("phone")
+                }
+            })
+    
+    # Check phone
+    if data.phone:
+        phone_exists = await db.members.find_one({"phone": data.phone}, {"_id": 0})
+        if phone_exists:
+            duplicates.append({
+                "field": "phone",
+                "value": data.phone,
+                "existing_member": {
+                    "id": phone_exists["id"],
+                    "name": f"{phone_exists['first_name']} {phone_exists['last_name']}",
+                    "email": phone_exists.get("email"),
+                    "phone": phone_exists.get("phone")
+                }
+            })
+    
+    # Check name (case-insensitive)
+    name_regex = {"$regex": f"^{data.first_name}$", "$options": "i"}
+    lastname_regex = {"$regex": f"^{data.last_name}$", "$options": "i"}
+    name_exists = await db.members.find_one({
+        "first_name": name_regex,
+        "last_name": lastname_regex
+    }, {"_id": 0})
+    if name_exists:
+        duplicates.append({
+            "field": "name",
+            "value": f"{data.first_name} {data.last_name}",
+            "existing_member": {
+                "id": name_exists["id"],
+                "name": f"{name_exists['first_name']} {name_exists['last_name']}",
+                "email": name_exists.get("email"),
+                "phone": name_exists.get("phone")
+            }
+        })
+    
+    # If duplicates found, return error with details
+    if duplicates:
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "message": "Duplicate member detected",
+                "duplicates": duplicates
+            }
+        )
+    
     # Check if membership type exists
     membership_type = await db.membership_types.find_one({"id": data.membership_type_id})
     if not membership_type:
