@@ -841,6 +841,113 @@ export default function Settings() {
                 </CardContent>
               </Card>
             </TabsContent>
+
+            {/* Field Configuration Tab */}
+            <TabsContent value="field-config" className="mt-6">
+              <Card className="bg-slate-800/50 border-slate-700 backdrop-blur-lg">
+                <CardHeader className="flex flex-row items-center justify-between">
+                  <div>
+                    <CardTitle className="text-white">Field Configuration</CardTitle>
+                    <CardDescription className="text-slate-400">
+                      Configure which fields are mandatory and set validation rules
+                    </CardDescription>
+                  </div>
+                  <Button
+                    variant="outline"
+                    onClick={handleResetFieldConfigs}
+                    className="bg-slate-700 border-slate-600 text-white hover:bg-slate-600"
+                  >
+                    Reset to Defaults
+                  </Button>
+                </CardHeader>
+                <CardContent>
+                  {/* Group by category */}
+                  {['basic', 'contact', 'address', 'banking', 'membership'].map(category => {
+                    const categoryFields = fieldConfigurations.filter(f => f.category === category);
+                    if (categoryFields.length === 0) return null;
+
+                    return (
+                      <div key={category} className="mb-6">
+                        <h3 className="text-white font-semibold capitalize mb-4 text-lg border-b border-slate-600 pb-2">
+                          {category} Information
+                        </h3>
+                        <div className="space-y-4">
+                          {categoryFields.map(field => (
+                            <div key={field.field_name} className="p-4 rounded-lg bg-slate-700/30 border border-slate-600">
+                              <div className="flex items-start justify-between mb-3">
+                                <div className="flex-1">
+                                  <div className="flex items-center space-x-2 mb-1">
+                                    <h4 className="text-white font-medium">{field.label}</h4>
+                                    <Badge variant={field.field_type === 'email' ? 'default' : field.field_type === 'phone' ? 'secondary' : 'outline'} className="text-xs">
+                                      {field.field_type}
+                                    </Badge>
+                                  </div>
+                                  <p className="text-slate-400 text-sm">Field: {field.field_name}</p>
+                                </div>
+                                <div className="flex items-center space-x-2">
+                                  <Label className="text-slate-300 text-sm">Required</Label>
+                                  <Switch
+                                    checked={field.is_required}
+                                    onCheckedChange={(checked) => handleFieldConfigUpdate(field.field_name, { is_required: checked })}
+                                    className="data-[state=checked]:bg-emerald-500"
+                                  />
+                                </div>
+                              </div>
+
+                              {/* Validation Rules Display */}
+                              {Object.keys(field.validation_rules).length > 0 && (
+                                <div className="mt-3 p-3 bg-slate-800/50 rounded border border-slate-600">
+                                  <p className="text-slate-300 text-xs font-semibold mb-2">Validation Rules:</p>
+                                  <div className="flex flex-wrap gap-2">
+                                    {field.validation_rules.min_length && (
+                                      <Badge variant="outline" className="text-xs">
+                                        Min: {field.validation_rules.min_length} chars
+                                      </Badge>
+                                    )}
+                                    {field.validation_rules.max_length && (
+                                      <Badge variant="outline" className="text-xs">
+                                        Max: {field.validation_rules.max_length} chars
+                                      </Badge>
+                                    )}
+                                    {field.validation_rules.numeric_only && (
+                                      <Badge variant="outline" className="text-xs">
+                                        Numbers only
+                                      </Badge>
+                                    )}
+                                    {field.validation_rules.must_contain && (
+                                      <Badge variant="outline" className="text-xs">
+                                        Must contain: {field.validation_rules.must_contain.join(', ')}
+                                      </Badge>
+                                    )}
+                                    {field.validation_rules.pattern === 'email' && (
+                                      <Badge variant="outline" className="text-xs">
+                                        Email format (requires @ and .)
+                                      </Badge>
+                                    )}
+                                  </div>
+                                  {field.error_message && (
+                                    <p className="text-slate-400 text-xs mt-2 italic">
+                                      Error message: "{field.error_message}"
+                                    </p>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })}
+
+                  {fieldConfigurations.length === 0 && (
+                    <div className="text-center py-12">
+                      <CheckSquare className="h-12 w-12 mx-auto text-slate-600 mb-4" />
+                      <p className="text-slate-400">Loading field configurations...</p>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
           </Tabs>
         </div>
       </div>
