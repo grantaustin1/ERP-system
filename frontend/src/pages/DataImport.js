@@ -155,6 +155,7 @@ function DataImport() {
       const formData = new FormData();
       formData.append('file', selectedFile);
       formData.append('field_mapping', JSON.stringify(fieldMapping));
+      formData.append('duplicate_action', duplicateAction);
 
       const endpoint = importType === 'members' ? '/api/import/members' : '/api/import/leads';
       const response = await fetch(`${BACKEND_URL}${endpoint}`, {
