@@ -26,10 +26,10 @@ export default function BillingEnhanced() {
 
   // Filters for payment report
   const [filters, setFilters] = useState({
-    member_id: '',
-    status: '',
+    member_id: '__all__',
+    status: '__all__',
     payment_gateway: '',
-    source: '',
+    source: '__all__',
     start_date: '',
     end_date: ''
   });
