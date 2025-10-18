@@ -17,6 +17,7 @@ import { toast } from 'sonner';
 export default function Settings() {
   const [membershipTypes, setMembershipTypes] = useState([]);
   const [paymentSources, setPaymentSources] = useState([]);
+  const [fieldConfigurations, setFieldConfigurations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [membershipDialogOpen, setMembershipDialogOpen] = useState(false);
   const [staffDialogOpen, setStaffDialogOpen] = useState(false);
