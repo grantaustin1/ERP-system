@@ -1,0 +1,567 @@
+import React, { useState, useEffect } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
+import { Button } from '../components/ui/button';
+import { Input } from '../components/ui/input';
+import { Label } from '../components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../components/ui/dialog';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
+import { Badge } from '../components/ui/badge';
+import { 
+  Scan, Fingerprint, ScanFace, UserCheck, UserX, Clock, 
+  TrendingUp, Activity, BarChart3, MapPin, Shield, CheckCircle2, XCircle, Search
+} from 'lucide-react';
+
+const ACCESS_METHODS = [
+  { value: 'qr_code', label: 'QR Code', icon: Scan },
+  { value: 'rfid', label: 'RFID Card', icon: Shield },
+  { value: 'fingerprint', label: 'Fingerprint', icon: Fingerprint },
+  { value: 'facial_recognition', label: 'Facial Recognition', icon: ScanFace },
+  { value: 'manual_override', label: 'Manual Override', icon: UserCheck },
+  { value: 'mobile_app', label: 'Mobile App', icon: Activity }
+];
+
+const LOCATIONS = [
+  'Main Entrance',
+  'Studio A',
+  'Studio B',
+  'Locker Room - Men',
+  'Locker Room - Women',
+  'Swimming Pool',
+  'Gym Floor',
+  'Cardio Zone',
+  'Weight Room'
+];
+
+function AccessControlEnhanced() {
+  const [activeTab, setActiveTab] = useState('check-in');
+  const [members, setMembers] = useState([]);
+  const [accessLogs, setAccessLogs] = useState([]);
+  const [analytics, setAnalytics] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [showCheckinDialog, setShowCheckinDialog] = useState(false);
+  const [accessResult, setAccessResult] = useState(null);
+  
+  const [checkinForm, setCheckinForm] = useState({
+    member_id: '',
+    access_method: 'manual_override',
+    location: 'Main Entrance',
+    notes: ''
+  });
+
+  const [logFilters, setLogFilters] = useState({
+    status: '',
+    location: '',
+    limit: 100
+  });
+
+  const API_URL = process.env.REACT_APP_BACKEND_URL;
+
+  useEffect(() => {
+    fetchMembers();
+    fetchAccessLogs();
+    fetchAnalytics();
+  }, []);
+
+  useEffect(() => {
+    fetchAccessLogs();
+  }, [logFilters]);
+
+  const fetchMembers = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`${API_URL}/api/members`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setMembers(data);
+      }
+    } catch (error) {
+      console.error('Failed to fetch members:', error);
+    }
+  };
+
+  const fetchAccessLogs = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const params = new URLSearchParams();
+      if (logFilters.status) params.append('status', logFilters.status);
+      if (logFilters.location) params.append('location', logFilters.location);
+      params.append('limit', logFilters.limit);
+
+      const response = await fetch(`${API_URL}/api/access/logs?${params}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setAccessLogs(data);
+      }
+    } catch (error) {
+      console.error('Failed to fetch access logs:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchAnalytics = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`${API_URL}/api/access/analytics`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setAnalytics(data);
+      }
+    } catch (error) {
+      console.error('Failed to fetch analytics:', error);
+    }
+  };
+
+  const handleQuickCheckin = async (memberId) => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`${API_URL}/api/access/quick-checkin?member_id=${memberId}`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+
+      const result = await response.json();
+      setAccessResult(result);
+      
+      if (result.access === 'granted') {
+        alert('✓ Access Granted!');
+      } else {
+        alert(`✗ Access Denied: ${result.reason}`);
+      }
+      
+      await fetchAccessLogs();
+      await fetchAnalytics();
+    } catch (error) {
+      console.error('Check-in failed:', error);
+      alert('Check-in failed');
+    }
+  };
+
+  const handleManualCheckin = async (e) => {
+    e.preventDefault();
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`${API_URL}/api/access/validate`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(checkinForm)
+      });
+
+      const result = await response.json();
+      setAccessResult(result);
+      
+      if (result.access === 'granted') {
+        alert('✓ Access Granted!');
+        setShowCheckinDialog(false);
+        resetCheckinForm();
+      } else {
+        alert(`✗ Access Denied: ${result.reason}`);
+      }
+      
+      await fetchAccessLogs();
+      await fetchAnalytics();
+    } catch (error) {
+      console.error('Check-in failed:', error);
+      alert('Check-in failed');
+    }
+  };
+
+  const resetCheckinForm = () => {
+    setCheckinForm({
+      member_id: '',
+      access_method: 'manual_override',
+      location: 'Main Entrance',
+      notes: ''
+    });
+  };
+
+  const getStatusBadge = (status) => {
+    if (status === 'granted') {
+      return <Badge className="bg-green-100 text-green-800"><CheckCircle2 className="h-3 w-3 mr-1" /> Granted</Badge>;
+    }
+    return <Badge className="bg-red-100 text-red-800"><XCircle className="h-3 w-3 mr-1" /> Denied</Badge>;
+  };
+
+  const getMethodIcon = (method) => {
+    const methodObj = ACCESS_METHODS.find(m => m.value === method);
+    if (methodObj) {
+      const Icon = methodObj.icon;
+      return <Icon className="h-4 w-4" />;
+    }
+    return <Activity className="h-4 w-4" />;
+  };
+
+  if (loading) {
+    return <div className="flex items-center justify-center h-screen">Loading...</div>;
+  }
+
+  return (
+    <div className="p-6 max-w-7xl mx-auto">
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-3xl font-bold">Access Control & Check-ins</h1>
+        <Dialog open={showCheckinDialog} onOpenChange={setShowCheckinDialog}>
+          <Button onClick={() => setShowCheckinDialog(true)}>
+            <UserCheck className="mr-2 h-4 w-4" /> Manual Check-in
+          </Button>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Manual Check-in</DialogTitle>
+            </DialogHeader>
+            <form onSubmit={handleManualCheckin} className="space-y-4">
+              <div>
+                <Label htmlFor="member_id">Member *</Label>
+                <Select 
+                  value={checkinForm.member_id} 
+                  onValueChange={(value) => setCheckinForm({ ...checkinForm, member_id: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select member" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {members.map(member => (
+                      <SelectItem key={member.id} value={member.id}>
+                        {member.first_name} {member.last_name} - {member.email}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <Label htmlFor="access_method">Access Method *</Label>
+                <Select 
+                  value={checkinForm.access_method} 
+                  onValueChange={(value) => setCheckinForm({ ...checkinForm, access_method: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {ACCESS_METHODS.map(method => (
+                      <SelectItem key={method.value} value={method.value}>
+                        {method.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <Label htmlFor="location">Location</Label>
+                <Select 
+                  value={checkinForm.location} 
+                  onValueChange={(value) => setCheckinForm({ ...checkinForm, location: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {LOCATIONS.map(location => (
+                      <SelectItem key={location} value={location}>
+                        {location}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <Label htmlFor="notes">Notes</Label>
+                <Input
+                  id="notes"
+                  value={checkinForm.notes}
+                  onChange={(e) => setCheckinForm({ ...checkinForm, notes: e.target.value })}
+                  placeholder="Optional notes"
+                />
+              </div>
+
+              <div className="flex justify-end space-x-2">
+                <Button type="button" variant="outline" onClick={() => { setShowCheckinDialog(false); resetCheckinForm(); }}>
+                  Cancel
+                </Button>
+                <Button type="submit">Check In</Button>
+              </div>
+            </form>
+          </DialogContent>
+        </Dialog>
+      </div>
+
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
+        <TabsList>
+          <TabsTrigger value="check-in">Quick Check-in</TabsTrigger>
+          <TabsTrigger value="logs">Access Logs</TabsTrigger>
+          <TabsTrigger value="analytics">Analytics</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="check-in" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Quick Member Check-in</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div className="flex space-x-2">
+                  <Input
+                    placeholder="Search members by name or email..."
+                    className="flex-1"
+                    id="member-search"
+                  />
+                  <Button variant="outline">
+                    <Search className="h-4 w-4" />
+                  </Button>
+                </div>
+
+                <div className="grid gap-3 max-h-[500px] overflow-y-auto">
+                  {members.filter(m => m.membership_status === 'active').slice(0, 20).map(member => (
+                    <Card key={member.id} className="border-l-4 border-l-blue-500">
+                      <CardContent className="py-3">
+                        <div className="flex justify-between items-center">
+                          <div>
+                            <h4 className="font-semibold">
+                              {member.first_name} {member.last_name}
+                            </h4>
+                            <p className="text-sm text-gray-600">{member.email}</p>
+                            <p className="text-xs text-gray-500">
+                              Status: <span className="font-medium">{member.membership_status}</span>
+                            </p>
+                          </div>
+                          <Button onClick={() => handleQuickCheckin(member.id)}>
+                            <UserCheck className="h-4 w-4 mr-2" /> Check In
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="logs" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Access Logs</CardTitle>
+              <div className="flex space-x-2 mt-4">
+                <Select value={logFilters.status} onValueChange={(value) => setLogFilters({ ...logFilters, status: value })}>
+                  <SelectTrigger className="w-[180px]">
+                    <SelectValue placeholder="All statuses" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">All statuses</SelectItem>
+                    <SelectItem value="granted">Granted</SelectItem>
+                    <SelectItem value="denied">Denied</SelectItem>
+                  </SelectContent>
+                </Select>
+
+                <Select value={logFilters.location} onValueChange={(value) => setLogFilters({ ...logFilters, location: value })}>
+                  <SelectTrigger className="w-[180px]">
+                    <SelectValue placeholder="All locations" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">All locations</SelectItem>
+                    {LOCATIONS.map(location => (
+                      <SelectItem key={location} value={location}>{location}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+
+                <Button variant="outline" onClick={fetchAccessLogs}>Refresh</Button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b">
+                      <th className="text-left p-2">Time</th>
+                      <th className="text-left p-2">Member</th>
+                      <th className="text-left p-2">Method</th>
+                      <th className="text-left p-2">Location</th>
+                      <th className="text-left p-2">Status</th>
+                      <th className="text-left p-2">Reason</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {accessLogs.map(log => (
+                      <tr key={log.id} className="border-b hover:bg-gray-50">
+                        <td className="p-2 text-sm">
+                          <div className="flex items-center">
+                            <Clock className="h-4 w-4 mr-2 text-gray-400" />
+                            {new Date(log.timestamp).toLocaleString()}
+                          </div>
+                        </td>
+                        <td className="p-2">
+                          <div>
+                            <div className="font-medium">{log.member_name}</div>
+                            <div className="text-xs text-gray-500">{log.membership_type}</div>
+                          </div>
+                        </td>
+                        <td className="p-2">
+                          <div className="flex items-center space-x-2">
+                            {getMethodIcon(log.access_method)}
+                            <span className="text-sm">{log.access_method.replace('_', ' ')}</span>
+                          </div>
+                        </td>
+                        <td className="p-2">
+                          <div className="flex items-center">
+                            <MapPin className="h-4 w-4 mr-2 text-gray-400" />
+                            <span className="text-sm">{log.location || 'N/A'}</span>
+                          </div>
+                        </td>
+                        <td className="p-2">{getStatusBadge(log.status)}</td>
+                        <td className="p-2 text-sm text-gray-600">{log.reason || '-'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                {accessLogs.length === 0 && (
+                  <div className="text-center py-12">
+                    <p className="text-gray-600">No access logs found</p>
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="analytics" className="space-y-4">
+          {analytics && (
+            <>
+              <div className="grid gap-4 md:grid-cols-4">
+                <Card>
+                  <CardContent className="pt-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm text-gray-600">Total Attempts</p>
+                        <p className="text-2xl font-bold">{analytics.total_attempts}</p>
+                      </div>
+                      <Activity className="h-8 w-8 text-blue-500" />
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardContent className="pt-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm text-gray-600">Access Granted</p>
+                        <p className="text-2xl font-bold text-green-600">{analytics.granted_count}</p>
+                      </div>
+                      <CheckCircle2 className="h-8 w-8 text-green-500" />
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardContent className="pt-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm text-gray-600">Access Denied</p>
+                        <p className="text-2xl font-bold text-red-600">{analytics.denied_count}</p>
+                      </div>
+                      <XCircle className="h-8 w-8 text-red-500" />
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardContent className="pt-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm text-gray-600">Success Rate</p>
+                        <p className="text-2xl font-bold">{analytics.success_rate}%</p>
+                      </div>
+                      <TrendingUp className="h-8 w-8 text-purple-500" />
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-2">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Access by Method</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-2">
+                      {analytics.access_by_method.map(item => (
+                        <div key={item._id} className="flex justify-between items-center p-2 bg-gray-50 rounded">
+                          <span className="capitalize">{item._id?.replace('_', ' ')}</span>
+                          <Badge>{item.count}</Badge>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Access by Location</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-2">
+                      {analytics.access_by_location.map(item => (
+                        <div key={item._id} className="flex justify-between items-center p-2 bg-gray-50 rounded">
+                          <span>{item._id}</span>
+                          <Badge>{item.count}</Badge>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Denied Reasons</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-2">
+                      {analytics.denied_reasons.map(item => (
+                        <div key={item._id} className="flex justify-between items-center p-2 bg-red-50 rounded">
+                          <span className="text-sm">{item._id}</span>
+                          <Badge variant="destructive">{item.count}</Badge>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Top Members (Check-ins)</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-2">
+                      {analytics.top_members.map((item, index) => (
+                        <div key={item._id} className="flex justify-between items-center p-2 bg-gray-50 rounded">
+                          <div className="flex items-center space-x-2">
+                            <span className="font-bold text-gray-400">#{index + 1}</span>
+                            <span>{item.member_name}</span>
+                          </div>
+                          <Badge variant="secondary">{item.check_in_count} check-ins</Badge>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            </>
+          )}
+        </TabsContent>
+      </Tabs>
+    </div>
+  );
+}
+
+export default AccessControlEnhanced;
