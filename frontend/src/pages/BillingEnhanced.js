@@ -310,7 +310,7 @@ export default function BillingEnhanced() {
                           <SelectValue placeholder="All sources" />
                         </SelectTrigger>
                         <SelectContent className="bg-slate-800 border-slate-700">
-                          <SelectItem value="">All Sources</SelectItem>
+                          <SelectItem value="__all__">All Sources</SelectItem>
                           {paymentSources.map((source) => (
                             <SelectItem key={source.id} value={source.name}>
                               {source.name}
