@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
-import { Package, Users, Shield, Plus, Edit, Tag, Trash2 } from 'lucide-react';
+import { Package, Users, Shield, Plus, Edit, Tag, Trash2, Settings as SettingsIcon, CheckSquare } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function Settings() {
