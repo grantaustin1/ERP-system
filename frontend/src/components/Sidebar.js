@@ -23,6 +23,7 @@ export default function Sidebar() {
     { path: '/packages', icon: Package, label: 'Package Setup', testId: 'nav-packages' },
     { path: '/marketing', icon: TrendingUp, label: 'Marketing', testId: 'nav-marketing' },
     { path: '/automations', icon: Zap, label: 'Automations', testId: 'nav-automations' },
+    { path: '/import', icon: Upload, label: 'Import Data', testId: 'nav-import' },
     { path: '/settings', icon: Settings, label: 'Settings', testId: 'nav-settings' },
   ];
 
