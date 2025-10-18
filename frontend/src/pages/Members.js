@@ -95,8 +95,10 @@ export default function Members() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    console.log('handleSubmit called', formData);
     try {
-      await axios.post(`${API}/members`, formData);
+      const response = await axios.post(`${API}/members`, formData);
+      console.log('Member created successfully:', response.data);
       toast.success('Member added successfully!');
       setDialogOpen(false);
       setFormData({
@@ -123,6 +125,7 @@ export default function Members() {
       setPaymentOptions([]);
       fetchMembers();
     } catch (error) {
+      console.error('Error creating member:', error, error.response);
       // Handle duplicate error specially
       if (error.response?.status === 409 && error.response?.data?.detail?.duplicates) {
         const duplicates = error.response.data.detail.duplicates;
@@ -139,7 +142,8 @@ export default function Members() {
           toast.error('Please contact administrator to override duplicate protection');
         }
       } else {
-        toast.error(error.response?.data?.detail || 'Failed to add member');
+        const errorMsg = error.response?.data?.detail || 'Failed to add member';
+        toast.error(typeof errorMsg === 'string' ? errorMsg : JSON.stringify(errorMsg));
       }
     }
   };
