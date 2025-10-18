@@ -136,6 +136,60 @@ export default function Settings() {
     }
   };
 
+  const handleSourceSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      if (editingSource) {
+        // Update existing source
+        await axios.put(`${API}/payment-sources/${editingSource.id}`, sourceForm);
+        toast.success('Payment source updated!');
+      } else {
+        // Create new source
+        await axios.post(`${API}/payment-sources`, sourceForm);
+        toast.success('Payment source created!');
+      }
+      
+      setSourceDialogOpen(false);
+      setEditingSource(null);
+      setSourceForm({
+        name: '',
+        description: '',
+        is_active: true,
+        display_order: 0
+      });
+      fetchData();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Failed to save payment source');
+    }
+  };
+
+  const handleEditSource = (source) => {
+    setEditingSource(source);
+    setSourceForm({
+      name: source.name,
+      description: source.description || '',
+      is_active: source.is_active,
+      display_order: source.display_order
+    });
+    setSourceDialogOpen(true);
+  };
+
+  const handleDeleteSource = async (sourceId) => {
+    if (!window.confirm('Are you sure you want to delete this payment source?')) {
+      return;
+    }
+    
+    try {
+      await axios.delete(`${API}/payment-sources/${sourceId}`);
+      toast.success('Payment source deleted!');
+      fetchData();
+    } catch (error) {
+      toast.error('Failed to delete payment source');
+    }
+  };
+
+
+
   return (
     <div className="flex min-h-screen">
       <Sidebar />
