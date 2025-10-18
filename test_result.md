@@ -352,7 +352,7 @@ backend:
   
   - task: "Invoice Model Enhancement - Payment Gateway & Status"
     implemented: true
-    working: true
+    working: "tested"
     file: "/app/backend/server.py"
     stuck_count: 0
     priority: "high"
