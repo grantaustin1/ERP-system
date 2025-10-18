@@ -11,7 +11,7 @@ from datetime import datetime, timezone, timedelta
 import os
 
 # Configuration
-BASE_URL = os.getenv('REACT_APP_BACKEND_URL', 'https://erp360-triggers.preview.emergentagent.com')
+BASE_URL = os.getenv('REACT_APP_BACKEND_URL', 'https://gym360-rebuild.preview.emergentagent.com')
 API_BASE = f"{BASE_URL}/api"
 
 # Test credentials
