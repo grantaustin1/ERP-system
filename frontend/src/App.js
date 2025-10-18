@@ -13,7 +13,7 @@ import Cancellations from '@/pages/Cancellations';
 import Levies from '@/pages/Levies';
 import Marketing from '@/pages/Marketing';
 import PackageSetup from '@/pages/PackageSetupEnhanced';
-import Automations from '@/pages/Automations';
+import Automations from '@/pages/AutomationsGeneric';
 import Analytics from '@/pages/Analytics';
 import Classes from '@/pages/Classes';
 import { Toaster } from '@/components/ui/sonner';
