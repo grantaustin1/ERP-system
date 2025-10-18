@@ -4633,8 +4633,8 @@ class AccessControlTester:
 
 
 if __name__ == "__main__":
-    # Run Classes and Bookings API tests (NEW FEATURES)
-    print("🎯 TESTING NEW CLASSES AND BOOKINGS API FEATURES")
+    # Run Enhanced Access Control & Check-in System tests
+    print("🎯 TESTING ENHANCED ACCESS CONTROL & CHECK-IN SYSTEM")
     print("=" * 80)
-    classes_bookings_tester = ClassesAndBookingsTester()
-    classes_bookings_tester.run_classes_and_bookings_tests()
+    access_control_tester = AccessControlTester()
+    access_control_tester.run_access_control_tests()
