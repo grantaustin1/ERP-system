@@ -1322,3 +1322,38 @@ agent_communication:
       - working: true
         agent: "testing"
         comment: "✅ COMPREHENSIVE UI TESTING COMPLETED - 100% SUCCESS: Test Mode toggle functionality fully operational. Found test mode switch with id='test_mode' in automation form. Toggle successfully changes badge from 'Live' to 'Test Only' with yellow background (bg-yellow-100 class). Test mode warning text displays correctly: 'Test mode: This automation will NOT trigger automatically from live events. Use the test button to manually test it.' Created automation with test mode enabled successfully. Test mode badge (🧪 Test Mode) appears on automation cards with proper yellow styling. Edit automation correctly pre-loads test mode setting (toggle checked when test_mode=true). All visual indicators working: Active/Test Only badges, yellow background styling, explanatory text. Feature ready for production use - allows safe testing of automations before going live."
+
+  - agent: "testing"
+    message: |
+      🎉 CLASSES AND BOOKINGS API TESTING COMPLETED - 100% SUCCESS (15/15 tests passed)
+      
+      COMPREHENSIVE TEST RESULTS FOR NEW CLASSES & BOOKINGS FEATURES:
+      
+      ✅ CLASSES API ENDPOINTS (All Working):
+      - GET /api/classes: Successfully returns empty array initially, then populated list after creation
+      - POST /api/classes: Creates recurring classes with all properties (Morning Yoga, 60min, capacity 20→25, Studio A, waitlist enabled)
+      - GET /api/classes/{class_id}: Retrieves specific class details correctly
+      - PATCH /api/classes/{class_id}: Updates class properties (tested capacity update from 20 to 25)
+      - All class properties validated: name, description, class_type, instructor_name, duration_minutes, capacity, day_of_week, start_time, end_time, is_recurring, room, allow_waitlist, waitlist_capacity, booking_window_days, cancel_window_hours, drop_in_price
+      
+      ✅ BOOKINGS API ENDPOINTS (All Working):
+      - POST /api/bookings: Creates bookings with comprehensive validation (class exists, member exists, membership restrictions, booking window checks)
+      - GET /api/bookings: Returns all bookings with optional filtering by class_id, member_id, status, date ranges
+      - GET /api/bookings?class_id={id}: Filtering by class working correctly
+      - Booking creation auto-populates: class_name, member_name, member_email from related entities
+      - Payment requirements handled based on drop_in_price (R15.00 for Morning Yoga)
+      
+      ✅ BOOKING STATUS MANAGEMENT (All Working):
+      - POST /api/bookings/{id}/check-in: Successfully checks in confirmed bookings → status='attended' + checked_in_at timestamp
+      - PATCH /api/bookings/{id}: Handles cancellations → status='cancelled' + cancelled_at + cancellation_reason
+      - Status validation: Only confirmed bookings can be checked in
+      
+      ✅ CAPACITY & WAITLIST LOGIC (Flawless):
+      - Created 25 confirmed bookings to fill class capacity (capacity=25)
+      - 26th booking correctly added to waitlist: status='waitlist', is_waitlist=true, waitlist_position=1
+      - Waitlist promotion tested: When confirmed booking cancelled → waitlist member auto-promoted to confirmed
+      - Waitlist position management: Remaining positions decremented correctly
+      - Capacity limits enforced: waitlist_capacity=10 respected
+      
+      🚀 PRODUCTION READY:
+      All Classes and Bookings API endpoints are fully functional with comprehensive validation, proper error handling, and sophisticated capacity/waitlist management. The system handles complex booking scenarios including membership restrictions, booking windows, capacity limits, waitlist management, and automatic promotion logic. Ready for frontend integration and production deployment.
