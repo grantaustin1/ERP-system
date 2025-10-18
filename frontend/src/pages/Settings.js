@@ -63,16 +63,38 @@ export default function Settings() {
 
   const fetchData = async () => {
     try {
-      const [membershipsRes, sourcesRes] = await Promise.all([
+      const [membershipsRes, sourcesRes, fieldConfigsRes] = await Promise.all([
         axios.get(`${API}/membership-types`),
-        axios.get(`${API}/payment-sources`)
+        axios.get(`${API}/payment-sources`),
+        axios.get(`${API}/field-configurations`)
       ]);
       setMembershipTypes(membershipsRes.data);
       setPaymentSources(sourcesRes.data);
+      setFieldConfigurations(fieldConfigsRes.data);
     } catch (error) {
       toast.error('Failed to fetch data');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleFieldConfigUpdate = async (fieldName, updates) => {
+    try {
+      await axios.put(`${API}/field-configurations/${fieldName}`, updates);
+      toast.success('Field configuration updated!');
+      fetchData();
+    } catch (error) {
+      toast.error('Failed to update field configuration');
+    }
+  };
+
+  const handleResetFieldConfigs = async () => {
+    try {
+      await axios.post(`${API}/field-configurations/reset-defaults`);
+      toast.success('Field configurations reset to defaults!');
+      fetchData();
+    } catch (error) {
+      toast.error('Failed to reset configurations');
     }
   };
 
