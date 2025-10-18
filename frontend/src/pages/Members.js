@@ -125,7 +125,24 @@ export default function Members() {
       setPaymentOptions([]);
       fetchMembers();
     } catch (error) {
-      toast.error(error.response?.data?.detail || 'Failed to add member');
+      // Handle duplicate error specially
+      if (error.response?.status === 409 && error.response?.data?.detail?.duplicates) {
+        const duplicates = error.response.data.detail.duplicates;
+        let message = 'Duplicate member detected:\n\n';
+        duplicates.forEach(dup => {
+          message += `• ${dup.field.toUpperCase()}: ${dup.value}\n`;
+          message += `  Existing: ${dup.existing_member.name} (${dup.existing_member.email || dup.existing_member.phone})\n\n`;
+        });
+        message += '\nPlease verify before creating.';
+        
+        // Show detailed duplicate warning
+        if (window.confirm(message + '\n\nDo you want to create this member anyway?')) {
+          // User wants to override - we'd need a force_create flag in backend
+          toast.error('Please contact administrator to override duplicate protection');
+        }
+      } else {
+        toast.error(error.response?.data?.detail || 'Failed to add member');
+      }
     }
   };
 
