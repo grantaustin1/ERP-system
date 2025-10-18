@@ -507,15 +507,18 @@ backend:
 frontend:
   - task: "Classes & Scheduling Page Component"
     implemented: true
-    working: "NA"
+    working: true
     file: "/app/frontend/src/pages/Classes.js"
     stuck_count: 0
     priority: "high"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
       - working: "NA"
         agent: "main"
         comment: "Implemented comprehensive Classes & Scheduling page with two tabs: Class Schedule and Bookings. Features include class CRUD operations, booking management, check-in functionality, waitlist support, and responsive UI with proper status badges."
+      - working: true
+        agent: "testing"
+        comment: "✅ COMPREHENSIVE TESTING COMPLETED - ALL CORE FUNCTIONALITY WORKING: Page navigation and authentication successful. Page structure verified with correct title 'Classes & Scheduling', proper tab layout (Class Schedule default active, Bookings tab). Morning Yoga class from backend tests displays correctly with all details (time 09:00-10:00, instructor Jane Doe, capacity 25/25 booked +1 waitlist). Bookings tab shows comprehensive table with 28 booking records, proper status badges (25 confirmed-green, 1 waitlist-yellow, 1 attended-blue, 1 cancelled-gray), and action buttons (25 Check In, 26 Cancel buttons). Create New Class dialog opens with all required form fields (name, type dropdown with 10 options, description, instructor, room, duration, capacity, waitlist settings, recurring options, day/time selection, booking/cancel windows, drop-in price). Book Member dialog functional with class pre-fill, member selection dropdown, date/time picker, and notes field. All UI elements properly styled with responsive design. Integration with backend APIs confirmed working. Minor: Some detailed class card information not immediately visible in card text parsing, but all functionality operational."
 
   - task: "Automations Page Component"
     implemented: true
