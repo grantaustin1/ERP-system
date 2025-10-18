@@ -5,7 +5,7 @@ import { Label } from '../components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import { Badge } from '../components/ui/badge';
-import { Upload, FileText, CheckCircle, AlertCircle, Download, History, Users, UserPlus, ArrowRight } from 'lucide-react';
+import { Upload, FileText, CheckCircle, AlertCircle, Download, History, Users, UserPlus, ArrowRight, Shield } from 'lucide-react';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:8001';
 
