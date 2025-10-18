@@ -1,0 +1,809 @@
+import React, { useState, useEffect } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
+import { Button } from '../components/ui/button';
+import { Input } from '../components/ui/input';
+import { Label } from '../components/ui/label';
+import { Textarea } from '../components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '../components/ui/dialog';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
+import { Calendar, Clock, Users, Plus, Edit, Trash2, UserCheck } from 'lucide-react';
+
+const DAYS_OF_WEEK = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+const CLASS_TYPES = ['Yoga', 'Pilates', 'Spin', 'CrossFit', 'Boxing', 'HIIT', 'Zumba', 'Bootcamp', 'Strength Training', 'Cardio'];
+
+function Classes() {
+  const [classes, setClasses] = useState([]);
+  const [bookings, setBookings] = useState([]);
+  const [members, setMembers] = useState([]);
+  const [membershipTypes, setMembershipTypes] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [showClassDialog, setShowClassDialog] = useState(false);
+  const [showBookingDialog, setShowBookingDialog] = useState(false);
+  const [editingClass, setEditingClass] = useState(null);
+  const [selectedClass, setSelectedClass] = useState(null);
+  const [activeTab, setActiveTab] = useState('schedule');
+
+  const [classForm, setClassForm] = useState({
+    name: '',
+    description: '',
+    class_type: '',
+    instructor_name: '',
+    duration_minutes: 60,
+    capacity: 20,
+    day_of_week: '',
+    start_time: '',
+    end_time: '',
+    is_recurring: true,
+    class_date: '',
+    room: '',
+    allow_waitlist: true,
+    waitlist_capacity: 10,
+    booking_window_days: 7,
+    cancel_window_hours: 2,
+    drop_in_price: 0,
+    membership_types_allowed: []
+  });
+
+  const [bookingForm, setBookingForm] = useState({
+    class_id: '',
+    member_id: '',
+    booking_date: '',
+    notes: ''
+  });
+
+  const API_URL = process.env.REACT_APP_BACKEND_URL;
+
+  useEffect(() => {
+    fetchClasses();
+    fetchBookings();
+    fetchMembers();
+    fetchMembershipTypes();
+  }, []);
+
+  const fetchClasses = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`${API_URL}/api/classes`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setClasses(data);
+      }
+    } catch (error) {
+      console.error('Failed to fetch classes:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchBookings = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`${API_URL}/api/bookings`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setBookings(data);
+      }
+    } catch (error) {
+      console.error('Failed to fetch bookings:', error);
+    }
+  };
+
+  const fetchMembers = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`${API_URL}/api/members`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setMembers(data);
+      }
+    } catch (error) {
+      console.error('Failed to fetch members:', error);
+    }
+  };
+
+  const fetchMembershipTypes = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`${API_URL}/api/membership-types`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setMembershipTypes(data);
+      }
+    } catch (error) {
+      console.error('Failed to fetch membership types:', error);
+    }
+  };
+
+  const handleCreateClass = async (e) => {
+    e.preventDefault();
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`${API_URL}/api/classes`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(classForm)
+      });
+
+      if (response.ok) {
+        await fetchClasses();
+        setShowClassDialog(false);
+        resetClassForm();
+        alert('Class created successfully!');
+      } else {
+        const error = await response.json();
+        alert(`Failed to create class: ${error.detail}`);
+      }
+    } catch (error) {
+      console.error('Error creating class:', error);
+      alert('Failed to create class');
+    }
+  };
+
+  const handleUpdateClass = async (e) => {
+    e.preventDefault();
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`${API_URL}/api/classes/${editingClass.id}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(classForm)
+      });
+
+      if (response.ok) {
+        await fetchClasses();
+        setShowClassDialog(false);
+        setEditingClass(null);
+        resetClassForm();
+        alert('Class updated successfully!');
+      } else {
+        const error = await response.json();
+        alert(`Failed to update class: ${error.detail}`);
+      }
+    } catch (error) {
+      console.error('Error updating class:', error);
+      alert('Failed to update class');
+    }
+  };
+
+  const handleDeleteClass = async (classId) => {
+    if (!window.confirm('Are you sure you want to delete this class?')) return;
+
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`${API_URL}/api/classes/${classId}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+
+      if (response.ok) {
+        await fetchClasses();
+        alert('Class deleted successfully!');
+      } else {
+        alert('Failed to delete class');
+      }
+    } catch (error) {
+      console.error('Error deleting class:', error);
+      alert('Failed to delete class');
+    }
+  };
+
+  const handleCreateBooking = async (e) => {
+    e.preventDefault();
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`${API_URL}/api/bookings`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(bookingForm)
+      });
+
+      if (response.ok) {
+        await fetchBookings();
+        setShowBookingDialog(false);
+        resetBookingForm();
+        alert('Booking created successfully!');
+      } else {
+        const error = await response.json();
+        alert(`Failed to create booking: ${error.detail}`);
+      }
+    } catch (error) {
+      console.error('Error creating booking:', error);
+      alert('Failed to create booking');
+    }
+  };
+
+  const handleCheckIn = async (bookingId) => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`${API_URL}/api/bookings/${bookingId}/check-in`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+
+      if (response.ok) {
+        await fetchBookings();
+        alert('Member checked in successfully!');
+      } else {
+        const error = await response.json();
+        alert(`Failed to check in: ${error.detail}`);
+      }
+    } catch (error) {
+      console.error('Error checking in:', error);
+      alert('Failed to check in');
+    }
+  };
+
+  const handleCancelBooking = async (bookingId) => {
+    if (!window.confirm('Are you sure you want to cancel this booking?')) return;
+
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`${API_URL}/api/bookings/${bookingId}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ status: 'cancelled', cancellation_reason: 'Cancelled by admin' })
+      });
+
+      if (response.ok) {
+        await fetchBookings();
+        alert('Booking cancelled successfully!');
+      } else {
+        alert('Failed to cancel booking');
+      }
+    } catch (error) {
+      console.error('Error cancelling booking:', error);
+      alert('Failed to cancel booking');
+    }
+  };
+
+  const resetClassForm = () => {
+    setClassForm({
+      name: '',
+      description: '',
+      class_type: '',
+      instructor_name: '',
+      duration_minutes: 60,
+      capacity: 20,
+      day_of_week: '',
+      start_time: '',
+      end_time: '',
+      is_recurring: true,
+      class_date: '',
+      room: '',
+      allow_waitlist: true,
+      waitlist_capacity: 10,
+      booking_window_days: 7,
+      cancel_window_hours: 2,
+      drop_in_price: 0,
+      membership_types_allowed: []
+    });
+  };
+
+  const resetBookingForm = () => {
+    setBookingForm({
+      class_id: '',
+      member_id: '',
+      booking_date: '',
+      notes: ''
+    });
+  };
+
+  const openEditDialog = (classItem) => {
+    setEditingClass(classItem);
+    setClassForm({
+      name: classItem.name,
+      description: classItem.description || '',
+      class_type: classItem.class_type,
+      instructor_name: classItem.instructor_name || '',
+      duration_minutes: classItem.duration_minutes,
+      capacity: classItem.capacity,
+      day_of_week: classItem.day_of_week || '',
+      start_time: classItem.start_time,
+      end_time: classItem.end_time,
+      is_recurring: classItem.is_recurring,
+      class_date: classItem.class_date || '',
+      room: classItem.room || '',
+      allow_waitlist: classItem.allow_waitlist,
+      waitlist_capacity: classItem.waitlist_capacity,
+      booking_window_days: classItem.booking_window_days,
+      cancel_window_hours: classItem.cancel_window_hours,
+      drop_in_price: classItem.drop_in_price,
+      membership_types_allowed: classItem.membership_types_allowed || []
+    });
+    setShowClassDialog(true);
+  };
+
+  const openBookingDialog = (classItem) => {
+    setSelectedClass(classItem);
+    setBookingForm({
+      ...bookingForm,
+      class_id: classItem.id
+    });
+    setShowBookingDialog(true);
+  };
+
+  const getClassBookings = (classId) => {
+    return bookings.filter(b => b.class_id === classId);
+  };
+
+  if (loading) {
+    return <div className="flex items-center justify-center h-screen">Loading...</div>;
+  }
+
+  return (
+    <div className="p-6 max-w-7xl mx-auto">
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-3xl font-bold">Classes & Scheduling</h1>
+        <Dialog open={showClassDialog} onOpenChange={setShowClassDialog}>
+          <DialogTrigger asChild>
+            <Button onClick={() => { setEditingClass(null); resetClassForm(); }}>
+              <Plus className="mr-2 h-4 w-4" /> Add New Class
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>{editingClass ? 'Edit Class' : 'Create New Class'}</DialogTitle>
+            </DialogHeader>
+            <form onSubmit={editingClass ? handleUpdateClass : handleCreateClass} className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="name">Class Name *</Label>
+                  <Input
+                    id="name"
+                    value={classForm.name}
+                    onChange={(e) => setClassForm({ ...classForm, name: e.target.value })}
+                    required
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="class_type">Class Type *</Label>
+                  <Select value={classForm.class_type} onValueChange={(value) => setClassForm({ ...classForm, class_type: value })}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {CLASS_TYPES.map(type => (
+                        <SelectItem key={type} value={type}>{type}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div>
+                <Label htmlFor="description">Description</Label>
+                <Textarea
+                  id="description"
+                  value={classForm.description}
+                  onChange={(e) => setClassForm({ ...classForm, description: e.target.value })}
+                  rows={3}
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="instructor_name">Instructor</Label>
+                  <Input
+                    id="instructor_name"
+                    value={classForm.instructor_name}
+                    onChange={(e) => setClassForm({ ...classForm, instructor_name: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="room">Room/Location</Label>
+                  <Input
+                    id="room"
+                    value={classForm.room}
+                    onChange={(e) => setClassForm({ ...classForm, room: e.target.value })}
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-3 gap-4">
+                <div>
+                  <Label htmlFor="duration_minutes">Duration (min) *</Label>
+                  <Input
+                    id="duration_minutes"
+                    type="number"
+                    value={classForm.duration_minutes}
+                    onChange={(e) => setClassForm({ ...classForm, duration_minutes: parseInt(e.target.value) })}
+                    required
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="capacity">Capacity *</Label>
+                  <Input
+                    id="capacity"
+                    type="number"
+                    value={classForm.capacity}
+                    onChange={(e) => setClassForm({ ...classForm, capacity: parseInt(e.target.value) })}
+                    required
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="waitlist_capacity">Waitlist Capacity</Label>
+                  <Input
+                    id="waitlist_capacity"
+                    type="number"
+                    value={classForm.waitlist_capacity}
+                    onChange={(e) => setClassForm({ ...classForm, waitlist_capacity: parseInt(e.target.value) })}
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center space-x-2">
+                <input
+                  type="checkbox"
+                  id="is_recurring"
+                  checked={classForm.is_recurring}
+                  onChange={(e) => setClassForm({ ...classForm, is_recurring: e.target.checked })}
+                  className="h-4 w-4"
+                />
+                <Label htmlFor="is_recurring">Recurring Class</Label>
+              </div>
+
+              {classForm.is_recurring ? (
+                <div className="grid grid-cols-3 gap-4">
+                  <div>
+                    <Label htmlFor="day_of_week">Day of Week *</Label>
+                    <Select value={classForm.day_of_week} onValueChange={(value) => setClassForm({ ...classForm, day_of_week: value })}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select day" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {DAYS_OF_WEEK.map(day => (
+                          <SelectItem key={day} value={day}>{day}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label htmlFor="start_time">Start Time *</Label>
+                    <Input
+                      id="start_time"
+                      type="time"
+                      value={classForm.start_time}
+                      onChange={(e) => setClassForm({ ...classForm, start_time: e.target.value })}
+                      required
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="end_time">End Time *</Label>
+                    <Input
+                      id="end_time"
+                      type="time"
+                      value={classForm.end_time}
+                      onChange={(e) => setClassForm({ ...classForm, end_time: e.target.value })}
+                      required
+                    />
+                  </div>
+                </div>
+              ) : (
+                <div className="grid grid-cols-3 gap-4">
+                  <div>
+                    <Label htmlFor="class_date">Class Date *</Label>
+                    <Input
+                      id="class_date"
+                      type="datetime-local"
+                      value={classForm.class_date}
+                      onChange={(e) => setClassForm({ ...classForm, class_date: e.target.value })}
+                      required
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="start_time">Start Time *</Label>
+                    <Input
+                      id="start_time"
+                      type="time"
+                      value={classForm.start_time}
+                      onChange={(e) => setClassForm({ ...classForm, start_time: e.target.value })}
+                      required
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="end_time">End Time *</Label>
+                    <Input
+                      id="end_time"
+                      type="time"
+                      value={classForm.end_time}
+                      onChange={(e) => setClassForm({ ...classForm, end_time: e.target.value })}
+                      required
+                    />
+                  </div>
+                </div>
+              )}
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="booking_window_days">Booking Window (days)</Label>
+                  <Input
+                    id="booking_window_days"
+                    type="number"
+                    value={classForm.booking_window_days}
+                    onChange={(e) => setClassForm({ ...classForm, booking_window_days: parseInt(e.target.value) })}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="cancel_window_hours">Cancel Window (hours)</Label>
+                  <Input
+                    id="cancel_window_hours"
+                    type="number"
+                    value={classForm.cancel_window_hours}
+                    onChange={(e) => setClassForm({ ...classForm, cancel_window_hours: parseInt(e.target.value) })}
+                  />
+                </div>
+              </div>
+
+              <div>
+                <Label htmlFor="drop_in_price">Drop-In Price ($)</Label>
+                <Input
+                  id="drop_in_price"
+                  type="number"
+                  step="0.01"
+                  value={classForm.drop_in_price}
+                  onChange={(e) => setClassForm({ ...classForm, drop_in_price: parseFloat(e.target.value) })}
+                />
+              </div>
+
+              <div className="flex items-center space-x-2">
+                <input
+                  type="checkbox"
+                  id="allow_waitlist"
+                  checked={classForm.allow_waitlist}
+                  onChange={(e) => setClassForm({ ...classForm, allow_waitlist: e.target.checked })}
+                  className="h-4 w-4"
+                />
+                <Label htmlFor="allow_waitlist">Allow Waitlist</Label>
+              </div>
+
+              <div className="flex justify-end space-x-2">
+                <Button type="button" variant="outline" onClick={() => { setShowClassDialog(false); setEditingClass(null); resetClassForm(); }}>
+                  Cancel
+                </Button>
+                <Button type="submit">
+                  {editingClass ? 'Update Class' : 'Create Class'}
+                </Button>
+              </div>
+            </form>
+          </DialogContent>
+        </Dialog>
+      </div>
+
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
+        <TabsList>
+          <TabsTrigger value="schedule">Class Schedule</TabsTrigger>
+          <TabsTrigger value="bookings">Bookings</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="schedule" className="space-y-4">
+          {DAYS_OF_WEEK.map(day => {
+            const dayClasses = classes.filter(c => c.is_recurring && c.day_of_week === day && c.status === 'active');
+            if (dayClasses.length === 0) return null;
+
+            return (
+              <Card key={day}>
+                <CardHeader>
+                  <CardTitle className="text-xl">{day}</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                    {dayClasses.map(classItem => {
+                      const classBookings = getClassBookings(classItem.id);
+                      const confirmedCount = classBookings.filter(b => b.status === 'confirmed').length;
+                      const waitlistCount = classBookings.filter(b => b.status === 'waitlist').length;
+
+                      return (
+                        <Card key={classItem.id} className="border-l-4 border-l-blue-500">
+                          <CardContent className="pt-4">
+                            <div className="flex justify-between items-start mb-2">
+                              <div>
+                                <h4 className="font-semibold text-lg">{classItem.name}</h4>
+                                <p className="text-sm text-gray-600">{classItem.class_type}</p>
+                              </div>
+                              <div className="flex space-x-1">
+                                <Button size="sm" variant="ghost" onClick={() => openEditDialog(classItem)}>
+                                  <Edit className="h-4 w-4" />
+                                </Button>
+                                <Button size="sm" variant="ghost" onClick={() => handleDeleteClass(classItem.id)}>
+                                  <Trash2 className="h-4 w-4 text-red-500" />
+                                </Button>
+                              </div>
+                            </div>
+
+                            <div className="space-y-1 text-sm text-gray-600 mb-3">
+                              <div className="flex items-center">
+                                <Clock className="h-4 w-4 mr-2" />
+                                {classItem.start_time} - {classItem.end_time}
+                              </div>
+                              {classItem.instructor_name && (
+                                <div className="flex items-center">
+                                  <UserCheck className="h-4 w-4 mr-2" />
+                                  {classItem.instructor_name}
+                                </div>
+                              )}
+                              <div className="flex items-center">
+                                <Users className="h-4 w-4 mr-2" />
+                                {confirmedCount}/{classItem.capacity} booked
+                                {waitlistCount > 0 && ` (+${waitlistCount} waitlist)`}
+                              </div>
+                            </div>
+
+                            <Button
+                              size="sm"
+                              className="w-full"
+                              onClick={() => openBookingDialog(classItem)}
+                            >
+                              <Plus className="h-4 w-4 mr-2" /> Book Member
+                            </Button>
+                          </CardContent>
+                        </Card>
+                      );
+                    })}
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
+
+          {classes.filter(c => c.is_recurring && c.status === 'active').length === 0 && (
+            <Card>
+              <CardContent className="text-center py-12">
+                <Calendar className="h-12 w-12 mx-auto text-gray-400 mb-4" />
+                <p className="text-gray-600">No classes scheduled yet. Create your first class to get started!</p>
+              </CardContent>
+            </Card>
+          )}
+        </TabsContent>
+
+        <TabsContent value="bookings" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>All Bookings</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b">
+                      <th className="text-left p-2">Member</th>
+                      <th className="text-left p-2">Class</th>
+                      <th className="text-left p-2">Date/Time</th>
+                      <th className="text-left p-2">Status</th>
+                      <th className="text-left p-2">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {bookings.map(booking => (
+                      <tr key={booking.id} className="border-b hover:bg-gray-50">
+                        <td className="p-2">{booking.member_name}</td>
+                        <td className="p-2">{booking.class_name}</td>
+                        <td className="p-2">
+                          {new Date(booking.booking_date).toLocaleString()}
+                        </td>
+                        <td className="p-2">
+                          <span className={`px-2 py-1 rounded text-xs ${
+                            booking.status === 'confirmed' ? 'bg-green-100 text-green-800' :
+                            booking.status === 'waitlist' ? 'bg-yellow-100 text-yellow-800' :
+                            booking.status === 'attended' ? 'bg-blue-100 text-blue-800' :
+                            'bg-gray-100 text-gray-800'
+                          }`}>
+                            {booking.status}
+                            {booking.is_waitlist && ` (#${booking.waitlist_position})`}
+                          </span>
+                        </td>
+                        <td className="p-2">
+                          <div className="flex space-x-2">
+                            {booking.status === 'confirmed' && (
+                              <Button size="sm" onClick={() => handleCheckIn(booking.id)}>
+                                Check In
+                              </Button>
+                            )}
+                            {['confirmed', 'waitlist'].includes(booking.status) && (
+                              <Button
+                                size="sm"
+                                variant="destructive"
+                                onClick={() => handleCancelBooking(booking.id)}
+                              >
+                                Cancel
+                              </Button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                {bookings.length === 0 && (
+                  <div className="text-center py-12">
+                    <p className="text-gray-600">No bookings yet</p>
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
+
+      <Dialog open={showBookingDialog} onOpenChange={setShowBookingDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Create Booking</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleCreateBooking} className="space-y-4">
+            <div>
+              <Label>Class</Label>
+              <Input value={selectedClass?.name || ''} disabled />
+            </div>
+
+            <div>
+              <Label htmlFor="member_id">Member *</Label>
+              <Select value={bookingForm.member_id} onValueChange={(value) => setBookingForm({ ...bookingForm, member_id: value })}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select member" />
+                </SelectTrigger>
+                <SelectContent>
+                  {members.map(member => (
+                    <SelectItem key={member.id} value={member.id}>
+                      {member.first_name} {member.last_name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <Label htmlFor="booking_date">Date & Time *</Label>
+              <Input
+                id="booking_date"
+                type="datetime-local"
+                value={bookingForm.booking_date}
+                onChange={(e) => setBookingForm({ ...bookingForm, booking_date: e.target.value })}
+                required
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="notes">Notes</Label>
+              <Textarea
+                id="notes"
+                value={bookingForm.notes}
+                onChange={(e) => setBookingForm({ ...bookingForm, notes: e.target.value })}
+                rows={3}
+              />
+            </div>
+
+            <div className="flex justify-end space-x-2">
+              <Button type="button" variant="outline" onClick={() => { setShowBookingDialog(false); resetBookingForm(); }}>
+                Cancel
+              </Button>
+              <Button type="submit">Create Booking</Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
+export default Classes;
