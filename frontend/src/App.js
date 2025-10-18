@@ -5,7 +5,7 @@ import '@/App.css';
 import Login from '@/pages/Login';
 import Dashboard from '@/pages/Dashboard';
 import Members from '@/pages/Members';
-import AccessControl from '@/pages/AccessControl';
+import AccessControl from '@/pages/AccessControlEnhanced';
 import BillingEnhanced from '@/pages/BillingEnhanced';
 import MemberPortal from '@/pages/MemberPortalEnhanced';
 import Settings from '@/pages/Settings';
