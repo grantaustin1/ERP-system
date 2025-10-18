@@ -277,7 +277,7 @@ export default function BillingEnhanced() {
                           <SelectValue placeholder="All members" />
                         </SelectTrigger>
                         <SelectContent className="bg-slate-800 border-slate-700">
-                          <SelectItem value="">All Members</SelectItem>
+                          <SelectItem value="__all__">All Members</SelectItem>
                           {members.map((member) => (
                             <SelectItem key={member.id} value={member.id}>
                               {member.first_name} {member.last_name}
