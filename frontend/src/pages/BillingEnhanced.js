@@ -370,7 +370,7 @@ export default function BillingEnhanced() {
                       Export CSV
                     </Button>
                     <Button
-                      onClick={() => setFilters({member_id: '', status: '', payment_gateway: '', source: '', start_date: '', end_date: ''})}
+                      onClick={() => setFilters({member_id: '__all__', status: '__all__', payment_gateway: '', source: '__all__', start_date: '', end_date: ''})}
                       variant="outline"
                       className="border-slate-600 hover:bg-slate-700"
                     >
