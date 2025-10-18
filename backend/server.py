@@ -3334,6 +3334,24 @@ class ImportLog(BaseModel):
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     created_by: str
 
+# ===== FIELD CONFIGURATION MODELS =====
+
+class FieldConfiguration(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    field_name: str
+    label: str
+    is_required: bool = False
+    field_type: str  # text, email, phone, number, date, select
+    validation_rules: dict = {}  # {min_length, max_length, pattern, must_contain}
+    error_message: Optional[str] = None
+    category: str = "basic"  # basic, contact, address, banking, membership
+
+class FieldConfigurationUpdate(BaseModel):
+    is_required: Optional[bool] = None
+    validation_rules: Optional[dict] = None
+    error_message: Optional[str] = None
+
 @api_router.post("/import/parse-csv")
 async def parse_csv_file(file: UploadFile, current_user: User = Depends(get_current_user)):
     """Parse CSV file and return headers and sample data for mapping"""
