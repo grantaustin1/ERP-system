@@ -16,6 +16,7 @@ export default function Members() {
   const [members, setMembers] = useState([]);
   const [membershipTypes, setMembershipTypes] = useState([]);
   const [paymentOptions, setPaymentOptions] = useState([]);
+  const [paymentSources, setPaymentSources] = useState([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [qrDialogOpen, setQrDialogOpen] = useState(false);
@@ -29,6 +30,8 @@ export default function Members() {
     work_phone: '',
     membership_type_id: '',
     selected_payment_option_id: '',
+    source: '',
+    referred_by: '',
     address: '',
     bank_account_number: '',
     bank_name: '',
@@ -43,6 +46,7 @@ export default function Members() {
   useEffect(() => {
     fetchMembers();
     fetchMembershipTypes();
+    fetchPaymentSources();
   }, []);
 
   const fetchMembers = async () => {
