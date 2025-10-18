@@ -418,6 +418,41 @@ function DataImport() {
                   </div>
                 </div>
 
+                <div className="bg-yellow-50 border border-yellow-200 p-4 rounded-lg">
+                  <h4 className="font-semibold mb-3 flex items-center">
+                    <Shield className="h-5 w-5 mr-2" />
+                    Duplicate Protection
+                  </h4>
+                  <p className="text-sm text-gray-600 mb-3">
+                    How should we handle duplicate members (based on email, phone, or name)?
+                  </p>
+                  <Select value={duplicateAction} onValueChange={setDuplicateAction}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="skip">
+                        <div className="flex flex-col">
+                          <span className="font-medium">Skip Duplicates</span>
+                          <span className="text-xs text-gray-500">Don't import records that already exist</span>
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="update">
+                        <div className="flex flex-col">
+                          <span className="font-medium">Update Existing</span>
+                          <span className="text-xs text-gray-500">Update existing records with new data</span>
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="create">
+                        <div className="flex flex-col">
+                          <span className="font-medium">Create Anyway</span>
+                          <span className="text-xs text-gray-500">Create duplicate records (not recommended)</span>
+                        </div>
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
                 <div className="bg-blue-50 p-4 rounded-lg">
                   <h4 className="font-semibold mb-2">Field Mapping Summary</h4>
                   <div className="space-y-1 text-sm">
