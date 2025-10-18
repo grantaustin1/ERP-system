@@ -565,6 +565,126 @@ class LeadCreate(BaseModel):
     interest: Optional[str] = None
     assigned_to_consultant_id: Optional[str] = None
 
+# Classes and Scheduling Models
+class Class(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    name: str
+    description: Optional[str] = None
+    instructor_id: Optional[str] = None
+    instructor_name: Optional[str] = None
+    class_type: str  # yoga, pilates, spin, crossfit, boxing, etc.
+    duration_minutes: int = 60
+    capacity: int = 20
+    # Recurring schedule
+    day_of_week: Optional[str] = None  # Monday, Tuesday, etc. (for recurring)
+    start_time: str  # HH:MM format
+    end_time: str  # HH:MM format
+    is_recurring: bool = True  # If false, this is a one-time class
+    # For one-time classes
+    class_date: Optional[datetime] = None  # Specific date for one-time classes
+    # Resources
+    room: Optional[str] = None
+    equipment: List[str] = []
+    # Booking settings
+    allow_waitlist: bool = True
+    waitlist_capacity: int = 10
+    booking_window_days: int = 7  # How many days in advance can members book
+    cancel_window_hours: int = 2  # How many hours before class can members cancel
+    # Status
+    status: str = "active"  # active, cancelled, completed
+    # Membership restrictions
+    membership_types_allowed: List[str] = []  # Empty means all types allowed
+    # Pricing (for drop-in classes)
+    drop_in_price: float = 0.0
+    # Metadata
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: Optional[datetime] = None
+    created_by: Optional[str] = None
+
+class ClassCreate(BaseModel):
+    name: str
+    description: Optional[str] = None
+    instructor_id: Optional[str] = None
+    instructor_name: Optional[str] = None
+    class_type: str
+    duration_minutes: int = 60
+    capacity: int = 20
+    day_of_week: Optional[str] = None
+    start_time: str
+    end_time: str
+    is_recurring: bool = True
+    class_date: Optional[datetime] = None
+    room: Optional[str] = None
+    equipment: List[str] = []
+    allow_waitlist: bool = True
+    waitlist_capacity: int = 10
+    booking_window_days: int = 7
+    cancel_window_hours: int = 2
+    membership_types_allowed: List[str] = []
+    drop_in_price: float = 0.0
+
+class ClassUpdate(BaseModel):
+    name: Optional[str] = None
+    description: Optional[str] = None
+    instructor_id: Optional[str] = None
+    instructor_name: Optional[str] = None
+    class_type: Optional[str] = None
+    duration_minutes: Optional[int] = None
+    capacity: Optional[int] = None
+    day_of_week: Optional[str] = None
+    start_time: Optional[str] = None
+    end_time: Optional[str] = None
+    is_recurring: Optional[bool] = None
+    class_date: Optional[datetime] = None
+    room: Optional[str] = None
+    equipment: Optional[List[str]] = None
+    allow_waitlist: Optional[bool] = None
+    waitlist_capacity: Optional[int] = None
+    booking_window_days: Optional[int] = None
+    cancel_window_hours: Optional[int] = None
+    membership_types_allowed: Optional[List[str]] = None
+    drop_in_price: Optional[float] = None
+    status: Optional[str] = None
+
+class Booking(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    class_id: str
+    class_name: str
+    member_id: str
+    member_name: str
+    member_email: str
+    # For specific class instance (if recurring class)
+    booking_date: datetime  # Specific date/time of the class instance
+    status: str = "confirmed"  # confirmed, waitlist, cancelled, no_show, attended
+    # Waitlist
+    is_waitlist: bool = False
+    waitlist_position: Optional[int] = None
+    # Payment (for drop-in classes)
+    payment_required: bool = False
+    payment_amount: float = 0.0
+    payment_status: str = "not_required"  # not_required, pending, paid
+    invoice_id: Optional[str] = None
+    # Metadata
+    booked_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    cancelled_at: Optional[datetime] = None
+    cancellation_reason: Optional[str] = None
+    checked_in_at: Optional[datetime] = None
+    notes: Optional[str] = None
+
+class BookingCreate(BaseModel):
+    class_id: str
+    member_id: str
+    booking_date: datetime  # Which specific instance of the class
+    notes: Optional[str] = None
+
+class BookingUpdate(BaseModel):
+    status: Optional[str] = None
+    cancellation_reason: Optional[str] = None
+    checked_in_at: Optional[datetime] = None
+    notes: Optional[str] = None
+
 # Auth dependency
 async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)):
     token = credentials.credentials
