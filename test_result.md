@@ -681,6 +681,28 @@ test_plan:
   test_priority: "high_first"
 
 agent_communication:
+  - agent: "testing"
+    message: |
+      Starting comprehensive testing of the newly implemented Classes & Scheduling page.
+      
+      TESTING SCOPE:
+      - Navigation to /classes page via sidebar
+      - Page load and UI components verification
+      - Class Schedule tab functionality (default active)
+      - Create New Class flow with all form fields
+      - Edit existing class functionality
+      - Delete class confirmation and execution
+      - Bookings tab with table display
+      - Create booking flow with member selection
+      - Check-in functionality for confirmed bookings
+      - Cancel booking flow with confirmation
+      - Waitlist functionality and capacity management
+      - Visual styling and responsive design
+      - Integration with backend APIs
+      
+      Authentication: Will use admin@gym.com / admin123
+      Backend data: Classes and bookings data available from previous backend testing
+      
   - agent: "main"
     message: |
       Enhanced Automation Engine with categorized triggers and test mode functionality.
