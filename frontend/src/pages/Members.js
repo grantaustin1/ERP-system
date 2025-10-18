@@ -78,12 +78,6 @@ export default function Members() {
     }
   };
 
-
-    } catch (error) {
-      toast.error('Failed to fetch membership types');
-    }
-  };
-
   const fetchPaymentOptions = async (membershipTypeId) => {
     try {
       const response = await axios.get(`${API}/payment-options/${membershipTypeId}`);
