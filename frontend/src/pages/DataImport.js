@@ -23,6 +23,9 @@ function DataImport() {
   const [fieldDefinitions, setFieldDefinitions] = useState([]);
   const [fieldMapping, setFieldMapping] = useState({});
   
+  // Duplicate handling
+  const [duplicateAction, setDuplicateAction] = useState('skip'); // skip, update, create
+  
   // Import state
   const [importing, setImporting] = useState(false);
   const [importResult, setImportResult] = useState(null);
