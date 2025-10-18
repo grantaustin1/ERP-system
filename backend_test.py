@@ -3991,8 +3991,8 @@ class PaymentReportEnhancementTester:
 
 
 if __name__ == "__main__":
-    # Run payment report enhancement tests (NEW FEATURES)
-    print("🎯 TESTING NEW PAYMENT REPORT ENHANCEMENT FEATURES")
+    # Run Classes and Bookings API tests (NEW FEATURES)
+    print("🎯 TESTING NEW CLASSES AND BOOKINGS API FEATURES")
     print("=" * 80)
-    payment_report_tester = PaymentReportEnhancementTester()
-    payment_report_tester.run_payment_report_enhancement_tests()
+    classes_bookings_tester = ClassesAndBookingsTester()
+    classes_bookings_tester.run_classes_and_bookings_tests()
