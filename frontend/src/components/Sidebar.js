@@ -15,6 +15,7 @@ export default function Sidebar() {
     { path: '/', icon: LayoutDashboard, label: 'Dashboard', testId: 'nav-dashboard' },
     { path: '/members', icon: Users, label: 'Members', testId: 'nav-members' },
     { path: '/access', icon: ScanLine, label: 'Access Control', testId: 'nav-access' },
+    { path: '/classes', icon: Calendar, label: 'Classes', testId: 'nav-classes' },
     { path: '/billing', icon: FileText, label: 'Billing', testId: 'nav-billing' },
     { path: '/analytics', icon: BarChart3, label: 'Analytics', testId: 'nav-analytics' },
     { path: '/levies', icon: DollarSign, label: 'Levies', testId: 'nav-levies' },
