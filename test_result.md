@@ -340,7 +340,7 @@ backend:
   
   - task: "Member Model Enhancement - Source & Debt Tracking"
     implemented: true
-    working: true
+    working: "tested"
     file: "/app/backend/server.py"
     stuck_count: 0
     priority: "high"
