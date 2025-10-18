@@ -216,17 +216,37 @@ class AccessLog(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     member_id: str
     member_name: str
-    access_method: str  # qr_code, fingerprint, facial_recognition, manual_override
+    member_email: Optional[str] = None
+    membership_type: Optional[str] = None
+    membership_status: Optional[str] = None
+    access_method: str  # qr_code, rfid, fingerprint, facial_recognition, manual_override, mobile_app
     timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     status: str  # granted, denied
-    reason: Optional[str] = None
+    reason: Optional[str] = None  # membership_expired, membership_suspended, invalid_card, etc.
     override_by: Optional[str] = None
+    # Location tracking
+    location: Optional[str] = None  # Main entrance, Studio A, Locker Room, etc.
+    device_id: Optional[str] = None  # ID of the access control device
+    # Class booking integration
+    class_booking_id: Optional[str] = None  # If check-in is for a class
+    class_name: Optional[str] = None
+    # Photos (for facial recognition or photo capture)
+    photo_url: Optional[str] = None
+    # Temperature check (for health protocols)
+    temperature: Optional[float] = None
+    # Additional metadata
+    notes: Optional[str] = None
 
 class AccessLogCreate(BaseModel):
     member_id: str
     access_method: str
+    location: Optional[str] = None
+    device_id: Optional[str] = None
+    class_booking_id: Optional[str] = None
     reason: Optional[str] = None
     override_by: Optional[str] = None
+    temperature: Optional[float] = None
+    notes: Optional[str] = None
 
 class Invoice(BaseModel):
     model_config = ConfigDict(extra="ignore")
