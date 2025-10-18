@@ -2818,6 +2818,265 @@ async def format_phone_number_endpoint(phone: str):
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Invalid phone number: {str(e)}")
 
+# ===== CLASSES & SCHEDULING ENDPOINTS =====
+
+@api_router.get("/classes", response_model=List[Class])
+async def get_classes(current_user: User = Depends(get_current_user)):
+    """Get all classes"""
+    classes = await db.classes.find({}, {"_id": 0}).to_list(length=None)
+    return [Class(**c) for c in classes]
+
+@api_router.post("/classes", response_model=Class)
+async def create_class(class_data: ClassCreate, current_user: User = Depends(get_current_user)):
+    """Create a new class"""
+    new_class = Class(**class_data.model_dump(), created_by=current_user.id)
+    doc = new_class.model_dump()
+    doc["created_at"] = doc["created_at"].isoformat()
+    if doc.get("updated_at"):
+        doc["updated_at"] = doc["updated_at"].isoformat()
+    if doc.get("class_date"):
+        doc["class_date"] = doc["class_date"].isoformat()
+    
+    await db.classes.insert_one(doc)
+    return new_class
+
+@api_router.get("/classes/{class_id}", response_model=Class)
+async def get_class(class_id: str, current_user: User = Depends(get_current_user)):
+    """Get a specific class"""
+    class_doc = await db.classes.find_one({"id": class_id}, {"_id": 0})
+    if not class_doc:
+        raise HTTPException(status_code=404, detail="Class not found")
+    return Class(**class_doc)
+
+@api_router.patch("/classes/{class_id}", response_model=Class)
+async def update_class(class_id: str, class_update: ClassUpdate, current_user: User = Depends(get_current_user)):
+    """Update a class"""
+    class_doc = await db.classes.find_one({"id": class_id}, {"_id": 0})
+    if not class_doc:
+        raise HTTPException(status_code=404, detail="Class not found")
+    
+    # Update only provided fields
+    update_data = class_update.model_dump(exclude_unset=True)
+    update_data["updated_at"] = datetime.now(timezone.utc).isoformat()
+    
+    await db.classes.update_one({"id": class_id}, {"$set": update_data})
+    
+    # Fetch updated class
+    updated_class = await db.classes.find_one({"id": class_id}, {"_id": 0})
+    return Class(**updated_class)
+
+@api_router.delete("/classes/{class_id}")
+async def delete_class(class_id: str, current_user: User = Depends(get_current_user)):
+    """Delete a class"""
+    result = await db.classes.delete_one({"id": class_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Class not found")
+    return {"message": "Class deleted successfully"}
+
+# ===== BOOKINGS ENDPOINTS =====
+
+@api_router.get("/bookings", response_model=List[Booking])
+async def get_bookings(
+    class_id: Optional[str] = None,
+    member_id: Optional[str] = None,
+    status: Optional[str] = None,
+    booking_date_from: Optional[str] = None,
+    booking_date_to: Optional[str] = None,
+    current_user: User = Depends(get_current_user)
+):
+    """Get bookings with optional filters"""
+    query = {}
+    if class_id:
+        query["class_id"] = class_id
+    if member_id:
+        query["member_id"] = member_id
+    if status:
+        query["status"] = status
+    if booking_date_from or booking_date_to:
+        query["booking_date"] = {}
+        if booking_date_from:
+            query["booking_date"]["$gte"] = booking_date_from
+        if booking_date_to:
+            query["booking_date"]["$lte"] = booking_date_to
+    
+    bookings = await db.bookings.find(query, {"_id": 0}).to_list(length=None)
+    return [Booking(**b) for b in bookings]
+
+@api_router.post("/bookings", response_model=Booking)
+async def create_booking(booking_data: BookingCreate, current_user: User = Depends(get_current_user)):
+    """Create a new booking"""
+    # Get class details
+    class_doc = await db.classes.find_one({"id": booking_data.class_id}, {"_id": 0})
+    if not class_doc:
+        raise HTTPException(status_code=404, detail="Class not found")
+    
+    class_obj = Class(**class_doc)
+    
+    # Get member details
+    member_doc = await db.members.find_one({"id": booking_data.member_id}, {"_id": 0})
+    if not member_doc:
+        raise HTTPException(status_code=404, detail="Member not found")
+    
+    member_obj = Member(**member_doc)
+    
+    # Check if member can book this class (membership type restrictions)
+    if class_obj.membership_types_allowed and member_obj.membership_type_id not in class_obj.membership_types_allowed:
+        raise HTTPException(status_code=403, detail="Your membership type is not allowed for this class")
+    
+    # Check booking window
+    booking_date = booking_data.booking_date
+    days_advance = (booking_date - datetime.now(timezone.utc)).days
+    if days_advance > class_obj.booking_window_days:
+        raise HTTPException(status_code=400, detail=f"Cannot book more than {class_obj.booking_window_days} days in advance")
+    
+    # Check capacity
+    existing_bookings = await db.bookings.count_documents({
+        "class_id": booking_data.class_id,
+        "booking_date": booking_data.booking_date.isoformat(),
+        "status": {"$in": ["confirmed", "attended"]}
+    })
+    
+    # Determine if booking is confirmed or waitlist
+    is_waitlist = False
+    waitlist_position = None
+    booking_status = "confirmed"
+    
+    if existing_bookings >= class_obj.capacity:
+        if class_obj.allow_waitlist:
+            # Add to waitlist
+            is_waitlist = True
+            booking_status = "waitlist"
+            waitlist_count = await db.bookings.count_documents({
+                "class_id": booking_data.class_id,
+                "booking_date": booking_data.booking_date.isoformat(),
+                "status": "waitlist"
+            })
+            if waitlist_count >= class_obj.waitlist_capacity:
+                raise HTTPException(status_code=400, detail="Class and waitlist are full")
+            waitlist_position = waitlist_count + 1
+        else:
+            raise HTTPException(status_code=400, detail="Class is full and waitlist is not available")
+    
+    # Create booking
+    new_booking = Booking(
+        class_id=booking_data.class_id,
+        class_name=class_obj.name,
+        member_id=booking_data.member_id,
+        member_name=f"{member_obj.first_name} {member_obj.last_name}",
+        member_email=member_obj.email,
+        booking_date=booking_data.booking_date,
+        status=booking_status,
+        is_waitlist=is_waitlist,
+        waitlist_position=waitlist_position,
+        payment_required=class_obj.drop_in_price > 0,
+        payment_amount=class_obj.drop_in_price,
+        payment_status="not_required" if class_obj.drop_in_price == 0 else "pending",
+        notes=booking_data.notes
+    )
+    
+    doc = new_booking.model_dump()
+    doc["booked_at"] = doc["booked_at"].isoformat()
+    doc["booking_date"] = doc["booking_date"].isoformat()
+    if doc.get("cancelled_at"):
+        doc["cancelled_at"] = doc["cancelled_at"].isoformat()
+    if doc.get("checked_in_at"):
+        doc["checked_in_at"] = doc["checked_in_at"].isoformat()
+    
+    await db.bookings.insert_one(doc)
+    return new_booking
+
+@api_router.get("/bookings/{booking_id}", response_model=Booking)
+async def get_booking(booking_id: str, current_user: User = Depends(get_current_user)):
+    """Get a specific booking"""
+    booking_doc = await db.bookings.find_one({"id": booking_id}, {"_id": 0})
+    if not booking_doc:
+        raise HTTPException(status_code=404, detail="Booking not found")
+    return Booking(**booking_doc)
+
+@api_router.patch("/bookings/{booking_id}", response_model=Booking)
+async def update_booking(booking_id: str, booking_update: BookingUpdate, current_user: User = Depends(get_current_user)):
+    """Update a booking (e.g., cancel, mark as attended, etc.)"""
+    booking_doc = await db.bookings.find_one({"id": booking_id}, {"_id": 0})
+    if not booking_doc:
+        raise HTTPException(status_code=404, detail="Booking not found")
+    
+    booking_obj = Booking(**booking_doc)
+    update_data = booking_update.model_dump(exclude_unset=True)
+    
+    # Handle cancellation
+    if update_data.get("status") == "cancelled" and booking_obj.status != "cancelled":
+        update_data["cancelled_at"] = datetime.now(timezone.utc).isoformat()
+        
+        # If this was a confirmed booking, promote waitlist
+        if booking_obj.status == "confirmed":
+            # Find next waitlist booking
+            next_waitlist = await db.bookings.find_one(
+                {
+                    "class_id": booking_obj.class_id,
+                    "booking_date": booking_obj.booking_date.isoformat(),
+                    "status": "waitlist"
+                },
+                {"_id": 0},
+                sort=[("waitlist_position", 1)]
+            )
+            
+            if next_waitlist:
+                # Promote from waitlist to confirmed
+                await db.bookings.update_one(
+                    {"id": next_waitlist["id"]},
+                    {"$set": {
+                        "status": "confirmed",
+                        "is_waitlist": False,
+                        "waitlist_position": None
+                    }}
+                )
+                
+                # Update remaining waitlist positions
+                await db.bookings.update_many(
+                    {
+                        "class_id": booking_obj.class_id,
+                        "booking_date": booking_obj.booking_date.isoformat(),
+                        "status": "waitlist",
+                        "waitlist_position": {"$gt": next_waitlist["waitlist_position"]}
+                    },
+                    {"$inc": {"waitlist_position": -1}}
+                )
+    
+    await db.bookings.update_one({"id": booking_id}, {"$set": update_data})
+    
+    # Fetch updated booking
+    updated_booking = await db.bookings.find_one({"id": booking_id}, {"_id": 0})
+    return Booking(**updated_booking)
+
+@api_router.delete("/bookings/{booking_id}")
+async def delete_booking(booking_id: str, current_user: User = Depends(get_current_user)):
+    """Delete a booking"""
+    result = await db.bookings.delete_one({"id": booking_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Booking not found")
+    return {"message": "Booking deleted successfully"}
+
+@api_router.post("/bookings/{booking_id}/check-in")
+async def check_in_booking(booking_id: str, current_user: User = Depends(get_current_user)):
+    """Check in a member for their booking"""
+    booking_doc = await db.bookings.find_one({"id": booking_id}, {"_id": 0})
+    if not booking_doc:
+        raise HTTPException(status_code=404, detail="Booking not found")
+    
+    if booking_doc["status"] not in ["confirmed"]:
+        raise HTTPException(status_code=400, detail="Only confirmed bookings can be checked in")
+    
+    await db.bookings.update_one(
+        {"id": booking_id},
+        {"$set": {
+            "status": "attended",
+            "checked_in_at": datetime.now(timezone.utc).isoformat()
+        }}
+    )
+    
+    updated_booking = await db.bookings.find_one({"id": booking_id}, {"_id": 0})
+    return Booking(**updated_booking)
+
 # Include the router in the main app
 app.include_router(api_router)
 
