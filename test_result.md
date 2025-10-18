@@ -456,6 +456,54 @@ backend:
         agent: "main"
         comment: "✅ Created GET /api/analytics/payment-duration endpoint providing comprehensive payment analytics. Data includes: global stats (avg payment months, total paying members, total revenue, retention rate), breakdown by membership type (avg months, member count, avg revenue per member), breakdown by source (same metrics), top 10 longest paying members, and summary statistics (longest, shortest, median durations). Complex calculations including member payment duration from join date to latest payment, aggregations by type and source, retention rate for 6+ month members. Tested and working with real payment data."
 
+  - task: "Classes API CRUD Operations"
+    implemented: true
+    working: true
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "testing"
+        comment: "✅ Classes API fully functional: GET /api/classes returns all classes correctly (tested empty and populated states). POST /api/classes creates new recurring classes with all properties (name, description, class_type, instructor_name, duration_minutes, capacity, day_of_week, start_time, end_time, is_recurring, room, allow_waitlist, waitlist_capacity, booking_window_days, cancel_window_hours, drop_in_price). GET /api/classes/{class_id} retrieves specific class details. PATCH /api/classes/{class_id} updates class properties (tested capacity update from 20 to 25). All endpoints return proper status codes and data validation working correctly."
+
+  - task: "Bookings API CRUD Operations"
+    implemented: true
+    working: true
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "testing"
+        comment: "✅ Bookings API fully functional: POST /api/bookings creates bookings with proper validation (class exists, member exists, membership type restrictions, booking window checks). GET /api/bookings returns all bookings with optional filtering by class_id, member_id, status, and date ranges. Booking creation automatically populates class_name, member_name, member_email from related entities. Payment requirements handled correctly based on drop_in_price. All booking data persisted and retrieved accurately."
+
+  - task: "Booking Check-in and Status Management"
+    implemented: true
+    working: true
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "testing"
+        comment: "✅ Booking status management working perfectly: POST /api/bookings/{booking_id}/check-in successfully checks in confirmed bookings, updates status to 'attended' and sets checked_in_at timestamp. PATCH /api/bookings/{booking_id} handles booking cancellations with status='cancelled', sets cancelled_at timestamp and cancellation_reason. Status transitions validated correctly (only confirmed bookings can be checked in)."
+
+  - task: "Class Capacity and Waitlist Management"
+    implemented: true
+    working: true
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "testing"
+        comment: "✅ Capacity and waitlist logic working flawlessly: Created 25 confirmed bookings to fill class capacity (capacity=25). 26th booking correctly added to waitlist with status='waitlist', is_waitlist=true, waitlist_position=1. When confirmed booking cancelled, waitlist member automatically promoted to confirmed status with is_waitlist=false and waitlist_position=null. Remaining waitlist positions decremented correctly. Waitlist capacity limits enforced (waitlist_capacity=10). Full capacity management and promotion logic verified."
+
 frontend:
   - task: "Automations Page Component"
     implemented: true
