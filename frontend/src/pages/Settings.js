@@ -537,6 +537,161 @@ export default function Settings() {
               </Card>
             </TabsContent>
 
+
+            {/* Payment Sources Tab */}
+            <TabsContent value="sources" className="mt-6">
+              <Card className="bg-slate-800/50 border-slate-700 backdrop-blur-lg">
+                <CardHeader className="flex flex-row items-center justify-between">
+                  <div>
+                    <CardTitle className="text-white">Payment Sources</CardTitle>
+                    <CardDescription className="text-slate-400">
+                      Manage how members find your gym for sales tracking
+                    </CardDescription>
+                  </div>
+                  <Dialog open={sourceDialogOpen} onOpenChange={(open) => {
+                    setSourceDialogOpen(open);
+                    if (!open) {
+                      setEditingSource(null);
+                      setSourceForm({
+                        name: '',
+                        description: '',
+                        is_active: true,
+                        display_order: 0
+                      });
+                    }
+                  }}>
+                    <DialogTrigger asChild>
+                      <Button className="bg-emerald-500 hover:bg-emerald-600">
+                        <Plus className="w-4 h-4 mr-2" />
+                        Add Source
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="bg-slate-800 border-slate-700 text-white max-w-md">
+                      <DialogHeader>
+                        <DialogTitle>{editingSource ? 'Edit' : 'Add'} Payment Source</DialogTitle>
+                        <DialogDescription className="text-slate-400">
+                          {editingSource ? 'Update the' : 'Create a new'} source for tracking member acquisition
+                        </DialogDescription>
+                      </DialogHeader>
+                      <form onSubmit={handleSourceSubmit} className="space-y-4">
+                        <div className="space-y-2">
+                          <Label>Source Name *</Label>
+                          <Input
+                            value={sourceForm.name}
+                            onChange={(e) => setSourceForm({ ...sourceForm, name: e.target.value })}
+                            placeholder="e.g., Walk-in, Online, Social Media"
+                            required
+                            className="bg-slate-700/50 border-slate-600"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Description</Label>
+                          <Input
+                            value={sourceForm.description}
+                            onChange={(e) => setSourceForm({ ...sourceForm, description: e.target.value })}
+                            placeholder="Optional description"
+                            className="bg-slate-700/50 border-slate-600"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Display Order</Label>
+                          <Input
+                            type="number"
+                            value={sourceForm.display_order}
+                            onChange={(e) => setSourceForm({ ...sourceForm, display_order: parseInt(e.target.value) || 0 })}
+                            placeholder="0"
+                            className="bg-slate-700/50 border-slate-600"
+                          />
+                          <p className="text-xs text-slate-400">Lower numbers appear first in dropdowns</p>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <Switch
+                            checked={sourceForm.is_active}
+                            onCheckedChange={(checked) => setSourceForm({ ...sourceForm, is_active: checked })}
+                            className="data-[state=checked]:bg-emerald-500"
+                          />
+                          <Label>Active</Label>
+                        </div>
+                        <div className="flex gap-2 pt-4">
+                          <Button type="submit" className="flex-1 bg-emerald-500 hover:bg-emerald-600">
+                            {editingSource ? 'Update' : 'Create'} Source
+                          </Button>
+                          <Button 
+                            type="button" 
+                            variant="outline" 
+                            onClick={() => setSourceDialogOpen(false)}
+                            className="border-slate-600 hover:bg-slate-700"
+                          >
+                            Cancel
+                          </Button>
+                        </div>
+                      </form>
+                    </DialogContent>
+                  </Dialog>
+                </CardHeader>
+                <CardContent>
+                  {loading ? (
+                    <div className="text-center py-8 text-slate-400">Loading...</div>
+                  ) : paymentSources.length === 0 ? (
+                    <div className="text-center py-8 text-slate-400">
+                      No payment sources yet. Add your first source to start tracking member acquisition.
+                    </div>
+                  ) : (
+                    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                      {paymentSources
+                        .sort((a, b) => a.display_order - b.display_order)
+                        .map((source) => (
+                          <Card key={source.id} className="bg-slate-700/30 border-slate-600">
+                            <CardContent className="p-4">
+                              <div className="flex items-start justify-between mb-2">
+                                <div className="flex-1">
+                                  <div className="flex items-center gap-2 mb-1">
+                                    <h3 className="font-semibold text-white">{source.name}</h3>
+                                    {source.is_active ? (
+                                      <Badge className="bg-emerald-500/20 text-emerald-400 border-emerald-500/50">
+                                        Active
+                                      </Badge>
+                                    ) : (
+                                      <Badge variant="outline" className="border-slate-600 text-slate-400">
+                                        Inactive
+                                      </Badge>
+                                    )}
+                                  </div>
+                                  {source.description && (
+                                    <p className="text-sm text-slate-400 mb-2">{source.description}</p>
+                                  )}
+                                  <p className="text-xs text-slate-500">Order: {source.display_order}</p>
+                                </div>
+                              </div>
+                              <div className="flex gap-2 mt-3">
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => handleEditSource(source)}
+                                  className="flex-1 border-slate-600 hover:bg-slate-600"
+                                >
+                                  <Edit className="w-3 h-3 mr-1" />
+                                  Edit
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => handleDeleteSource(source.id)}
+                                  className="border-red-500/50 text-red-400 hover:bg-red-500/20"
+                                >
+                                  <Trash2 className="w-3 h-3" />
+                                </Button>
+                              </div>
+                            </CardContent>
+                          </Card>
+                        ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+
             {/* Staff Management Tab */}
             <TabsContent value="staff" className="mt-6">
               <Card className="bg-slate-800/50 border-slate-700 backdrop-blur-lg">
