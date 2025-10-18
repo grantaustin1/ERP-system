@@ -74,7 +74,7 @@ export default function BillingEnhanced() {
     try {
       const params = new URLSearchParams();
       Object.keys(filters).forEach(key => {
-        if (filters[key]) {
+        if (filters[key] && filters[key] !== '__all__') {
           params.append(key, filters[key]);
         }
       });
