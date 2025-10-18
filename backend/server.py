@@ -1609,64 +1609,223 @@ async def unblock_member(member_id: str, current_user: User = Depends(get_curren
 # Access Control Routes
 @api_router.post("/access/validate")
 async def validate_access(data: AccessLogCreate):
+    """Validate member access with comprehensive checks"""
     member = await db.members.find_one({"id": data.member_id}, {"_id": 0})
     if not member:
         raise HTTPException(status_code=404, detail="Member not found")
     
     member_obj = Member(**member)
     
+    # Get membership type name
+    membership_type = await db.membership_types.find_one({"id": member_obj.membership_type_id}, {"_id": 0})
+    membership_type_name = membership_type.get("name") if membership_type else "Unknown"
+    
+    # Prepare access log with enhanced data
+    access_log_data = {
+        "member_id": member_obj.id,
+        "member_name": f"{member_obj.first_name} {member_obj.last_name}",
+        "member_email": member_obj.email,
+        "membership_type": membership_type_name,
+        "membership_status": member_obj.membership_status,
+        "access_method": data.access_method,
+        "location": data.location,
+        "device_id": data.device_id,
+        "class_booking_id": data.class_booking_id,
+        "temperature": data.temperature,
+        "notes": data.notes,
+        "override_by": data.override_by
+    }
+    
     # Check if member is blocked
-    if member_obj.is_debtor or member_obj.membership_status != "active":
+    if member_obj.is_debtor:
         if not data.override_by:
-            access_log = AccessLog(
-                member_id=member_obj.id,
-                member_name=f"{member_obj.first_name} {member_obj.last_name}",
-                access_method=data.access_method,
-                status="denied",
-                reason="Member is blocked or suspended"
-            )
+            access_log = AccessLog(**access_log_data, status="denied", reason="Member has outstanding debt")
             log_doc = access_log.model_dump()
             log_doc["timestamp"] = log_doc["timestamp"].isoformat()
             await db.access_logs.insert_one(log_doc)
-            return {"access": "denied", "reason": "Member is blocked or suspended", "member": member_obj}
+            return {
+                "access": "denied", 
+                "reason": "Member has outstanding debt",
+                "debt_amount": member_obj.debt_amount,
+                "member": member_obj
+            }
+    
+    # Check membership status
+    if member_obj.membership_status == "suspended":
+        if not data.override_by:
+            access_log = AccessLog(**access_log_data, status="denied", reason="Membership suspended")
+            log_doc = access_log.model_dump()
+            log_doc["timestamp"] = log_doc["timestamp"].isoformat()
+            await db.access_logs.insert_one(log_doc)
+            return {"access": "denied", "reason": "Membership suspended", "member": member_obj}
+    
+    if member_obj.membership_status == "cancelled":
+        if not data.override_by:
+            access_log = AccessLog(**access_log_data, status="denied", reason="Membership cancelled")
+            log_doc = access_log.model_dump()
+            log_doc["timestamp"] = log_doc["timestamp"].isoformat()
+            await db.access_logs.insert_one(log_doc)
+            return {"access": "denied", "reason": "Membership cancelled", "member": member_obj}
     
     # Check expiry
     if member_obj.expiry_date and member_obj.expiry_date < datetime.now(timezone.utc):
         if not data.override_by:
-            access_log = AccessLog(
-                member_id=member_obj.id,
-                member_name=f"{member_obj.first_name} {member_obj.last_name}",
-                access_method=data.access_method,
-                status="denied",
-                reason="Membership expired"
-            )
+            access_log = AccessLog(**access_log_data, status="denied", reason="Membership expired")
             log_doc = access_log.model_dump()
             log_doc["timestamp"] = log_doc["timestamp"].isoformat()
             await db.access_logs.insert_one(log_doc)
-            return {"access": "denied", "reason": "Membership expired", "member": member_obj}
+            return {
+                "access": "denied", 
+                "reason": "Membership expired",
+                "expiry_date": member_obj.expiry_date,
+                "member": member_obj
+            }
+    
+    # If checking in for a class, verify booking exists
+    if data.class_booking_id:
+        booking = await db.bookings.find_one({"id": data.class_booking_id}, {"_id": 0})
+        if booking:
+            access_log_data["class_name"] = booking.get("class_name")
+            # Auto check-in for the booking
+            await db.bookings.update_one(
+                {"id": data.class_booking_id},
+                {"$set": {
+                    "status": "attended",
+                    "checked_in_at": datetime.now(timezone.utc).isoformat()
+                }}
+            )
     
     # Grant access
-    access_log = AccessLog(
-        member_id=member_obj.id,
-        member_name=f"{member_obj.first_name} {member_obj.last_name}",
-        access_method=data.access_method,
-        status="granted",
-        reason=data.reason,
-        override_by=data.override_by
-    )
+    access_log = AccessLog(**access_log_data, status="granted", reason=data.reason or "Access granted")
     log_doc = access_log.model_dump()
     log_doc["timestamp"] = log_doc["timestamp"].isoformat()
     await db.access_logs.insert_one(log_doc)
     
-    return {"access": "granted", "member": member_obj}
+    return {"access": "granted", "member": member_obj, "access_log": access_log}
 
 @api_router.get("/access/logs", response_model=List[AccessLog])
-async def get_access_logs(limit: int = 100, current_user: User = Depends(get_current_user)):
-    logs = await db.access_logs.find({}, {"_id": 0}).sort("timestamp", -1).to_list(limit)
+async def get_access_logs(
+    limit: int = 100,
+    member_id: Optional[str] = None,
+    status: Optional[str] = None,
+    location: Optional[str] = None,
+    date_from: Optional[str] = None,
+    date_to: Optional[str] = None,
+    current_user: User = Depends(get_current_user)
+):
+    """Get access logs with optional filtering"""
+    query = {}
+    if member_id:
+        query["member_id"] = member_id
+    if status:
+        query["status"] = status
+    if location:
+        query["location"] = location
+    if date_from or date_to:
+        query["timestamp"] = {}
+        if date_from:
+            query["timestamp"]["$gte"] = date_from
+        if date_to:
+            query["timestamp"]["$lte"] = date_to
+    
+    logs = await db.access_logs.find(query, {"_id": 0}).sort("timestamp", -1).to_list(limit)
     for log in logs:
         if isinstance(log.get("timestamp"), str):
             log["timestamp"] = datetime.fromisoformat(log["timestamp"])
     return logs
+
+@api_router.get("/access/analytics")
+async def get_access_analytics(
+    date_from: Optional[str] = None,
+    date_to: Optional[str] = None,
+    current_user: User = Depends(get_current_user)
+):
+    """Get access analytics and statistics"""
+    # Build date filter
+    date_filter = {}
+    if date_from or date_to:
+        date_filter["timestamp"] = {}
+        if date_from:
+            date_filter["timestamp"]["$gte"] = date_from
+        if date_to:
+            date_filter["timestamp"]["$lte"] = date_to
+    
+    # Total access attempts
+    total_attempts = await db.access_logs.count_documents(date_filter)
+    
+    # Granted vs Denied
+    granted_count = await db.access_logs.count_documents({**date_filter, "status": "granted"})
+    denied_count = await db.access_logs.count_documents({**date_filter, "status": "denied"})
+    
+    # Access by method
+    access_methods = await db.access_logs.aggregate([
+        {"$match": date_filter},
+        {"$group": {"_id": "$access_method", "count": {"$sum": 1}}},
+        {"$sort": {"count": -1}}
+    ]).to_list(100)
+    
+    # Access by location
+    access_locations = await db.access_logs.aggregate([
+        {"$match": {**date_filter, "location": {"$ne": None}}},
+        {"$group": {"_id": "$location", "count": {"$sum": 1}}},
+        {"$sort": {"count": -1}}
+    ]).to_list(100)
+    
+    # Denied reasons breakdown
+    denied_reasons = await db.access_logs.aggregate([
+        {"$match": {**date_filter, "status": "denied"}},
+        {"$group": {"_id": "$reason", "count": {"$sum": 1}}},
+        {"$sort": {"count": -1}}
+    ]).to_list(100)
+    
+    # Peak hours (access by hour)
+    peak_hours = await db.access_logs.aggregate([
+        {"$match": date_filter},
+        {"$project": {
+            "hour": {"$hour": {"$dateFromString": {"dateString": "$timestamp"}}}
+        }},
+        {"$group": {"_id": "$hour", "count": {"$sum": 1}}},
+        {"$sort": {"_id": 1}}
+    ]).to_list(24)
+    
+    # Top members by check-ins
+    top_members = await db.access_logs.aggregate([
+        {"$match": {**date_filter, "status": "granted"}},
+        {"$group": {
+            "_id": "$member_id",
+            "member_name": {"$first": "$member_name"},
+            "check_in_count": {"$sum": 1}
+        }},
+        {"$sort": {"check_in_count": -1}},
+        {"$limit": 10}
+    ]).to_list(10)
+    
+    # Access success rate
+    success_rate = (granted_count / total_attempts * 100) if total_attempts > 0 else 0
+    
+    return {
+        "total_attempts": total_attempts,
+        "granted_count": granted_count,
+        "denied_count": denied_count,
+        "success_rate": round(success_rate, 2),
+        "access_by_method": access_methods,
+        "access_by_location": access_locations,
+        "denied_reasons": denied_reasons,
+        "peak_hours": peak_hours,
+        "top_members": top_members
+    }
+
+@api_router.post("/access/quick-checkin")
+async def quick_checkin(member_id: str, current_user: User = Depends(get_current_user)):
+    """Quick check-in endpoint for manual check-ins"""
+    access_data = AccessLogCreate(
+        member_id=member_id,
+        access_method="manual_override",
+        override_by=current_user.id,
+        notes="Quick check-in by staff"
+    )
+    result = await validate_access(access_data)
+    return result
 
 # Invoice Routes
 @api_router.post("/invoices", response_model=Invoice)
