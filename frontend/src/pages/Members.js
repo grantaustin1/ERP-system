@@ -289,6 +289,36 @@ export default function Members() {
                           className="bg-slate-700/50 border-slate-600"
                         />
                       </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="space-y-2">
+                          <Label htmlFor="source">How did you hear about us?</Label>
+                          <Select 
+                            value={formData.source} 
+                            onValueChange={(value) => setFormData({ ...formData, source: value })}
+                          >
+                            <SelectTrigger className="bg-slate-700/50 border-slate-600">
+                              <SelectValue placeholder="Select source..." />
+                            </SelectTrigger>
+                            <SelectContent className="bg-slate-800 border-slate-700">
+                              {paymentSources.map((source) => (
+                                <SelectItem key={source.id} value={source.name}>
+                                  {source.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="referred_by">Referred By (if applicable)</Label>
+                          <Input
+                            id="referred_by"
+                            value={formData.referred_by}
+                            onChange={(e) => setFormData({ ...formData, referred_by: e.target.value })}
+                            placeholder="Name of referrer"
+                            className="bg-slate-700/50 border-slate-600"
+                          />
+                        </div>
+                      </div>
                       <div className="space-y-2">
                         <Label htmlFor="emergency_contact">Emergency Contact</Label>
                         <Input
