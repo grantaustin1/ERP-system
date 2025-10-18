@@ -14,6 +14,7 @@ import Levies from '@/pages/Levies';
 import Marketing from '@/pages/Marketing';
 import PackageSetup from '@/pages/PackageSetupEnhanced';
 import Automations from '@/pages/Automations';
+import Analytics from '@/pages/Analytics';
 import { Toaster } from '@/components/ui/sonner';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
