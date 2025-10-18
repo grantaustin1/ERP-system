@@ -3369,6 +3369,75 @@ async def parse_csv_file(file: UploadFile, current_user: User = Depends(get_curr
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Failed to parse CSV: {str(e)}")
 
+@api_router.post("/members/check-duplicate")
+async def check_member_duplicate(
+    email: Optional[str] = None,
+    phone: Optional[str] = None,
+    first_name: Optional[str] = None,
+    last_name: Optional[str] = None,
+    current_user: User = Depends(get_current_user)
+):
+    """Check if a member with given details already exists"""
+    duplicates = []
+    
+    # Check email
+    if email:
+        email_exists = await db.members.find_one({"email": email.lower()}, {"_id": 0})
+        if email_exists:
+            duplicates.append({
+                "field": "email",
+                "value": email,
+                "existing_member": {
+                    "id": email_exists["id"],
+                    "name": f"{email_exists['first_name']} {email_exists['last_name']}",
+                    "email": email_exists.get("email"),
+                    "phone": email_exists.get("phone"),
+                    "membership_status": email_exists.get("membership_status")
+                }
+            })
+    
+    # Check phone
+    if phone:
+        phone_exists = await db.members.find_one({"phone": phone}, {"_id": 0})
+        if phone_exists:
+            duplicates.append({
+                "field": "phone",
+                "value": phone,
+                "existing_member": {
+                    "id": phone_exists["id"],
+                    "name": f"{phone_exists['first_name']} {phone_exists['last_name']}",
+                    "email": phone_exists.get("email"),
+                    "phone": phone_exists.get("phone"),
+                    "membership_status": phone_exists.get("membership_status")
+                }
+            })
+    
+    # Check name
+    if first_name and last_name:
+        name_regex = {"$regex": f"^{first_name}$", "$options": "i"}
+        lastname_regex = {"$regex": f"^{last_name}$", "$options": "i"}
+        name_exists = await db.members.find_one({
+            "first_name": name_regex,
+            "last_name": lastname_regex
+        }, {"_id": 0})
+        if name_exists:
+            duplicates.append({
+                "field": "name",
+                "value": f"{first_name} {last_name}",
+                "existing_member": {
+                    "id": name_exists["id"],
+                    "name": f"{name_exists['first_name']} {name_exists['last_name']}",
+                    "email": name_exists.get("email"),
+                    "phone": name_exists.get("phone"),
+                    "membership_status": name_exists.get("membership_status")
+                }
+            })
+    
+    return {
+        "has_duplicates": len(duplicates) > 0,
+        "duplicates": duplicates
+    }
+
 @api_router.post("/import/members")
 async def import_members(
     file: UploadFile,
