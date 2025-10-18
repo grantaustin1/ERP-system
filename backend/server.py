@@ -1818,6 +1818,151 @@ async def get_payment_report(
         "data": report_data
     }
 
+
+@api_router.get("/analytics/payment-duration")
+async def get_payment_duration_analytics(current_user: User = Depends(get_current_user)):
+    """
+    Get payment duration analytics showing average membership payment duration
+    by global, club, region, and membership type
+    """
+    # Get all paid payments with member details
+    payments = await db.payments.find({"payment_method": {"$exists": True}}, {"_id": 0}).to_list(10000)
+    
+    # Get all members
+    members = await db.members.find({}, {"_id": 0}).to_list(10000)
+    members_dict = {m["id"]: m for m in members}
+    
+    # Get all membership types
+    membership_types = await db.membership_types.find({}, {"_id": 0}).to_list(1000)
+    membership_dict = {mt["id"]: mt for mt in membership_types}
+    
+    # Calculate payment duration for each member
+    member_payment_data = {}
+    
+    for payment in payments:
+        member_id = payment.get("member_id")
+        if not member_id or member_id not in members_dict:
+            continue
+        
+        member = members_dict[member_id]
+        
+        # Calculate duration in months from join date to latest payment
+        join_date = member.get("join_date")
+        payment_date = payment.get("payment_date")
+        
+        if join_date and payment_date:
+            if isinstance(join_date, str):
+                join_date = datetime.fromisoformat(join_date)
+            if isinstance(payment_date, str):
+                payment_date = datetime.fromisoformat(payment_date)
+            
+            # Calculate months difference
+            months_diff = (payment_date.year - join_date.year) * 12 + (payment_date.month - join_date.month)
+            
+            if member_id not in member_payment_data:
+                member_payment_data[member_id] = {
+                    "member": member,
+                    "total_months": months_diff,
+                    "payment_count": 1,
+                    "total_amount": payment.get("amount", 0)
+                }
+            else:
+                # Update with longest duration
+                if months_diff > member_payment_data[member_id]["total_months"]:
+                    member_payment_data[member_id]["total_months"] = months_diff
+                member_payment_data[member_id]["payment_count"] += 1
+                member_payment_data[member_id]["total_amount"] += payment.get("amount", 0)
+    
+    # Calculate global average
+    if member_payment_data:
+        total_months = sum(data["total_months"] for data in member_payment_data.values())
+        global_avg = total_months / len(member_payment_data)
+    else:
+        global_avg = 0
+    
+    # Calculate by membership type
+    type_stats = {}
+    for member_id, data in member_payment_data.items():
+        member = data["member"]
+        type_id = member.get("membership_type_id")
+        
+        if type_id:
+            if type_id not in type_stats:
+                type_name = membership_dict.get(type_id, {}).get("name", "Unknown")
+                type_stats[type_id] = {
+                    "type_name": type_name,
+                    "total_months": 0,
+                    "member_count": 0,
+                    "total_revenue": 0
+                }
+            
+            type_stats[type_id]["total_months"] += data["total_months"]
+            type_stats[type_id]["member_count"] += 1
+            type_stats[type_id]["total_revenue"] += data["total_amount"]
+    
+    # Calculate averages for each type
+    for type_id, stats in type_stats.items():
+        if stats["member_count"] > 0:
+            stats["avg_months"] = round(stats["total_months"] / stats["member_count"], 2)
+            stats["avg_revenue_per_member"] = round(stats["total_revenue"] / stats["member_count"], 2)
+    
+    # Calculate by source
+    source_stats = {}
+    for member_id, data in member_payment_data.items():
+        member = data["member"]
+        source = member.get("source") or "Unknown"
+        
+        if source not in source_stats:
+            source_stats[source] = {
+                "source_name": source,
+                "total_months": 0,
+                "member_count": 0,
+                "total_revenue": 0
+            }
+        
+        source_stats[source]["total_months"] += data["total_months"]
+        source_stats[source]["member_count"] += 1
+        source_stats[source]["total_revenue"] += data["total_amount"]
+    
+    # Calculate averages for each source
+    for source, stats in source_stats.items():
+        if stats["member_count"] > 0:
+            stats["avg_months"] = round(stats["total_months"] / stats["member_count"], 2)
+            stats["avg_revenue_per_member"] = round(stats["total_revenue"] / stats["member_count"], 2)
+    
+    # Get top performing metrics
+    top_members = sorted(
+        [{"member_name": f"{data['member'].get('first_name', '')} {data['member'].get('last_name', '')}".strip(),
+          "months": data["total_months"],
+          "total_paid": data["total_amount"]}
+         for data in member_payment_data.values()],
+        key=lambda x: x["months"],
+        reverse=True
+    )[:10]
+    
+    # Calculate retention rate (members paying for 6+ months)
+    long_term_members = sum(1 for data in member_payment_data.values() if data["total_months"] >= 6)
+    retention_rate = round((long_term_members / len(member_payment_data) * 100), 2) if member_payment_data else 0
+    
+    return {
+        "global_stats": {
+            "average_payment_months": round(global_avg, 2),
+            "total_paying_members": len(member_payment_data),
+            "total_revenue": sum(data["total_amount"] for data in member_payment_data.values()),
+            "retention_rate_6months": retention_rate
+        },
+        "by_membership_type": list(type_stats.values()),
+        "by_source": list(source_stats.values()),
+        "top_members": top_members,
+        "summary": {
+            "longest_paying_member_months": max((data["total_months"] for data in member_payment_data.values()), default=0),
+            "shortest_paying_member_months": min((data["total_months"] for data in member_payment_data.values()), default=0),
+            "median_payment_months": round(sorted([data["total_months"] for data in member_payment_data.values()])[len(member_payment_data)//2], 2) if member_payment_data else 0
+        }
+    }
+
+
+
 @api_router.post("/members/{member_id}/geocode")
 async def geocode_member_address(member_id: str, current_user: User = Depends(get_current_user)):
     """Manually trigger geocoding for a member's address"""
