@@ -604,6 +604,636 @@ class AutomationTester:
         
         print("\n" + "=" * 60)
 
+class ClassesAndBookingsTester:
+    def __init__(self):
+        self.token = None
+        self.headers = {}
+        self.test_results = []
+        self.created_class_id = None
+        self.created_member_id = None
+        self.created_bookings = []
+        
+    def log_result(self, test_name, success, message, details=None):
+        """Log test result"""
+        result = {
+            "test": test_name,
+            "success": success,
+            "message": message,
+            "timestamp": datetime.now().isoformat(),
+            "details": details or {}
+        }
+        self.test_results.append(result)
+        status = "✅ PASS" if success else "❌ FAIL"
+        print(f"{status}: {test_name} - {message}")
+        if details and not success:
+            print(f"   Details: {details}")
+    
+    def authenticate(self):
+        """Authenticate and get token"""
+        try:
+            response = requests.post(f"{API_BASE}/auth/login", json={
+                "email": TEST_EMAIL,
+                "password": TEST_PASSWORD
+            })
+            
+            if response.status_code == 200:
+                data = response.json()
+                self.token = data["access_token"]
+                self.headers = {"Authorization": f"Bearer {self.token}"}
+                self.log_result("Authentication", True, "Successfully authenticated")
+                return True
+            else:
+                self.log_result("Authentication", False, f"Failed to authenticate: {response.status_code}", 
+                              {"response": response.text})
+                return False
+        except Exception as e:
+            self.log_result("Authentication", False, f"Authentication error: {str(e)}")
+            return False
+    
+    def test_classes_api_empty_list(self):
+        """Test 1: GET /api/classes (should return empty array initially)"""
+        print("\n=== Test 1: Get Classes (Empty List) ===")
+        
+        try:
+            response = requests.get(f"{API_BASE}/classes", headers=self.headers)
+            if response.status_code == 200:
+                classes = response.json()
+                self.log_result("Get Classes (Empty)", True, 
+                              f"Successfully retrieved classes list with {len(classes)} classes")
+                return True
+            else:
+                self.log_result("Get Classes (Empty)", False, 
+                              f"Failed to get classes: {response.status_code}",
+                              {"response": response.text})
+                return False
+        except Exception as e:
+            self.log_result("Get Classes (Empty)", False, f"Error getting classes: {str(e)}")
+            return False
+    
+    def test_create_class(self):
+        """Test 2: POST /api/classes to create a new recurring class"""
+        print("\n=== Test 2: Create Recurring Class ===")
+        
+        class_data = {
+            "name": "Morning Yoga",
+            "description": "Start your day with relaxing yoga",
+            "class_type": "Yoga",
+            "instructor_name": "Jane Doe",
+            "duration_minutes": 60,
+            "capacity": 20,
+            "day_of_week": "Monday",
+            "start_time": "09:00",
+            "end_time": "10:00",
+            "is_recurring": True,
+            "room": "Studio A",
+            "allow_waitlist": True,
+            "waitlist_capacity": 10,
+            "booking_window_days": 7,
+            "cancel_window_hours": 2,
+            "drop_in_price": 15.0
+        }
+        
+        try:
+            response = requests.post(f"{API_BASE}/classes", json=class_data, headers=self.headers)
+            if response.status_code == 200:
+                created_class = response.json()
+                self.created_class_id = created_class["id"]
+                
+                # Verify all fields are set correctly
+                if (created_class["name"] == "Morning Yoga" and 
+                    created_class["capacity"] == 20 and
+                    created_class["allow_waitlist"] == True and
+                    created_class["drop_in_price"] == 15.0):
+                    self.log_result("Create Class", True, 
+                                  f"Class created successfully with all correct properties",
+                                  {"class_id": self.created_class_id, "name": created_class["name"]})
+                else:
+                    self.log_result("Create Class", False, 
+                                  "Class created but some properties are incorrect")
+                return self.created_class_id
+            else:
+                self.log_result("Create Class", False, 
+                              f"Failed to create class: {response.status_code}",
+                              {"response": response.text})
+                return None
+        except Exception as e:
+            self.log_result("Create Class", False, f"Error creating class: {str(e)}")
+            return None
+    
+    def test_get_classes_with_data(self):
+        """Test 3: GET /api/classes (should return the created class)"""
+        print("\n=== Test 3: Get Classes (With Data) ===")
+        
+        try:
+            response = requests.get(f"{API_BASE}/classes", headers=self.headers)
+            if response.status_code == 200:
+                classes = response.json()
+                if len(classes) >= 1:
+                    # Find our created class
+                    our_class = next((c for c in classes if c["id"] == self.created_class_id), None)
+                    if our_class:
+                        self.log_result("Get Classes (With Data)", True, 
+                                      f"Successfully retrieved {len(classes)} classes including our created class")
+                    else:
+                        self.log_result("Get Classes (With Data)", False, 
+                                      "Created class not found in classes list")
+                else:
+                    self.log_result("Get Classes (With Data)", False, 
+                                  f"Expected at least 1 class, got {len(classes)}")
+                return True
+            else:
+                self.log_result("Get Classes (With Data)", False, 
+                              f"Failed to get classes: {response.status_code}",
+                              {"response": response.text})
+                return False
+        except Exception as e:
+            self.log_result("Get Classes (With Data)", False, f"Error getting classes: {str(e)}")
+            return False
+    
+    def test_get_specific_class(self):
+        """Test 4: GET /api/classes/{class_id} (get specific class)"""
+        print("\n=== Test 4: Get Specific Class ===")
+        
+        if not self.created_class_id:
+            self.log_result("Get Specific Class", False, "No class ID available for testing")
+            return False
+        
+        try:
+            response = requests.get(f"{API_BASE}/classes/{self.created_class_id}", headers=self.headers)
+            if response.status_code == 200:
+                class_data = response.json()
+                if class_data["id"] == self.created_class_id and class_data["name"] == "Morning Yoga":
+                    self.log_result("Get Specific Class", True, 
+                                  f"Successfully retrieved specific class: {class_data['name']}")
+                else:
+                    self.log_result("Get Specific Class", False, 
+                                  "Retrieved class data doesn't match expected values")
+                return True
+            else:
+                self.log_result("Get Specific Class", False, 
+                              f"Failed to get specific class: {response.status_code}",
+                              {"response": response.text})
+                return False
+        except Exception as e:
+            self.log_result("Get Specific Class", False, f"Error getting specific class: {str(e)}")
+            return False
+    
+    def test_update_class_capacity(self):
+        """Test 5: PATCH /api/classes/{class_id} to update capacity to 25"""
+        print("\n=== Test 5: Update Class Capacity ===")
+        
+        if not self.created_class_id:
+            self.log_result("Update Class Capacity", False, "No class ID available for testing")
+            return False
+        
+        update_data = {
+            "capacity": 25
+        }
+        
+        try:
+            response = requests.patch(f"{API_BASE}/classes/{self.created_class_id}", 
+                                    json=update_data, headers=self.headers)
+            if response.status_code == 200:
+                updated_class = response.json()
+                if updated_class["capacity"] == 25:
+                    self.log_result("Update Class Capacity", True, 
+                                  f"Successfully updated class capacity to {updated_class['capacity']}")
+                else:
+                    self.log_result("Update Class Capacity", False, 
+                                  f"Capacity not updated correctly: {updated_class['capacity']} (expected 25)")
+                return True
+            else:
+                self.log_result("Update Class Capacity", False, 
+                              f"Failed to update class: {response.status_code}",
+                              {"response": response.text})
+                return False
+        except Exception as e:
+            self.log_result("Update Class Capacity", False, f"Error updating class: {str(e)}")
+            return False
+    
+    def test_create_member_for_booking(self):
+        """Create a member for booking tests"""
+        print("\n=== Creating Member for Booking Tests ===")
+        
+        # First get a membership type
+        try:
+            response = requests.get(f"{API_BASE}/membership-types", headers=self.headers)
+            if response.status_code != 200:
+                self.log_result("Get Membership Types for Member", False, "Failed to get membership types")
+                return None
+            
+            membership_types = response.json()
+            if not membership_types:
+                self.log_result("Get Membership Types for Member", False, "No membership types found")
+                return None
+            
+            membership_type_id = membership_types[0]["id"]
+            
+            # Create member
+            member_data = {
+                "first_name": "John",
+                "last_name": "Doe",
+                "email": f"john.doe.booking.test.{int(time.time())}@example.com",
+                "phone": "+27123456789",
+                "membership_type_id": membership_type_id
+            }
+            
+            response = requests.post(f"{API_BASE}/members", json=member_data, headers=self.headers)
+            if response.status_code == 200:
+                member = response.json()
+                self.created_member_id = member["id"]
+                self.log_result("Create Member for Booking", True, 
+                              f"Member created for booking tests: {member['first_name']} {member['last_name']}",
+                              {"member_id": self.created_member_id})
+                return self.created_member_id
+            else:
+                self.log_result("Create Member for Booking", False, 
+                              f"Failed to create member: {response.status_code}",
+                              {"response": response.text})
+                return None
+        except Exception as e:
+            self.log_result("Create Member for Booking", False, f"Error creating member: {str(e)}")
+            return None
+    
+    def test_create_booking(self):
+        """Test 6: POST /api/bookings to create a booking"""
+        print("\n=== Test 6: Create Booking ===")
+        
+        if not self.created_class_id or not self.created_member_id:
+            self.log_result("Create Booking", False, "Missing class ID or member ID for booking test")
+            return None
+        
+        # Create booking for tomorrow at 9 AM
+        booking_date = datetime.now(timezone.utc) + timedelta(days=1)
+        booking_date = booking_date.replace(hour=9, minute=0, second=0, microsecond=0)
+        
+        booking_data = {
+            "class_id": self.created_class_id,
+            "member_id": self.created_member_id,
+            "booking_date": booking_date.isoformat(),
+            "notes": "First booking test"
+        }
+        
+        try:
+            response = requests.post(f"{API_BASE}/bookings", json=booking_data, headers=self.headers)
+            if response.status_code == 200:
+                booking = response.json()
+                booking_id = booking["id"]
+                self.created_bookings.append(booking_id)
+                
+                # Verify booking details
+                if (booking["class_id"] == self.created_class_id and 
+                    booking["member_id"] == self.created_member_id and
+                    booking["status"] == "confirmed"):
+                    self.log_result("Create Booking", True, 
+                                  f"Booking created successfully with status: {booking['status']}",
+                                  {"booking_id": booking_id, "class_name": booking["class_name"]})
+                else:
+                    self.log_result("Create Booking", False, 
+                                  "Booking created but some properties are incorrect")
+                return booking_id
+            else:
+                self.log_result("Create Booking", False, 
+                              f"Failed to create booking: {response.status_code}",
+                              {"response": response.text})
+                return None
+        except Exception as e:
+            self.log_result("Create Booking", False, f"Error creating booking: {str(e)}")
+            return None
+    
+    def test_get_bookings(self):
+        """Test 7: GET /api/bookings (should return the booking)"""
+        print("\n=== Test 7: Get All Bookings ===")
+        
+        try:
+            response = requests.get(f"{API_BASE}/bookings", headers=self.headers)
+            if response.status_code == 200:
+                bookings = response.json()
+                if len(bookings) >= 1:
+                    # Find our created booking
+                    our_booking = next((b for b in bookings if b["id"] in self.created_bookings), None)
+                    if our_booking:
+                        self.log_result("Get All Bookings", True, 
+                                      f"Successfully retrieved {len(bookings)} bookings including our created booking")
+                    else:
+                        self.log_result("Get All Bookings", False, 
+                                      "Created booking not found in bookings list")
+                else:
+                    self.log_result("Get All Bookings", False, 
+                                  f"Expected at least 1 booking, got {len(bookings)}")
+                return True
+            else:
+                self.log_result("Get All Bookings", False, 
+                              f"Failed to get bookings: {response.status_code}",
+                              {"response": response.text})
+                return False
+        except Exception as e:
+            self.log_result("Get All Bookings", False, f"Error getting bookings: {str(e)}")
+            return False
+    
+    def test_get_bookings_filtered_by_class(self):
+        """Test 8: GET /api/bookings?class_id={class_id} (filter by class)"""
+        print("\n=== Test 8: Get Bookings Filtered by Class ===")
+        
+        if not self.created_class_id:
+            self.log_result("Get Bookings by Class", False, "No class ID available for filtering")
+            return False
+        
+        try:
+            response = requests.get(f"{API_BASE}/bookings?class_id={self.created_class_id}", 
+                                  headers=self.headers)
+            if response.status_code == 200:
+                bookings = response.json()
+                # All bookings should be for our class
+                all_correct_class = all(b["class_id"] == self.created_class_id for b in bookings)
+                if all_correct_class:
+                    self.log_result("Get Bookings by Class", True, 
+                                  f"Successfully filtered bookings by class: {len(bookings)} bookings")
+                else:
+                    self.log_result("Get Bookings by Class", False, 
+                                  "Some bookings don't match the class filter")
+                return True
+            else:
+                self.log_result("Get Bookings by Class", False, 
+                              f"Failed to get filtered bookings: {response.status_code}",
+                              {"response": response.text})
+                return False
+        except Exception as e:
+            self.log_result("Get Bookings by Class", False, f"Error getting filtered bookings: {str(e)}")
+            return False
+    
+    def test_check_in_booking(self):
+        """Test 9: POST /api/bookings/{booking_id}/check-in (check in the member)"""
+        print("\n=== Test 9: Check In Booking ===")
+        
+        if not self.created_bookings:
+            self.log_result("Check In Booking", False, "No booking ID available for check-in")
+            return False
+        
+        booking_id = self.created_bookings[0]
+        
+        try:
+            response = requests.post(f"{API_BASE}/bookings/{booking_id}/check-in", 
+                                   headers=self.headers)
+            if response.status_code == 200:
+                updated_booking = response.json()
+                if updated_booking["status"] == "attended" and updated_booking.get("checked_in_at"):
+                    self.log_result("Check In Booking", True, 
+                                  f"Successfully checked in booking, status: {updated_booking['status']}")
+                else:
+                    self.log_result("Check In Booking", False, 
+                                  f"Check-in failed, status: {updated_booking['status']}")
+                return True
+            else:
+                self.log_result("Check In Booking", False, 
+                              f"Failed to check in booking: {response.status_code}",
+                              {"response": response.text})
+                return False
+        except Exception as e:
+            self.log_result("Check In Booking", False, f"Error checking in booking: {str(e)}")
+            return False
+    
+    def test_cancel_booking(self):
+        """Test 10: PATCH /api/bookings/{booking_id} to cancel the booking"""
+        print("\n=== Test 10: Cancel Booking ===")
+        
+        # Create another booking to cancel
+        if not self.created_class_id or not self.created_member_id:
+            self.log_result("Cancel Booking", False, "Missing class ID or member ID for cancel test")
+            return False
+        
+        # Create booking for day after tomorrow
+        booking_date = datetime.now(timezone.utc) + timedelta(days=2)
+        booking_date = booking_date.replace(hour=9, minute=0, second=0, microsecond=0)
+        
+        booking_data = {
+            "class_id": self.created_class_id,
+            "member_id": self.created_member_id,
+            "booking_date": booking_date.isoformat(),
+            "notes": "Booking to be cancelled"
+        }
+        
+        try:
+            # Create booking
+            response = requests.post(f"{API_BASE}/bookings", json=booking_data, headers=self.headers)
+            if response.status_code != 200:
+                self.log_result("Cancel Booking", False, "Failed to create booking for cancellation test")
+                return False
+            
+            booking = response.json()
+            booking_id = booking["id"]
+            
+            # Cancel the booking
+            cancel_data = {
+                "status": "cancelled",
+                "cancellation_reason": "Test cancellation"
+            }
+            
+            response = requests.patch(f"{API_BASE}/bookings/{booking_id}", 
+                                    json=cancel_data, headers=self.headers)
+            if response.status_code == 200:
+                cancelled_booking = response.json()
+                if (cancelled_booking["status"] == "cancelled" and 
+                    cancelled_booking.get("cancelled_at") and
+                    cancelled_booking.get("cancellation_reason") == "Test cancellation"):
+                    self.log_result("Cancel Booking", True, 
+                                  f"Successfully cancelled booking with reason: {cancelled_booking['cancellation_reason']}")
+                else:
+                    self.log_result("Cancel Booking", False, 
+                                  "Booking cancellation incomplete or incorrect")
+                return True
+            else:
+                self.log_result("Cancel Booking", False, 
+                              f"Failed to cancel booking: {response.status_code}",
+                              {"response": response.text})
+                return False
+        except Exception as e:
+            self.log_result("Cancel Booking", False, f"Error cancelling booking: {str(e)}")
+            return False
+    
+    def test_capacity_and_waitlist(self):
+        """Test 11-13: Capacity and Waitlist Logic"""
+        print("\n=== Test 11-13: Capacity and Waitlist Tests ===")
+        
+        if not self.created_class_id or not self.created_member_id:
+            self.log_result("Capacity Tests", False, "Missing class ID or member ID for capacity tests")
+            return False
+        
+        # Create multiple members for capacity testing
+        members_for_capacity = []
+        try:
+            # Get membership type
+            response = requests.get(f"{API_BASE}/membership-types", headers=self.headers)
+            membership_types = response.json()
+            membership_type_id = membership_types[0]["id"]
+            
+            # Create 26 members (class capacity is 25 after update)
+            for i in range(26):
+                member_data = {
+                    "first_name": f"TestMember{i}",
+                    "last_name": "CapacityTest",
+                    "email": f"capacity.test.{i}.{int(time.time())}@example.com",
+                    "phone": f"+2712345{i:04d}",
+                    "membership_type_id": membership_type_id
+                }
+                
+                response = requests.post(f"{API_BASE}/members", json=member_data, headers=self.headers)
+                if response.status_code == 200:
+                    member = response.json()
+                    members_for_capacity.append(member["id"])
+            
+            if len(members_for_capacity) < 26:
+                self.log_result("Create Members for Capacity Test", False, 
+                              f"Only created {len(members_for_capacity)} members, needed 26")
+                return False
+            
+            self.log_result("Create Members for Capacity Test", True, 
+                          f"Created {len(members_for_capacity)} members for capacity testing")
+            
+            # Create booking date for capacity test
+            capacity_test_date = datetime.now(timezone.utc) + timedelta(days=3)
+            capacity_test_date = capacity_test_date.replace(hour=9, minute=0, second=0, microsecond=0)
+            
+            confirmed_bookings = 0
+            waitlist_bookings = 0
+            
+            # Create 25 bookings to fill capacity
+            for i in range(25):
+                booking_data = {
+                    "class_id": self.created_class_id,
+                    "member_id": members_for_capacity[i],
+                    "booking_date": capacity_test_date.isoformat(),
+                    "notes": f"Capacity test booking {i+1}"
+                }
+                
+                response = requests.post(f"{API_BASE}/bookings", json=booking_data, headers=self.headers)
+                if response.status_code == 200:
+                    booking = response.json()
+                    if booking["status"] == "confirmed":
+                        confirmed_bookings += 1
+                    elif booking["status"] == "waitlist":
+                        waitlist_bookings += 1
+            
+            if confirmed_bookings == 25:
+                self.log_result("Fill Class Capacity", True, 
+                              f"Successfully filled class capacity with {confirmed_bookings} confirmed bookings")
+            else:
+                self.log_result("Fill Class Capacity", False, 
+                              f"Expected 25 confirmed bookings, got {confirmed_bookings}")
+            
+            # Create 26th booking - should go to waitlist
+            booking_data = {
+                "class_id": self.created_class_id,
+                "member_id": members_for_capacity[25],
+                "booking_date": capacity_test_date.isoformat(),
+                "notes": "Should be waitlisted"
+            }
+            
+            response = requests.post(f"{API_BASE}/bookings", json=booking_data, headers=self.headers)
+            if response.status_code == 200:
+                waitlist_booking = response.json()
+                if (waitlist_booking["status"] == "waitlist" and 
+                    waitlist_booking["is_waitlist"] == True and
+                    waitlist_booking["waitlist_position"] == 1):
+                    self.log_result("Waitlist Booking Creation", True, 
+                                  f"26th booking correctly added to waitlist at position {waitlist_booking['waitlist_position']}")
+                    
+                    # Now cancel a confirmed booking to test promotion
+                    # Get a confirmed booking
+                    response = requests.get(f"{API_BASE}/bookings?class_id={self.created_class_id}", 
+                                          headers=self.headers)
+                    if response.status_code == 200:
+                        all_bookings = response.json()
+                        confirmed_booking = next((b for b in all_bookings 
+                                                if b["status"] == "confirmed" and 
+                                                b["booking_date"] == capacity_test_date.isoformat()), None)
+                        
+                        if confirmed_booking:
+                            # Cancel the confirmed booking
+                            cancel_data = {"status": "cancelled", "cancellation_reason": "Test waitlist promotion"}
+                            response = requests.patch(f"{API_BASE}/bookings/{confirmed_booking['id']}", 
+                                                    json=cancel_data, headers=self.headers)
+                            
+                            if response.status_code == 200:
+                                # Check if waitlist member got promoted
+                                time.sleep(1)  # Give time for promotion logic
+                                response = requests.get(f"{API_BASE}/bookings/{waitlist_booking['id']}", 
+                                                      headers=self.headers)
+                                if response.status_code == 200:
+                                    updated_waitlist_booking = response.json()
+                                    if (updated_waitlist_booking["status"] == "confirmed" and 
+                                        updated_waitlist_booking["is_waitlist"] == False):
+                                        self.log_result("Waitlist Promotion", True, 
+                                                      "Waitlist member successfully promoted to confirmed when booking cancelled")
+                                    else:
+                                        self.log_result("Waitlist Promotion", False, 
+                                                      f"Waitlist member not promoted, status: {updated_waitlist_booking['status']}")
+                else:
+                    self.log_result("Waitlist Booking Creation", False, 
+                                  f"26th booking not correctly waitlisted: status={waitlist_booking['status']}, position={waitlist_booking.get('waitlist_position')}")
+            else:
+                self.log_result("Waitlist Booking Creation", False, 
+                              f"Failed to create 26th booking: {response.status_code}")
+            
+            return True
+            
+        except Exception as e:
+            self.log_result("Capacity and Waitlist Tests", False, f"Error in capacity tests: {str(e)}")
+            return False
+    
+    def run_classes_and_bookings_tests(self):
+        """Run all Classes and Bookings API tests"""
+        print("🚀 Starting Classes and Bookings API Tests")
+        print(f"Testing against: {API_BASE}")
+        print("=" * 60)
+        
+        # Authenticate first
+        if not self.authenticate():
+            print("❌ Authentication failed. Cannot proceed with tests.")
+            return
+        
+        # Run all tests in sequence
+        self.test_classes_api_empty_list()
+        
+        if self.test_create_class():
+            self.test_get_classes_with_data()
+            self.test_get_specific_class()
+            self.test_update_class_capacity()
+            
+            if self.test_create_member_for_booking():
+                self.test_create_booking()
+                self.test_get_bookings()
+                self.test_get_bookings_filtered_by_class()
+                self.test_check_in_booking()
+                self.test_cancel_booking()
+                self.test_capacity_and_waitlist()
+        
+        # Print summary
+        self.print_summary()
+    
+    def print_summary(self):
+        """Print test summary"""
+        print("\n" + "=" * 60)
+        print("🏁 CLASSES AND BOOKINGS API TEST SUMMARY")
+        print("=" * 60)
+        
+        total_tests = len(self.test_results)
+        passed_tests = len([r for r in self.test_results if r["success"]])
+        failed_tests = total_tests - passed_tests
+        
+        print(f"Total Tests: {total_tests}")
+        print(f"✅ Passed: {passed_tests}")
+        print(f"❌ Failed: {failed_tests}")
+        print(f"Success Rate: {(passed_tests/total_tests*100):.1f}%")
+        
+        if failed_tests > 0:
+            print("\n❌ FAILED TESTS:")
+            for result in self.test_results:
+                if not result["success"]:
+                    print(f"  - {result['test']}: {result['message']}")
+        
+        print("\n" + "=" * 60)
+
 class MembershipVariationTester:
     def __init__(self):
         self.token = None
