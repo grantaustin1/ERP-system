@@ -294,7 +294,7 @@ export default function BillingEnhanced() {
                           <SelectValue placeholder="All statuses" />
                         </SelectTrigger>
                         <SelectContent className="bg-slate-800 border-slate-700">
-                          <SelectItem value="">All Statuses</SelectItem>
+                          <SelectItem value="__all__">All Statuses</SelectItem>
                           <SelectItem value="paid">Paid</SelectItem>
                           <SelectItem value="pending">Pending</SelectItem>
                           <SelectItem value="overdue">Overdue</SelectItem>
