@@ -3256,6 +3256,263 @@ async def check_in_booking(booking_id: str, current_user: User = Depends(get_cur
     updated_booking = await db.bookings.find_one({"id": booking_id}, {"_id": 0})
     return Booking(**updated_booking)
 
+# ===== IMPORT MODULE ENDPOINTS =====
+
+class ImportLog(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    import_type: str  # members, leads, memberships
+    filename: str
+    total_rows: int
+    successful_rows: int
+    failed_rows: int
+    field_mapping: dict
+    status: str  # processing, completed, failed
+    error_log: List[dict] = []
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    created_by: str
+
+@api_router.post("/import/parse-csv")
+async def parse_csv_file(file: UploadFile, current_user: User = Depends(get_current_user)):
+    """Parse CSV file and return headers and sample data for mapping"""
+    try:
+        import csv
+        import io
+        
+        # Read file content
+        content = await file.read()
+        decoded_content = content.decode('utf-8')
+        
+        # Parse CSV
+        csv_reader = csv.DictReader(io.StringIO(decoded_content))
+        headers = csv_reader.fieldnames
+        
+        # Get first 5 rows as sample
+        sample_data = []
+        for i, row in enumerate(csv_reader):
+            if i >= 5:
+                break
+            sample_data.append(row)
+        
+        # Reset reader to count total rows
+        csv_reader = csv.DictReader(io.StringIO(decoded_content))
+        total_rows = sum(1 for _ in csv_reader)
+        
+        return {
+            "headers": headers,
+            "sample_data": sample_data,
+            "total_rows": total_rows,
+            "filename": file.filename
+        }
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Failed to parse CSV: {str(e)}")
+
+@api_router.post("/import/members")
+async def import_members(
+    file: UploadFile,
+    field_mapping: str,  # JSON string of field mapping
+    current_user: User = Depends(get_current_user)
+):
+    """Import members from CSV with field mapping"""
+    try:
+        import csv
+        import io
+        import json
+        
+        # Parse field mapping
+        mapping = json.loads(field_mapping)
+        
+        # Read and parse CSV
+        content = await file.read()
+        decoded_content = content.decode('utf-8')
+        csv_reader = csv.DictReader(io.StringIO(decoded_content))
+        
+        successful = 0
+        failed = 0
+        error_log = []
+        
+        for row_num, row in enumerate(csv_reader, start=2):
+            try:
+                # Map CSV columns to Member fields
+                member_data = {
+                    "id": str(uuid.uuid4()),
+                    "created_at": datetime.now(timezone.utc).isoformat()
+                }
+                
+                for db_field, csv_column in mapping.items():
+                    if csv_column and csv_column in row:
+                        value = row[csv_column].strip()
+                        if value:
+                            member_data[db_field] = value
+                
+                # Set defaults for required fields
+                if "membership_status" not in member_data:
+                    member_data["membership_status"] = "active"
+                if "membership_type_id" not in member_data:
+                    # Get default membership type
+                    default_type = await db.membership_types.find_one({}, {"_id": 0})
+                    if default_type:
+                        member_data["membership_type_id"] = default_type["id"]
+                
+                # Insert member
+                await db.members.insert_one(member_data)
+                successful += 1
+                
+            except Exception as e:
+                failed += 1
+                error_log.append({
+                    "row": row_num,
+                    "error": str(e),
+                    "data": row
+                })
+        
+        # Create import log
+        import_log = ImportLog(
+            import_type="members",
+            filename=file.filename,
+            total_rows=successful + failed,
+            successful_rows=successful,
+            failed_rows=failed,
+            field_mapping=mapping,
+            status="completed",
+            error_log=error_log,
+            created_by=current_user.id
+        )
+        
+        log_doc = import_log.model_dump()
+        log_doc["created_at"] = log_doc["created_at"].isoformat()
+        await db.import_logs.insert_one(log_doc)
+        
+        return {
+            "success": True,
+            "total_rows": successful + failed,
+            "successful": successful,
+            "failed": failed,
+            "error_log": error_log[:10]  # Return first 10 errors
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Import failed: {str(e)}")
+
+@api_router.post("/import/leads")
+async def import_leads(
+    file: UploadFile,
+    field_mapping: str,
+    current_user: User = Depends(get_current_user)
+):
+    """Import leads from CSV with field mapping"""
+    try:
+        import csv
+        import io
+        import json
+        
+        mapping = json.loads(field_mapping)
+        content = await file.read()
+        decoded_content = content.decode('utf-8')
+        csv_reader = csv.DictReader(io.StringIO(decoded_content))
+        
+        successful = 0
+        failed = 0
+        error_log = []
+        
+        for row_num, row in enumerate(csv_reader, start=2):
+            try:
+                lead_data = {
+                    "id": str(uuid.uuid4()),
+                    "created_at": datetime.now(timezone.utc).isoformat(),
+                    "status": "new"
+                }
+                
+                for db_field, csv_column in mapping.items():
+                    if csv_column and csv_column in row:
+                        value = row[csv_column].strip()
+                        if value:
+                            lead_data[db_field] = value
+                
+                await db.leads.insert_one(lead_data)
+                successful += 1
+                
+            except Exception as e:
+                failed += 1
+                error_log.append({
+                    "row": row_num,
+                    "error": str(e),
+                    "data": row
+                })
+        
+        import_log = ImportLog(
+            import_type="leads",
+            filename=file.filename,
+            total_rows=successful + failed,
+            successful_rows=successful,
+            failed_rows=failed,
+            field_mapping=mapping,
+            status="completed",
+            error_log=error_log,
+            created_by=current_user.id
+        )
+        
+        log_doc = import_log.model_dump()
+        log_doc["created_at"] = log_doc["created_at"].isoformat()
+        await db.import_logs.insert_one(log_doc)
+        
+        return {
+            "success": True,
+            "total_rows": successful + failed,
+            "successful": successful,
+            "failed": failed,
+            "error_log": error_log[:10]
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Import failed: {str(e)}")
+
+@api_router.get("/import/logs")
+async def get_import_logs(current_user: User = Depends(get_current_user)):
+    """Get import history"""
+    logs = await db.import_logs.find({}, {"_id": 0}).sort("created_at", -1).to_list(50)
+    for log in logs:
+        if isinstance(log.get("created_at"), str):
+            log["created_at"] = datetime.fromisoformat(log["created_at"])
+    return logs
+
+@api_router.get("/import/field-definitions")
+async def get_field_definitions(import_type: str, current_user: User = Depends(get_current_user)):
+    """Get available database fields for mapping"""
+    if import_type == "members":
+        return {
+            "fields": [
+                {"key": "first_name", "label": "First Name", "required": True},
+                {"key": "last_name", "label": "Last Name", "required": True},
+                {"key": "email", "label": "Email", "required": True},
+                {"key": "phone", "label": "Phone Number", "required": True},
+                {"key": "date_of_birth", "label": "Date of Birth", "required": False},
+                {"key": "address", "label": "Address", "required": False},
+                {"key": "city", "label": "City", "required": False},
+                {"key": "postal_code", "label": "Postal Code", "required": False},
+                {"key": "emergency_contact_name", "label": "Emergency Contact Name", "required": False},
+                {"key": "emergency_contact_phone", "label": "Emergency Contact Phone", "required": False},
+                {"key": "membership_status", "label": "Membership Status", "required": False},
+                {"key": "join_date", "label": "Join Date", "required": False},
+                {"key": "expiry_date", "label": "Expiry Date", "required": False},
+                {"key": "source", "label": "Lead Source", "required": False},
+                {"key": "referred_by", "label": "Referred By", "required": False}
+            ]
+        }
+    elif import_type == "leads":
+        return {
+            "fields": [
+                {"key": "full_name", "label": "Full Name", "required": True},
+                {"key": "email", "label": "Email", "required": False},
+                {"key": "phone", "label": "Phone Number", "required": True},
+                {"key": "source", "label": "Lead Source", "required": True},
+                {"key": "interest", "label": "Interest/Notes", "required": False},
+                {"key": "message", "label": "Message", "required": False}
+            ]
+        }
+    else:
+        raise HTTPException(status_code=400, detail="Invalid import type")
+
 # Include the router in the main app
 app.include_router(api_router)
 
