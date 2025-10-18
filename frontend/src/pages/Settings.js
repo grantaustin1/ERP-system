@@ -206,6 +206,10 @@ export default function Settings() {
                 <Package className="w-4 h-4 mr-2" />
                 Membership Packages
               </TabsTrigger>
+              <TabsTrigger value="sources" className="data-[state=active]:bg-emerald-500">
+                <Tag className="w-4 h-4 mr-2" />
+                Payment Sources
+              </TabsTrigger>
               <TabsTrigger value="staff" className="data-[state=active]:bg-emerald-500">
                 <Users className="w-4 h-4 mr-2" />
                 Staff Management
