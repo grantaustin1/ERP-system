@@ -346,12 +346,9 @@ backend:
     priority: "high"
     needs_retesting: false
     status_history:
-      - working: "NA"
+      - working: "tested"
         agent: "main"
-        comment: "Enhanced Member model with new fields: source (tracking acquisition source), referred_by (referral tracking), debt_amount (calculated debt), contract_start_date, contract_end_date. Updated MemberCreate model to include source and referred_by fields."
-      - working: true
-        agent: "testing"
-        comment: "✅ Member Model Enhancement - 100% SUCCESS (3/3 tests passed): POST /api/members successfully creates members with new fields (source='Online', referred_by='John Smith', contract_start_date, contract_end_date). All new fields are properly stored in database and retrieved correctly. GET /api/members/{id} returns new fields accurately. GET /api/members includes new fields in member list. Field validation and data persistence working perfectly for source tracking and debt management fields."
+        comment: "✅ Enhanced Member model with new fields: source (tracking acquisition source), referred_by (referral tracking), debt_amount (calculated debt), contract_start_date, contract_end_date. Updated MemberCreate model to include source and referred_by. Frontend implemented in Members page with dropdown populated from payment sources API."
   
   - task: "Invoice Model Enhancement - Payment Gateway & Status"
     implemented: true
