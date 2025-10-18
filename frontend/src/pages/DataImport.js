@@ -489,15 +489,35 @@ function DataImport() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="grid grid-cols-3 gap-4">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   <Card className="bg-green-50">
                     <CardContent className="pt-6">
                       <div className="text-center">
-                        <p className="text-sm text-gray-600">Successful</p>
+                        <p className="text-sm text-gray-600">Created</p>
                         <p className="text-3xl font-bold text-green-600">{importResult.successful}</p>
                       </div>
                     </CardContent>
                   </Card>
+                  {importResult.updated > 0 && (
+                    <Card className="bg-blue-50">
+                      <CardContent className="pt-6">
+                        <div className="text-center">
+                          <p className="text-sm text-gray-600">Updated</p>
+                          <p className="text-3xl font-bold text-blue-600">{importResult.updated}</p>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )}
+                  {importResult.skipped > 0 && (
+                    <Card className="bg-yellow-50">
+                      <CardContent className="pt-6">
+                        <div className="text-center">
+                          <p className="text-sm text-gray-600">Skipped</p>
+                          <p className="text-3xl font-bold text-yellow-600">{importResult.skipped}</p>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )}
                   <Card className="bg-red-50">
                     <CardContent className="pt-6">
                       <div className="text-center">
@@ -506,26 +526,23 @@ function DataImport() {
                       </div>
                     </CardContent>
                   </Card>
-                  <Card className="bg-blue-50">
-                    <CardContent className="pt-6">
-                      <div className="text-center">
-                        <p className="text-sm text-gray-600">Total</p>
-                        <p className="text-3xl font-bold text-blue-600">{importResult.total_rows}</p>
-                      </div>
-                    </CardContent>
-                  </Card>
                 </div>
 
                 {importResult.error_log && importResult.error_log.length > 0 && (
-                  <div className="bg-red-50 p-4 rounded-lg">
-                    <h4 className="font-semibold text-red-800 mb-2 flex items-center">
+                  <div className="bg-gray-50 p-4 rounded-lg">
+                    <h4 className="font-semibold mb-2 flex items-center">
                       <AlertCircle className="h-4 w-4 mr-2" />
-                      Import Errors (showing first 10)
+                      Import Details (showing first 20)
                     </h4>
-                    <div className="space-y-2 text-sm">
-                      {importResult.error_log.map((error, i) => (
-                        <div key={i} className="text-red-700">
-                          Row {error.row}: {error.error}
+                    <div className="space-y-2 text-sm max-h-60 overflow-y-auto">
+                      {importResult.error_log.map((log, i) => (
+                        <div 
+                          key={i} 
+                          className={`p-2 rounded ${
+                            log.action === 'skipped' ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800'
+                          }`}
+                        >
+                          Row {log.row}: {log.reason || log.error}
                         </div>
                       ))}
                     </div>
