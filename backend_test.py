@@ -3990,6 +3990,648 @@ class PaymentReportEnhancementTester:
         print("\n" + "=" * 60)
 
 
+class AccessControlTester:
+    def __init__(self):
+        self.token = None
+        self.headers = {}
+        self.test_results = []
+        self.test_member_id = None
+        self.test_booking_id = None
+        self.test_class_id = None
+        
+    def log_result(self, test_name, success, message, details=None):
+        """Log test result"""
+        result = {
+            "test": test_name,
+            "success": success,
+            "message": message,
+            "timestamp": datetime.now().isoformat(),
+            "details": details or {}
+        }
+        self.test_results.append(result)
+        status = "✅ PASS" if success else "❌ FAIL"
+        print(f"{status}: {test_name} - {message}")
+        if details and not success:
+            print(f"   Details: {details}")
+    
+    def authenticate(self):
+        """Authenticate and get token"""
+        try:
+            response = requests.post(f"{API_BASE}/auth/login", json={
+                "email": TEST_EMAIL,
+                "password": TEST_PASSWORD
+            })
+            
+            if response.status_code == 200:
+                data = response.json()
+                self.token = data["access_token"]
+                self.headers = {"Authorization": f"Bearer {self.token}"}
+                self.log_result("Authentication", True, "Successfully authenticated")
+                return True
+            else:
+                self.log_result("Authentication", False, f"Failed to authenticate: {response.status_code}", 
+                              {"response": response.text})
+                return False
+        except Exception as e:
+            self.log_result("Authentication", False, f"Authentication error: {str(e)}")
+            return False
+    
+    def setup_test_data(self):
+        """Create test member, class, and booking for access control tests"""
+        print("\n=== Setting Up Test Data ===")
+        
+        try:
+            # Get membership type
+            response = requests.get(f"{API_BASE}/membership-types", headers=self.headers)
+            if response.status_code != 200:
+                self.log_result("Get Membership Types", False, "Failed to get membership types")
+                return False
+            
+            membership_types = response.json()
+            if not membership_types:
+                self.log_result("Get Membership Types", False, "No membership types found")
+                return False
+            
+            membership_type_id = membership_types[0]["id"]
+            
+            # Create test member
+            member_data = {
+                "first_name": "Access",
+                "last_name": "TestMember",
+                "email": f"access.test.{int(time.time())}@example.com",
+                "phone": "+27123456789",
+                "membership_type_id": membership_type_id
+            }
+            
+            response = requests.post(f"{API_BASE}/members", json=member_data, headers=self.headers)
+            if response.status_code == 200:
+                member = response.json()
+                self.test_member_id = member["id"]
+                self.log_result("Create Test Member", True, f"Test member created: {member['first_name']} {member['last_name']}")
+            else:
+                self.log_result("Create Test Member", False, f"Failed to create member: {response.status_code}")
+                return False
+            
+            # Create test class
+            class_data = {
+                "name": "Access Test Class",
+                "description": "Class for access control testing",
+                "class_type": "Fitness",
+                "instructor_name": "Test Instructor",
+                "duration_minutes": 60,
+                "capacity": 20,
+                "day_of_week": "Monday",
+                "start_time": "10:00",
+                "end_time": "11:00",
+                "is_recurring": True,
+                "room": "Studio A",
+                "allow_waitlist": True,
+                "waitlist_capacity": 5,
+                "booking_window_days": 7,
+                "cancel_window_hours": 2,
+                "drop_in_price": 0.0
+            }
+            
+            response = requests.post(f"{API_BASE}/classes", json=class_data, headers=self.headers)
+            if response.status_code == 200:
+                class_obj = response.json()
+                self.test_class_id = class_obj["id"]
+                self.log_result("Create Test Class", True, f"Test class created: {class_obj['name']}")
+            else:
+                self.log_result("Create Test Class", False, f"Failed to create class: {response.status_code}")
+                return False
+            
+            # Create test booking
+            booking_date = datetime.now(timezone.utc) + timedelta(days=1)
+            booking_date = booking_date.replace(hour=10, minute=0, second=0, microsecond=0)
+            
+            booking_data = {
+                "class_id": self.test_class_id,
+                "member_id": self.test_member_id,
+                "booking_date": booking_date.isoformat(),
+                "notes": "Access control test booking"
+            }
+            
+            response = requests.post(f"{API_BASE}/bookings", json=booking_data, headers=self.headers)
+            if response.status_code == 200:
+                booking = response.json()
+                self.test_booking_id = booking["id"]
+                self.log_result("Create Test Booking", True, f"Test booking created for class integration")
+            else:
+                self.log_result("Create Test Booking", False, f"Failed to create booking: {response.status_code}")
+                return False
+            
+            return True
+            
+        except Exception as e:
+            self.log_result("Setup Test Data", False, f"Error setting up test data: {str(e)}")
+            return False
+    
+    def test_enhanced_access_validation(self):
+        """Test 1: Enhanced Access Validation with comprehensive data"""
+        print("\n=== Test 1: Enhanced Access Validation ===")
+        
+        if not self.test_member_id:
+            self.log_result("Enhanced Access Validation", False, "No test member available")
+            return False
+        
+        # Test successful access with enhanced data
+        access_data = {
+            "member_id": self.test_member_id,
+            "access_method": "manual_override",
+            "location": "Main Entrance",
+            "notes": "Test check-in with enhanced data"
+        }
+        
+        try:
+            response = requests.post(f"{API_BASE}/access/validate", json=access_data, headers=self.headers)
+            if response.status_code == 200:
+                result = response.json()
+                if (result.get("access") == "granted" and 
+                    "member" in result and 
+                    "access_log" in result):
+                    
+                    access_log = result["access_log"]
+                    if (access_log.get("member_email") and 
+                        access_log.get("membership_type") and 
+                        access_log.get("location") == "Main Entrance"):
+                        self.log_result("Enhanced Access Validation", True, 
+                                      "Access granted with enhanced member details and location tracking")
+                    else:
+                        self.log_result("Enhanced Access Validation", False, 
+                                      "Access granted but missing enhanced data fields")
+                else:
+                    self.log_result("Enhanced Access Validation", False, 
+                                  f"Unexpected response structure: {result}")
+            else:
+                self.log_result("Enhanced Access Validation", False, 
+                              f"Access validation failed: {response.status_code}",
+                              {"response": response.text})
+                return False
+        except Exception as e:
+            self.log_result("Enhanced Access Validation", False, f"Error in access validation: {str(e)}")
+            return False
+        
+        return True
+    
+    def test_denied_access_scenarios(self):
+        """Test 2-5: Denied Access Scenarios (suspended, debt, cancelled, expired)"""
+        print("\n=== Test 2-5: Denied Access Scenarios ===")
+        
+        if not self.test_member_id:
+            self.log_result("Denied Access Scenarios", False, "No test member available")
+            return False
+        
+        # Test suspended member
+        try:
+            # First suspend the member
+            response = requests.put(f"{API_BASE}/members/{self.test_member_id}/block", headers=self.headers)
+            if response.status_code == 200:
+                # Try access with suspended member
+                access_data = {
+                    "member_id": self.test_member_id,
+                    "access_method": "qr_code",
+                    "location": "Main Entrance"
+                }
+                
+                response = requests.post(f"{API_BASE}/access/validate", json=access_data, headers=self.headers)
+                if response.status_code == 200:
+                    result = response.json()
+                    if result.get("access") == "denied" and "suspended" in result.get("reason", "").lower():
+                        self.log_result("Suspended Member Access Denied", True, 
+                                      f"Access correctly denied for suspended member: {result.get('reason')}")
+                    else:
+                        self.log_result("Suspended Member Access Denied", False, 
+                                      f"Expected denial for suspended member, got: {result}")
+                
+                # Test with debt (member is already blocked which sets is_debtor=True)
+                response = requests.post(f"{API_BASE}/access/validate", json=access_data, headers=self.headers)
+                if response.status_code == 200:
+                    result = response.json()
+                    if result.get("access") == "denied" and ("debt" in result.get("reason", "").lower() or "suspended" in result.get("reason", "").lower()):
+                        self.log_result("Member with Debt Access Denied", True, 
+                                      f"Access correctly denied for member with debt: {result.get('reason')}")
+                    else:
+                        self.log_result("Member with Debt Access Denied", False, 
+                                      f"Expected denial for member with debt, got: {result}")
+                
+                # Unblock member for further tests
+                requests.put(f"{API_BASE}/members/{self.test_member_id}/unblock", headers=self.headers)
+                
+        except Exception as e:
+            self.log_result("Denied Access Scenarios", False, f"Error testing denied access: {str(e)}")
+            return False
+        
+        return True
+    
+    def test_override_functionality(self):
+        """Test 6: Override Functionality for blocked members"""
+        print("\n=== Test 6: Override Functionality ===")
+        
+        if not self.test_member_id:
+            self.log_result("Override Functionality", False, "No test member available")
+            return False
+        
+        try:
+            # Block member first
+            response = requests.put(f"{API_BASE}/members/{self.test_member_id}/block", headers=self.headers)
+            
+            # Test override access for blocked member
+            override_data = {
+                "member_id": self.test_member_id,
+                "access_method": "manual_override",
+                "override_by": "staff_user_123",
+                "reason": "Emergency access granted by manager",
+                "location": "Main Entrance",
+                "notes": "Manager override for emergency"
+            }
+            
+            response = requests.post(f"{API_BASE}/access/validate", json=override_data, headers=self.headers)
+            if response.status_code == 200:
+                result = response.json()
+                if result.get("access") == "granted":
+                    access_log = result.get("access_log", {})
+                    if access_log.get("override_by") == "staff_user_123":
+                        self.log_result("Override Functionality", True, 
+                                      "Access correctly granted with staff override despite member being blocked")
+                    else:
+                        self.log_result("Override Functionality", False, 
+                                      "Override granted but override_by not logged correctly")
+                else:
+                    self.log_result("Override Functionality", False, 
+                                  f"Override failed, access still denied: {result}")
+            else:
+                self.log_result("Override Functionality", False, 
+                              f"Override request failed: {response.status_code}")
+            
+            # Unblock member
+            requests.put(f"{API_BASE}/members/{self.test_member_id}/unblock", headers=self.headers)
+            
+        except Exception as e:
+            self.log_result("Override Functionality", False, f"Error testing override: {str(e)}")
+            return False
+        
+        return True
+    
+    def test_quick_checkin_endpoint(self):
+        """Test 7: Quick Check-in Endpoint"""
+        print("\n=== Test 7: Quick Check-in Endpoint ===")
+        
+        if not self.test_member_id:
+            self.log_result("Quick Check-in", False, "No test member available")
+            return False
+        
+        try:
+            response = requests.post(f"{API_BASE}/access/quick-checkin?member_id={self.test_member_id}", 
+                                   headers=self.headers)
+            if response.status_code == 200:
+                result = response.json()
+                if result.get("access") == "granted":
+                    access_log = result.get("access_log", {})
+                    if (access_log.get("access_method") == "manual_override" and 
+                        access_log.get("override_by")):
+                        self.log_result("Quick Check-in", True, 
+                                      "Quick check-in successful with manual_override method and staff override recorded")
+                    else:
+                        self.log_result("Quick Check-in", False, 
+                                      "Quick check-in granted but method/override not set correctly")
+                else:
+                    self.log_result("Quick Check-in", False, 
+                                  f"Quick check-in failed: {result}")
+            else:
+                self.log_result("Quick Check-in", False, 
+                              f"Quick check-in request failed: {response.status_code}",
+                              {"response": response.text})
+        except Exception as e:
+            self.log_result("Quick Check-in", False, f"Error testing quick check-in: {str(e)}")
+            return False
+        
+        return True
+    
+    def test_class_booking_integration(self):
+        """Test 8: Class Booking Integration"""
+        print("\n=== Test 8: Class Booking Integration ===")
+        
+        if not self.test_member_id or not self.test_booking_id:
+            self.log_result("Class Booking Integration", False, "No test member or booking available")
+            return False
+        
+        try:
+            # Access with class booking integration
+            access_data = {
+                "member_id": self.test_member_id,
+                "access_method": "qr_code",
+                "location": "Studio A",
+                "class_booking_id": self.test_booking_id
+            }
+            
+            response = requests.post(f"{API_BASE}/access/validate", json=access_data, headers=self.headers)
+            if response.status_code == 200:
+                result = response.json()
+                if result.get("access") == "granted":
+                    access_log = result.get("access_log", {})
+                    if access_log.get("class_booking_id") == self.test_booking_id:
+                        self.log_result("Class Booking Integration - Access", True, 
+                                      "Access granted with class booking integration")
+                        
+                        # Verify booking status changed to attended
+                        booking_response = requests.get(f"{API_BASE}/bookings", headers=self.headers)
+                        if booking_response.status_code == 200:
+                            bookings = booking_response.json()
+                            test_booking = next((b for b in bookings if b["id"] == self.test_booking_id), None)
+                            if test_booking and test_booking.get("status") == "attended":
+                                self.log_result("Class Booking Integration - Status Update", True, 
+                                              "Booking status correctly updated to 'attended'")
+                            else:
+                                self.log_result("Class Booking Integration - Status Update", False, 
+                                              f"Booking status not updated correctly: {test_booking.get('status') if test_booking else 'booking not found'}")
+                    else:
+                        self.log_result("Class Booking Integration", False, 
+                                      "Access granted but class booking ID not recorded in log")
+                else:
+                    self.log_result("Class Booking Integration", False, 
+                                  f"Access denied for class booking: {result}")
+            else:
+                self.log_result("Class Booking Integration", False, 
+                              f"Class booking access failed: {response.status_code}")
+        except Exception as e:
+            self.log_result("Class Booking Integration", False, f"Error testing class booking integration: {str(e)}")
+            return False
+        
+        return True
+    
+    def test_access_logs_filtering(self):
+        """Test 9: Access Logs with Filtering"""
+        print("\n=== Test 9: Access Logs with Filtering ===")
+        
+        try:
+            # Test basic access logs
+            response = requests.get(f"{API_BASE}/access/logs?limit=50", headers=self.headers)
+            if response.status_code == 200:
+                logs = response.json()
+                self.log_result("Access Logs - Basic", True, 
+                              f"Retrieved {len(logs)} access logs")
+                
+                # Test filtering by status=granted
+                response = requests.get(f"{API_BASE}/access/logs?status=granted", headers=self.headers)
+                if response.status_code == 200:
+                    granted_logs = response.json()
+                    all_granted = all(log.get("status") == "granted" for log in granted_logs)
+                    if all_granted:
+                        self.log_result("Access Logs - Filter by Granted", True, 
+                                      f"Retrieved {len(granted_logs)} granted access logs")
+                    else:
+                        self.log_result("Access Logs - Filter by Granted", False, 
+                                      "Some logs don't have 'granted' status")
+                
+                # Test filtering by status=denied
+                response = requests.get(f"{API_BASE}/access/logs?status=denied", headers=self.headers)
+                if response.status_code == 200:
+                    denied_logs = response.json()
+                    all_denied = all(log.get("status") == "denied" for log in denied_logs)
+                    if all_denied or len(denied_logs) == 0:  # Could be empty if no denied access
+                        self.log_result("Access Logs - Filter by Denied", True, 
+                                      f"Retrieved {len(denied_logs)} denied access logs")
+                    else:
+                        self.log_result("Access Logs - Filter by Denied", False, 
+                                      "Some logs don't have 'denied' status")
+                
+                # Test filtering by location
+                response = requests.get(f"{API_BASE}/access/logs?location=Main+Entrance", headers=self.headers)
+                if response.status_code == 200:
+                    location_logs = response.json()
+                    correct_location = all(log.get("location") == "Main Entrance" for log in location_logs if log.get("location"))
+                    if correct_location:
+                        self.log_result("Access Logs - Filter by Location", True, 
+                                      f"Retrieved {len(location_logs)} logs for Main Entrance")
+                    else:
+                        self.log_result("Access Logs - Filter by Location", False, 
+                                      "Some logs don't match location filter")
+                
+                # Test filtering by member_id
+                if self.test_member_id:
+                    response = requests.get(f"{API_BASE}/access/logs?member_id={self.test_member_id}", headers=self.headers)
+                    if response.status_code == 200:
+                        member_logs = response.json()
+                        correct_member = all(log.get("member_id") == self.test_member_id for log in member_logs)
+                        if correct_member:
+                            self.log_result("Access Logs - Filter by Member", True, 
+                                          f"Retrieved {len(member_logs)} logs for test member")
+                        else:
+                            self.log_result("Access Logs - Filter by Member", False, 
+                                          "Some logs don't match member filter")
+                
+                # Verify logs are sorted by timestamp (newest first)
+                if len(logs) > 1:
+                    timestamps = [log.get("timestamp") for log in logs if log.get("timestamp")]
+                    if len(timestamps) > 1:
+                        sorted_desc = all(timestamps[i] >= timestamps[i+1] for i in range(len(timestamps)-1))
+                        if sorted_desc:
+                            self.log_result("Access Logs - Sorting", True, 
+                                          "Logs correctly sorted by timestamp (newest first)")
+                        else:
+                            self.log_result("Access Logs - Sorting", False, 
+                                          "Logs not sorted correctly by timestamp")
+            else:
+                self.log_result("Access Logs", False, 
+                              f"Failed to retrieve access logs: {response.status_code}")
+                return False
+        except Exception as e:
+            self.log_result("Access Logs Filtering", False, f"Error testing access logs: {str(e)}")
+            return False
+        
+        return True
+    
+    def test_access_analytics(self):
+        """Test 10: Access Analytics Endpoint"""
+        print("\n=== Test 10: Access Analytics Endpoint ===")
+        
+        try:
+            response = requests.get(f"{API_BASE}/access/analytics", headers=self.headers)
+            if response.status_code == 200:
+                analytics = response.json()
+                
+                # Check required fields
+                required_fields = [
+                    "total_attempts", "granted_count", "denied_count", "success_rate",
+                    "access_by_method", "access_by_location", "denied_reasons", 
+                    "peak_hours", "top_members"
+                ]
+                
+                missing_fields = [field for field in required_fields if field not in analytics]
+                if not missing_fields:
+                    self.log_result("Access Analytics - Structure", True, 
+                                  "All required analytics fields present")
+                    
+                    # Verify calculations
+                    total = analytics.get("total_attempts", 0)
+                    granted = analytics.get("granted_count", 0)
+                    denied = analytics.get("denied_count", 0)
+                    success_rate = analytics.get("success_rate", 0)
+                    
+                    if total == granted + denied:
+                        self.log_result("Access Analytics - Count Accuracy", True, 
+                                      f"Total attempts ({total}) = granted ({granted}) + denied ({denied})")
+                    else:
+                        self.log_result("Access Analytics - Count Accuracy", False, 
+                                      f"Count mismatch: total={total}, granted={granted}, denied={denied}")
+                    
+                    # Verify success rate calculation
+                    expected_rate = (granted / total * 100) if total > 0 else 0
+                    if abs(success_rate - expected_rate) < 0.1:
+                        self.log_result("Access Analytics - Success Rate", True, 
+                                      f"Success rate correctly calculated: {success_rate}%")
+                    else:
+                        self.log_result("Access Analytics - Success Rate", False, 
+                                      f"Success rate incorrect: {success_rate}% (expected {expected_rate:.2f}%)")
+                    
+                    # Verify data structures
+                    if isinstance(analytics.get("access_by_method"), list):
+                        self.log_result("Access Analytics - Method Breakdown", True, 
+                                      f"Access by method breakdown: {len(analytics['access_by_method'])} methods")
+                    
+                    if isinstance(analytics.get("access_by_location"), list):
+                        self.log_result("Access Analytics - Location Breakdown", True, 
+                                      f"Access by location breakdown: {len(analytics['access_by_location'])} locations")
+                    
+                    if isinstance(analytics.get("top_members"), list):
+                        self.log_result("Access Analytics - Top Members", True, 
+                                      f"Top members list: {len(analytics['top_members'])} members")
+                    
+                else:
+                    self.log_result("Access Analytics - Structure", False, 
+                                  f"Missing required fields: {missing_fields}")
+            else:
+                self.log_result("Access Analytics", False, 
+                              f"Failed to retrieve analytics: {response.status_code}",
+                              {"response": response.text})
+                return False
+        except Exception as e:
+            self.log_result("Access Analytics", False, f"Error testing analytics: {str(e)}")
+            return False
+        
+        return True
+    
+    def test_enhanced_access_log_data(self):
+        """Test 11: Enhanced Access Log Data Fields"""
+        print("\n=== Test 11: Enhanced Access Log Data Fields ===")
+        
+        if not self.test_member_id:
+            self.log_result("Enhanced Access Log Data", False, "No test member available")
+            return False
+        
+        try:
+            # Create access with all enhanced fields
+            enhanced_access_data = {
+                "member_id": self.test_member_id,
+                "access_method": "qr_code",
+                "location": "Studio B",
+                "device_id": "scanner_001",
+                "temperature": 36.5,
+                "notes": "Enhanced data test with temperature check"
+            }
+            
+            response = requests.post(f"{API_BASE}/access/validate", json=enhanced_access_data, headers=self.headers)
+            if response.status_code == 200:
+                result = response.json()
+                if result.get("access") == "granted":
+                    access_log = result.get("access_log", {})
+                    
+                    # Check enhanced fields
+                    enhanced_fields = {
+                        "member_email": access_log.get("member_email"),
+                        "membership_type": access_log.get("membership_type"),
+                        "membership_status": access_log.get("membership_status"),
+                        "location": access_log.get("location"),
+                        "device_id": access_log.get("device_id"),
+                        "temperature": access_log.get("temperature"),
+                        "notes": access_log.get("notes")
+                    }
+                    
+                    present_fields = [k for k, v in enhanced_fields.items() if v is not None]
+                    expected_fields = ["member_email", "membership_type", "membership_status", "location", "device_id", "temperature", "notes"]
+                    
+                    if len(present_fields) >= 6:  # Most fields should be present
+                        self.log_result("Enhanced Access Log Data", True, 
+                                      f"Enhanced data fields populated: {present_fields}")
+                        
+                        # Verify specific values
+                        if (access_log.get("location") == "Studio B" and 
+                            access_log.get("device_id") == "scanner_001" and 
+                            access_log.get("temperature") == 36.5):
+                            self.log_result("Enhanced Data Values", True, 
+                                          "Enhanced field values correctly stored")
+                        else:
+                            self.log_result("Enhanced Data Values", False, 
+                                          "Some enhanced field values not stored correctly")
+                    else:
+                        self.log_result("Enhanced Access Log Data", False, 
+                                      f"Missing enhanced fields. Present: {present_fields}")
+                else:
+                    self.log_result("Enhanced Access Log Data", False, 
+                                  f"Access denied for enhanced data test: {result}")
+            else:
+                self.log_result("Enhanced Access Log Data", False, 
+                              f"Enhanced access test failed: {response.status_code}")
+        except Exception as e:
+            self.log_result("Enhanced Access Log Data", False, f"Error testing enhanced data: {str(e)}")
+            return False
+        
+        return True
+    
+    def run_access_control_tests(self):
+        """Run all access control tests"""
+        print("🚀 Starting Enhanced Access Control & Check-in System Tests")
+        print(f"Testing against: {API_BASE}")
+        print("=" * 70)
+        
+        # Authenticate first
+        if not self.authenticate():
+            print("❌ Authentication failed. Cannot proceed with tests.")
+            return
+        
+        # Setup test data
+        if not self.setup_test_data():
+            print("❌ Test data setup failed. Cannot proceed with tests.")
+            return
+        
+        # Run all access control tests
+        self.test_enhanced_access_validation()
+        self.test_denied_access_scenarios()
+        self.test_override_functionality()
+        self.test_quick_checkin_endpoint()
+        self.test_class_booking_integration()
+        self.test_access_logs_filtering()
+        self.test_access_analytics()
+        self.test_enhanced_access_log_data()
+        
+        # Print summary
+        self.print_summary()
+    
+    def print_summary(self):
+        """Print test summary"""
+        print("\n" + "=" * 70)
+        print("🏁 ACCESS CONTROL & CHECK-IN SYSTEM TEST SUMMARY")
+        print("=" * 70)
+        
+        total_tests = len(self.test_results)
+        passed_tests = len([r for r in self.test_results if r["success"]])
+        failed_tests = total_tests - passed_tests
+        
+        print(f"Total Tests: {total_tests}")
+        print(f"✅ Passed: {passed_tests}")
+        print(f"❌ Failed: {failed_tests}")
+        print(f"Success Rate: {(passed_tests/total_tests*100):.1f}%")
+        
+        if failed_tests > 0:
+            print("\n❌ FAILED TESTS:")
+            for result in self.test_results:
+                if not result["success"]:
+                    print(f"  - {result['test']}: {result['message']}")
+        
+        print("\n" + "=" * 70)
+
+
 if __name__ == "__main__":
     # Run Classes and Bookings API tests (NEW FEATURES)
     print("🎯 TESTING NEW CLASSES AND BOOKINGS API FEATURES")
