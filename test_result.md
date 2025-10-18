@@ -505,6 +505,18 @@ backend:
         comment: "✅ Capacity and waitlist logic working flawlessly: Created 25 confirmed bookings to fill class capacity (capacity=25). 26th booking correctly added to waitlist with status='waitlist', is_waitlist=true, waitlist_position=1. When confirmed booking cancelled, waitlist member automatically promoted to confirmed status with is_waitlist=false and waitlist_position=null. Remaining waitlist positions decremented correctly. Waitlist capacity limits enforced (waitlist_capacity=10). Full capacity management and promotion logic verified."
 
 frontend:
+  - task: "Classes & Scheduling Page Component"
+    implemented: true
+    working: "NA"
+    file: "/app/frontend/src/pages/Classes.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Implemented comprehensive Classes & Scheduling page with two tabs: Class Schedule and Bookings. Features include class CRUD operations, booking management, check-in functionality, waitlist support, and responsive UI with proper status badges."
+
   - task: "Automations Page Component"
     implemented: true
     working: true
