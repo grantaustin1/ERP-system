@@ -1,15 +1,16 @@
-import { useState, useEffect } from 'react';
-import axios from 'axios';
-import { API } from '@/App';
-import Sidebar from '@/components/Sidebar';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Badge } from '@/components/ui/badge';
-import { Scan, Fingerprint, ScanFace, UserCheck, UserX, Clock } from 'lucide-react';
-import { toast } from 'sonner';
-import { Html5QrcodeScanner } from 'html5-qrcode';
+import React, { useState, useEffect } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
+import { Button } from '../components/ui/button';
+import { Input } from '../components/ui/input';
+import { Label } from '../components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../components/ui/dialog';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
+import { Badge } from '../components/ui/badge';
+import { 
+  Scan, Fingerprint, ScanFace, UserCheck, UserX, Clock, 
+  TrendingUp, Activity, BarChart3, MapPin, Shield, CheckCircle2, XCircle 
+} from 'lucide-react';
 
 export default function AccessControl() {
   const [accessLogs, setAccessLogs] = useState([]);
