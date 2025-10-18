@@ -110,6 +110,8 @@ export default function Members() {
         work_phone: '',
         membership_type_id: '',
         selected_payment_option_id: '',
+        source: '',
+        referred_by: '',
         address: '',
         bank_account_number: '',
         bank_name: '',
