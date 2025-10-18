@@ -413,14 +413,13 @@ function AutomationsGeneric() {
                     <SelectValue placeholder="Choose an automation template..." />
                   </SelectTrigger>
                   <SelectContent>
-                    {Object.entries(groupedTemplates).map(([category, templates]) => (
-                      <optgroup key={category} label={category}>
-                        {templates.map(template => (
-                          <SelectItem key={template.id} value={template.id}>
-                            {template.name} - {template.description}
-                          </SelectItem>
-                        ))}
-                      </optgroup>
+                    {AUTOMATION_TEMPLATES.map(template => (
+                      <SelectItem key={template.id} value={template.id}>
+                        <div className="flex flex-col">
+                          <span className="font-medium">{template.name}</span>
+                          <span className="text-xs text-gray-500">{template.category} - {template.description}</span>
+                        </div>
+                      </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
