@@ -3373,9 +3373,10 @@ async def parse_csv_file(file: UploadFile, current_user: User = Depends(get_curr
 async def import_members(
     file: UploadFile,
     field_mapping: str,  # JSON string of field mapping
+    duplicate_action: str = "skip",  # skip, update, create
     current_user: User = Depends(get_current_user)
 ):
-    """Import members from CSV with field mapping"""
+    """Import members from CSV with field mapping and duplicate handling"""
     try:
         import csv
         import io
@@ -3391,6 +3392,8 @@ async def import_members(
         
         successful = 0
         failed = 0
+        skipped = 0
+        updated = 0
         error_log = []
         
         for row_num, row in enumerate(csv_reader, start=2):
@@ -3406,6 +3409,51 @@ async def import_members(
                         value = row[csv_column].strip()
                         if value:
                             member_data[db_field] = value
+                
+                # Check for duplicates
+                duplicate_found = None
+                
+                # Check email
+                if "email" in member_data and member_data["email"]:
+                    existing = await db.members.find_one({"email": member_data["email"].lower()}, {"_id": 0})
+                    if existing:
+                        duplicate_found = existing
+                
+                # Check phone if no email duplicate
+                if not duplicate_found and "phone" in member_data and member_data["phone"]:
+                    existing = await db.members.find_one({"phone": member_data["phone"]}, {"_id": 0})
+                    if existing:
+                        duplicate_found = existing
+                
+                # Check name if no other duplicates
+                if not duplicate_found and "first_name" in member_data and "last_name" in member_data:
+                    name_regex = {"$regex": f"^{member_data['first_name']}$", "$options": "i"}
+                    lastname_regex = {"$regex": f"^{member_data['last_name']}$", "$options": "i"}
+                    existing = await db.members.find_one({
+                        "first_name": name_regex,
+                        "last_name": lastname_regex
+                    }, {"_id": 0})
+                    if existing:
+                        duplicate_found = existing
+                
+                # Handle duplicate based on action
+                if duplicate_found:
+                    if duplicate_action == "skip":
+                        skipped += 1
+                        error_log.append({
+                            "row": row_num,
+                            "action": "skipped",
+                            "reason": f"Duplicate found: {duplicate_found['first_name']} {duplicate_found['last_name']}",
+                            "data": row
+                        })
+                        continue
+                    elif duplicate_action == "update":
+                        # Update existing member
+                        update_data = {k: v for k, v in member_data.items() if k not in ["id", "created_at"]}
+                        await db.members.update_one({"id": duplicate_found["id"]}, {"$set": update_data})
+                        updated += 1
+                        continue
+                    # else: create anyway
                 
                 # Set defaults for required fields
                 if "membership_status" not in member_data:
@@ -3432,7 +3480,7 @@ async def import_members(
         import_log = ImportLog(
             import_type="members",
             filename=file.filename,
-            total_rows=successful + failed,
+            total_rows=successful + failed + skipped + updated,
             successful_rows=successful,
             failed_rows=failed,
             field_mapping=mapping,
@@ -3447,10 +3495,12 @@ async def import_members(
         
         return {
             "success": True,
-            "total_rows": successful + failed,
+            "total_rows": successful + failed + skipped + updated,
             "successful": successful,
             "failed": failed,
-            "error_log": error_log[:10]  # Return first 10 errors
+            "skipped": skipped,
+            "updated": updated,
+            "error_log": error_log[:20]  # Return first 20 errors
         }
         
     except Exception as e:
