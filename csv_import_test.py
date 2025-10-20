@@ -153,9 +153,11 @@ class CSVImportNameSplittingTester:
                 "phone": "Mobile Phone"
             }
             
-            # Read and upload the CSV file
+            # Read and upload the CSV file using FormData approach
             with open(self.csv_file_path, 'rb') as f:
-                files = {'file': ('test_import_names.csv', f, 'text/csv')}
+                files = {
+                    'file': ('test_import_names.csv', f, 'text/csv'),
+                }
                 data = {
                     'field_mapping': json.dumps(field_mapping),
                     'duplicate_action': 'skip'
