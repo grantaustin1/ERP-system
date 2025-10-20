@@ -189,12 +189,12 @@ function DataImport() {
   };
 
   const getMappedCount = () => {
-    return Object.values(fieldMapping).filter(val => val !== '').length;
+    return Object.values(fieldMapping).filter(val => val !== '' && val !== '__NONE__').length;
   };
 
   const getRequiredMapped = () => {
     const required = fieldDefinitions.filter(f => f.required);
-    const mappedRequired = required.filter(f => fieldMapping[f.key] !== '');
+    const mappedRequired = required.filter(f => fieldMapping[f.key] !== '' && fieldMapping[f.key] !== '__NONE__');
     return mappedRequired.length === required.length;
   };
 
