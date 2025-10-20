@@ -153,18 +153,18 @@ class CSVImportNameSplittingTester:
                 "phone": "Mobile Phone"
             }
             
-            # Read and upload the CSV file using FormData approach
+            # Read and upload the CSV file with query parameters
             with open(self.csv_file_path, 'rb') as f:
                 files = {
                     'file': ('test_import_names.csv', f, 'text/csv'),
                 }
-                data = {
+                params = {
                     'field_mapping': json.dumps(field_mapping),
                     'duplicate_action': 'skip'
                 }
                 
                 response = requests.post(f"{API_BASE}/import/members", 
-                                       files=files, data=data, headers=self.headers)
+                                       files=files, params=params, headers=self.headers)
             
             print(f"DEBUG: Request data: {data}")
             print(f"DEBUG: Request files: {list(files.keys())}")
