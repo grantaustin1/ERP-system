@@ -504,6 +504,18 @@ backend:
         agent: "testing"
         comment: "✅ Capacity and waitlist logic working flawlessly: Created 25 confirmed bookings to fill class capacity (capacity=25). 26th booking correctly added to waitlist with status='waitlist', is_waitlist=true, waitlist_position=1. When confirmed booking cancelled, waitlist member automatically promoted to confirmed status with is_waitlist=false and waitlist_position=null. Remaining waitlist positions decremented correctly. Waitlist capacity limits enforced (waitlist_capacity=10). Full capacity management and promotion logic verified."
 
+  - task: "CSV Import Name Splitting Fix"
+    implemented: true
+    working: "NA"
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "critical"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Fixed name splitting logic for CSV imports (lines 3500-3525). Issue: When 'Full Name' CSV column was mapped to first_name, members were imported without last_name field, causing Pydantic validation errors on fetch. Fix: Enhanced auto-split logic to always guarantee last_name is set. Added fallback: if first_name exists but last_name doesn't after split, uses first_name value for both. Also fixed unsafe name splitting in WhatsApp test function (lines 3027-3039). Database was empty (0 members), so no cleanup needed. Ready for testing with various name formats."
+
 frontend:
   - task: "Classes & Scheduling Page Component"
     implemented: true
