@@ -506,15 +506,18 @@ backend:
 
   - task: "CSV Import Name Splitting Fix"
     implemented: true
-    working: "NA"
+    working: true
     file: "/app/backend/server.py"
     stuck_count: 0
     priority: "critical"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
       - working: "NA"
         agent: "main"
         comment: "Fixed name splitting logic for CSV imports (lines 3500-3525). Issue: When 'Full Name' CSV column was mapped to first_name, members were imported without last_name field, causing Pydantic validation errors on fetch. Fix: Enhanced auto-split logic to always guarantee last_name is set. Added fallback: if first_name exists but last_name doesn't after split, uses first_name value for both. Also fixed unsafe name splitting in WhatsApp test function (lines 3027-3039). Database was empty (0 members), so no cleanup needed. Ready for testing with various name formats."
+      - working: true
+        agent: "testing"
+        comment: "✅ CSV Import Name Splitting Fix WORKING CORRECTLY. Comprehensive testing completed: (1) CSV parsing works correctly with all 6 test cases, (2) CSV import successfully processes all name formats with proper field mapping, (3) Name splitting logic correctly handles: 'MR JOHN DOE' → first_name='JOHN', last_name='DOE'; 'MISS JANE SMITH' → 'JANE'/'SMITH'; 'DR ROBERT JOHNSON' → 'ROBERT'/'JOHNSON'; 'SARAH WILLIAMS' → 'SARAH'/'WILLIAMS'; 'MIKE' → 'MIKE'/'MIKE' (single name); 'MRS EMILY BROWN ANDERSON' → 'EMILY'/'BROWN ANDERSON' (multiple last names). (4) All imported members have required first_name and last_name fields populated, preventing Pydantic validation errors. (5) Manual member creation still works correctly. The fix successfully resolves the original issue where CSV imports with 'Full Name' mapped to first_name would cause 'failed to fetch members' errors due to missing last_name fields. Note: Existing database contains legacy members without last_name causing 500 errors on full member fetch, but new imports work correctly."
 
 frontend:
   - task: "Classes & Scheduling Page Component"
