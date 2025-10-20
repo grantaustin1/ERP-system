@@ -150,8 +150,7 @@ class CSVImportNameSplittingTester:
             field_mapping = {
                 "first_name": "Full Name",  # This will trigger name splitting
                 "email": "Email",
-                "phone": "Mobile Phone",
-                "membership_type_id": membership_type_id
+                "phone": "Mobile Phone"
             }
             
             # Read and upload the CSV file
