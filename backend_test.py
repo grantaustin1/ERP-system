@@ -4704,14 +4704,14 @@ class CSVImportTester:
                                   f"Missing fields in response: {missing_fields}")
                     return None
                 
-                # Verify headers count (should be 28 columns)
+                # Verify headers count (should be 29 columns including empty one)
                 headers = parse_result['headers']
-                if len(headers) == 28:
+                if len(headers) == 29:
                     self.log_result("Parse CSV - Headers Count", True, 
                                   f"Correct number of headers: {len(headers)}")
                 else:
                     self.log_result("Parse CSV - Headers Count", False, 
-                                  f"Expected 28 headers, got {len(headers)}")
+                                  f"Expected 29 headers, got {len(headers)}")
                 
                 # Verify specific headers exist
                 expected_headers = ['Full Name', 'Email Address', 'Mobile Phone', 'Home Phone', 
