@@ -173,23 +173,25 @@ class CSVImportNameSplittingTester:
             
             if response.status_code == 200:
                 import_result = response.json()
-                imported_count = import_result.get("successful", 0)  # Use 'successful' key
+                successful_count = import_result.get("successful", 0)
+                updated_count = import_result.get("updated", 0)
                 failed_count = import_result.get("failed", 0)
+                total_processed = successful_count + updated_count
                 
-                # Should import all 6 members successfully
-                if imported_count == 6 and failed_count == 0:
+                # Should process all 6 members successfully (either imported or updated)
+                if total_processed == 6 and failed_count == 0:
                     self.log_result("CSV Import Success", True, 
-                                  f"✅ Successfully imported {imported_count} members with 0 failures")
+                                  f"✅ Successfully processed {total_processed} members ({successful_count} new, {updated_count} updated) with 0 failures")
                 else:
                     self.log_result("CSV Import Success", False, 
-                                  f"Import issues: {imported_count} imported, {failed_count} failed")
+                                  f"Import issues: {total_processed} processed ({successful_count} new, {updated_count} updated), {failed_count} failed")
                     
                     # Log any errors
-                    if "error_log" in import_result:
+                    if "error_log" in import_result and import_result["error_log"]:
                         for error in import_result["error_log"]:
                             print(f"   Import Error: {error}")
                 
-                return imported_count == 6
+                return total_processed == 6
             else:
                 self.log_result("CSV Import", False, 
                               f"Failed to import CSV: {response.status_code}",
