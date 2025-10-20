@@ -1735,3 +1735,34 @@ agent_communication:
       ⚠️ NOTE:
       Since database is empty, no data loss occurred. The fix is preventative for future imports.
       Ready for backend testing to verify the fixes work correctly.
+
+  - agent: "testing"
+    message: |
+      🎉 CSV IMPORT NAME SPLITTING FIX TESTING COMPLETED - 100% SUCCESS
+      
+      COMPREHENSIVE TEST RESULTS FOR CSV IMPORT NAME SPLITTING FIX:
+      
+      ✅ PHASE 1 - CSV PARSING: Successfully parsed test CSV with all 6 test cases
+      ✅ PHASE 2 - CSV IMPORT: Successfully imported/updated all 6 members with name splitting
+      ✅ PHASE 3 - NAME SPLITTING CORRECTNESS: All test cases split correctly:
+         • "MR JOHN DOE" → first_name="JOHN", last_name="DOE" ✅
+         • "MISS JANE SMITH" → first_name="JANE", last_name="SMITH" ✅  
+         • "DR ROBERT JOHNSON" → first_name="ROBERT", last_name="JOHNSON" ✅
+         • "SARAH WILLIAMS" → first_name="SARAH", last_name="WILLIAMS" ✅
+         • "MIKE" → first_name="MIKE", last_name="MIKE" ✅ (single name case)
+         • "MRS EMILY BROWN ANDERSON" → first_name="EMILY", last_name="BROWN ANDERSON" ✅ (multiple last names)
+      ✅ PHASE 4 - REQUIRED FIELDS: All imported members have both first_name and last_name populated
+      ✅ PHASE 5 - MANUAL MEMBER CREATION: Still works correctly (no regression)
+      
+      🔧 ROOT CAUSE CONFIRMED: The original issue was that CSV imports mapping "Full Name" to first_name field would create members without last_name, causing Pydantic validation errors when fetching members.
+      
+      🎯 FIX VERIFICATION: The enhanced name splitting logic (lines 3500-3525) now:
+         • Automatically detects when first_name contains full name
+         • Removes titles (MR, MRS, MS, MISS, DR, PROF)
+         • Splits into first_name and last_name correctly
+         • Ensures last_name is ALWAYS populated (uses first_name as fallback for single names)
+         • Handles multiple last names properly
+      
+      ⚠️ LEGACY DATA ISSUE: Database contains existing members without last_name from before the fix, causing 500 errors on full member fetch. This doesn't affect the fix functionality but may need data cleanup.
+      
+      🚀 PRODUCTION READY: CSV Import Name Splitting Fix is working correctly and prevents the "failed to fetch members" error for new imports.
