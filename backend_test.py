@@ -5362,37 +5362,64 @@ John Doe,john.doe@test.com,+27123456789,Active,REFERRAL"""
             self.log_result("CSV Data Handling", False, f"Error verifying CSV data handling: {str(e)}")
     
     def run_csv_import_tests(self):
-        """Run all CSV import tests"""
-        print("🚀 Starting CSV Import Functionality Tests")
+        """Run all CSV import name splitting tests"""
+        print("🚀 Starting CSV Import Name Splitting Tests")
+        print("Testing CSV Import Name Splitting Fix for ERP360 gym management application")
         print(f"Testing against: {API_BASE}")
-        print(f"CSV file: {self.csv_file_path}")
-        print("=" * 60)
+        print(f"Test CSV file: {self.csv_file_path}")
+        print("=" * 80)
         
         # Authenticate first
         if not self.authenticate():
             print("❌ Authentication failed. Cannot proceed with tests.")
             return
         
-        # Run all tests in sequence
-        parse_result = self.test_parse_csv_endpoint()
+        # Run test sequence according to the test plan
+        success_count = 0
         
-        if parse_result:
-            import_result = self.test_field_mapping_and_import(parse_result)
+        # Phase 1: Test CSV parsing
+        if self.test_csv_parse():
+            success_count += 1
             
-            if import_result:
-                self.test_duplicate_handling()
-                self.test_check_imported_members()
-                self.test_import_logs()
-                self.test_csv_data_handling()
+            # Phase 2: Test CSV import with name splitting
+            if self.test_csv_import_with_name_splitting():
+                success_count += 1
+                
+                # Phase 3: Test member fetch (critical - this was failing before the fix)
+                imported_members = self.test_member_fetch_after_import()
+                if imported_members:
+                    success_count += 1
+                    
+                    # Phase 4: Test name splitting correctness
+                    if self.test_name_splitting_correctness(imported_members):
+                        success_count += 1
+                    
+                    # Phase 5: Test required fields population
+                    if self.test_required_fields_populated(imported_members):
+                        success_count += 1
+                
+                # Phase 6: Test manual member creation still works
+                if self.test_manual_member_creation():
+                    success_count += 1
+        
+        # Cleanup
+        self.cleanup_imported_members()
         
         # Print summary
         self.print_summary()
+        
+        # Final assessment
+        print(f"\n🎯 TEST COMPLETION: {success_count}/6 phases completed successfully")
+        if success_count == 6:
+            print("🎉 ALL TESTS PASSED - CSV Import Name Splitting Fix is working correctly!")
+        else:
+            print("⚠️  Some tests failed - CSV Import Name Splitting Fix needs attention")
     
     def print_summary(self):
         """Print test summary"""
-        print("\n" + "=" * 60)
-        print("🏁 CSV IMPORT FUNCTIONALITY TEST SUMMARY")
-        print("=" * 60)
+        print("\n" + "=" * 80)
+        print("🏁 CSV IMPORT NAME SPLITTING TEST SUMMARY")
+        print("=" * 80)
         
         total_tests = len(self.test_results)
         passed_tests = len([r for r in self.test_results if r["success"]])
@@ -5403,13 +5430,19 @@ John Doe,john.doe@test.com,+27123456789,Active,REFERRAL"""
         print(f"❌ Failed: {failed_tests}")
         print(f"Success Rate: {(passed_tests/total_tests*100):.1f}%")
         
+        # Categorize results
+        critical_tests = [r for r in self.test_results if "Member Fetch" in r["test"] or "Name Split" in r["test"]]
+        critical_passed = len([r for r in critical_tests if r["success"]])
+        
+        print(f"\n🔥 CRITICAL TESTS (Name Splitting & Member Fetch): {critical_passed}/{len(critical_tests)} passed")
+        
         if failed_tests > 0:
             print("\n❌ FAILED TESTS:")
             for result in self.test_results:
                 if not result["success"]:
                     print(f"  - {result['test']}: {result['message']}")
         
-        print("\n" + "=" * 60)
+        print("\n" + "=" * 80)
 
 if __name__ == "__main__":
     # Run CSV Import tests as requested
