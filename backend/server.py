@@ -3515,6 +3515,14 @@ async def import_members(
                     elif len(name_parts) == 1:
                         member_data["first_name"] = name_parts[0]
                         member_data["last_name"] = name_parts[0]  # Use same as first name
+                    else:
+                        # Empty or invalid full name - set both to empty string
+                        member_data["first_name"] = full_name
+                        member_data["last_name"] = full_name
+                
+                # Ensure last_name is always present (required field)
+                if "first_name" in member_data and "last_name" not in member_data:
+                    member_data["last_name"] = member_data["first_name"]
                 
                 # Check for duplicates
                 duplicate_found = None
