@@ -166,7 +166,7 @@ class CSVImportNameSplittingTester:
                 response = requests.post(f"{API_BASE}/import/members", 
                                        files=files, params=params, headers=self.headers)
             
-            print(f"DEBUG: Request data: {data}")
+            print(f"DEBUG: Request params: {params}")
             print(f"DEBUG: Request files: {list(files.keys())}")
             print(f"DEBUG: Response status: {response.status_code}")
             print(f"DEBUG: Response text: {response.text}")
