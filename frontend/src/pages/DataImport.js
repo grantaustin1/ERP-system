@@ -360,14 +360,14 @@ function DataImport() {
                         </Label>
                       </div>
                       <Select
-                        value={fieldMapping[field.key] || ''}
-                        onValueChange={(value) => setFieldMapping({ ...fieldMapping, [field.key]: value })}
+                        value={fieldMapping[field.key] || '__NONE__'}
+                        onValueChange={(value) => setFieldMapping({ ...fieldMapping, [field.key]: value === '__NONE__' ? '' : value })}
                       >
                         <SelectTrigger>
                           <SelectValue placeholder="Select CSV column..." />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="">-- Not Mapped --</SelectItem>
+                          <SelectItem value="__NONE__">-- Not Mapped --</SelectItem>
                           {parsedData.headers.map(header => (
                             <SelectItem key={header} value={header}>{header}</SelectItem>
                           ))}
