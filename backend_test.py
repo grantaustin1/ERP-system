@@ -4632,9 +4632,512 @@ class AccessControlTester:
         print("\n" + "=" * 70)
 
 
+class CSVImportTester:
+    def __init__(self):
+        self.token = None
+        self.headers = {}
+        self.test_results = []
+        self.csv_file_path = "/tmp/test_import.csv"
+        
+    def log_result(self, test_name, success, message, details=None):
+        """Log test result"""
+        result = {
+            "test": test_name,
+            "success": success,
+            "message": message,
+            "timestamp": datetime.now().isoformat(),
+            "details": details or {}
+        }
+        self.test_results.append(result)
+        status = "✅ PASS" if success else "❌ FAIL"
+        print(f"{status}: {test_name} - {message}")
+        if details and not success:
+            print(f"   Details: {details}")
+    
+    def authenticate(self):
+        """Authenticate and get token"""
+        try:
+            response = requests.post(f"{API_BASE}/auth/login", json={
+                "email": TEST_EMAIL,
+                "password": TEST_PASSWORD
+            })
+            
+            if response.status_code == 200:
+                data = response.json()
+                self.token = data["access_token"]
+                self.headers = {"Authorization": f"Bearer {self.token}"}
+                self.log_result("Authentication", True, "Successfully authenticated")
+                return True
+            else:
+                self.log_result("Authentication", False, f"Failed to authenticate: {response.status_code}", 
+                              {"response": response.text})
+                return False
+        except Exception as e:
+            self.log_result("Authentication", False, f"Authentication error: {str(e)}")
+            return False
+    
+    def test_parse_csv_endpoint(self):
+        """Test 1: POST /api/import/parse-csv - Parse CSV file and return headers"""
+        print("\n=== Test 1: Parse CSV File ===")
+        
+        try:
+            # Check if CSV file exists
+            if not os.path.exists(self.csv_file_path):
+                self.log_result("Parse CSV - File Check", False, f"CSV file not found at {self.csv_file_path}")
+                return None
+            
+            # Open and upload the CSV file
+            with open(self.csv_file_path, 'rb') as f:
+                files = {'file': ('test_import.csv', f, 'text/csv')}
+                response = requests.post(f"{API_BASE}/import/parse-csv", 
+                                       files=files, headers=self.headers)
+            
+            if response.status_code == 200:
+                parse_result = response.json()
+                
+                # Verify response structure
+                required_fields = ['headers', 'sample_data', 'total_rows', 'filename']
+                missing_fields = [field for field in required_fields if field not in parse_result]
+                
+                if missing_fields:
+                    self.log_result("Parse CSV - Response Structure", False, 
+                                  f"Missing fields in response: {missing_fields}")
+                    return None
+                
+                # Verify headers count (should be 28 columns)
+                headers = parse_result['headers']
+                if len(headers) == 28:
+                    self.log_result("Parse CSV - Headers Count", True, 
+                                  f"Correct number of headers: {len(headers)}")
+                else:
+                    self.log_result("Parse CSV - Headers Count", False, 
+                                  f"Expected 28 headers, got {len(headers)}")
+                
+                # Verify specific headers exist
+                expected_headers = ['Full Name', 'Email Address', 'Mobile Phone', 'Home Phone', 
+                                  'Id number', 'Member Type', 'Source', 'Referred By']
+                missing_headers = [h for h in expected_headers if h not in headers]
+                
+                if not missing_headers:
+                    self.log_result("Parse CSV - Expected Headers", True, 
+                                  "All expected headers found in CSV")
+                else:
+                    self.log_result("Parse CSV - Expected Headers", False, 
+                                  f"Missing expected headers: {missing_headers}")
+                
+                # Verify sample data
+                sample_data = parse_result['sample_data']
+                if len(sample_data) <= 5 and len(sample_data) > 0:
+                    self.log_result("Parse CSV - Sample Data", True, 
+                                  f"Sample data contains {len(sample_data)} rows (≤5)")
+                else:
+                    self.log_result("Parse CSV - Sample Data", False, 
+                                  f"Sample data should contain ≤5 rows, got {len(sample_data)}")
+                
+                # Verify total rows count
+                total_rows = parse_result['total_rows']
+                if total_rows > 0:
+                    self.log_result("Parse CSV - Total Rows", True, 
+                                  f"CSV contains {total_rows} total rows")
+                else:
+                    self.log_result("Parse CSV - Total Rows", False, 
+                                  f"Expected >0 rows, got {total_rows}")
+                
+                # Verify filename
+                if parse_result['filename'] == 'test_import.csv':
+                    self.log_result("Parse CSV - Filename", True, 
+                                  f"Filename correctly returned: {parse_result['filename']}")
+                else:
+                    self.log_result("Parse CSV - Filename", False, 
+                                  f"Expected 'test_import.csv', got {parse_result['filename']}")
+                
+                return parse_result
+                
+            else:
+                self.log_result("Parse CSV", False, 
+                              f"Failed to parse CSV: {response.status_code}",
+                              {"response": response.text})
+                return None
+                
+        except Exception as e:
+            self.log_result("Parse CSV", False, f"Error parsing CSV: {str(e)}")
+            return None
+    
+    def test_field_mapping_and_import(self, parse_result):
+        """Test 2: POST /api/import/members - Import members with field mapping"""
+        print("\n=== Test 2: Import Members with Field Mapping ===")
+        
+        if not parse_result:
+            self.log_result("Import Members", False, "No parse result available for import test")
+            return None
+        
+        # Define field mapping as suggested in the test context
+        field_mapping = {
+            "first_name": "Full Name",
+            "last_name": "",  # Will be extracted from Full Name
+            "email": "Email Address",
+            "phone": "Mobile Phone",
+            "home_phone": "Home Phone",
+            "id_number": "Id number",
+            "membership_status": "Member Type",
+            "source": "Source",
+            "referred_by": "Referred By"
+        }
+        
+        try:
+            # Open and upload the CSV file with field mapping
+            with open(self.csv_file_path, 'rb') as f:
+                files = {'file': ('test_import.csv', f, 'text/csv')}
+                data = {
+                    'field_mapping': json.dumps(field_mapping),
+                    'duplicate_action': 'skip'
+                }
+                response = requests.post(f"{API_BASE}/import/members", 
+                                       files=files, data=data, headers=self.headers)
+            
+            if response.status_code == 200:
+                import_result = response.json()
+                
+                # Verify response structure
+                required_fields = ['success', 'total_rows', 'successful', 'failed', 'skipped']
+                missing_fields = [field for field in required_fields if field not in import_result]
+                
+                if missing_fields:
+                    self.log_result("Import Members - Response Structure", False, 
+                                  f"Missing fields in response: {missing_fields}")
+                    return None
+                
+                # Verify import success
+                if import_result['success']:
+                    self.log_result("Import Members - Success Flag", True, 
+                                  "Import completed successfully")
+                else:
+                    self.log_result("Import Members - Success Flag", False, 
+                                  "Import marked as unsuccessful")
+                
+                # Verify row counts
+                total_rows = import_result['total_rows']
+                successful = import_result['successful']
+                failed = import_result['failed']
+                skipped = import_result['skipped']
+                
+                if total_rows == successful + failed + skipped:
+                    self.log_result("Import Members - Row Count Math", True, 
+                                  f"Row counts add up correctly: {total_rows} = {successful}+{failed}+{skipped}")
+                else:
+                    self.log_result("Import Members - Row Count Math", False, 
+                                  f"Row counts don't add up: {total_rows} ≠ {successful}+{failed}+{skipped}")
+                
+                # Log import statistics
+                self.log_result("Import Members - Statistics", True, 
+                              f"Import stats: {successful} successful, {failed} failed, {skipped} skipped out of {total_rows} total")
+                
+                # Check if error_log is present when there are failures
+                if failed > 0 or skipped > 0:
+                    if 'error_log' in import_result and len(import_result['error_log']) > 0:
+                        self.log_result("Import Members - Error Log", True, 
+                                      f"Error log provided with {len(import_result['error_log'])} entries")
+                    else:
+                        self.log_result("Import Members - Error Log", False, 
+                                      "Error log missing despite failures/skips")
+                
+                return import_result
+                
+            else:
+                self.log_result("Import Members", False, 
+                              f"Failed to import members: {response.status_code}",
+                              {"response": response.text})
+                return None
+                
+        except Exception as e:
+            self.log_result("Import Members", False, f"Error importing members: {str(e)}")
+            return None
+    
+    def test_duplicate_handling(self):
+        """Test 3: Test duplicate handling with different actions"""
+        print("\n=== Test 3: Duplicate Handling ===")
+        
+        # Create a small test CSV with known data
+        test_csv_content = """Full Name,Email Address,Mobile Phone,Member Type,Source
+John Doe,john.doe@test.com,+27123456789,Active,WALKIN
+Jane Smith,jane.smith@test.com,+27987654321,Active,ONLINE
+John Doe,john.doe@test.com,+27123456789,Active,REFERRAL"""
+        
+        test_csv_path = "/tmp/duplicate_test.csv"
+        
+        try:
+            # Write test CSV
+            with open(test_csv_path, 'w') as f:
+                f.write(test_csv_content)
+            
+            field_mapping = {
+                "first_name": "Full Name",
+                "email": "Email Address", 
+                "phone": "Mobile Phone",
+                "membership_status": "Member Type",
+                "source": "Source"
+            }
+            
+            # Test 1: Import with skip duplicates
+            with open(test_csv_path, 'rb') as f:
+                files = {'file': ('duplicate_test.csv', f, 'text/csv')}
+                data = {
+                    'field_mapping': json.dumps(field_mapping),
+                    'duplicate_action': 'skip'
+                }
+                response = requests.post(f"{API_BASE}/import/members", 
+                                       files=files, data=data, headers=self.headers)
+            
+            if response.status_code == 200:
+                result = response.json()
+                
+                # Should have 2 successful (John and Jane) and 1 skipped (duplicate John)
+                if result['successful'] >= 1 and result['skipped'] >= 1:
+                    self.log_result("Duplicate Handling - Skip Action", True, 
+                                  f"Duplicates correctly skipped: {result['skipped']} skipped, {result['successful']} successful")
+                else:
+                    self.log_result("Duplicate Handling - Skip Action", False, 
+                                  f"Unexpected duplicate handling: {result['successful']} successful, {result['skipped']} skipped")
+            else:
+                self.log_result("Duplicate Handling - Skip Action", False, 
+                              f"Failed to test duplicate skip: {response.status_code}")
+            
+            # Clean up test file
+            os.remove(test_csv_path)
+            
+        except Exception as e:
+            self.log_result("Duplicate Handling", False, f"Error testing duplicate handling: {str(e)}")
+            # Clean up on error
+            if os.path.exists(test_csv_path):
+                os.remove(test_csv_path)
+    
+    def test_check_imported_members(self):
+        """Test 4: GET /api/members - Verify imported members exist"""
+        print("\n=== Test 4: Check Imported Members ===")
+        
+        try:
+            response = requests.get(f"{API_BASE}/members", headers=self.headers)
+            
+            if response.status_code == 200:
+                members = response.json()
+                
+                # Check if we have members
+                if len(members) > 0:
+                    self.log_result("Check Imported Members - Count", True, 
+                                  f"Found {len(members)} members in database")
+                    
+                    # Check for members with expected data patterns from CSV
+                    members_with_source = [m for m in members if m.get('source')]
+                    members_with_id_number = [m for m in members if m.get('id_number')]
+                    
+                    if members_with_source:
+                        self.log_result("Check Imported Members - Source Field", True, 
+                                      f"Found {len(members_with_source)} members with source data")
+                    else:
+                        self.log_result("Check Imported Members - Source Field", False, 
+                                      "No members found with source data from import")
+                    
+                    if members_with_id_number:
+                        self.log_result("Check Imported Members - ID Number Field", True, 
+                                      f"Found {len(members_with_id_number)} members with ID numbers")
+                    else:
+                        self.log_result("Check Imported Members - ID Number Field", False, 
+                                      "No members found with ID numbers from import")
+                    
+                    # Check for specific data patterns from the CSV
+                    uppercase_emails = [m for m in members if m.get('email') and m['email'].isupper()]
+                    if uppercase_emails:
+                        self.log_result("Check Imported Members - Email Case", True, 
+                                      f"Found {len(uppercase_emails)} members with uppercase emails (as expected from CSV)")
+                    
+                else:
+                    self.log_result("Check Imported Members - Count", False, 
+                                  "No members found in database after import")
+                
+            else:
+                self.log_result("Check Imported Members", False, 
+                              f"Failed to get members: {response.status_code}",
+                              {"response": response.text})
+                
+        except Exception as e:
+            self.log_result("Check Imported Members", False, f"Error checking imported members: {str(e)}")
+    
+    def test_import_logs(self):
+        """Test 5: GET /api/import/logs - Check import history"""
+        print("\n=== Test 5: Check Import Logs ===")
+        
+        try:
+            response = requests.get(f"{API_BASE}/import/logs", headers=self.headers)
+            
+            if response.status_code == 200:
+                logs = response.json()
+                
+                if len(logs) > 0:
+                    self.log_result("Import Logs - Count", True, 
+                                  f"Found {len(logs)} import log entries")
+                    
+                    # Check for recent member import logs
+                    member_logs = [log for log in logs if log.get('import_type') == 'members']
+                    
+                    if member_logs:
+                        self.log_result("Import Logs - Member Import Type", True, 
+                                      f"Found {len(member_logs)} member import logs")
+                        
+                        # Check the most recent log
+                        recent_log = member_logs[0]
+                        required_fields = ['filename', 'total_rows', 'successful_rows', 'failed_rows', 'status']
+                        missing_fields = [field for field in required_fields if field not in recent_log]
+                        
+                        if not missing_fields:
+                            self.log_result("Import Logs - Log Structure", True, 
+                                          "Import log contains all required fields")
+                        else:
+                            self.log_result("Import Logs - Log Structure", False, 
+                                          f"Import log missing fields: {missing_fields}")
+                        
+                        # Check if log shows completed status
+                        if recent_log.get('status') == 'completed':
+                            self.log_result("Import Logs - Status", True, 
+                                          "Most recent import shows completed status")
+                        else:
+                            self.log_result("Import Logs - Status", False, 
+                                          f"Expected 'completed' status, got '{recent_log.get('status')}'")
+                    else:
+                        self.log_result("Import Logs - Member Import Type", False, 
+                                      "No member import logs found")
+                else:
+                    self.log_result("Import Logs - Count", False, 
+                                  "No import logs found")
+                
+            else:
+                self.log_result("Import Logs", False, 
+                              f"Failed to get import logs: {response.status_code}",
+                              {"response": response.text})
+                
+        except Exception as e:
+            self.log_result("Import Logs", False, f"Error checking import logs: {str(e)}")
+    
+    def test_csv_data_handling(self):
+        """Test 6: Verify specific CSV data handling (scientific notation, case, etc.)"""
+        print("\n=== Test 6: CSV Data Handling ===")
+        
+        try:
+            # Get some members to check data handling
+            response = requests.get(f"{API_BASE}/members?limit=10", headers=self.headers)
+            
+            if response.status_code == 200:
+                members = response.json()
+                
+                if members:
+                    # Check for scientific notation handling in ID numbers
+                    scientific_id_pattern = False
+                    for member in members:
+                        id_number = member.get('id_number', '')
+                        if 'E+' in str(id_number) or len(str(id_number)) > 10:
+                            scientific_id_pattern = True
+                            break
+                    
+                    if scientific_id_pattern:
+                        self.log_result("CSV Data - Scientific Notation", True, 
+                                      "Found ID numbers that may have been in scientific notation")
+                    else:
+                        self.log_result("CSV Data - Scientific Notation", False, 
+                                      "No scientific notation patterns found in ID numbers")
+                    
+                    # Check for uppercase email handling
+                    uppercase_emails = [m for m in members if m.get('email') and any(c.isupper() for c in m['email'])]
+                    if uppercase_emails:
+                        self.log_result("CSV Data - Email Case Handling", True, 
+                                      f"Found {len(uppercase_emails)} members with uppercase in emails")
+                    
+                    # Check for source values from CSV
+                    expected_sources = ['EXTERNAL RENTAL', 'CANVASSING', 'COLD CALLING', 'WALKIN']
+                    found_sources = set()
+                    for member in members:
+                        if member.get('source') in expected_sources:
+                            found_sources.add(member['source'])
+                    
+                    if found_sources:
+                        self.log_result("CSV Data - Source Values", True, 
+                                      f"Found expected source values: {list(found_sources)}")
+                    else:
+                        self.log_result("CSV Data - Source Values", False, 
+                                      "No expected source values found from CSV")
+                    
+                    # Check for member type values
+                    member_types = set()
+                    for member in members:
+                        if member.get('membership_status'):
+                            member_types.add(member['membership_status'])
+                    
+                    expected_types = ['Active', 'Expired']
+                    found_expected_types = [t for t in member_types if t in expected_types]
+                    
+                    if found_expected_types:
+                        self.log_result("CSV Data - Member Types", True, 
+                                      f"Found expected member types: {found_expected_types}")
+                    else:
+                        self.log_result("CSV Data - Member Types", False, 
+                                      f"Expected member types not found. Found: {list(member_types)}")
+                
+            else:
+                self.log_result("CSV Data Handling", False, 
+                              f"Failed to get members for data verification: {response.status_code}")
+                
+        except Exception as e:
+            self.log_result("CSV Data Handling", False, f"Error verifying CSV data handling: {str(e)}")
+    
+    def run_csv_import_tests(self):
+        """Run all CSV import tests"""
+        print("🚀 Starting CSV Import Functionality Tests")
+        print(f"Testing against: {API_BASE}")
+        print(f"CSV file: {self.csv_file_path}")
+        print("=" * 60)
+        
+        # Authenticate first
+        if not self.authenticate():
+            print("❌ Authentication failed. Cannot proceed with tests.")
+            return
+        
+        # Run all tests in sequence
+        parse_result = self.test_parse_csv_endpoint()
+        
+        if parse_result:
+            import_result = self.test_field_mapping_and_import(parse_result)
+            
+            if import_result:
+                self.test_duplicate_handling()
+                self.test_check_imported_members()
+                self.test_import_logs()
+                self.test_csv_data_handling()
+        
+        # Print summary
+        self.print_summary()
+    
+    def print_summary(self):
+        """Print test summary"""
+        print("\n" + "=" * 60)
+        print("🏁 CSV IMPORT FUNCTIONALITY TEST SUMMARY")
+        print("=" * 60)
+        
+        total_tests = len(self.test_results)
+        passed_tests = len([r for r in self.test_results if r["success"]])
+        failed_tests = total_tests - passed_tests
+        
+        print(f"Total Tests: {total_tests}")
+        print(f"✅ Passed: {passed_tests}")
+        print(f"❌ Failed: {failed_tests}")
+        print(f"Success Rate: {(passed_tests/total_tests*100):.1f}%")
+        
+        if failed_tests > 0:
+            print("\n❌ FAILED TESTS:")
+            for result in self.test_results:
+                if not result["success"]:
+                    print(f"  - {result['test']}: {result['message']}")
+        
+        print("\n" + "=" * 60)
+
 if __name__ == "__main__":
-    # Run Enhanced Access Control & Check-in System tests
-    print("🎯 TESTING ENHANCED ACCESS CONTROL & CHECK-IN SYSTEM")
-    print("=" * 80)
-    access_control_tester = AccessControlTester()
-    access_control_tester.run_access_control_tests()
+    # Run CSV Import tests as requested
+    csv_tester = CSVImportTester()
+    csv_tester.run_csv_import_tests()
