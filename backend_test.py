@@ -4788,12 +4788,12 @@ class CSVImportTester:
             # Open and upload the CSV file with field mapping
             with open(self.csv_file_path, 'rb') as f:
                 files = {'file': ('test_import.csv', f, 'text/csv')}
-                data = {
+                params = {
                     'field_mapping': json.dumps(field_mapping),
                     'duplicate_action': 'skip'
                 }
                 response = requests.post(f"{API_BASE}/import/members", 
-                                       files=files, data=data, headers=self.headers)
+                                       files=files, params=params, headers=self.headers)
             
             if response.status_code == 200:
                 import_result = response.json()
