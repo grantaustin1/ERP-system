@@ -166,10 +166,15 @@ class CSVImportNameSplittingTester:
                 response = requests.post(f"{API_BASE}/import/members", 
                                        files=files, data=data, headers=self.headers)
             
+            print(f"DEBUG: Request data: {data}")
+            print(f"DEBUG: Request files: {list(files.keys())}")
+            print(f"DEBUG: Response status: {response.status_code}")
+            print(f"DEBUG: Response text: {response.text}")
+            
             if response.status_code == 200:
                 import_result = response.json()
-                imported_count = import_result.get("imported_count", 0)
-                failed_count = import_result.get("failed_count", 0)
+                imported_count = import_result.get("successful", 0)  # Use 'successful' key
+                failed_count = import_result.get("failed", 0)
                 
                 # Should import all 6 members successfully
                 if imported_count == 6 and failed_count == 0:
@@ -180,8 +185,8 @@ class CSVImportNameSplittingTester:
                                   f"Import issues: {imported_count} imported, {failed_count} failed")
                     
                     # Log any errors
-                    if "errors" in import_result:
-                        for error in import_result["errors"]:
+                    if "error_log" in import_result:
+                        for error in import_result["error_log"]:
                             print(f"   Import Error: {error}")
                 
                 return imported_count == 6
