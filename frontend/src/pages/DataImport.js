@@ -152,9 +152,16 @@ function DataImport() {
     setImporting(true);
     try {
       const token = localStorage.getItem('token');
+      
+      // Clean field mapping - convert __NONE__ to empty string
+      const cleanedMapping = {};
+      Object.keys(fieldMapping).forEach(key => {
+        cleanedMapping[key] = fieldMapping[key] === '__NONE__' ? '' : fieldMapping[key];
+      });
+      
       const formData = new FormData();
       formData.append('file', selectedFile);
-      formData.append('field_mapping', JSON.stringify(fieldMapping));
+      formData.append('field_mapping', JSON.stringify(cleanedMapping));
       formData.append('duplicate_action', duplicateAction);
 
       const endpoint = importType === 'members' ? '/api/import/members' : '/api/import/leads';
