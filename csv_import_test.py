@@ -145,22 +145,22 @@ class CSVImportNameSplittingTester:
             
             membership_type_id = membership_types[0]["id"]
             
-            # Prepare import data with field mapping
+            # Prepare field mapping
             # Map "Full Name" CSV column to "first_name" field (this should trigger name splitting)
-            import_data = {
-                "mapping": {
-                    "first_name": "Full Name",  # This will trigger name splitting
-                    "email": "Email",
-                    "phone": "Mobile Phone"
-                },
-                "membership_type_id": membership_type_id,
-                "duplicate_action": "skip"
+            field_mapping = {
+                "first_name": "Full Name",  # This will trigger name splitting
+                "email": "Email",
+                "phone": "Mobile Phone",
+                "membership_type_id": membership_type_id
             }
             
             # Read and upload the CSV file
             with open(self.csv_file_path, 'rb') as f:
                 files = {'file': ('test_import_names.csv', f, 'text/csv')}
-                data = {'import_data': json.dumps(import_data)}
+                data = {
+                    'field_mapping': json.dumps(field_mapping),
+                    'duplicate_action': 'skip'
+                }
                 
                 response = requests.post(f"{API_BASE}/import/members", 
                                        files=files, data=data, headers=self.headers)
