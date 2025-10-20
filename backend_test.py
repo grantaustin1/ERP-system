@@ -4637,7 +4637,8 @@ class CSVImportTester:
         self.token = None
         self.headers = {}
         self.test_results = []
-        self.csv_file_path = "/tmp/test_import.csv"
+        self.csv_file_path = "/app/test_import_names.csv"  # Use the specific test file
+        self.imported_member_ids = []
         
     def log_result(self, test_name, success, message, details=None):
         """Log test result"""
