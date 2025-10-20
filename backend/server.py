@@ -3026,12 +3026,17 @@ async def send_test_whatsapp_message(
         # Format the test parameters
         template_params = [member_name, "500.00", "INV-TEST-001", "2024-12-31"]
         
+        # Safely split name
+        name_parts = member_name.split()
+        first_name = name_parts[0] if name_parts else member_name
+        last_name = " ".join(name_parts[1:]) if len(name_parts) > 1 else member_name
+        
         result = await respondio_service.send_whatsapp_message(
             contact_phone=phone,
             template_name=template_name,
             template_params=template_params,
-            first_name=member_name.split()[0] if " " in member_name else member_name,
-            last_name=member_name.split()[1] if " " in member_name and len(member_name.split()) > 1 else None,
+            first_name=first_name,
+            last_name=last_name,
             email="test@example.com"
         )
         
