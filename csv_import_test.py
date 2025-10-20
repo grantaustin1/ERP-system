@@ -160,7 +160,7 @@ class CSVImportNameSplittingTester:
                 }
                 params = {
                     'field_mapping': json.dumps(field_mapping),
-                    'duplicate_action': 'skip'
+                    'duplicate_action': 'update'  # Update existing members to test name splitting
                 }
                 
                 response = requests.post(f"{API_BASE}/import/members", 
