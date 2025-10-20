@@ -1674,3 +1674,49 @@ agent_communication:
       
       🚀 PRODUCTION READINESS:
       CSV import functionality is 95% production-ready. Core import, parsing, logging, and duplicate handling work perfectly. Only the name field mapping needs adjustment for full compatibility.
+
+  - agent: "main"
+    message: |
+      🔧 DATABASE CLEANUP AND NAME SPLITTING LOGIC FIX COMPLETED
+      
+      ACTIONS TAKEN:
+      
+      ✅ DATABASE INSPECTION:
+      - Checked MongoDB members collection for incorrectly imported members
+      - Found 0 members in database (either cleaned up previously or never saved due to validation errors)
+      - No cleanup needed - database is empty
+      
+      ✅ NAME SPLITTING LOGIC FIXED (server.py lines 3500-3525):
+      - Enhanced auto-split logic for "Full Name" → first_name + last_name during CSV import
+      - Added fallback handling for edge cases (empty names, single words, failed splits)
+      - Added safety check: "Ensure last_name is always present (required field)"
+      - Now guarantees last_name field is ALWAYS set when first_name exists
+      - Handles titles (MR, MRS, MS, MISS, DR, PROF) correctly
+      - For single-word names: uses same value for both first_name and last_name
+      
+      ✅ WHATSAPP TEST FUNCTION FIX (server.py lines 3027-3039):
+      - Fixed unsafe name splitting in send_respondio_test_message function
+      - Changed from inline split() with potential index errors
+      - Now uses safe name parsing: first_name = name_parts[0], last_name = " ".join(name_parts[1:])
+      - Prevents crashes when testing with single-word names
+      
+      🎯 ROOT CAUSE IDENTIFIED:
+      The "failed to fetch members" error was caused by:
+      1. CSV import mapped "Full Name" to first_name field only
+      2. Name splitting logic tried to split into first/last but had edge cases
+      3. Some members ended up without last_name in database
+      4. Pydantic validation failed when fetching members (last_name is required field)
+      
+      📋 TESTING NEEDED:
+      1. Test CSV import with various name formats:
+         - Full names with titles (MR JOHN DOE, MISS JANE SMITH)
+         - Full names without titles (JOHN DOE, JANE SMITH)
+         - Single word names (JOHN, JANE)
+         - Empty/blank names
+      2. Test member fetch API after import (GET /api/members)
+      3. Verify all imported members have both first_name and last_name
+      4. Test manual member creation still works
+      
+      ⚠️ NOTE:
+      Since database is empty, no data loss occurred. The fix is preventative for future imports.
+      Ready for backend testing to verify the fixes work correctly.
