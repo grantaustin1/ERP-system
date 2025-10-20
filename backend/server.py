@@ -3497,6 +3497,25 @@ async def import_members(
                         if value:
                             member_data[db_field] = value
                 
+                # Auto-split full name into first_name and last_name if needed
+                if "first_name" in member_data and "last_name" not in member_data:
+                    full_name = member_data["first_name"]
+                    # Remove common titles
+                    titles = ["MR", "MRS", "MS", "MISS", "DR", "PROF"]
+                    name_parts = full_name.split()
+                    
+                    # Remove title if present
+                    if name_parts and name_parts[0].upper().rstrip('.') in titles:
+                        name_parts = name_parts[1:]
+                    
+                    # Split into first and last name
+                    if len(name_parts) >= 2:
+                        member_data["first_name"] = name_parts[0]
+                        member_data["last_name"] = " ".join(name_parts[1:])
+                    elif len(name_parts) == 1:
+                        member_data["first_name"] = name_parts[0]
+                        member_data["last_name"] = name_parts[0]  # Use same as first name
+                
                 # Check for duplicates
                 duplicate_found = None
                 
