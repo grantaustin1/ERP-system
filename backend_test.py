@@ -5566,10 +5566,10 @@ class DuplicateDetectionTester:
                 
                 # Check duplicate with local format
                 duplicate_check_data = {
-                    "email": f"different.email.{int(time.time())}@example.com",
-                    "phone": "0834567890",  # Local format (should match)
+                    "email": f"different.email.{timestamp}@example.com",
+                    "phone": f"083456{timestamp % 10000:04d}",  # Local format (should match)
                     "first_name": "Michael",
-                    "last_name": "Brown"
+                    "last_name": f"Brown{timestamp}"
                 }
                 
                 response = requests.post(f"{API_BASE}/members/check-duplicate", 
