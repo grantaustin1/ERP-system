@@ -233,111 +233,138 @@ backend:
 
   - task: "RBAC System - 15 Roles Definition"
     implemented: true
-    working: "NA"
+    working: true
     file: "/app/backend/permissions.py"
     stuck_count: 0
     priority: "high"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
       - working: "NA"
         agent: "main"
         comment: "Implemented 15 roles with sensible default permissions: Business Owner (super_admin - full access), Head of Admin (full access), 9 Department Heads (Sales, Fitness, Marketing, Operations, HR, Maintenance, Finance, Debt Collecting, Training - department-specific access), Personal Trainers (view-only + classes), 3 Club-Level Managers (Sales, Fitness, Admin - view/edit within scope). Created 10 modules with CRUD permissions (Members, Billing, Access, Classes, Marketing, Staff, Reports, Import, Settings, Audit). Ready for backend testing."
+      - working: true
+        agent: "testing"
+        comment: "✅ RBAC system fully functional: All 15 roles correctly defined with appropriate default permissions. Business Owner and Head Admin have all 40 permissions. Personal Trainer has exactly 3 view-only permissions (members:view, classes:view, settings:view). Department heads have role-appropriate permissions (e.g., Finance Head has full billing access, Sales Head has members/marketing/billing permissions). All role keys match expected values and structure is correct."
 
   - task: "RBAC API - Get All Roles"
     implemented: true
-    working: "NA"
+    working: true
     file: "/app/backend/server.py"
     stuck_count: 0
     priority: "high"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
       - working: "NA"
         agent: "main"
         comment: "Created GET /api/rbac/roles endpoint to retrieve all 15 roles with their display names and default permission counts. Returns roles list with key, name, and default_permission_count fields."
+      - working: true
+        agent: "testing"
+        comment: "✅ GET /api/rbac/roles working perfectly: Returns all 15 expected roles (business_owner, head_admin, sales_head, fitness_head, marketing_head, operations_head, hr_head, maintenance_head, finance_head, debt_head, training_head, personal_trainer, sales_manager, fitness_manager, admin_manager). Each role has required fields: key, name, default_permission_count. All role keys present and structure correct."
 
   - task: "RBAC API - Get All Modules"
     implemented: true
-    working: "NA"
+    working: true
     file: "/app/backend/server.py"
     stuck_count: 0
     priority: "high"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
       - working: "NA"
         agent: "main"
         comment: "Created GET /api/rbac/modules endpoint to retrieve all 10 modules with their 4 CRUD permissions each (view, create, edit, delete). Returns modules list with permissions breakdown."
+      - working: true
+        agent: "testing"
+        comment: "✅ GET /api/rbac/modules working perfectly: Returns all 10 expected modules (members, billing, access, classes, marketing, staff, reports, import, settings, audit). Each module has exactly 4 permissions (view, create, edit, delete) for a total of 40 permissions across all modules. Module structure and permissions breakdown correct."
 
   - task: "RBAC API - Get Permission Matrix"
     implemented: true
-    working: "NA"
+    working: true
     file: "/app/backend/server.py"
     stuck_count: 0
     priority: "high"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
       - working: "NA"
         agent: "main"
         comment: "Created GET /api/rbac/permission-matrix endpoint to retrieve complete permission matrix for all roles. Checks MongoDB for custom permissions, falls back to defaults. Returns matrix with role permissions, is_custom flag, modules list, and all available permissions."
+      - working: true
+        agent: "testing"
+        comment: "✅ GET /api/rbac/permission-matrix working perfectly: Returns matrix with all 15 roles, each having required fields (role, role_display_name, permissions, is_custom, is_default). Business Owner has all 40 permissions, Personal Trainer has correct 3 view permissions. Permission matrix structure correct and default permissions properly loaded."
 
   - task: "RBAC API - Update Permission Matrix"
     implemented: true
-    working: "NA"
+    working: true
     file: "/app/backend/server.py"
     stuck_count: 0
     priority: "high"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
       - working: "NA"
         agent: "main"
         comment: "Created POST /api/rbac/permission-matrix endpoint to update permissions for a specific role. Validates role and permissions before saving. Stores custom permissions in MongoDB role_permissions collection. Returns success status and updated permissions."
+      - working: true
+        agent: "testing"
+        comment: "✅ POST /api/rbac/permission-matrix working perfectly: Successfully updates permissions for personal_trainer role (added members:create to existing 3 permissions). Changes persist correctly in database and can be retrieved via GET endpoint. Permission validation working correctly."
 
   - task: "RBAC API - Reset Role Permissions"
     implemented: true
-    working: "NA"
+    working: true
     file: "/app/backend/server.py"
     stuck_count: 0
     priority: "high"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
       - working: "NA"
         agent: "main"
         comment: "Created POST /api/rbac/reset-role-permissions endpoint to reset a role's permissions back to defaults. Deletes custom permissions from database, causing system to fall back to DEFAULT_ROLE_PERMISSIONS."
+      - working: true
+        agent: "testing"
+        comment: "✅ POST /api/rbac/reset-role-permissions working perfectly: Successfully resets personal_trainer permissions back to defaults (3 view permissions). Custom permissions deleted from database, system falls back to DEFAULT_ROLE_PERMISSIONS. Reset verification confirms permissions restored to original state."
 
   - task: "RBAC API - Get All Staff Users"
     implemented: true
-    working: "NA"
+    working: true
     file: "/app/backend/server.py"
     stuck_count: 0
     priority: "high"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
       - working: "NA"
         agent: "main"
         comment: "Created GET /api/rbac/users endpoint to retrieve all staff users with their roles and permissions. Fetches users from database, enriches with role display names and permission lists (custom or default). Returns users array with id, email, full_name, role, role_display_name, permissions, permission_count, created_at."
+      - working: true
+        agent: "testing"
+        comment: "✅ GET /api/rbac/users working perfectly: Returns staff users with all required fields (id, email, full_name, role, role_display_name, permissions, permission_count). Admin user (admin@gym.com) found in staff list. User structure correct and permissions properly populated."
 
   - task: "RBAC API - Update User Role"
     implemented: true
-    working: "NA"
+    working: true
     file: "/app/backend/server.py"
     stuck_count: 0
     priority: "high"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
       - working: "NA"
         agent: "main"
         comment: "Created PUT /api/rbac/users/{user_id}/role endpoint to update a user's role. Validates role exists and user exists before updating. Returns success status with new role and its permissions."
+      - working: true
+        agent: "testing"
+        comment: "✅ PUT /api/rbac/users/{user_id}/role working perfectly: Successfully updates user role from personal_trainer to sales_manager. Role change persists in database and returns correct role_display_name 'Sales Manager (Club Level)'. Role validation working correctly."
 
   - task: "RBAC API - Create Staff User"
     implemented: true
-    working: "NA"
+    working: true
     file: "/app/backend/server.py"
     stuck_count: 0
     priority: "high"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
       - working: "NA"
         agent: "main"
         comment: "Created POST /api/rbac/users endpoint to create new staff user with specified role. Validates required fields (email, full_name, role, password), checks for duplicate email, hashes password using existing pwd_context. Returns created user with role_display_name."
+      - working: true
+        agent: "testing"
+        comment: "✅ POST /api/rbac/users working perfectly: Successfully creates new staff user with personal_trainer role. User appears in staff users list after creation. Validation working correctly (duplicate email rejection, invalid role rejection). Password hashing and user creation process working correctly. Fixed ObjectId serialization issue in response."
 
 
   - task: "Automation CRUD API Endpoints"
