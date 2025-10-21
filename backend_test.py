@@ -5456,7 +5456,7 @@ class DuplicateDetectionTester:
         
         try:
             response = requests.post(f"{API_BASE}/members/check-duplicate", 
-                                   json=duplicate_check_data, headers=self.headers)
+                                   params=duplicate_check_data, headers=self.headers)
             if response.status_code == 200:
                 result = response.json()
                 if not result.get("is_duplicate", True):
