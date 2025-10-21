@@ -5694,8 +5694,8 @@ class DuplicateDetectionTester:
                 member_data_2 = {
                     "first_name": "Michael",  # Canonical form of "Mike"
                     "last_name": f"Wilson{timestamp}",
-                    "email": f"mikewilson{timestamp}@gmail.com",  # Normalized Gmail
-                    "phone": f"084567{timestamp % 10000:04d}",  # Normalized phone
+                    "email": f"mikewilsontest{timestamp}@gmail.com",  # Normalized Gmail
+                    "phone": f"085678{timestamp % 10000:04d}",  # Normalized phone
                     "membership_type_id": membership_type_id
                 }
                 
