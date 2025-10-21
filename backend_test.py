@@ -6882,34 +6882,635 @@ class RegressionTester:
                     print(f"  - {result['test']}: {result['message']}")
 
 
+class RBACTester:
+    def __init__(self):
+        self.token = None
+        self.headers = {}
+        self.test_results = []
+        self.created_user_id = None
+        
+    def log_result(self, test_name, success, message, details=None):
+        """Log test result"""
+        result = {
+            "test": test_name,
+            "success": success,
+            "message": message,
+            "timestamp": datetime.now().isoformat(),
+            "details": details or {}
+        }
+        self.test_results.append(result)
+        status = "✅ PASS" if success else "❌ FAIL"
+        print(f"{status}: {test_name} - {message}")
+        if details and not success:
+            print(f"   Details: {details}")
+    
+    def authenticate(self):
+        """Authenticate and get token"""
+        try:
+            response = requests.post(f"{API_BASE}/auth/login", json={
+                "email": TEST_EMAIL,
+                "password": TEST_PASSWORD
+            })
+            
+            if response.status_code == 200:
+                data = response.json()
+                self.token = data["access_token"]
+                self.headers = {"Authorization": f"Bearer {self.token}"}
+                self.log_result("Authentication", True, "Successfully authenticated")
+                return True
+            else:
+                self.log_result("Authentication", False, f"Failed to authenticate: {response.status_code}", 
+                              {"response": response.text})
+                return False
+        except Exception as e:
+            self.log_result("Authentication", False, f"Authentication error: {str(e)}")
+            return False
+    
+    def test_get_all_roles(self):
+        """Test 1: GET /api/rbac/roles - Retrieve all 15 roles"""
+        print("\n=== Test 1: Get All Roles ===")
+        
+        try:
+            response = requests.get(f"{API_BASE}/rbac/roles", headers=self.headers)
+            if response.status_code == 200:
+                data = response.json()
+                roles = data.get("roles", [])
+                
+                # Verify 15 roles are returned
+                if len(roles) == 15:
+                    self.log_result("Get All Roles - Count", True, f"Retrieved {len(roles)} roles (expected 15)")
+                else:
+                    self.log_result("Get All Roles - Count", False, f"Expected 15 roles, got {len(roles)}")
+                
+                # Check specific role keys
+                expected_roles = [
+                    "business_owner", "head_admin", "sales_head", "fitness_head", "marketing_head",
+                    "operations_head", "hr_head", "maintenance_head", "finance_head", "debt_head",
+                    "training_head", "personal_trainer", "sales_manager", "fitness_manager", "admin_manager"
+                ]
+                
+                role_keys = [role["key"] for role in roles]
+                missing_roles = [role for role in expected_roles if role not in role_keys]
+                
+                if not missing_roles:
+                    self.log_result("Get All Roles - Keys", True, "All expected role keys present")
+                else:
+                    self.log_result("Get All Roles - Keys", False, f"Missing roles: {missing_roles}")
+                
+                # Verify each role has name and default_permission_count
+                valid_structure = True
+                for role in roles:
+                    if not all(key in role for key in ["key", "name", "default_permission_count"]):
+                        valid_structure = False
+                        break
+                
+                if valid_structure:
+                    self.log_result("Get All Roles - Structure", True, "All roles have required fields")
+                else:
+                    self.log_result("Get All Roles - Structure", False, "Some roles missing required fields")
+                
+                return True
+            else:
+                self.log_result("Get All Roles", False, f"Failed to get roles: {response.status_code}",
+                              {"response": response.text})
+                return False
+        except Exception as e:
+            self.log_result("Get All Roles", False, f"Error getting roles: {str(e)}")
+            return False
+    
+    def test_get_all_modules(self):
+        """Test 2: GET /api/rbac/modules - Retrieve all 10 modules"""
+        print("\n=== Test 2: Get All Modules ===")
+        
+        try:
+            response = requests.get(f"{API_BASE}/rbac/modules", headers=self.headers)
+            if response.status_code == 200:
+                data = response.json()
+                modules = data.get("modules", [])
+                
+                # Verify 10 modules are returned
+                if len(modules) == 10:
+                    self.log_result("Get All Modules - Count", True, f"Retrieved {len(modules)} modules (expected 10)")
+                else:
+                    self.log_result("Get All Modules - Count", False, f"Expected 10 modules, got {len(modules)}")
+                
+                # Check expected modules
+                expected_modules = ["members", "billing", "access", "classes", "marketing", 
+                                  "staff", "reports", "import", "settings", "audit"]
+                
+                module_keys = [module["key"] for module in modules]
+                missing_modules = [mod for mod in expected_modules if mod not in module_keys]
+                
+                if not missing_modules:
+                    self.log_result("Get All Modules - Keys", True, "All expected module keys present")
+                else:
+                    self.log_result("Get All Modules - Keys", False, f"Missing modules: {missing_modules}")
+                
+                # Verify each module has 4 permissions
+                total_permissions = 0
+                valid_permissions = True
+                for module in modules:
+                    permissions = module.get("permissions", [])
+                    if len(permissions) != 4:
+                        valid_permissions = False
+                    total_permissions += len(permissions)
+                
+                if valid_permissions and total_permissions == 40:
+                    self.log_result("Get All Modules - Permissions", True, f"All modules have 4 permissions each (total: {total_permissions})")
+                else:
+                    self.log_result("Get All Modules - Permissions", False, f"Invalid permissions structure (total: {total_permissions})")
+                
+                return True
+            else:
+                self.log_result("Get All Modules", False, f"Failed to get modules: {response.status_code}",
+                              {"response": response.text})
+                return False
+        except Exception as e:
+            self.log_result("Get All Modules", False, f"Error getting modules: {str(e)}")
+            return False
+    
+    def test_get_permission_matrix(self):
+        """Test 3: GET /api/rbac/permission-matrix - Get permission matrix"""
+        print("\n=== Test 3: Get Permission Matrix ===")
+        
+        try:
+            response = requests.get(f"{API_BASE}/rbac/permission-matrix", headers=self.headers)
+            if response.status_code == 200:
+                data = response.json()
+                matrix = data.get("matrix", [])
+                
+                # Verify matrix contains all 15 roles
+                if len(matrix) == 15:
+                    self.log_result("Permission Matrix - Role Count", True, f"Matrix contains {len(matrix)} roles (expected 15)")
+                else:
+                    self.log_result("Permission Matrix - Role Count", False, f"Expected 15 roles in matrix, got {len(matrix)}")
+                
+                # Check each role has required fields
+                valid_structure = True
+                business_owner_perms = None
+                personal_trainer_perms = None
+                
+                for role_matrix in matrix:
+                    required_fields = ["role", "role_display_name", "permissions", "is_custom", "is_default"]
+                    if not all(field in role_matrix for field in required_fields):
+                        valid_structure = False
+                        break
+                    
+                    # Store specific role permissions for testing
+                    if role_matrix["role"] == "business_owner":
+                        business_owner_perms = role_matrix["permissions"]
+                    elif role_matrix["role"] == "personal_trainer":
+                        personal_trainer_perms = role_matrix["permissions"]
+                
+                if valid_structure:
+                    self.log_result("Permission Matrix - Structure", True, "All roles have required fields")
+                else:
+                    self.log_result("Permission Matrix - Structure", False, "Some roles missing required fields")
+                
+                # Test business_owner has all 40 permissions
+                if business_owner_perms and len(business_owner_perms) == 40:
+                    self.log_result("Permission Matrix - Business Owner", True, f"Business owner has all {len(business_owner_perms)} permissions")
+                else:
+                    self.log_result("Permission Matrix - Business Owner", False, f"Business owner has {len(business_owner_perms) if business_owner_perms else 0} permissions (expected 40)")
+                
+                # Test personal_trainer has only 3 view permissions
+                expected_trainer_perms = ["members:view", "classes:view", "settings:view"]
+                if personal_trainer_perms and len(personal_trainer_perms) == 3:
+                    if all(perm in personal_trainer_perms for perm in expected_trainer_perms):
+                        self.log_result("Permission Matrix - Personal Trainer", True, f"Personal trainer has correct {len(personal_trainer_perms)} permissions")
+                    else:
+                        self.log_result("Permission Matrix - Personal Trainer", False, f"Personal trainer permissions incorrect: {personal_trainer_perms}")
+                else:
+                    self.log_result("Permission Matrix - Personal Trainer", False, f"Personal trainer has {len(personal_trainer_perms) if personal_trainer_perms else 0} permissions (expected 3)")
+                
+                return True
+            else:
+                self.log_result("Get Permission Matrix", False, f"Failed to get permission matrix: {response.status_code}",
+                              {"response": response.text})
+                return False
+        except Exception as e:
+            self.log_result("Get Permission Matrix", False, f"Error getting permission matrix: {str(e)}")
+            return False
+    
+    def test_update_permission_matrix(self):
+        """Test 4: POST /api/rbac/permission-matrix - Update permissions"""
+        print("\n=== Test 4: Update Permission Matrix ===")
+        
+        try:
+            # Update personal_trainer permissions to add members:create
+            update_data = {
+                "role": "personal_trainer",
+                "permissions": ["members:view", "members:create", "classes:view", "settings:view"]
+            }
+            
+            response = requests.post(f"{API_BASE}/rbac/permission-matrix", 
+                                   json=update_data, headers=self.headers)
+            
+            if response.status_code == 200:
+                result = response.json()
+                updated_permissions = result.get("permissions", [])
+                
+                if "members:create" in updated_permissions and len(updated_permissions) == 4:
+                    self.log_result("Update Permission Matrix", True, f"Successfully updated permissions: {len(updated_permissions)} permissions")
+                    
+                    # Verify persistence by fetching matrix again
+                    verify_response = requests.get(f"{API_BASE}/rbac/permission-matrix", headers=self.headers)
+                    if verify_response.status_code == 200:
+                        verify_data = verify_response.json()
+                        matrix = verify_data.get("matrix", [])
+                        
+                        trainer_role = next((role for role in matrix if role["role"] == "personal_trainer"), None)
+                        if trainer_role and "members:create" in trainer_role["permissions"]:
+                            self.log_result("Update Permission Matrix - Persistence", True, "Updated permissions persisted correctly")
+                        else:
+                            self.log_result("Update Permission Matrix - Persistence", False, "Updated permissions not persisted")
+                    
+                else:
+                    self.log_result("Update Permission Matrix", False, f"Update failed or incorrect permissions: {updated_permissions}")
+                
+                return True
+            else:
+                self.log_result("Update Permission Matrix", False, f"Failed to update permissions: {response.status_code}",
+                              {"response": response.text})
+                return False
+        except Exception as e:
+            self.log_result("Update Permission Matrix", False, f"Error updating permission matrix: {str(e)}")
+            return False
+    
+    def test_reset_role_permissions(self):
+        """Test 5: POST /api/rbac/reset-role-permissions - Reset to defaults"""
+        print("\n=== Test 5: Reset Role Permissions ===")
+        
+        try:
+            # Reset personal_trainer back to defaults
+            response = requests.post(f"{API_BASE}/rbac/reset-role-permissions?role=personal_trainer", 
+                                   headers=self.headers)
+            
+            if response.status_code == 200:
+                result = response.json()
+                
+                if result.get("success"):
+                    self.log_result("Reset Role Permissions", True, f"Successfully reset permissions, deleted: {result.get('deleted', False)}")
+                    
+                    # Verify reset by checking matrix
+                    verify_response = requests.get(f"{API_BASE}/rbac/permission-matrix", headers=self.headers)
+                    if verify_response.status_code == 200:
+                        verify_data = verify_response.json()
+                        matrix = verify_data.get("matrix", [])
+                        
+                        trainer_role = next((role for role in matrix if role["role"] == "personal_trainer"), None)
+                        if trainer_role and len(trainer_role["permissions"]) == 3 and "members:create" not in trainer_role["permissions"]:
+                            self.log_result("Reset Role Permissions - Verification", True, "Permissions successfully reset to defaults")
+                        else:
+                            self.log_result("Reset Role Permissions - Verification", False, "Permissions not properly reset")
+                else:
+                    self.log_result("Reset Role Permissions", False, "Reset operation failed")
+                
+                return True
+            else:
+                self.log_result("Reset Role Permissions", False, f"Failed to reset permissions: {response.status_code}",
+                              {"response": response.text})
+                return False
+        except Exception as e:
+            self.log_result("Reset Role Permissions", False, f"Error resetting permissions: {str(e)}")
+            return False
+    
+    def test_get_all_staff_users(self):
+        """Test 6: GET /api/rbac/users - Get all staff users"""
+        print("\n=== Test 6: Get All Staff Users ===")
+        
+        try:
+            response = requests.get(f"{API_BASE}/rbac/users", headers=self.headers)
+            if response.status_code == 200:
+                data = response.json()
+                users = data.get("users", [])
+                
+                # Verify at least 1 user exists (admin@gym.com)
+                if len(users) >= 1:
+                    self.log_result("Get All Staff Users - Count", True, f"Retrieved {len(users)} staff users")
+                else:
+                    self.log_result("Get All Staff Users - Count", False, f"Expected at least 1 user, got {len(users)}")
+                
+                # Check if admin@gym.com exists
+                admin_user = next((user for user in users if user["email"] == "admin@gym.com"), None)
+                if admin_user:
+                    self.log_result("Get All Staff Users - Admin User", True, "Admin user found in staff list")
+                else:
+                    self.log_result("Get All Staff Users - Admin User", False, "Admin user not found in staff list")
+                
+                # Verify user structure
+                if users:
+                    required_fields = ["id", "email", "full_name", "role", "role_display_name", "permissions", "permission_count"]
+                    user = users[0]
+                    if all(field in user for field in required_fields):
+                        self.log_result("Get All Staff Users - Structure", True, "Users have all required fields")
+                    else:
+                        self.log_result("Get All Staff Users - Structure", False, f"Users missing required fields: {list(user.keys())}")
+                
+                return True
+            else:
+                self.log_result("Get All Staff Users", False, f"Failed to get staff users: {response.status_code}",
+                              {"response": response.text})
+                return False
+        except Exception as e:
+            self.log_result("Get All Staff Users", False, f"Error getting staff users: {str(e)}")
+            return False
+    
+    def test_create_staff_user(self):
+        """Test 7: POST /api/rbac/users - Create new staff user"""
+        print("\n=== Test 7: Create New Staff User ===")
+        
+        try:
+            # Create test user
+            user_data = {
+                "email": "test_trainer@gym.com",
+                "full_name": "Test Trainer",
+                "password": "test123",
+                "role": "personal_trainer"
+            }
+            
+            response = requests.post(f"{API_BASE}/rbac/users", json=user_data, headers=self.headers)
+            
+            if response.status_code == 200:
+                created_user = response.json()
+                self.created_user_id = created_user.get("id")
+                
+                # Verify user creation
+                if (created_user.get("email") == "test_trainer@gym.com" and 
+                    created_user.get("role") == "personal_trainer" and
+                    created_user.get("role_display_name") == "Personal Trainer"):
+                    self.log_result("Create Staff User", True, f"Successfully created user: {created_user['full_name']}")
+                    
+                    # Verify user appears in users list
+                    verify_response = requests.get(f"{API_BASE}/rbac/users", headers=self.headers)
+                    if verify_response.status_code == 200:
+                        verify_data = verify_response.json()
+                        users = verify_data.get("users", [])
+                        
+                        test_user = next((user for user in users if user["email"] == "test_trainer@gym.com"), None)
+                        if test_user:
+                            self.log_result("Create Staff User - Verification", True, "Created user appears in users list")
+                        else:
+                            self.log_result("Create Staff User - Verification", False, "Created user not found in users list")
+                else:
+                    self.log_result("Create Staff User", False, f"User creation incomplete: {created_user}")
+                
+                return self.created_user_id
+            else:
+                self.log_result("Create Staff User", False, f"Failed to create user: {response.status_code}",
+                              {"response": response.text})
+                return None
+        except Exception as e:
+            self.log_result("Create Staff User", False, f"Error creating staff user: {str(e)}")
+            return None
+    
+    def test_update_user_role(self):
+        """Test 8: PUT /api/rbac/users/{user_id}/role - Update user role"""
+        print("\n=== Test 8: Update User Role ===")
+        
+        if not self.created_user_id:
+            self.log_result("Update User Role", False, "No user ID available for testing")
+            return False
+        
+        try:
+            # Update role to sales_manager
+            update_data = {
+                "user_id": self.created_user_id,
+                "role": "sales_manager"
+            }
+            
+            response = requests.put(f"{API_BASE}/rbac/users/{self.created_user_id}/role", 
+                                  json=update_data, headers=self.headers)
+            
+            if response.status_code == 200:
+                result = response.json()
+                
+                if (result.get("new_role") == "sales_manager" and 
+                    result.get("role_display_name") == "Sales Manager (Club Level)"):
+                    self.log_result("Update User Role", True, f"Successfully updated role to: {result['role_display_name']}")
+                    
+                    # Verify role update persisted
+                    verify_response = requests.get(f"{API_BASE}/rbac/users", headers=self.headers)
+                    if verify_response.status_code == 200:
+                        verify_data = verify_response.json()
+                        users = verify_data.get("users", [])
+                        
+                        updated_user = next((user for user in users if user["id"] == self.created_user_id), None)
+                        if updated_user and updated_user["role"] == "sales_manager":
+                            self.log_result("Update User Role - Verification", True, "Role update persisted correctly")
+                        else:
+                            self.log_result("Update User Role - Verification", False, "Role update not persisted")
+                else:
+                    self.log_result("Update User Role", False, f"Role update incomplete: {result}")
+                
+                return True
+            else:
+                self.log_result("Update User Role", False, f"Failed to update role: {response.status_code}",
+                              {"response": response.text})
+                return False
+        except Exception as e:
+            self.log_result("Update User Role", False, f"Error updating user role: {str(e)}")
+            return False
+    
+    def test_validation_errors(self):
+        """Test 9: Validation Tests"""
+        print("\n=== Test 9: Validation Tests ===")
+        
+        # Test invalid role in permission matrix update
+        try:
+            invalid_role_data = {
+                "role": "invalid_role",
+                "permissions": ["members:view"]
+            }
+            
+            response = requests.post(f"{API_BASE}/rbac/permission-matrix", 
+                                   json=invalid_role_data, headers=self.headers)
+            
+            if response.status_code == 400:
+                self.log_result("Validation - Invalid Role", True, "Correctly rejected invalid role")
+            else:
+                self.log_result("Validation - Invalid Role", False, f"Should have returned 400, got {response.status_code}")
+        except Exception as e:
+            self.log_result("Validation - Invalid Role", False, f"Error testing invalid role: {str(e)}")
+        
+        # Test invalid permissions in matrix update
+        try:
+            invalid_perms_data = {
+                "role": "personal_trainer",
+                "permissions": ["invalid:permission"]
+            }
+            
+            response = requests.post(f"{API_BASE}/rbac/permission-matrix", 
+                                   json=invalid_perms_data, headers=self.headers)
+            
+            if response.status_code == 400:
+                self.log_result("Validation - Invalid Permissions", True, "Correctly rejected invalid permissions")
+            else:
+                self.log_result("Validation - Invalid Permissions", False, f"Should have returned 400, got {response.status_code}")
+        except Exception as e:
+            self.log_result("Validation - Invalid Permissions", False, f"Error testing invalid permissions: {str(e)}")
+        
+        # Test create user with duplicate email
+        try:
+            duplicate_user_data = {
+                "email": "admin@gym.com",  # Already exists
+                "full_name": "Duplicate Admin",
+                "password": "test123",
+                "role": "admin_manager"
+            }
+            
+            response = requests.post(f"{API_BASE}/rbac/users", json=duplicate_user_data, headers=self.headers)
+            
+            if response.status_code == 400:
+                self.log_result("Validation - Duplicate Email", True, "Correctly rejected duplicate email")
+            else:
+                self.log_result("Validation - Duplicate Email", False, f"Should have returned 400, got {response.status_code}")
+        except Exception as e:
+            self.log_result("Validation - Duplicate Email", False, f"Error testing duplicate email: {str(e)}")
+        
+        # Test update role with invalid role
+        if self.created_user_id:
+            try:
+                invalid_role_update = {
+                    "user_id": self.created_user_id,
+                    "role": "invalid_role"
+                }
+                
+                response = requests.put(f"{API_BASE}/rbac/users/{self.created_user_id}/role", 
+                                      json=invalid_role_update, headers=self.headers)
+                
+                if response.status_code == 400:
+                    self.log_result("Validation - Invalid Role Update", True, "Correctly rejected invalid role update")
+                else:
+                    self.log_result("Validation - Invalid Role Update", False, f"Should have returned 400, got {response.status_code}")
+            except Exception as e:
+                self.log_result("Validation - Invalid Role Update", False, f"Error testing invalid role update: {str(e)}")
+        
+        # Test update role for non-existent user
+        try:
+            nonexistent_user_update = {
+                "user_id": "nonexistent-user-id",
+                "role": "sales_manager"
+            }
+            
+            response = requests.put(f"{API_BASE}/rbac/users/nonexistent-user-id/role", 
+                                  json=nonexistent_user_update, headers=self.headers)
+            
+            if response.status_code == 404:
+                self.log_result("Validation - Nonexistent User", True, "Correctly returned 404 for nonexistent user")
+            else:
+                self.log_result("Validation - Nonexistent User", False, f"Should have returned 404, got {response.status_code}")
+        except Exception as e:
+            self.log_result("Validation - Nonexistent User", False, f"Error testing nonexistent user: {str(e)}")
+    
+    def test_default_permission_verification(self):
+        """Test 10: Default Permission Verification"""
+        print("\n=== Test 10: Default Permission Verification ===")
+        
+        try:
+            response = requests.get(f"{API_BASE}/rbac/permission-matrix", headers=self.headers)
+            if response.status_code == 200:
+                data = response.json()
+                matrix = data.get("matrix", [])
+                
+                # Test specific role permissions
+                role_tests = {
+                    "business_owner": {"expected_count": 40, "description": "all permissions"},
+                    "head_admin": {"expected_count": 40, "description": "all permissions"},
+                    "sales_head": {"must_have": ["members:view", "members:create", "marketing:view", "billing:view"], "description": "sales and marketing permissions"},
+                    "finance_head": {"must_have": ["billing:view", "billing:create", "billing:edit", "billing:delete"], "description": "full billing permissions"},
+                    "personal_trainer": {"expected_count": 3, "must_have": ["members:view", "classes:view", "settings:view"], "description": "view-only permissions"}
+                }
+                
+                for role_key, test_config in role_tests.items():
+                    role_data = next((role for role in matrix if role["role"] == role_key), None)
+                    
+                    if role_data:
+                        permissions = role_data["permissions"]
+                        
+                        # Test expected count
+                        if "expected_count" in test_config:
+                            if len(permissions) == test_config["expected_count"]:
+                                self.log_result(f"Default Permissions - {role_key} Count", True, 
+                                              f"{role_key} has {len(permissions)} permissions ({test_config['description']})")
+                            else:
+                                self.log_result(f"Default Permissions - {role_key} Count", False, 
+                                              f"{role_key} has {len(permissions)} permissions, expected {test_config['expected_count']}")
+                        
+                        # Test must-have permissions
+                        if "must_have" in test_config:
+                            missing_perms = [perm for perm in test_config["must_have"] if perm not in permissions]
+                            if not missing_perms:
+                                self.log_result(f"Default Permissions - {role_key} Required", True, 
+                                              f"{role_key} has all required permissions ({test_config['description']})")
+                            else:
+                                self.log_result(f"Default Permissions - {role_key} Required", False, 
+                                              f"{role_key} missing permissions: {missing_perms}")
+                    else:
+                        self.log_result(f"Default Permissions - {role_key}", False, f"Role {role_key} not found in matrix")
+                
+                return True
+            else:
+                self.log_result("Default Permission Verification", False, f"Failed to get permission matrix: {response.status_code}")
+                return False
+        except Exception as e:
+            self.log_result("Default Permission Verification", False, f"Error verifying default permissions: {str(e)}")
+            return False
+    
+    def run_rbac_tests(self):
+        """Run all RBAC tests"""
+        print("🚀 Starting RBAC & Permission Matrix System Tests")
+        print(f"Testing against: {API_BASE}")
+        print("=" * 60)
+        
+        # Authenticate first
+        if not self.authenticate():
+            print("❌ Authentication failed. Cannot proceed with tests.")
+            return
+        
+        # Run all test suites
+        self.test_get_all_roles()
+        self.test_get_all_modules()
+        self.test_get_permission_matrix()
+        self.test_update_permission_matrix()
+        self.test_reset_role_permissions()
+        self.test_get_all_staff_users()
+        self.test_create_staff_user()
+        self.test_update_user_role()
+        self.test_validation_errors()
+        self.test_default_permission_verification()
+        
+        # Print summary
+        self.print_summary()
+    
+    def print_summary(self):
+        """Print test summary"""
+        print("\n" + "=" * 60)
+        print("🏁 RBAC & PERMISSION MATRIX TEST SUMMARY")
+        print("=" * 60)
+        
+        total_tests = len(self.test_results)
+        passed_tests = len([r for r in self.test_results if r["success"]])
+        failed_tests = total_tests - passed_tests
+        
+        print(f"Total Tests: {total_tests}")
+        print(f"✅ Passed: {passed_tests}")
+        print(f"❌ Failed: {failed_tests}")
+        print(f"Success Rate: {(passed_tests/total_tests*100):.1f}%")
+        
+        if failed_tests > 0:
+            print("\n❌ FAILED TESTS:")
+            for result in self.test_results:
+                if not result["success"]:
+                    print(f"  - {result['test']}: {result['message']}")
+        
+        print("\n" + "=" * 60)
+
+
 if __name__ == "__main__":
-    print("🎯 COMPREHENSIVE TESTING OF ALL 5 PHASES")
-    print("=" * 80)
-    print("Testing Enhanced Duplicate Detection, Audit Logging, Blocked Members Report,")
-    print("RBAC Permissions, and Summary Reports Dashboard for ERP360 gym management")
-    print("=" * 80)
-    
-    # Phase 3: Blocked Members Report Testing
-    phase3_tester = Phase3BlockedMembersTester()
-    phase3_tester.run_phase3_tests()
-    
-    print("\n" + "="*80)
-    
-    # Phase 4: RBAC & Permissions Testing
-    phase4_tester = Phase4RBACTester()
-    phase4_tester.run_phase4_tests()
-    
-    print("\n" + "="*80)
-    
-    # Phase 5: Summary Reports Dashboard Testing
-    phase5_tester = Phase5SummaryReportsTester()
-    phase5_tester.run_phase5_tests()
-    
-    print("\n" + "="*80)
-    
-    # Regression Testing
-    regression_tester = RegressionTester()
-    regression_tester.run_regression_tests()
+    # Run RBAC tests
+    rbac_tester = RBACTester()
+    rbac_tester.run_rbac_tests()
     
     print("\n" + "="*80)
     print("🏁 ALL PHASES TESTING COMPLETED")
