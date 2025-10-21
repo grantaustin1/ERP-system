@@ -18,6 +18,7 @@ from passlib.context import CryptContext
 from geopy.geocoders import Nominatim
 from geopy.exc import GeocoderTimedOut, GeocoderServiceError
 from services.respondio_service import RespondIOService
+from normalization import normalize_email, normalize_phone, normalize_name, normalize_full_name
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
