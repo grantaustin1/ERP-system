@@ -17,6 +17,8 @@ import Automations from '@/pages/AutomationsGeneric';
 import Analytics from '@/pages/Analytics';
 import Classes from '@/pages/Classes';
 import DataImport from '@/pages/DataImport';
+import PermissionMatrix from '@/pages/PermissionMatrix';
+import UserRoleManagement from '@/pages/UserRoleManagement';
 import { Toaster } from '@/components/ui/sonner';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
