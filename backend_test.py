@@ -7249,7 +7249,7 @@ class RBACTester:
                         verify_data = verify_response.json()
                         users = verify_data.get("users", [])
                         
-                        test_user = next((user for user in users if user["email"] == "test_trainer@gym.com"), None)
+                        test_user = next((user for user in users if user["email"] == unique_email), None)
                         if test_user:
                             self.log_result("Create Staff User - Verification", True, "Created user appears in users list")
                         else:
