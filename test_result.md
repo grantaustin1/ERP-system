@@ -992,6 +992,79 @@ test_plan:
   test_priority: "high_first"
 
 agent_communication:
+  - agent: "main"
+    message: |
+      🚀 RBAC & PERMISSION MATRIX SYSTEM IMPLEMENTATION COMPLETED - PHASE 4
+      
+      BACKEND IMPLEMENTATION:
+      
+      ✅ PERMISSIONS.PY - 15 ROLES & 10 MODULES:
+      - Defined 15 roles with sensible default permissions:
+        * Business Owner: Full access to all 40 permissions
+        * Head of Admin: Full access to all 40 permissions
+        * 9 Department Heads: Specialized access (Sales, Fitness, Marketing, Operations, HR, Maintenance, Finance, Debt, Training)
+        * Personal Trainers: View-only access (members:view, classes:view, settings:view)
+        * 3 Club-Level Managers: View/Edit within scope (Sales, Fitness, Admin)
+      - Created 10 modules with CRUD permissions (40 total permissions):
+        * Members Management, Billing & Invoicing, Access Control, Classes & Bookings
+        * Marketing, Staff Management, Reports & Analytics, Data Import, Settings, Audit Logs
+        * Each module has: view, create, edit, delete permissions
+      - Updated helper functions to support custom permissions
+      
+      ✅ SERVER.PY - 9 NEW API ENDPOINTS:
+      1. GET /api/rbac/roles - Retrieve all 15 roles with default permission counts
+      2. GET /api/rbac/modules - Retrieve all 10 modules with their 4 permissions each
+      3. GET /api/rbac/permission-matrix - Get complete permission matrix (custom or default)
+      4. POST /api/rbac/permission-matrix - Update permissions for a specific role
+      5. POST /api/rbac/reset-role-permissions - Reset role to default permissions
+      6. GET /api/rbac/users - Get all staff users with roles and permissions
+      7. PUT /api/rbac/users/{user_id}/role - Update a user's role
+      8. POST /api/rbac/users - Create new staff user with role
+      9. GET /api/user/permissions - Existing endpoint (already implemented)
+      
+      ✅ PYDANTIC MODELS ADDED:
+      - RolePermissionMatrix: Permission matrix for a specific role
+      - PermissionMatrixUpdate: Update permissions for a role
+      - UserRoleAssignment: Assign/update user role
+      - StaffUser: Extended user model for staff management
+      
+      FRONTEND IMPLEMENTATION:
+      
+      ✅ PERMISSION MATRIX UI (/permission-matrix):
+      - Table-based permission matrix with 15 roles as columns, 40 permissions as rows
+      - Checkbox-based permission toggle system
+      - Save/Discard changes functionality with change detection
+      - Reset to defaults button for each role
+      - Sticky headers for better navigation
+      - Visual indicators for unsaved changes (yellow banner)
+      - Responsive design with horizontal scrolling
+      
+      ✅ USER ROLE MANAGEMENT UI (/user-roles):
+      - Table listing all staff users with roles and permission counts
+      - Create new staff user dialog (email, full name, password, role)
+      - Edit user role dialog to change roles
+      - View permissions dialog showing all permissions for a role
+      - Role badges with Shield icon
+      - Form validation and error handling
+      
+      ✅ NAVIGATION:
+      - Added "Permissions" link to Sidebar (Shield icon)
+      - Added "User Roles" link to Sidebar (UserCog icon)
+      - Routes added to App.js with PrivateRoute wrappers
+      
+      TESTING PRIORITY:
+      1. Backend API endpoints (all 9 endpoints)
+      2. Permission matrix CRUD operations
+      3. User role assignment and creation
+      4. Default permissions verification for all 15 roles
+      5. Custom permissions storage and retrieval
+      6. Frontend UI functionality and integration
+      
+      Please test backend first using automated testing, then confirm if frontend testing is needed or if user will test manually.
+      
+      Authentication: Use admin@gym.com / admin123 for testing
+      
+
   - agent: "testing"
     message: |
       🎉 CLASSES & SCHEDULING PAGE TESTING COMPLETED - 100% SUCCESS
