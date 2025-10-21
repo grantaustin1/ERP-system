@@ -764,39 +764,48 @@ frontend:
 
   - task: "Permission Matrix UI Component"
     implemented: true
-    working: "NA"
+    working: false
     file: "/app/frontend/src/pages/PermissionMatrix.js"
-    stuck_count: 0
+    stuck_count: 1
     priority: "high"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
       - working: "NA"
         agent: "main"
         comment: "Created comprehensive Permission Matrix page component. Features: Table-based permission matrix UI with roles as columns and module/actions as rows. Checkbox-based permission toggle system. Save/Discard changes functionality with change detection. Reset to defaults button for each role. Sticky headers for better navigation. Integrates with 4 backend APIs: GET /api/rbac/roles, GET /api/rbac/modules, GET /api/rbac/permission-matrix, POST /api/rbac/permission-matrix, POST /api/rbac/reset-role-permissions. Visual indicators for unsaved changes. Responsive design with horizontal scrolling for large matrix. Ready for frontend testing."
+      - working: false
+        agent: "testing"
+        comment: "❌ CRITICAL ISSUE: Permission Matrix page loads but has major functionality problems. Page structure verified: ✅ Title 'Permission Matrix' found, ✅ Subtitle found, ✅ 15 role columns detected. However, ❌ ZERO permission checkboxes found (expected 40 checkboxes for 600 total permissions). This indicates the permission matrix table is not rendering properly. Additionally, extensive React hydration errors in console related to invalid HTML structure (div elements inside table elements). The table structure appears broken preventing permission toggles from working. Page navigation works but core functionality is non-functional."
 
   - task: "User Role Management UI Component"
     implemented: true
-    working: "NA"
+    working: true
     file: "/app/frontend/src/pages/UserRoleManagement.js"
     stuck_count: 0
     priority: "high"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
       - working: "NA"
         agent: "main"
         comment: "Created User Role Management page component. Features: Table listing all staff users with their roles and permission counts. Create new staff user dialog with email, full name, password, and role selection. Edit user role dialog to change a user's role. View permissions dialog to see all permissions for a user's role. Integrates with 4 backend APIs: GET /api/rbac/users, GET /api/rbac/roles, POST /api/rbac/users, PUT /api/rbac/users/{id}/role. Role badges with Shield icon for visual identification. Permission count display for quick reference. Form validation and error handling. Ready for frontend testing."
+      - working: true
+        agent: "testing"
+        comment: "✅ User Role Management page working correctly. Page structure verified: ✅ Title 'User Role Management' found, ✅ Subtitle found, ✅ Add New User button found, ✅ Admin user (admin@gym.com) found in table, ✅ Create New User dialog opens with all form fields (email, full_name, password, role dropdown), ✅ Role dropdown shows all 15 roles including Personal Trainer, ✅ Form submission works for user creation, ✅ All expected table headers present (Full Name, Email, Role, Permissions, Created, Actions). Minor: React hydration errors in console but functionality remains operational. Core user management features working as designed."
 
   - task: "RBAC Navigation Links"
     implemented: true
-    working: "NA"
+    working: true
     file: "/app/frontend/src/components/Sidebar.js, /app/frontend/src/App.js"
     stuck_count: 0
     priority: "high"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
       - working: "NA"
         agent: "main"
         comment: "Added navigation links for Permission Matrix and User Role Management pages. Updated Sidebar.js with Shield and UserCog icons. Added routes /permission-matrix and /user-roles to App.js with PrivateRoute wrappers. Both pages accessible from sidebar navigation."
+      - working: true
+        agent: "testing"
+        comment: "✅ RBAC Navigation Links working perfectly. ✅ Authentication successful with admin@gym.com/admin123, ✅ Navigation to /permission-matrix via sidebar 'Permissions' link (Shield icon) works, ✅ Navigation to /user-roles via sidebar 'User Roles' link (UserCog icon) works, ✅ Both routes protected with PrivateRoute wrappers, ✅ Cross-page navigation between Permission Matrix and User Role Management functional, ✅ URLs update correctly (/permission-matrix and /user-roles), ✅ Page loads and authentication protection working as expected."
 
 
   - task: "Classes & Scheduling Page Component"
