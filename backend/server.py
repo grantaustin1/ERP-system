@@ -4257,6 +4257,280 @@ async def get_user_permissions_endpoint(current_user: User = Depends(get_current
         "all_available_permissions": PERMISSIONS
     }
 
+
+# ===================== RBAC & Permission Matrix API Endpoints =====================
+
+@api_router.get("/rbac/roles")
+async def get_all_roles(current_user: User = Depends(get_current_user)):
+    """Get all available roles in the system"""
+    from permissions import ROLES, DEFAULT_ROLE_PERMISSIONS
+    
+    roles_list = []
+    for role_key, role_name in ROLES.items():
+        default_perms = DEFAULT_ROLE_PERMISSIONS.get(role_key, [])
+        roles_list.append({
+            "key": role_key,
+            "name": role_name,
+            "default_permission_count": len(default_perms)
+        })
+    
+    return {
+        "roles": roles_list,
+        "total_roles": len(roles_list)
+    }
+
+@api_router.get("/rbac/modules")
+async def get_all_modules(current_user: User = Depends(get_current_user)):
+    """Get all modules and their permissions"""
+    from permissions import MODULES, ACTIONS, PERMISSIONS
+    
+    modules_list = []
+    for module_key, module_name in MODULES.items():
+        module_permissions = []
+        for action in ACTIONS:
+            perm_key = f"{module_key}:{action}"
+            module_permissions.append({
+                "key": perm_key,
+                "action": action,
+                "description": PERMISSIONS.get(perm_key, "")
+            })
+        
+        modules_list.append({
+            "key": module_key,
+            "name": module_name,
+            "permissions": module_permissions
+        })
+    
+    return {
+        "modules": modules_list,
+        "total_modules": len(modules_list)
+    }
+
+@api_router.get("/rbac/permission-matrix")
+async def get_permission_matrix(current_user: User = Depends(get_current_user)):
+    """Get the complete permission matrix for all roles"""
+    from permissions import ROLES, MODULES, ACTIONS, DEFAULT_ROLE_PERMISSIONS, PERMISSIONS
+    
+    # Check if custom permissions exist in database
+    custom_matrices = await db.role_permissions.find().to_list(length=None)
+    custom_perms = {matrix['role']: matrix['permissions'] for matrix in custom_matrices}
+    
+    matrix = []
+    for role_key, role_name in ROLES.items():
+        # Use custom permissions if available, otherwise use defaults
+        permissions = custom_perms.get(role_key, DEFAULT_ROLE_PERMISSIONS.get(role_key, []))
+        is_custom = role_key in custom_perms
+        
+        matrix.append({
+            "role": role_key,
+            "role_display_name": role_name,
+            "permissions": permissions,
+            "is_custom": is_custom,
+            "is_default": not is_custom
+        })
+    
+    return {
+        "matrix": matrix,
+        "modules": list(MODULES.keys()),
+        "actions": ACTIONS,
+        "all_permissions": list(PERMISSIONS.keys())
+    }
+
+@api_router.post("/rbac/permission-matrix")
+async def update_permission_matrix(
+    data: PermissionMatrixUpdate,
+    current_user: User = Depends(get_current_user)
+):
+    """Update permissions for a specific role"""
+    from permissions import ROLES, PERMISSIONS
+    
+    # Validate role exists
+    if data.role not in ROLES:
+        raise HTTPException(status_code=400, detail=f"Invalid role: {data.role}")
+    
+    # Validate all permissions are valid
+    invalid_perms = [p for p in data.permissions if p not in PERMISSIONS]
+    if invalid_perms:
+        raise HTTPException(status_code=400, detail=f"Invalid permissions: {invalid_perms}")
+    
+    # Update or create role permissions in database
+    existing = await db.role_permissions.find_one({"role": data.role})
+    
+    role_perm_data = {
+        "role": data.role,
+        "role_display_name": ROLES[data.role],
+        "permissions": data.permissions,
+        "is_default": False,
+        "last_updated": datetime.now(timezone.utc).isoformat(),
+        "updated_by": current_user.id
+    }
+    
+    if existing:
+        # Update existing
+        await db.role_permissions.update_one(
+            {"role": data.role},
+            {"$set": role_perm_data}
+        )
+        message = f"Permissions updated for role: {ROLES[data.role]}"
+    else:
+        # Create new
+        role_perm_data["id"] = str(uuid.uuid4())
+        await db.role_permissions.insert_one(role_perm_data)
+        message = f"Custom permissions created for role: {ROLES[data.role]}"
+    
+    return {
+        "success": True,
+        "message": message,
+        "role": data.role,
+        "permissions": data.permissions
+    }
+
+@api_router.post("/rbac/reset-role-permissions")
+async def reset_role_permissions(
+    role: str,
+    current_user: User = Depends(get_current_user)
+):
+    """Reset a role's permissions back to default"""
+    from permissions import ROLES, DEFAULT_ROLE_PERMISSIONS
+    
+    # Validate role
+    if role not in ROLES:
+        raise HTTPException(status_code=400, detail=f"Invalid role: {role}")
+    
+    # Delete custom permissions (will fall back to defaults)
+    result = await db.role_permissions.delete_one({"role": role})
+    
+    default_perms = DEFAULT_ROLE_PERMISSIONS.get(role, [])
+    
+    return {
+        "success": True,
+        "message": f"Permissions reset to default for role: {ROLES[role]}",
+        "role": role,
+        "permissions": default_perms,
+        "deleted": result.deleted_count > 0
+    }
+
+# ===================== User Role Management API Endpoints =====================
+
+@api_router.get("/rbac/users")
+async def get_all_staff_users(current_user: User = Depends(get_current_user)):
+    """Get all staff users with their roles and permissions"""
+    from permissions import ROLES, DEFAULT_ROLE_PERMISSIONS
+    
+    # Get all users
+    users = await db.users.find().to_list(length=None)
+    
+    # Get custom permissions
+    custom_matrices = await db.role_permissions.find().to_list(length=None)
+    custom_perms = {matrix['role']: matrix['permissions'] for matrix in custom_matrices}
+    
+    staff_users = []
+    for user in users:
+        role_key = user.get('role', 'personal_trainer')
+        role_display = ROLES.get(role_key, role_key)
+        permissions = custom_perms.get(role_key, DEFAULT_ROLE_PERMISSIONS.get(role_key, []))
+        
+        staff_users.append({
+            "id": user['id'],
+            "email": user['email'],
+            "full_name": user.get('full_name', user['email']),
+            "role": role_key,
+            "role_display_name": role_display,
+            "permissions": permissions,
+            "permission_count": len(permissions),
+            "created_at": user.get('created_at', datetime.now(timezone.utc).isoformat())
+        })
+    
+    return {
+        "users": staff_users,
+        "total_users": len(staff_users)
+    }
+
+@api_router.put("/rbac/users/{user_id}/role")
+async def update_user_role(
+    user_id: str,
+    data: UserRoleAssignment,
+    current_user: User = Depends(get_current_user)
+):
+    """Update a user's role"""
+    from permissions import ROLES, DEFAULT_ROLE_PERMISSIONS
+    
+    # Validate role
+    if data.role not in ROLES:
+        raise HTTPException(status_code=400, detail=f"Invalid role: {data.role}")
+    
+    # Check if user exists
+    user = await db.users.find_one({"id": user_id})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    # Update user role
+    await db.users.update_one(
+        {"id": user_id},
+        {"$set": {"role": data.role}}
+    )
+    
+    # Get permissions for this role
+    custom_perms = await db.role_permissions.find_one({"role": data.role})
+    permissions = custom_perms['permissions'] if custom_perms else DEFAULT_ROLE_PERMISSIONS.get(data.role, [])
+    
+    return {
+        "success": True,
+        "message": f"User role updated to {ROLES[data.role]}",
+        "user_id": user_id,
+        "new_role": data.role,
+        "role_display_name": ROLES[data.role],
+        "permissions": permissions
+    }
+
+@api_router.post("/rbac/users")
+async def create_staff_user(
+    user_data: dict,
+    current_user: User = Depends(get_current_user)
+):
+    """Create a new staff user with specified role"""
+    from permissions import ROLES
+    
+    # Validate required fields
+    if not all(key in user_data for key in ['email', 'full_name', 'role', 'password']):
+        raise HTTPException(status_code=400, detail="Missing required fields: email, full_name, role, password")
+    
+    # Validate role
+    if user_data['role'] not in ROLES:
+        raise HTTPException(status_code=400, detail=f"Invalid role: {user_data['role']}")
+    
+    # Check if user already exists
+    existing_user = await db.users.find_one({"email": user_data['email']})
+    if existing_user:
+        raise HTTPException(status_code=400, detail="User with this email already exists")
+    
+    # Hash password
+    hashed_password = bcrypt.hashpw(user_data['password'].encode('utf-8'), bcrypt.gensalt())
+    
+    # Create user
+    new_user = {
+        "id": str(uuid.uuid4()),
+        "email": user_data['email'],
+        "password": hashed_password.decode('utf-8'),
+        "full_name": user_data['full_name'],
+        "role": user_data['role'],
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    
+    await db.users.insert_one(new_user)
+    
+    # Remove password from response
+    new_user.pop('password')
+    new_user['role_display_name'] = ROLES[user_data['role']]
+    
+    return {
+        "success": True,
+        "message": "Staff user created successfully",
+        "user": new_user
+    }
+
+
+
 @api_router.get("/import/field-definitions")
 async def get_field_definitions(import_type: str, current_user: User = Depends(get_current_user)):
     """Get available database fields for mapping"""
