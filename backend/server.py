@@ -4519,14 +4519,14 @@ async def create_staff_user(
     
     await db.users.insert_one(new_user)
     
-    # Remove password from response
-    new_user.pop('password')
-    new_user['role_display_name'] = ROLES[user_data['role']]
-    
+    # Return clean response without MongoDB ObjectId
     return {
-        "success": True,
-        "message": "Staff user created successfully",
-        "user": new_user
+        "id": new_user["id"],
+        "email": new_user["email"],
+        "full_name": new_user["full_name"],
+        "role": new_user["role"],
+        "role_display_name": ROLES[user_data['role']],
+        "created_at": new_user["created_at"]
     }
 
 
