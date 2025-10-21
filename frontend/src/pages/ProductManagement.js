@@ -295,15 +295,18 @@ export default function ProductManagement() {
                       <Select
                         value={productForm.category_id}
                         onValueChange={(value) => setProductForm({...productForm, category_id: value})}
-                        required
                       >
                         <SelectTrigger>
                           <SelectValue placeholder="Select category" />
                         </SelectTrigger>
-                        <SelectContent>
-                          {categories.map(cat => (
-                            <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
-                          ))}
+                        <SelectContent className="z-[100]">
+                          {categories.length === 0 ? (
+                            <div className="p-2 text-sm text-gray-500">No categories available. Create a category first.</div>
+                          ) : (
+                            categories.map(cat => (
+                              <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
+                            ))
+                          )}
                         </SelectContent>
                       </Select>
                     </div>
