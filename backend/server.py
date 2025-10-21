@@ -318,6 +318,42 @@ class Token(BaseModel):
     access_token: str
     token_type: str = "bearer"
 
+# ===================== RBAC & Permission Models =====================
+
+class RolePermissionMatrix(BaseModel):
+    """Permission matrix for a specific role"""
+    model_config = ConfigDict(extra="ignore")
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    role: str  # business_owner, head_admin, sales_head, etc.
+    role_display_name: str  # Business Owner, Head of Admin, etc.
+    permissions: List[str] = []  # List of permission strings (e.g., ["members:view", "members:create"])
+    is_default: bool = False  # True if using default permissions
+    last_updated: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_by: Optional[str] = None  # User ID who last updated
+
+class PermissionMatrixUpdate(BaseModel):
+    """Update permissions for a role"""
+    role: str
+    permissions: List[str]
+
+class UserRoleAssignment(BaseModel):
+    """Assign/update user role"""
+    user_id: str
+    role: str
+
+class StaffUser(BaseModel):
+    """Extended user model for staff management"""
+    model_config = ConfigDict(extra="ignore")
+    id: str
+    email: EmailStr
+    full_name: str
+    role: str
+    role_display_name: str
+    created_at: datetime
+    permissions: List[str] = []  # Permissions for this user's role
+
+
+
 class AuditLog(BaseModel):
     """Comprehensive audit log for all API requests"""
     model_config = ConfigDict(extra="ignore")
