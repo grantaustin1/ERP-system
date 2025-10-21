@@ -5629,10 +5629,10 @@ class DuplicateDetectionTester:
                 
                 # Check duplicate with canonical name
                 duplicate_check_data = {
-                    "email": f"robert.smith.{int(time.time())}@example.com",
-                    "phone": f"+2784567{int(time.time()) % 10000:04d}",
+                    "email": f"robert.smith.{timestamp}@example.com",
+                    "phone": f"+2784567{(timestamp + 1) % 10000:04d}",
                     "first_name": "Robert",  # Canonical form of "Bob"
-                    "last_name": "Smith"
+                    "last_name": f"Smith{timestamp}"
                 }
                 
                 response = requests.post(f"{API_BASE}/members/check-duplicate", 
