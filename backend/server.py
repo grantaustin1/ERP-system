@@ -4511,7 +4511,7 @@ async def create_staff_user(
     new_user = {
         "id": str(uuid.uuid4()),
         "email": user_data['email'],
-        "password": hashed_password.decode('utf-8'),
+        "password": hashed_password,
         "full_name": user_data['full_name'],
         "role": user_data['role'],
         "created_at": datetime.now(timezone.utc).isoformat()
