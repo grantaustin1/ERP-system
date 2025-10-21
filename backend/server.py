@@ -1443,16 +1443,23 @@ async def get_commission_dashboard(current_user: User = Depends(get_current_user
 # Members Routes
 @api_router.post("/members", response_model=Member)
 async def create_member(data: MemberCreate, current_user: User = Depends(get_current_user)):
-    # Check for duplicates
+    # Enhanced duplicate checking with normalization
     duplicates = []
     
-    # Check email
-    if data.email:
-        email_exists = await db.members.find_one({"email": data.email.lower()}, {"_id": 0})
+    # Normalize input data
+    norm_email = normalize_email(data.email) if data.email else None
+    norm_phone = normalize_phone(data.phone) if data.phone else None
+    norm_first, norm_last = normalize_full_name(data.first_name, data.last_name)
+    
+    # Check normalized email
+    if norm_email:
+        email_exists = await db.members.find_one({"norm_email": norm_email}, {"_id": 0})
         if email_exists:
             duplicates.append({
                 "field": "email",
                 "value": data.email,
+                "normalized_value": norm_email,
+                "match_type": "normalized_email",
                 "existing_member": {
                     "id": email_exists["id"],
                     "name": f"{email_exists['first_name']} {email_exists['last_name']}",
@@ -1461,13 +1468,15 @@ async def create_member(data: MemberCreate, current_user: User = Depends(get_cur
                 }
             })
     
-    # Check phone
-    if data.phone:
-        phone_exists = await db.members.find_one({"phone": data.phone}, {"_id": 0})
+    # Check normalized phone
+    if norm_phone:
+        phone_exists = await db.members.find_one({"norm_phone": norm_phone}, {"_id": 0})
         if phone_exists:
             duplicates.append({
                 "field": "phone",
                 "value": data.phone,
+                "normalized_value": norm_phone,
+                "match_type": "normalized_phone",
                 "existing_member": {
                     "id": phone_exists["id"],
                     "name": f"{phone_exists['first_name']} {phone_exists['last_name']}",
@@ -1476,24 +1485,25 @@ async def create_member(data: MemberCreate, current_user: User = Depends(get_cur
                 }
             })
     
-    # Check name (case-insensitive)
-    name_regex = {"$regex": f"^{data.first_name}$", "$options": "i"}
-    lastname_regex = {"$regex": f"^{data.last_name}$", "$options": "i"}
-    name_exists = await db.members.find_one({
-        "first_name": name_regex,
-        "last_name": lastname_regex
-    }, {"_id": 0})
-    if name_exists:
-        duplicates.append({
-            "field": "name",
-            "value": f"{data.first_name} {data.last_name}",
-            "existing_member": {
-                "id": name_exists["id"],
-                "name": f"{name_exists['first_name']} {name_exists['last_name']}",
-                "email": name_exists.get("email"),
-                "phone": name_exists.get("phone")
-            }
-        })
+    # Check normalized name (including nickname canonicalization)
+    if norm_first and norm_last:
+        name_exists = await db.members.find_one({
+            "norm_first_name": norm_first,
+            "norm_last_name": norm_last
+        }, {"_id": 0})
+        if name_exists:
+            duplicates.append({
+                "field": "name",
+                "value": f"{data.first_name} {data.last_name}",
+                "normalized_value": f"{norm_first} {norm_last}",
+                "match_type": "normalized_name (nickname-aware)",
+                "existing_member": {
+                    "id": name_exists["id"],
+                    "name": f"{name_exists['first_name']} {name_exists['last_name']}",
+                    "email": name_exists.get("email"),
+                    "phone": name_exists.get("phone")
+                }
+            })
     
     # If duplicates found, return error with details
     if duplicates:
@@ -1512,6 +1522,12 @@ async def create_member(data: MemberCreate, current_user: User = Depends(get_cur
     
     member_dict = data.model_dump()
     member = Member(**member_dict)
+    
+    # Populate normalized fields for future duplicate checks
+    member.norm_email = norm_email
+    member.norm_phone = norm_phone
+    member.norm_first_name = norm_first
+    member.norm_last_name = norm_last
     
     # Calculate expiry date
     duration_months = membership_type["duration_months"]
