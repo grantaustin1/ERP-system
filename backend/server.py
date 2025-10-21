@@ -4504,8 +4504,8 @@ async def create_staff_user(
     if existing_user:
         raise HTTPException(status_code=400, detail="User with this email already exists")
     
-    # Hash password
-    hashed_password = bcrypt.hashpw(user_data['password'].encode('utf-8'), bcrypt.gensalt())
+    # Hash password using existing pwd_context
+    hashed_password = hash_password(user_data['password'])
     
     # Create user
     new_user = {
