@@ -816,7 +816,13 @@ metadata:
   run_ui: false
 
 test_plan:
-  current_focus: []
+  current_focus: 
+    - "Enhanced Duplicate Detection - Check Duplicate Endpoint"
+    - "Gmail Email Normalization"
+    - "Phone Number Normalization"
+    - "Nickname Canonicalization"
+    - "Member Creation Duplicate Blocking"
+    - "Audit Logging Middleware"
   stuck_tasks: []
   test_all: false
   test_priority: "high_first"
