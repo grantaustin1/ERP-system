@@ -5039,6 +5039,11 @@ async def create_product(product: ProductCreate, current_user: User = Depends(ge
     product_data["created_by"] = current_user.id
     
     await db.products.insert_one(product_data)
+    
+    # Remove MongoDB's _id before returning
+    if "_id" in product_data:
+        del product_data["_id"]
+    
     return {"success": True, "product": product_data}
 
 @api_router.put("/pos/products/{product_id}")
