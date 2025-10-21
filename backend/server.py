@@ -4053,6 +4053,174 @@ async def review_blocked_attempt(
     
     return {"success": True, "message": f"Attempt marked as {status}"}
 
+# Summary Reports Dashboard
+@api_router.get("/reports/summary")
+async def get_summary_report(current_user: User = Depends(get_current_user)):
+    """
+    Get comprehensive summary statistics for dashboard
+    Returns key metrics across all system resources
+    """
+    from datetime import timedelta
+    
+    # Date ranges
+    today = datetime.now(timezone.utc)
+    thirty_days_ago = today - timedelta(days=30)
+    seven_days_ago = today - timedelta(days=7)
+    
+    # Members statistics
+    total_members = await db.members.count_documents({})
+    active_members = await db.members.count_documents({"membership_status": "active"})
+    suspended_members = await db.members.count_documents({"membership_status": "suspended"})
+    new_members_30d = await db.members.count_documents({
+        "join_date": {"$gte": thirty_days_ago.isoformat()}
+    })
+    new_members_7d = await db.members.count_documents({
+        "join_date": {"$gte": seven_days_ago.isoformat()}
+    })
+    
+    # Invoice/Revenue statistics
+    total_invoices = await db.invoices.count_documents({})
+    paid_invoices = await db.invoices.count_documents({"status": "paid"})
+    pending_invoices = await db.invoices.count_documents({"status": "pending"})
+    overdue_invoices = await db.invoices.count_documents({"status": "overdue"})
+    
+    # Calculate total revenue (paid invoices)
+    paid_invoices_list = await db.invoices.find({"status": "paid"}, {"amount": 1}).to_list(None)
+    total_revenue = sum(inv.get("amount", 0) for inv in paid_invoices_list)
+    
+    # Revenue last 30 days
+    recent_paid = await db.invoices.find({
+        "status": "paid",
+        "created_at": {"$gte": thirty_days_ago.isoformat()}
+    }, {"amount": 1}).to_list(None)
+    revenue_30d = sum(inv.get("amount", 0) for inv in recent_paid)
+    
+    # Classes statistics
+    total_classes = await db.classes.count_documents({})
+    active_classes = await db.classes.count_documents({"is_active": True})
+    
+    # Bookings statistics
+    total_bookings = await db.bookings.count_documents({})
+    confirmed_bookings = await db.bookings.count_documents({"status": "confirmed"})
+    waitlist_bookings = await db.bookings.count_documents({"status": "waitlist"})
+    attended_bookings = await db.bookings.count_documents({"status": "attended"})
+    
+    # Booking stats last 30 days
+    recent_bookings = await db.bookings.count_documents({
+        "created_at": {"$gte": thirty_days_ago.isoformat()}
+    })
+    
+    # Access logs (check-ins)
+    total_checkins = await db.access_logs.count_documents({"access_granted": True})
+    checkins_30d = await db.access_logs.count_documents({
+        "timestamp": {"$gte": thirty_days_ago.isoformat()},
+        "access_granted": True
+    })
+    checkins_7d = await db.access_logs.count_documents({
+        "timestamp": {"$gte": seven_days_ago.isoformat()},
+        "access_granted": True
+    })
+    
+    # Automations statistics
+    total_automations = await db.automations.count_documents({})
+    enabled_automations = await db.automations.count_documents({"enabled": True})
+    automation_executions_30d = await db.automation_executions.count_documents({
+        "timestamp": {"$gte": thirty_days_ago.isoformat()}
+    })
+    
+    # Duplicate detection stats
+    blocked_attempts_total = await db.blocked_member_attempts.count_documents({})
+    blocked_attempts_30d = await db.blocked_member_attempts.count_documents({
+        "timestamp": {"$gte": thirty_days_ago.isoformat()}
+    })
+    pending_reviews = await db.blocked_member_attempts.count_documents({"review_status": "pending"})
+    
+    # Audit logs statistics
+    api_calls_30d = await db.audit_logs.count_documents({
+        "timestamp": {"$gte": thirty_days_ago.isoformat()}
+    })
+    failed_requests_30d = await db.audit_logs.count_documents({
+        "timestamp": {"$gte": thirty_days_ago.isoformat()},
+        "success": False
+    })
+    
+    # Calculate averages
+    avg_bookings_per_class = total_bookings / total_classes if total_classes > 0 else 0
+    attendance_rate = (attended_bookings / total_bookings * 100) if total_bookings > 0 else 0
+    payment_success_rate = (paid_invoices / total_invoices * 100) if total_invoices > 0 else 0
+    
+    return {
+        "generated_at": today.isoformat(),
+        "members": {
+            "total": total_members,
+            "active": active_members,
+            "suspended": suspended_members,
+            "new_30d": new_members_30d,
+            "new_7d": new_members_7d,
+            "growth_rate_30d": round((new_members_30d / total_members * 100) if total_members > 0 else 0, 2)
+        },
+        "revenue": {
+            "total": round(total_revenue, 2),
+            "last_30d": round(revenue_30d, 2),
+            "avg_per_member": round(total_revenue / active_members, 2) if active_members > 0 else 0
+        },
+        "invoices": {
+            "total": total_invoices,
+            "paid": paid_invoices,
+            "pending": pending_invoices,
+            "overdue": overdue_invoices,
+            "payment_success_rate": round(payment_success_rate, 2)
+        },
+        "classes_and_bookings": {
+            "total_classes": total_classes,
+            "active_classes": active_classes,
+            "total_bookings": total_bookings,
+            "confirmed": confirmed_bookings,
+            "waitlist": waitlist_bookings,
+            "attended": attended_bookings,
+            "recent_bookings_30d": recent_bookings,
+            "avg_bookings_per_class": round(avg_bookings_per_class, 2),
+            "attendance_rate": round(attendance_rate, 2)
+        },
+        "access_control": {
+            "total_checkins": total_checkins,
+            "checkins_30d": checkins_30d,
+            "checkins_7d": checkins_7d,
+            "avg_checkins_per_day_30d": round(checkins_30d / 30, 2)
+        },
+        "automations": {
+            "total": total_automations,
+            "enabled": enabled_automations,
+            "executions_30d": automation_executions_30d
+        },
+        "duplicate_detection": {
+            "blocked_attempts_total": blocked_attempts_total,
+            "blocked_attempts_30d": blocked_attempts_30d,
+            "pending_reviews": pending_reviews
+        },
+        "system": {
+            "api_calls_30d": api_calls_30d,
+            "failed_requests_30d": failed_requests_30d,
+            "success_rate_30d": round((1 - failed_requests_30d / api_calls_30d) * 100, 2) if api_calls_30d > 0 else 100
+        }
+    }
+
+@api_router.get("/user/permissions")
+async def get_user_permissions_endpoint(current_user: User = Depends(get_current_user)):
+    """Get current user's permissions based on their role"""
+    from permissions import get_user_permissions, PERMISSIONS
+    
+    user_permissions = get_user_permissions(current_user.role)
+    
+    return {
+        "user_id": current_user.id,
+        "user_email": current_user.email,
+        "role": current_user.role,
+        "permissions": user_permissions,
+        "total_permissions": len(user_permissions),
+        "all_available_permissions": PERMISSIONS
+    }
+
 @api_router.get("/import/field-definitions")
 async def get_field_definitions(import_type: str, current_user: User = Depends(get_current_user)):
     """Get available database fields for mapping"""
