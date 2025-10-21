@@ -5852,7 +5852,10 @@ class AuditLoggingTester:
                 if method == "GET":
                     response = requests.get(url, headers=self.headers)
                 elif method == "POST":
-                    response = requests.post(url, json=data, headers=self.headers)
+                    if "check-duplicate" in url:
+                        response = requests.post(url, params=data, headers=self.headers)
+                    else:
+                        response = requests.post(url, json=data, headers=self.headers)
                 
                 # Just verify the call was made, don't fail on response
                 self.log_result(f"API Call {method} {url.split('/')[-1]}", True, 
