@@ -3826,6 +3826,207 @@ async def get_import_logs(current_user: User = Depends(get_current_user)):
             log["created_at"] = datetime.fromisoformat(log["created_at"])
     return logs
 
+# Blocked Members Report Endpoints
+@api_router.get("/reports/blocked-members")
+async def get_blocked_members(
+    status: Optional[str] = None,
+    limit: int = 100,
+    current_user: User = Depends(get_current_user)
+):
+    """Get blocked member attempts for staff review"""
+    query = {}
+    if status:
+        query["review_status"] = status
+    
+    blocked_attempts = await db.blocked_member_attempts.find(query, {"_id": 0}).sort("timestamp", -1).to_list(limit)
+    
+    # Convert datetime strings back to datetime objects for response
+    for attempt in blocked_attempts:
+        if isinstance(attempt.get("timestamp"), str):
+            attempt["timestamp"] = datetime.fromisoformat(attempt["timestamp"])
+        if attempt.get("reviewed_at") and isinstance(attempt["reviewed_at"], str):
+            attempt["reviewed_at"] = datetime.fromisoformat(attempt["reviewed_at"])
+    
+    return {
+        "total": len(blocked_attempts),
+        "blocked_attempts": blocked_attempts
+    }
+
+@api_router.get("/reports/blocked-members/csv")
+async def export_blocked_members_csv(current_user: User = Depends(get_current_user)):
+    """Export blocked member attempts as CSV"""
+    import csv
+    import io
+    from fastapi.responses import StreamingResponse
+    
+    blocked_attempts = await db.blocked_member_attempts.find({}, {"_id": 0}).sort("timestamp", -1).to_list(1000)
+    
+    # Create CSV in memory
+    output = io.StringIO()
+    csv_writer = csv.writer(output)
+    
+    # Write header
+    csv_writer.writerow([
+        "Timestamp", "First Name", "Last Name", "Email", "Phone",
+        "Duplicate Fields", "Match Types", "Existing Members",
+        "Attempted By", "Review Status", "Reviewed By", "Review Notes"
+    ])
+    
+    # Write data
+    for attempt in blocked_attempts:
+        timestamp = attempt.get("timestamp", "")
+        if isinstance(timestamp, str):
+            timestamp = datetime.fromisoformat(timestamp).strftime("%Y-%m-%d %H:%M:%S")
+        elif isinstance(timestamp, datetime):
+            timestamp = timestamp.strftime("%Y-%m-%d %H:%M:%S")
+        
+        existing_members_str = "; ".join([
+            f"{m.get('name')} ({m.get('email')})" 
+            for m in attempt.get("existing_members", [])
+        ])
+        
+        csv_writer.writerow([
+            timestamp,
+            attempt.get("attempted_first_name", ""),
+            attempt.get("attempted_last_name", ""),
+            attempt.get("attempted_email", ""),
+            attempt.get("attempted_phone", ""),
+            ", ".join(attempt.get("duplicate_fields", [])),
+            ", ".join(attempt.get("match_types", [])),
+            existing_members_str,
+            attempt.get("attempted_by_email", ""),
+            attempt.get("review_status", "pending"),
+            attempt.get("reviewed_by", ""),
+            attempt.get("review_notes", "")
+        ])
+    
+    output.seek(0)
+    
+    return StreamingResponse(
+        iter([output.getvalue()]),
+        media_type="text/csv",
+        headers={"Content-Disposition": "attachment; filename=blocked_members.csv"}
+    )
+
+@api_router.get("/reports/blocked-members/html")
+async def view_blocked_members_html(current_user: User = Depends(get_current_user)):
+    """View blocked member attempts as HTML page"""
+    from fastapi.responses import HTMLResponse
+    
+    blocked_attempts = await db.blocked_member_attempts.find({}, {"_id": 0}).sort("timestamp", -1).to_list(100)
+    
+    # Generate HTML
+    html_content = """
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>Blocked Member Attempts - Staff Review</title>
+        <style>
+            body { font-family: Arial, sans-serif; margin: 20px; background: #f5f5f5; }
+            h1 { color: #333; }
+            .summary { background: white; padding: 15px; border-radius: 5px; margin-bottom: 20px; }
+            table { width: 100%; border-collapse: collapse; background: white; }
+            th { background: #4CAF50; color: white; padding: 12px; text-align: left; }
+            td { padding: 10px; border-bottom: 1px solid #ddd; }
+            tr:hover { background: #f5f5f5; }
+            .badge { padding: 4px 8px; border-radius: 3px; font-size: 12px; }
+            .badge-pending { background: #ff9800; color: white; }
+            .badge-approved { background: #4CAF50; color: white; }
+            .badge-rejected { background: #f44336; color: white; }
+            .duplicate-field { display: inline-block; background: #e3f2fd; color: #1976d2; padding: 2px 6px; margin: 2px; border-radius: 3px; font-size: 11px; }
+        </style>
+    </head>
+    <body>
+        <h1>🚫 Blocked Member Attempts - Staff Review</h1>
+        <div class="summary">
+            <strong>Total Blocked Attempts:</strong> """ + str(len(blocked_attempts)) + """
+        </div>
+        <table>
+            <thead>
+                <tr>
+                    <th>Timestamp</th>
+                    <th>Attempted Member</th>
+                    <th>Contact Info</th>
+                    <th>Duplicate Detection</th>
+                    <th>Existing Member(s)</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+    """
+    
+    for attempt in blocked_attempts:
+        timestamp = attempt.get("timestamp", "")
+        if isinstance(timestamp, str):
+            timestamp = datetime.fromisoformat(timestamp).strftime("%Y-%m-%d %H:%M")
+        elif isinstance(timestamp, datetime):
+            timestamp = timestamp.strftime("%Y-%m-%d %H:%M")
+        
+        name = f"{attempt.get('attempted_first_name', '')} {attempt.get('attempted_last_name', '')}"
+        email = attempt.get('attempted_email', '')
+        phone = attempt.get('attempted_phone', '')
+        
+        duplicate_fields = "".join([
+            f'<span class="duplicate-field">{field}</span>' 
+            for field in attempt.get('duplicate_fields', [])
+        ])
+        
+        existing_members = "<br>".join([
+            f"• {m.get('name')} ({m.get('email')})" 
+            for m in attempt.get('existing_members', [])
+        ])
+        
+        status = attempt.get('review_status', 'pending')
+        status_badge = f'<span class="badge badge-{status}">{status.upper()}</span>'
+        
+        html_content += f"""
+                <tr>
+                    <td>{timestamp}</td>
+                    <td><strong>{name}</strong></td>
+                    <td>{email}<br>{phone}</td>
+                    <td>{duplicate_fields}</td>
+                    <td style="font-size: 12px;">{existing_members}</td>
+                    <td>{status_badge}</td>
+                </tr>
+        """
+    
+    html_content += """
+            </tbody>
+        </table>
+    </body>
+    </html>
+    """
+    
+    return HTMLResponse(content=html_content)
+
+@api_router.patch("/reports/blocked-members/{attempt_id}/review")
+async def review_blocked_attempt(
+    attempt_id: str,
+    status: str,
+    notes: Optional[str] = None,
+    current_user: User = Depends(get_current_user)
+):
+    """Update review status of a blocked attempt"""
+    if status not in ["approved", "rejected", "merged"]:
+        raise HTTPException(status_code=400, detail="Invalid status")
+    
+    update_data = {
+        "review_status": status,
+        "reviewed_by": current_user.email,
+        "reviewed_at": datetime.now(timezone.utc).isoformat(),
+        "review_notes": notes
+    }
+    
+    result = await db.blocked_member_attempts.update_one(
+        {"id": attempt_id},
+        {"$set": update_data}
+    )
+    
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Blocked attempt not found")
+    
+    return {"success": True, "message": f"Attempt marked as {status}"}
+
 @api_router.get("/import/field-definitions")
 async def get_field_definitions(import_type: str, current_user: User = Depends(get_current_user)):
     """Get available database fields for mapping"""
