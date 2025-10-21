@@ -1002,15 +1002,6 @@ metadata:
 
 test_plan:
   current_focus: 
-    - "RBAC System - 15 Roles Definition"
-    - "RBAC API - Get All Roles"
-    - "RBAC API - Get All Modules"
-    - "RBAC API - Get Permission Matrix"
-    - "RBAC API - Update Permission Matrix"
-    - "RBAC API - Reset Role Permissions"
-    - "RBAC API - Get All Staff Users"
-    - "RBAC API - Update User Role"
-    - "RBAC API - Create Staff User"
     - "Permission Matrix UI Component"
     - "User Role Management UI Component"
     - "RBAC Navigation Links"
