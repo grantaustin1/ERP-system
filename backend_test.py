@@ -5609,11 +5609,12 @@ class DuplicateDetectionTester:
             return False
         
         # Create member with nickname
+        timestamp = int(time.time())
         member_data = {
             "first_name": "Bob",
-            "last_name": "Smith",
-            "email": f"bob.smith.{int(time.time())}@example.com",
-            "phone": f"+2784567{int(time.time()) % 10000:04d}",
+            "last_name": f"Smith{timestamp}",
+            "email": f"bob.smith.{timestamp}@example.com",
+            "phone": f"+2784567{timestamp % 10000:04d}",
             "membership_type_id": membership_type_id
         }
         
