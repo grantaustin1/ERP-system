@@ -3500,6 +3500,162 @@ class FieldConfigurationUpdate(BaseModel):
     validation_rules: Optional[dict] = None
     error_message: Optional[str] = None
 
+
+
+# ===================== POS (Point of Sale) Models =====================
+
+class ProductCategory(BaseModel):
+    """Product category for POS system"""
+    model_config = ConfigDict(extra="ignore")
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    name: str  # Cold Drinks, Hot Drinks, Food, Snacks, Supplements, Merchandise
+    description: Optional[str] = None
+    display_order: int = 0
+    icon: Optional[str] = None  # Icon name for UI
+    is_active: bool = True
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+class ProductCategoryCreate(BaseModel):
+    name: str
+    description: Optional[str] = None
+    display_order: int = 0
+    icon: Optional[str] = None
+
+class Product(BaseModel):
+    """Product for POS system with stock tracking"""
+    model_config = ConfigDict(extra="ignore")
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    name: str
+    sku: Optional[str] = None  # Stock Keeping Unit / Barcode
+    category_id: str
+    category_name: Optional[str] = None  # Denormalized for quick access
+    # Pricing
+    cost_price: float  # What you pay for the product
+    markup_percent: float  # Markup percentage (e.g., 50 for 50%)
+    selling_price: float  # Auto-calculated: cost_price * (1 + markup_percent/100)
+    tax_rate: float = 15.0  # VAT/Tax percentage (default 15%)
+    # Stock
+    stock_quantity: int = 0
+    low_stock_threshold: int = 10
+    # Display
+    description: Optional[str] = None
+    image_url: Optional[str] = None
+    is_favorite: bool = False  # Quick access pin
+    is_active: bool = True
+    # Tracking
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    created_by: Optional[str] = None
+
+class ProductCreate(BaseModel):
+    name: str
+    sku: Optional[str] = None
+    category_id: str
+    cost_price: float
+    markup_percent: float
+    tax_rate: float = 15.0
+    stock_quantity: int = 0
+    low_stock_threshold: int = 10
+    description: Optional[str] = None
+    image_url: Optional[str] = None
+    is_favorite: bool = False
+
+class ProductUpdate(BaseModel):
+    name: Optional[str] = None
+    sku: Optional[str] = None
+    category_id: Optional[str] = None
+    cost_price: Optional[float] = None
+    markup_percent: Optional[float] = None
+    tax_rate: Optional[float] = None
+    stock_quantity: Optional[int] = None
+    low_stock_threshold: Optional[int] = None
+    description: Optional[str] = None
+    image_url: Optional[str] = None
+    is_favorite: Optional[bool] = None
+    is_active: Optional[bool] = None
+
+class POSTransactionItem(BaseModel):
+    """Individual item in a POS transaction"""
+    product_id: str
+    product_name: str
+    quantity: int
+    unit_price: float  # Price per unit (including markup)
+    tax_rate: float
+    subtotal: float  # quantity * unit_price
+    tax_amount: float  # subtotal * (tax_rate / 100)
+    total: float  # subtotal + tax_amount
+
+class POSTransaction(BaseModel):
+    """Complete POS transaction/sale"""
+    model_config = ConfigDict(extra="ignore")
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    transaction_number: str  # Human-readable transaction number (e.g., POS-2024-001)
+    # Transaction details
+    transaction_date: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    transaction_type: str  # product_sale, membership_payment, session_payment, account_payment, debt_payment
+    # Items (for product sales)
+    items: List[POSTransactionItem] = []
+    # Member info (optional - for account/debt/membership payments)
+    member_id: Optional[str] = None
+    member_name: Optional[str] = None
+    # Payment details
+    payment_method: str  # Cash, Card, EFT, Mobile Payment
+    payment_reference: Optional[str] = None  # Reference number for card/EFT
+    # Financial breakdown
+    subtotal: float  # Total before tax and discount
+    tax_amount: float  # Total tax
+    discount_percent: float = 0.0  # Discount percentage
+    discount_amount: float = 0.0  # Discount in currency
+    total_amount: float  # Final amount paid
+    # Linked records
+    invoice_id: Optional[str] = None  # If paying an invoice
+    payment_id: Optional[str] = None  # Created payment record ID
+    # Staff tracking
+    captured_by_user_id: str
+    captured_by_name: str
+    # Status
+    status: str = "completed"  # completed, void, refunded
+    void_reason: Optional[str] = None
+    voided_by: Optional[str] = None
+    voided_at: Optional[datetime] = None
+    # Notes
+    notes: Optional[str] = None
+
+class POSTransactionCreate(BaseModel):
+    transaction_type: str
+    items: List[POSTransactionItem] = []
+    member_id: Optional[str] = None
+    payment_method: str
+    payment_reference: Optional[str] = None
+    subtotal: float
+    tax_amount: float
+    discount_percent: float = 0.0
+    discount_amount: float = 0.0
+    total_amount: float
+    invoice_id: Optional[str] = None
+    notes: Optional[str] = None
+
+class StockAdjustment(BaseModel):
+    """Stock adjustment record"""
+    model_config = ConfigDict(extra="ignore")
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    product_id: str
+    product_name: str
+    adjustment_type: str  # restock, damage, theft, correction, sale
+    quantity_change: int  # Positive for increase, negative for decrease
+    previous_quantity: int
+    new_quantity: int
+    reason: Optional[str] = None
+    adjusted_by_user_id: str
+    adjusted_by_name: str
+    adjustment_date: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+class StockAdjustmentCreate(BaseModel):
+    product_id: str
+    adjustment_type: str
+    quantity_change: int
+    reason: Optional[str] = None
+
 @api_router.post("/import/parse-csv")
 async def parse_csv_file(file: UploadFile, current_user: User = Depends(get_current_user)):
     """Parse CSV file and return headers and sample data for mapping"""
