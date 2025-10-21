@@ -11,7 +11,6 @@ import {
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Shield, Save, RotateCcw, CheckCircle2, XCircle } from 'lucide-react';
-import { Checkbox } from '../components/ui/checkbox';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:8001';
 
