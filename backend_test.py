@@ -5639,7 +5639,7 @@ class DuplicateDetectionTester:
                     if result.get("has_duplicates", False):
                         duplicates = result.get("duplicates", [])
                         name_duplicate = next((d for d in duplicates if d["field"] == "name"), None)
-                        if name_duplicate and "nickname-aware" in name_duplicate.get("match_type", ""):
+                        if name_duplicate and name_duplicate.get("match_type") == "normalized_name":
                             self.log_result("Nickname Canonicalization", True, 
                                           "Successfully detected name duplicate via nickname canonicalization",
                                           {"original": f"{member_data['first_name']} {member_data['last_name']}", 
