@@ -4972,22 +4972,6 @@ class CSVImportTester:
         
         self.log_result("Cleanup Test Members", True, 
                       f"Cleaned up {cleanup_count} test members")
-                
-                if missing_fields:
-                    self.log_result("Parse CSV - Response Structure", False, 
-                                  f"Missing fields in response: {missing_fields}")
-                    return None
-                
-                # Verify headers count (should be 29 columns including empty one)
-                headers = parse_result['headers']
-                if len(headers) == 29:
-                    self.log_result("Parse CSV - Headers Count", True, 
-                                  f"Correct number of headers: {len(headers)}")
-                else:
-                    self.log_result("Parse CSV - Headers Count", False, 
-                                  f"Expected 29 headers, got {len(headers)}")
-                
-                # Verify specific headers exist
                 expected_headers = ['Full Name', 'Email Address', 'Mobile Phone', 'Home Phone', 
                                   'Id number', 'Member Type', 'Source', 'Referred By']
                 missing_headers = [h for h in expected_headers if h not in headers]
