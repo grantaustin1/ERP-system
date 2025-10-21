@@ -1564,8 +1564,34 @@ async def create_member(data: MemberCreate, current_user: User = Depends(get_cur
                 }
             })
     
-    # If duplicates found, return error with details
+    # If duplicates found, log the blocked attempt and return error
     if duplicates:
+        # Log blocked attempt for staff review
+        blocked_attempt = BlockedMemberAttempt(
+            attempted_first_name=data.first_name,
+            attempted_last_name=data.last_name,
+            attempted_email=data.email,
+            attempted_phone=data.phone,
+            norm_email=norm_email,
+            norm_phone=norm_phone,
+            norm_first_name=norm_first,
+            norm_last_name=norm_last,
+            duplicate_fields=[d["field"] for d in duplicates],
+            match_types=[d["match_type"] for d in duplicates],
+            existing_members=[d["existing_member"] for d in duplicates],
+            attempted_by_user_id=current_user.id,
+            attempted_by_email=current_user.email,
+            source="manual"
+        )
+        
+        # Save blocked attempt to database
+        try:
+            blocked_doc = blocked_attempt.model_dump()
+            blocked_doc["timestamp"] = blocked_doc["timestamp"].isoformat()
+            await db.blocked_member_attempts.insert_one(blocked_doc)
+        except Exception as e:
+            logger.error(f"Failed to log blocked attempt: {str(e)}")
+        
         raise HTTPException(
             status_code=409,
             detail={
