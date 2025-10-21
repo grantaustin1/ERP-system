@@ -5676,8 +5676,8 @@ class DuplicateDetectionTester:
         member_data_1 = {
             "first_name": "Mike",
             "last_name": f"Wilson{timestamp}",
-            "email": f"mike.wilson{timestamp}+test@gmail.com",
-            "phone": f"+2784567{timestamp % 10000:04d}",
+            "email": f"mike.wilson.test.{timestamp}+test@gmail.com",
+            "phone": f"+2785678{timestamp % 10000:04d}",
             "membership_type_id": membership_type_id
         }
         
