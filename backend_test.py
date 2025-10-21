@@ -4972,54 +4972,6 @@ class CSVImportTester:
         
         self.log_result("Cleanup Test Members", True, 
                       f"Cleaned up {cleanup_count} test members")
-                expected_headers = ['Full Name', 'Email Address', 'Mobile Phone', 'Home Phone', 
-                                  'Id number', 'Member Type', 'Source', 'Referred By']
-                missing_headers = [h for h in expected_headers if h not in headers]
-                
-                if not missing_headers:
-                    self.log_result("Parse CSV - Expected Headers", True, 
-                                  "All expected headers found in CSV")
-                else:
-                    self.log_result("Parse CSV - Expected Headers", False, 
-                                  f"Missing expected headers: {missing_headers}")
-                
-                # Verify sample data
-                sample_data = parse_result['sample_data']
-                if len(sample_data) <= 5 and len(sample_data) > 0:
-                    self.log_result("Parse CSV - Sample Data", True, 
-                                  f"Sample data contains {len(sample_data)} rows (≤5)")
-                else:
-                    self.log_result("Parse CSV - Sample Data", False, 
-                                  f"Sample data should contain ≤5 rows, got {len(sample_data)}")
-                
-                # Verify total rows count
-                total_rows = parse_result['total_rows']
-                if total_rows > 0:
-                    self.log_result("Parse CSV - Total Rows", True, 
-                                  f"CSV contains {total_rows} total rows")
-                else:
-                    self.log_result("Parse CSV - Total Rows", False, 
-                                  f"Expected >0 rows, got {total_rows}")
-                
-                # Verify filename
-                if parse_result['filename'] == 'test_import.csv':
-                    self.log_result("Parse CSV - Filename", True, 
-                                  f"Filename correctly returned: {parse_result['filename']}")
-                else:
-                    self.log_result("Parse CSV - Filename", False, 
-                                  f"Expected 'test_import.csv', got {parse_result['filename']}")
-                
-                return parse_result
-                
-            else:
-                self.log_result("Parse CSV", False, 
-                              f"Failed to parse CSV: {response.status_code}",
-                              {"response": response.text})
-                return None
-                
-        except Exception as e:
-            self.log_result("Parse CSV", False, f"Error parsing CSV: {str(e)}")
-            return None
     
     def test_field_mapping_and_import(self, parse_result):
         """Test 2: POST /api/import/members - Import members with field mapping"""
