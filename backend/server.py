@@ -3678,6 +3678,32 @@ async def import_members(
                 if duplicate_found:
                     if duplicate_action == "skip":
                         skipped += 1
+                        
+                        # Log as blocked attempt for staff review
+                        try:
+                            blocked_attempt = BlockedMemberAttempt(
+                                attempted_first_name=member_data.get("first_name", ""),
+                                attempted_last_name=member_data.get("last_name", ""),
+                                attempted_email=member_data.get("email", ""),
+                                attempted_phone=member_data.get("phone", ""),
+                                duplicate_fields=["detected_during_import"],
+                                match_types=["import_duplicate"],
+                                existing_members=[{
+                                    "id": duplicate_found["id"],
+                                    "name": f"{duplicate_found['first_name']} {duplicate_found['last_name']}",
+                                    "email": duplicate_found.get("email"),
+                                    "phone": duplicate_found.get("phone")
+                                }],
+                                attempted_by_user_id=current_user.id,
+                                attempted_by_email=current_user.email,
+                                source="import"
+                            )
+                            blocked_doc = blocked_attempt.model_dump()
+                            blocked_doc["timestamp"] = blocked_doc["timestamp"].isoformat()
+                            await db.blocked_member_attempts.insert_one(blocked_doc)
+                        except Exception as e:
+                            logger.error(f"Failed to log blocked import attempt: {str(e)}")
+                        
                         error_log.append({
                             "row": row_num,
                             "action": "skipped",
