@@ -7221,9 +7221,11 @@ class RBACTester:
         print("\n=== Test 7: Create New Staff User ===")
         
         try:
-            # Create test user
+            # Create test user with unique email
+            import time
+            unique_email = f"test_trainer_{int(time.time())}@gym.com"
             user_data = {
-                "email": "test_trainer@gym.com",
+                "email": unique_email,
                 "full_name": "Test Trainer",
                 "password": "test123",
                 "role": "personal_trainer"
