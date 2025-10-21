@@ -408,12 +408,26 @@ export default function POS() {
       
       if (!response.ok) {
         // If backend not accessible, simulate successful transaction for testing
-        console.warn('Backend not accessible, simulating transaction');
+        console.warn('Backend not accessible, simulating transaction with stock update');
         const mockTransactionNumber = `POS-TEST-${Date.now()}`;
+        
+        // Update stock quantities locally for test mode
+        setProducts(prevProducts => 
+          prevProducts.map(product => {
+            const cartItem = cart.find(item => item.product_id === product.id);
+            if (cartItem) {
+              return {
+                ...product,
+                stock_quantity: Math.max(0, product.stock_quantity - cartItem.quantity)
+              };
+            }
+            return product;
+          })
+        );
         
         toast({
           title: "Test Mode - Transaction Simulated",
-          description: `Transaction ${mockTransactionNumber} completed successfully (Test Mode)`,
+          description: `Transaction ${mockTransactionNumber} completed. Stock updated locally.`,
         });
         
         // Reset cart and form
@@ -448,12 +462,26 @@ export default function POS() {
     } catch (error) {
       console.error('Transaction error:', error);
       
-      // Fallback to test mode on error
+      // Fallback to test mode on error with stock update
       const mockTransactionNumber = `POS-TEST-${Date.now()}`;
+      
+      // Update stock quantities locally for test mode
+      setProducts(prevProducts => 
+        prevProducts.map(product => {
+          const cartItem = cart.find(item => item.product_id === product.id);
+          if (cartItem) {
+            return {
+              ...product,
+              stock_quantity: Math.max(0, product.stock_quantity - cartItem.quantity)
+            };
+          }
+          return product;
+        })
+      );
       
       toast({
         title: "Test Mode - Transaction Simulated",
-        description: `Transaction ${mockTransactionNumber} completed (Test Mode)`,
+        description: `Transaction ${mockTransactionNumber} completed. Stock updated locally.`,
       });
       
       // Reset cart and form
