@@ -970,17 +970,23 @@ frontend:
 metadata:
   created_by: "main_agent"
   version: "1.0"
-  test_sequence: 3
+  test_sequence: 4
   run_ui: false
 
 test_plan:
   current_focus: 
-    - "Enhanced Duplicate Detection - Check Duplicate Endpoint"
-    - "Gmail Email Normalization"
-    - "Phone Number Normalization"
-    - "Nickname Canonicalization"
-    - "Member Creation Duplicate Blocking"
-    - "Audit Logging Middleware"
+    - "RBAC System - 15 Roles Definition"
+    - "RBAC API - Get All Roles"
+    - "RBAC API - Get All Modules"
+    - "RBAC API - Get Permission Matrix"
+    - "RBAC API - Update Permission Matrix"
+    - "RBAC API - Reset Role Permissions"
+    - "RBAC API - Get All Staff Users"
+    - "RBAC API - Update User Role"
+    - "RBAC API - Create Staff User"
+    - "Permission Matrix UI Component"
+    - "User Role Management UI Component"
+    - "RBAC Navigation Links"
   stuck_tasks: []
   test_all: false
   test_priority: "high_first"
