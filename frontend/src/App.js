@@ -61,6 +61,8 @@ function App() {
           <Route path="/import" element={<PrivateRoute><DataImport /></PrivateRoute>} />
           <Route path="/permission-matrix" element={<PrivateRoute><PermissionMatrix /></PrivateRoute>} />
           <Route path="/user-roles" element={<PrivateRoute><UserRoleManagement /></PrivateRoute>} />
+          <Route path="/pos" element={<PrivateRoute><POS /></PrivateRoute>} />
+          <Route path="/products" element={<PrivateRoute><ProductManagement /></PrivateRoute>} />
           <Route path="/settings" element={<PrivateRoute><Settings /></PrivateRoute>} />
         </Routes>
       </BrowserRouter>
