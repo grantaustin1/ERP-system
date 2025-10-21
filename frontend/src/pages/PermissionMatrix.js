@@ -286,10 +286,11 @@ export default function PermissionMatrix() {
                         </TableCell>
                         {roles.map(role => (
                           <TableCell key={role.key} className="text-center">
-                            <Checkbox
+                            <input
+                              type="checkbox"
                               checked={permissionMatrix[role.key]?.[permission.key] || false}
-                              onCheckedChange={() => handlePermissionToggle(role.key, permission.key)}
-                              className="mx-auto"
+                              onChange={() => handlePermissionToggle(role.key, permission.key)}
+                              className="h-4 w-4 mx-auto cursor-pointer"
                             />
                           </TableCell>
                         ))}
