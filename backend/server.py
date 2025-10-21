@@ -4035,6 +4035,102 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Audit Logging Middleware
+@app.middleware("http")
+async def audit_logging_middleware(request, call_next):
+    """
+    Comprehensive audit logging middleware
+    Logs all API requests with user context, duration, and outcome
+    """
+    import time
+    from fastapi import Request
+    
+    start_time = time.time()
+    
+    # Extract user info from JWT if present
+    user_id = None
+    user_email = None
+    user_role = None
+    
+    try:
+        auth_header = request.headers.get("authorization")
+        if auth_header and auth_header.startswith("Bearer "):
+            token = auth_header.split(" ")[1]
+            payload = decode_token(token)
+            if payload:
+                user_id = payload.get("id")
+                user_email = payload.get("email")
+                user_role = payload.get("role")
+    except:
+        pass
+    
+    # Process request
+    response = await call_next(request)
+    
+    # Calculate duration
+    duration_ms = (time.time() - start_time) * 1000
+    
+    # Determine success
+    success = 200 <= response.status_code < 400
+    
+    # Extract resource type and action from path
+    path = str(request.url.path)
+    resource_type = None
+    action = None
+    
+    # Parse path to determine resource and action
+    if "/members" in path:
+        resource_type = "member"
+        if request.method == "POST" and "check-duplicate" not in path:
+            action = "create"
+        elif request.method == "GET":
+            action = "read"
+        elif request.method == "PUT" or request.method == "PATCH":
+            action = "update"
+        elif request.method == "DELETE":
+            action = "delete"
+        elif "check-duplicate" in path:
+            action = "check_duplicate"
+    elif "/invoices" in path:
+        resource_type = "invoice"
+    elif "/bookings" in path:
+        resource_type = "booking"
+    elif "/classes" in path:
+        resource_type = "class"
+    elif "/automations" in path:
+        resource_type = "automation"
+    elif "/import" in path:
+        resource_type = "import"
+        action = "import_data"
+    
+    # Create audit log entry
+    audit_entry = AuditLog(
+        method=request.method,
+        path=path,
+        user_id=user_id,
+        user_email=user_email,
+        user_role=user_role,
+        status_code=response.status_code,
+        success=success,
+        resource_type=resource_type,
+        action=action,
+        duration_ms=round(duration_ms, 2),
+        ip_address=request.client.host if request.client else None,
+        user_agent=request.headers.get("user-agent"),
+        message=f"{request.method} {path} - {response.status_code}"
+    )
+    
+    # Save to database (async, non-blocking)
+    try:
+        audit_doc = audit_entry.model_dump()
+        audit_doc["timestamp"] = audit_doc["timestamp"].isoformat()
+        await db.audit_logs.insert_one(audit_doc)
+    except Exception as e:
+        # Log error but don't fail the request
+        logger.error(f"Failed to save audit log: {str(e)}")
+    
+    return response
+
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
