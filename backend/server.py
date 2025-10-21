@@ -4962,6 +4962,11 @@ async def create_product_category(category: ProductCategoryCreate, current_user:
     category_data["created_at"] = datetime.now(timezone.utc).isoformat()
     
     await db.product_categories.insert_one(category_data)
+    
+    # Remove MongoDB's _id before returning
+    if "_id" in category_data:
+        del category_data["_id"]
+    
     return {"success": True, "category": category_data}
 
 @api_router.put("/pos/categories/{category_id}")
