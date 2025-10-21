@@ -1,135 +1,184 @@
 """
 Enhanced RBAC & Permissions System
-Defines resource-level permissions and role mappings
+Defines resource-level permissions and role mappings for 15 roles and 10 modules
 """
 from typing import List, Dict
 from fastapi import HTTPException, Depends
 from functools import wraps
 
-# Permission definitions
-# Format: "resource:action"
-PERMISSIONS = {
-    # Member permissions
-    "members:read": "View member information",
-    "members:create": "Create new members",
-    "members:update": "Update member information",
-    "members:delete": "Delete members",
-    "members:check_duplicate": "Check for duplicate members",
-    
-    # Invoice/Billing permissions
-    "invoices:read": "View invoices",
-    "invoices:create": "Create invoices",
-    "invoices:update": "Update invoice status",
-    "invoices:delete": "Delete invoices",
-    "invoices:payment": "Record payments",
-    
-    # Class/Booking permissions
-    "classes:read": "View classes",
-    "classes:create": "Create new classes",
-    "classes:update": "Update class details",
-    "classes:delete": "Delete classes",
-    "bookings:read": "View bookings",
-    "bookings:create": "Create bookings",
-    "bookings:update": "Update bookings",
-    "bookings:cancel": "Cancel bookings",
-    "bookings:checkin": "Check-in members to classes",
-    
-    # Access Control permissions
-    "access:read": "View access logs",
-    "access:validate": "Validate member access",
-    "access:override": "Override access restrictions",
-    
-    # Automation permissions
-    "automations:read": "View automations",
-    "automations:create": "Create automations",
-    "automations:update": "Update automations",
-    "automations:delete": "Delete automations",
-    "automations:test": "Test automations",
-    
-    # Report permissions
-    "reports:view": "View reports",
-    "reports:export": "Export reports (CSV, PDF)",
-    "reports:blocked_members": "View blocked member attempts",
-    "reports:analytics": "View analytics dashboard",
-    
-    # Import/Export permissions
-    "import:members": "Import member data",
-    "import:leads": "Import lead data",
-    "export:data": "Export system data",
-    
-    # Settings permissions
-    "settings:read": "View settings",
-    "settings:update": "Update system settings",
-    "settings:payment_sources": "Manage payment sources",
-    "settings:field_config": "Configure field validation",
-    
-    # Audit permissions
-    "audit:read": "View audit logs",
-    
-    # User Management permissions
-    "users:read": "View users",
-    "users:create": "Create new users",
-    "users:update": "Update user roles and permissions",
-    "users:delete": "Delete users",
+# All available roles in the system
+ROLES = {
+    "business_owner": "Business Owner",
+    "head_admin": "Head of Admin",
+    "sales_head": "Sales Department Head",
+    "fitness_head": "Fitness Department Head", 
+    "marketing_head": "Marketing Department Head",
+    "operations_head": "Operations Department Head",
+    "hr_head": "HR Department Head",
+    "maintenance_head": "Maintenance Department Head",
+    "finance_head": "Finance Department Head",
+    "debt_head": "Debt Collecting Department Head",
+    "training_head": "Staff Development & Training Department Head",
+    "personal_trainer": "Personal Trainer",
+    "sales_manager": "Sales Manager (Club Level)",
+    "fitness_manager": "Fitness Manager (Club Level)",
+    "admin_manager": "Admin Manager (Club Level)",
 }
 
-# Role to Permissions mapping
-ROLE_PERMISSIONS: Dict[str, List[str]] = {
-    "admin": [
-        # Admins have ALL permissions
-        *PERMISSIONS.keys()
+# 10 Modules with CRUD permissions
+MODULES = {
+    "members": "Members Management",
+    "billing": "Billing & Invoicing",
+    "access": "Access Control",
+    "classes": "Classes & Bookings",
+    "marketing": "Marketing",
+    "staff": "Staff Management",
+    "reports": "Reports & Analytics",
+    "import": "Data Import",
+    "settings": "Settings",
+    "audit": "Audit Logs",
+}
+
+# CRUD Actions
+ACTIONS = ["view", "create", "edit", "delete"]
+
+# Generate all permissions dynamically: module:action
+PERMISSIONS = {}
+for module, module_name in MODULES.items():
+    for action in ACTIONS:
+        perm_key = f"{module}:{action}"
+        PERMISSIONS[perm_key] = f"{action.capitalize()} {module_name}"
+
+# Default Role Permissions with sensible defaults
+DEFAULT_ROLE_PERMISSIONS: Dict[str, List[str]] = {
+    # 1. Business Owner - FULL ACCESS TO EVERYTHING
+    "business_owner": list(PERMISSIONS.keys()),
+    
+    # 2. Head of Admin - Full access to all (Administrator)
+    "head_admin": list(PERMISSIONS.keys()),
+    
+    # 3. Sales Department Head - Full access to Members, Marketing
+    "sales_head": [
+        "members:view", "members:create", "members:edit", "members:delete",
+        "marketing:view", "marketing:create", "marketing:edit", "marketing:delete",
+        "billing:view", "billing:create", "billing:edit",
+        "reports:view", "reports:create",
+        "import:view", "import:create",
+        "settings:view",
+        "audit:view",
     ],
     
-    "manager": [
-        # Members
-        "members:read", "members:create", "members:update", "members:check_duplicate",
-        # Invoices
-        "invoices:read", "invoices:create", "invoices:update", "invoices:payment",
-        # Classes & Bookings
-        "classes:read", "classes:create", "classes:update",
-        "bookings:read", "bookings:create", "bookings:update", "bookings:cancel", "bookings:checkin",
-        # Access
-        "access:read", "access:validate", "access:override",
-        # Automations
-        "automations:read", "automations:create", "automations:update", "automations:test",
-        # Reports
-        "reports:view", "reports:export", "reports:blocked_members", "reports:analytics",
-        # Import
-        "import:members", "import:leads", "export:data",
-        # Settings (limited)
-        "settings:read",
-        # Audit (read-only)
-        "audit:read",
+    # 4. Fitness Department Head - Full access to Classes & Bookings, Staff (trainers)
+    "fitness_head": [
+        "classes:view", "classes:create", "classes:edit", "classes:delete",
+        "members:view", "members:edit",
+        "staff:view", "staff:create", "staff:edit", "staff:delete",
+        "access:view", "access:edit",
+        "reports:view", "reports:create",
+        "settings:view",
+        "audit:view",
     ],
     
-    "staff": [
-        # Members (read, create, update only)
-        "members:read", "members:create", "members:update", "members:check_duplicate",
-        # Invoices (read, payment only)
-        "invoices:read", "invoices:payment",
-        # Classes & Bookings
-        "classes:read",
-        "bookings:read", "bookings:create", "bookings:update", "bookings:checkin",
-        # Access
-        "access:read", "access:validate",
-        # Reports (view only)
-        "reports:view", "reports:analytics",
-        # Settings (read only)
-        "settings:read",
+    # 5. Marketing Department Head - Full access to Marketing
+    "marketing_head": [
+        "marketing:view", "marketing:create", "marketing:edit", "marketing:delete",
+        "members:view", "members:create",
+        "reports:view", "reports:create",
+        "settings:view",
+        "audit:view",
     ],
     
-    "member": [
-        # Limited self-service permissions
-        "members:read",  # Can only read own profile
-        "invoices:read",  # Can only read own invoices
-        "bookings:read", "bookings:create", "bookings:cancel",  # Manage own bookings
-        "classes:read",  # View class schedule
+    # 6. Operations Department Head - Access Control, Settings
+    "operations_head": [
+        "access:view", "access:create", "access:edit", "access:delete",
+        "settings:view", "settings:create", "settings:edit", "settings:delete",
+        "members:view",
+        "staff:view",
+        "reports:view", "reports:create",
+        "audit:view",
     ],
     
-    "guest": [
-        # Very limited permissions
-        "classes:read",  # View class schedule only
-    ]
+    # 7. HR Department Head - Full access to Staff Management
+    "hr_head": [
+        "staff:view", "staff:create", "staff:edit", "staff:delete",
+        "members:view",
+        "reports:view", "reports:create",
+        "settings:view",
+        "audit:view",
+    ],
+    
+    # 8. Maintenance Department Head - Access Control, Settings (limited)
+    "maintenance_head": [
+        "access:view", "access:edit",
+        "settings:view", "settings:edit",
+        "reports:view",
+        "audit:view",
+    ],
+    
+    # 9. Finance Department Head - Full access to Billing & Invoicing
+    "finance_head": [
+        "billing:view", "billing:create", "billing:edit", "billing:delete",
+        "members:view",
+        "reports:view", "reports:create", "reports:edit",
+        "settings:view",
+        "audit:view",
+    ],
+    
+    # 10. Debt Collecting Department Head - Billing (limited), Members (view/edit)
+    "debt_head": [
+        "billing:view", "billing:edit",
+        "members:view", "members:edit",
+        "reports:view",
+        "settings:view",
+        "audit:view",
+    ],
+    
+    # 11. Staff Development & Training Department Head - Staff, Classes
+    "training_head": [
+        "staff:view", "staff:edit",
+        "classes:view", "classes:create", "classes:edit",
+        "reports:view",
+        "settings:view",
+        "audit:view",
+    ],
+    
+    # 12. Personal Trainers - View Members, View/Book Classes
+    "personal_trainer": [
+        "members:view",
+        "classes:view",
+        "settings:view",
+    ],
+    
+    # 13. Sales Managers (Club Level) - View/Edit within parameters
+    "sales_manager": [
+        "members:view", "members:create", "members:edit",
+        "marketing:view", "marketing:edit",
+        "billing:view", "billing:create",
+        "reports:view",
+        "import:view",
+        "settings:view",
+    ],
+    
+    # 14. Fitness Managers (Club Level) - View/Edit within parameters
+    "fitness_manager": [
+        "classes:view", "classes:create", "classes:edit",
+        "members:view", "members:edit",
+        "staff:view", "staff:edit",
+        "access:view", "access:edit",
+        "reports:view",
+        "settings:view",
+    ],
+    
+    # 15. Admin Managers (Club Level) - View/Edit within parameters
+    "admin_manager": [
+        "members:view", "members:create", "members:edit",
+        "billing:view", "billing:create", "billing:edit",
+        "access:view", "access:edit",
+        "reports:view",
+        "import:view", "import:create",
+        "settings:view", "settings:edit",
+        "audit:view",
+    ],
 }
 
 
