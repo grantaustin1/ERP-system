@@ -1869,84 +1869,38 @@ agent_communication:
 
   - agent: "testing"
     message: |
-      🎉 ENHANCED DUPLICATE DETECTION & AUDIT LOGGING SYSTEM TESTING COMPLETED - 95% SUCCESS
+      🎯 COMPREHENSIVE 5-PHASE TESTING COMPLETED - DETAILED RESULTS
       
-      COMPREHENSIVE TEST RESULTS FOR ENHANCED DUPLICATE DETECTION & AUDIT LOGGING:
+      PHASE 3: BLOCKED MEMBERS REPORT - 57.1% SUCCESS (4/7 tests passed):
+      ✅ Authentication working correctly
+      ✅ Duplicate detection and blocked attempt creation working (3 duplicate fields detected)
+      ✅ HTML view working (2436 characters content)
+      ❌ Blocked Members Report API: Returns 'total' instead of expected 'total_count' field
+      ❌ CSV Export: Missing expected headers (has different header format than expected)
+      ❌ Review Functionality: Could not test due to API response structure mismatch
       
-      ✅ PHASE 1 - NORMALIZATION UNIT TESTS (Already Passed):
-      - Email normalization: john.doe+gym@gmail.com → johndoe@gmail.com ✅
-      - Phone normalization: +27812345678 → 0812345678 ✅  
-      - Nickname canonicalization: Bob → robert, Mike → michael ✅
+      PHASE 4: RBAC & PERMISSIONS - 100% SUCCESS (7/7 tests passed):
+      ✅ Permissions endpoint returns correct structure for admin role
+      ✅ Admin has all 43 permissions as expected
+      ✅ All expected admin permissions present
+      ✅ Permissions module imports successfully
+      ✅ Role permissions mapping correct (admin > staff permissions)
+      ✅ has_permission() function works correctly
       
-      ✅ PHASE 2 - ENHANCED DUPLICATE DETECTION API TESTS (100% Success - 10/10 tests passed):
+      PHASE 5: SUMMARY REPORTS DASHBOARD - 50% SUCCESS (2/4 tests passed):
+      ✅ Members count accuracy verified (60 members)
+      ❌ Summary report structure: API returns 'classes_and_bookings' instead of separate 'classes' and 'bookings' sections
+      ❌ Data accuracy test failed due to structure mismatch
       
-      🔍 CHECK DUPLICATE ENDPOINT:
-      - POST /api/members/check-duplicate: Working correctly with query parameters
-      - Returns proper response format: has_duplicates boolean, duplicates array, normalization_info
-      - Correctly identifies no duplicates when none exist ✅
+      REGRESSION TESTING - 100% SUCCESS (8/8 tests passed):
+      ✅ All existing endpoints working correctly
+      ✅ Member creation with normalization still functional
+      ✅ No breaking changes detected
       
-      📧 GMAIL EMAIL NORMALIZATION:
-      - Created member with: sarah.johnson1761023474+gym@gmail.com
-      - Check duplicate with: sarahjohnson1761023474@gmail.com
-      - ✅ Successfully detected as duplicate via normalized_email match type
-      - Gmail dot removal and plus addressing normalization working perfectly
+      CRITICAL FINDINGS:
+      1. API Response Structure Mismatches: Several endpoints return different field names than expected
+      2. Blocked Members Report API functional but field naming inconsistent
+      3. Summary Report API combines classes/bookings into single section
+      4. All core functionality working, issues are primarily API response format differences
       
-      📱 PHONE NUMBER NORMALIZATION:
-      - Created member with: +27834563474 (international format)
-      - Check duplicate with: 0834563474 (local format)  
-      - ✅ Successfully detected as duplicate via normalized_phone match type
-      - E.164 to local South African format conversion working correctly
-      
-      👤 NICKNAME CANONICALIZATION:
-      - Created member with: Bob Smith1761023474
-      - Check duplicate with: Robert Smith1761023474
-      - ✅ Successfully detected as duplicate via normalized_name match type
-      - Nickname mapping (Bob → robert) working with comprehensive dictionary
-      
-      🚫 MEMBER CREATION DUPLICATE BLOCKING:
-      - Created first member: Mike Wilson1761023474 with mike.wilson.test.1761023474+test@gmail.com, +27856781474
-      - Attempted duplicate: Michael Wilson1761023474 with mikewilsontest1761023474@gmail.com, 0856781474
-      - ✅ Successfully blocked with 409 Conflict, detected 3 duplicate fields (email, phone, name)
-      - All normalization working together to prevent duplicate member creation
-      
-      ✅ PHASE 3 - AUDIT LOGGING TESTS (75% Success - 6/8 tests passed):
-      
-      🔍 AUDIT LOG CREATION:
-      - Made API calls: GET /auth/me, GET /membership-types, POST /members/check-duplicate
-      - ✅ All API calls successful (200 status codes)
-      - ✅ Audit logging middleware processing requests correctly
-      - ❌ No audit logs retrieval endpoint found (expected - security by design)
-      
-      📊 AUDIT LOG MIDDLEWARE VERIFICATION:
-      - ✅ Middleware captures user context from JWT (user_id, user_email, user_role)
-      - ✅ Request details logged (method, path, status_code, success boolean)
-      - ✅ Performance tracking working (duration_ms calculated: 30-40ms typical)
-      - ✅ Audit logs stored in MongoDB audit_logs collection
-      
-      ✅ PHASE 4 - REGRESSION TESTS (Verified):
-      
-      🔄 BASIC MEMBER CRUD:
-      - GET /api/members: Working correctly ✅
-      - POST /api/members: Creates members with normalization fields populated ✅
-      - Enhanced duplicate detection integrated into member creation ✅
-      
-      📋 NORMALIZED FIELDS POPULATION:
-      - New members automatically get norm_email, norm_phone, norm_first_name, norm_last_name
-      - Existing members may lack normalized fields (created before upgrade) - expected behavior
-      - Migration not required - new members have full normalization support
-      
-      🎯 SUCCESS CRITERIA ACHIEVED:
-      ✅ Gmail email variants detected as duplicates (john.doe+tag vs johndoe)
-      ✅ Phone format variants detected as duplicates (+27 vs 0)  
-      ✅ Nickname variants detected as duplicates (Bob vs Robert)
-      ✅ Audit logs created for all API requests
-      ✅ Audit logs contain complete information (user, method, path, status, duration)
-      ✅ No regressions in existing functionality
-      ✅ Backend responds normally to all requests
-      
-      ❌ MINOR LIMITATIONS IDENTIFIED:
-      - Audit logs endpoint not implemented (by design for security)
-      - Existing members lack normalized fields (expected - created before upgrade)
-      
-      🚀 PRODUCTION READY:
-      The Enhanced Duplicate Detection & Audit Logging System is fully operational and ready for production use. All core duplicate detection features work perfectly with comprehensive normalization (Gmail, phone, nicknames). Audit logging middleware captures all requests with user context and performance metrics. The system successfully prevents duplicate member creation while maintaining existing functionality.
+      RECOMMENDATION: Update API responses to match expected field names or update frontend to handle current format.
