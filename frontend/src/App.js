@@ -19,6 +19,8 @@ import Classes from '@/pages/Classes';
 import DataImport from '@/pages/DataImport';
 import PermissionMatrix from '@/pages/PermissionMatrix';
 import UserRoleManagement from '@/pages/UserRoleManagement';
+import POS from '@/pages/POS';
+import ProductManagement from '@/pages/ProductManagement';
 import { Toaster } from '@/components/ui/sonner';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
