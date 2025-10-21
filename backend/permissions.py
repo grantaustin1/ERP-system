@@ -182,21 +182,22 @@ DEFAULT_ROLE_PERMISSIONS: Dict[str, List[str]] = {
 }
 
 
-def has_permission(user_role: str, required_permission: str) -> bool:
+def has_permission(user_role: str, required_permission: str, custom_permissions: List[str] = None) -> bool:
     """
     Check if a user role has a specific permission
     
     Args:
-        user_role: The user's role (admin, manager, staff, member, guest)
+        user_role: The user's role (business_owner, head_admin, etc.)
         required_permission: The required permission (e.g., "members:create")
+        custom_permissions: Optional custom permissions list (overrides default)
     
     Returns:
         bool: True if user has permission, False otherwise
     """
-    if user_role not in ROLE_PERMISSIONS:
-        return False
+    # Use custom permissions if provided, otherwise use defaults
+    permissions = custom_permissions if custom_permissions is not None else DEFAULT_ROLE_PERMISSIONS.get(user_role, [])
     
-    return required_permission in ROLE_PERMISSIONS[user_role]
+    return required_permission in permissions
 
 
 def require_permission(permission: str):
