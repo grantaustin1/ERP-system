@@ -1012,9 +1012,8 @@ metadata:
 test_plan:
   current_focus: 
     - "Permission Matrix UI Component"
-    - "User Role Management UI Component"
-    - "RBAC Navigation Links"
-  stuck_tasks: []
+  stuck_tasks: 
+    - "Permission Matrix UI Component"
   test_all: false
   test_priority: "high_first"
 
