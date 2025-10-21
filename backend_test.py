@@ -5503,10 +5503,10 @@ class DuplicateDetectionTester:
                 
                 # Now try to check duplicate with normalized Gmail email
                 duplicate_check_data = {
-                    "email": "sarahjohnson@gmail.com",  # Normalized version
-                    "phone": "+27823456790",  # Different phone
+                    "email": f"sarahjohnson{timestamp}@gmail.com",  # Normalized version
+                    "phone": f"+2782345{(timestamp + 1) % 10000:04d}",  # Different phone
                     "first_name": "Sarah",
-                    "last_name": "Johnson"
+                    "last_name": f"Johnson{timestamp}"
                 }
                 
                 response = requests.post(f"{API_BASE}/members/check-duplicate", 
