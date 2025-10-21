@@ -97,6 +97,10 @@ export default function POS() {
         })
       ]);
 
+      if (!categoriesRes.ok || !productsRes.ok || !membersRes.ok) {
+        throw new Error(`Failed to fetch: Categories ${categoriesRes.status}, Products ${productsRes.status}, Members ${membersRes.status}`);
+      }
+
       const categoriesData = await categoriesRes.json();
       const productsData = await productsRes.json();
       const membersData = await membersRes.json();
