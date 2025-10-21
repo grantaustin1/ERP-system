@@ -237,42 +237,60 @@ def require_permission(permission: str):
     return decorator
 
 
-def get_user_permissions(role: str) -> List[str]:
+def get_user_permissions(role: str, custom_permissions: Dict[str, List[str]] = None) -> List[str]:
     """
     Get all permissions for a given role
     
     Args:
         role: The user's role
+        custom_permissions: Optional custom role-permission mapping
     
     Returns:
         List of permission strings the role has access to
     """
-    return ROLE_PERMISSIONS.get(role, [])
+    if custom_permissions:
+        return custom_permissions.get(role, [])
+    return DEFAULT_ROLE_PERMISSIONS.get(role, [])
 
 
-def check_multiple_permissions(user_role: str, permissions: List[str]) -> bool:
+def check_multiple_permissions(user_role: str, permissions: List[str], custom_permissions: List[str] = None) -> bool:
     """
     Check if user has ALL of the specified permissions (AND logic)
     
     Args:
         user_role: The user's role
         permissions: List of required permissions
+        custom_permissions: Optional custom permissions list
     
     Returns:
         bool: True if user has all permissions, False otherwise
     """
-    return all(has_permission(user_role, perm) for perm in permissions)
+    return all(has_permission(user_role, perm, custom_permissions) for perm in permissions)
 
 
-def check_any_permission(user_role: str, permissions: List[str]) -> bool:
+def check_any_permission(user_role: str, permissions: List[str], custom_permissions: List[str] = None) -> bool:
     """
     Check if user has ANY of the specified permissions (OR logic)
     
     Args:
         user_role: The user's role
         permissions: List of possible permissions
+        custom_permissions: Optional custom permissions list
     
     Returns:
         bool: True if user has at least one permission, False otherwise
     """
-    return any(has_permission(user_role, perm) for perm in permissions)
+    return any(has_permission(user_role, perm, custom_permissions) for perm in permissions)
+
+
+def get_default_permissions_for_role(role: str) -> List[str]:
+    """
+    Get default permissions for a specific role
+    
+    Args:
+        role: The role identifier
+    
+    Returns:
+        List of default permission strings
+    """
+    return DEFAULT_ROLE_PERMISSIONS.get(role, [])
