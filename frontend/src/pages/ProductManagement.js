@@ -71,6 +71,10 @@ export default function ProductManagement() {
         })
       ]);
 
+      if (!productsRes.ok || !categoriesRes.ok) {
+        throw new Error(`Failed to fetch: Products ${productsRes.status}, Categories ${categoriesRes.status}`);
+      }
+
       const productsData = await productsRes.json();
       const categoriesData = await categoriesRes.json();
 
