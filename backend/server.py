@@ -346,6 +346,37 @@ class AuditLog(BaseModel):
     # Performance
     duration_ms: Optional[float] = None  # Request duration in milliseconds
 
+class BlockedMemberAttempt(BaseModel):
+    """Track blocked duplicate member creation attempts for staff review"""
+    model_config = ConfigDict(extra="ignore")
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    # Attempted member data
+    attempted_first_name: str
+    attempted_last_name: str
+    attempted_email: str
+    attempted_phone: str
+    # Normalized values
+    norm_email: Optional[str] = None
+    norm_phone: Optional[str] = None
+    norm_first_name: Optional[str] = None
+    norm_last_name: Optional[str] = None
+    # Duplicate detection results
+    duplicate_fields: List[str] = []  # ["email", "phone", "name"]
+    match_types: List[str] = []  # ["normalized_email", "normalized_phone", "normalized_name"]
+    # Existing member(s) that matched
+    existing_members: List[dict] = []  # List of matching member details
+    # User who attempted
+    attempted_by_user_id: Optional[str] = None
+    attempted_by_email: Optional[str] = None
+    # Review status
+    review_status: str = "pending"  # pending, approved, rejected, merged
+    reviewed_by: Optional[str] = None
+    reviewed_at: Optional[datetime] = None
+    review_notes: Optional[str] = None
+    # Source of attempt
+    source: str = "manual"  # manual, import, api
+
 class CancellationRequest(BaseModel):
     model_config = ConfigDict(extra="ignore")
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
