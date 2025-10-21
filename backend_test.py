@@ -5459,7 +5459,7 @@ class DuplicateDetectionTester:
                                    params=duplicate_check_data, headers=self.headers)
             if response.status_code == 200:
                 result = response.json()
-                if not result.get("is_duplicate", True):
+                if not result.get("has_duplicates", True):
                     self.log_result("Check Duplicate - No Duplicates", True, 
                                   "Correctly identified no duplicates exist")
                 else:
@@ -5512,7 +5512,7 @@ class DuplicateDetectionTester:
                                        params=duplicate_check_data, headers=self.headers)
                 if response.status_code == 200:
                     result = response.json()
-                    if result.get("is_duplicate", False):
+                    if result.get("has_duplicates", False):
                         duplicates = result.get("duplicates", [])
                         email_duplicate = next((d for d in duplicates if d["field"] == "email"), None)
                         if email_duplicate and email_duplicate.get("match_type") == "normalized_email":
@@ -5574,7 +5574,7 @@ class DuplicateDetectionTester:
                                        params=duplicate_check_data, headers=self.headers)
                 if response.status_code == 200:
                     result = response.json()
-                    if result.get("is_duplicate", False):
+                    if result.get("has_duplicates", False):
                         duplicates = result.get("duplicates", [])
                         phone_duplicate = next((d for d in duplicates if d["field"] == "phone"), None)
                         if phone_duplicate and phone_duplicate.get("match_type") == "normalized_phone":
@@ -5636,7 +5636,7 @@ class DuplicateDetectionTester:
                                        params=duplicate_check_data, headers=self.headers)
                 if response.status_code == 200:
                     result = response.json()
-                    if result.get("is_duplicate", False):
+                    if result.get("has_duplicates", False):
                         duplicates = result.get("duplicates", [])
                         name_duplicate = next((d for d in duplicates if d["field"] == "name"), None)
                         if name_duplicate and "nickname-aware" in name_duplicate.get("match_type", ""):
