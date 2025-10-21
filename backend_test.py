@@ -6073,6 +6073,21 @@ class AuditLoggingTester:
 
 
 if __name__ == "__main__":
+    # Run Enhanced Duplicate Detection & Audit Logging Tests
+    print("🎯 ENHANCED DUPLICATE DETECTION & AUDIT LOGGING SYSTEM TESTS")
+    print("=" * 80)
+    
+    duplicate_tester = DuplicateDetectionTester()
+    duplicate_tester.run_duplicate_detection_tests()
+    
+    print("\n" + "="*80 + "\n")
+    
+    # Run Audit Logging Tests
+    audit_tester = AuditLoggingTester()
+    audit_tester.run_audit_logging_tests()
+    
+    print("\n" + "="*80 + "\n")
+    
     # Run CSV Import tests as requested
     csv_tester = CSVImportTester()
     csv_tester.run_csv_import_tests()
