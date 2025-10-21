@@ -5693,9 +5693,9 @@ class DuplicateDetectionTester:
                 # Try to create duplicate member (all fields match after normalization)
                 member_data_2 = {
                     "first_name": "Michael",  # Canonical form of "Mike"
-                    "last_name": "Wilson",
-                    "email": "mikewilson@gmail.com",  # Normalized Gmail
-                    "phone": "0845678901",  # Normalized phone
+                    "last_name": f"Wilson{timestamp}",
+                    "email": f"mikewilson{timestamp}@gmail.com",  # Normalized Gmail
+                    "phone": f"084567{timestamp % 10000:04d}",  # Normalized phone
                     "membership_type_id": membership_type_id
                 }
                 
