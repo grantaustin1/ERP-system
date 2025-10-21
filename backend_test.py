@@ -5546,11 +5546,12 @@ class DuplicateDetectionTester:
             return False
         
         # Create member with international phone format
+        timestamp = int(time.time())
         member_data = {
             "first_name": "Michael",
-            "last_name": "Brown",
-            "email": f"michael.brown.{int(time.time())}@example.com",
-            "phone": "+27834567890",  # International format
+            "last_name": f"Brown{timestamp}",
+            "email": f"michael.brown.{timestamp}@example.com",
+            "phone": f"+2783456{timestamp % 10000:04d}",  # International format
             "membership_type_id": membership_type_id
         }
         
