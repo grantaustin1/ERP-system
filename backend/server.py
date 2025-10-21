@@ -318,6 +318,34 @@ class Token(BaseModel):
     access_token: str
     token_type: str = "bearer"
 
+class AuditLog(BaseModel):
+    """Comprehensive audit log for all API requests"""
+    model_config = ConfigDict(extra="ignore")
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    # Request details
+    method: str  # GET, POST, PUT, DELETE, etc.
+    path: str  # API endpoint path
+    # User details
+    user_id: Optional[str] = None  # User ID from JWT
+    user_email: Optional[str] = None
+    user_role: Optional[str] = None  # admin, staff, member
+    # Request/Response
+    status_code: int  # HTTP status code
+    success: bool  # True if 2xx, False otherwise
+    # Resource details
+    resource_type: Optional[str] = None  # member, invoice, booking, etc.
+    resource_id: Optional[str] = None  # ID of the resource acted upon
+    action: Optional[str] = None  # create, update, delete, read, check_duplicate, etc.
+    # Additional context
+    message: Optional[str] = None  # Human-readable message
+    request_body: Optional[dict] = None  # Request payload (sensitive fields redacted)
+    response_summary: Optional[dict] = None  # Summary of response
+    ip_address: Optional[str] = None
+    user_agent: Optional[str] = None
+    # Performance
+    duration_ms: Optional[float] = None  # Request duration in milliseconds
+
 class CancellationRequest(BaseModel):
     model_config = ConfigDict(extra="ignore")
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
