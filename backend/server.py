@@ -187,6 +187,11 @@ class Member(BaseModel):
     # Other
     emergency_contact: Optional[str] = None
     notes: Optional[str] = None
+    # Normalized fields for duplicate detection (auto-populated)
+    norm_email: Optional[str] = None  # Normalized email for duplicate checking
+    norm_phone: Optional[str] = None  # Normalized phone for duplicate checking
+    norm_first_name: Optional[str] = None  # Normalized first name
+    norm_last_name: Optional[str] = None  # Normalized last name
 
 class MemberCreate(BaseModel):
     first_name: str
