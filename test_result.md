@@ -104,8 +104,18 @@
 
 
 user_problem_statement: |
-  Enhanced payment report system and analytics dashboard for the ERP360 gym management application.
+  Enhanced Duplicate Detection & Audit Logging System for ERP360 gym management application.
   
+  CURRENT TESTING FOCUS - ENHANCED DUPLICATE DETECTION & AUDIT LOGGING:
+  - Enhanced duplicate detection with normalization (Gmail-style email, E.164 phone, nickname canonicalization)
+  - Comprehensive audit logging system (middleware that logs all API requests)
+  - Gmail email normalization (john.doe+gym@gmail.com → johndoe@gmail.com)
+  - Phone normalization (+27812345678 → 0812345678)
+  - Nickname canonicalization (Bob → robert, Mike → michael)
+  - Member creation duplicate blocking with all field normalization
+  - Audit logging middleware for all API requests with user context and performance tracking
+  
+  PREVIOUS PHASES COMPLETED:
   PHASE 1 - PAYMENT ENHANCEMENT (COMPLETED):
   - Payment source management (Walk-in, Online, Social Media, Phone-in, Referral, Canvassing, Flyers)
   - Admin UI for managing payment sources (Settings page)
