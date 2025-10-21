@@ -6015,22 +6015,902 @@ class AuditLoggingTester:
         print("\n" + "=" * 60)
 
 
+class Phase3BlockedMembersTester:
+    """Test Phase 3: Blocked Members Report functionality"""
+    
+    def __init__(self):
+        self.token = None
+        self.headers = {}
+        self.test_results = []
+        self.blocked_attempt_id = None
+        
+    def log_result(self, test_name, success, message, details=None):
+        """Log test result"""
+        result = {
+            "test": test_name,
+            "success": success,
+            "message": message,
+            "timestamp": datetime.now().isoformat(),
+            "details": details or {}
+        }
+        self.test_results.append(result)
+        status = "✅ PASS" if success else "❌ FAIL"
+        print(f"{status}: {test_name} - {message}")
+        if details and not success:
+            print(f"   Details: {details}")
+    
+    def authenticate(self):
+        """Authenticate and get token"""
+        try:
+            response = requests.post(f"{API_BASE}/auth/login", json={
+                "email": TEST_EMAIL,
+                "password": TEST_PASSWORD
+            })
+            
+            if response.status_code == 200:
+                data = response.json()
+                self.token = data["access_token"]
+                self.headers = {"Authorization": f"Bearer {self.token}"}
+                self.log_result("Authentication", True, "Successfully authenticated")
+                return True
+            else:
+                self.log_result("Authentication", False, f"Failed to authenticate: {response.status_code}")
+                return False
+        except Exception as e:
+            self.log_result("Authentication", False, f"Authentication error: {str(e)}")
+            return False
+    
+    def test_create_blocked_attempt(self):
+        """Create a blocked member attempt by trying to create a duplicate"""
+        print("\n=== Testing Blocked Attempts Logging ===")
+        
+        try:
+            # First, get a membership type
+            response = requests.get(f"{API_BASE}/membership-types", headers=self.headers)
+            if response.status_code != 200:
+                self.log_result("Get Membership Types", False, "Failed to get membership types")
+                return False
+            
+            membership_types = response.json()
+            if not membership_types:
+                self.log_result("Get Membership Types", False, "No membership types found")
+                return False
+            
+            membership_type_id = membership_types[0]["id"]
+            
+            # Create a unique member first
+            unique_timestamp = int(time.time())
+            original_member_data = {
+                "first_name": "Sarah",
+                "last_name": f"Johnson{unique_timestamp}",
+                "email": f"sarah.johnson{unique_timestamp}@gmail.com",
+                "phone": f"+27834563{unique_timestamp % 1000:03d}",
+                "membership_type_id": membership_type_id
+            }
+            
+            response = requests.post(f"{API_BASE}/members", json=original_member_data, headers=self.headers)
+            if response.status_code == 200:
+                self.log_result("Create Original Member", True, "Original member created successfully")
+            else:
+                self.log_result("Create Original Member", False, f"Failed to create original member: {response.status_code}")
+                return False
+            
+            # Now try to create a duplicate with normalized variations
+            duplicate_member_data = {
+                "first_name": "Sarah",
+                "last_name": f"Johnson{unique_timestamp}",
+                "email": f"sarah.johnson{unique_timestamp}+gym@gmail.com",  # Gmail normalization test
+                "phone": f"0834563{unique_timestamp % 1000:03d}",  # Phone normalization test
+                "membership_type_id": membership_type_id
+            }
+            
+            response = requests.post(f"{API_BASE}/members", json=duplicate_member_data, headers=self.headers)
+            if response.status_code == 409:  # Conflict - duplicate detected
+                duplicate_response = response.json()
+                if "duplicates" in duplicate_response.get("detail", {}):
+                    duplicates = duplicate_response["detail"]["duplicates"]
+                    self.log_result("Duplicate Detection", True, 
+                                  f"Duplicate correctly detected with {len(duplicates)} duplicate fields",
+                                  {"duplicates": duplicates})
+                    return True
+                else:
+                    self.log_result("Duplicate Detection", False, "Duplicate response format incorrect")
+                    return False
+            else:
+                self.log_result("Duplicate Detection", False, 
+                              f"Expected 409 conflict, got {response.status_code}")
+                return False
+                
+        except Exception as e:
+            self.log_result("Create Blocked Attempt", False, f"Error creating blocked attempt: {str(e)}")
+            return False
+    
+    def test_blocked_members_report_api(self):
+        """Test GET /api/reports/blocked-members"""
+        print("\n=== Testing Blocked Members Report API ===")
+        
+        try:
+            # Test basic report endpoint
+            response = requests.get(f"{API_BASE}/reports/blocked-members", headers=self.headers)
+            if response.status_code == 200:
+                report_data = response.json()
+                if "total_count" in report_data and "blocked_attempts" in report_data:
+                    total_count = report_data["total_count"]
+                    attempts = report_data["blocked_attempts"]
+                    self.log_result("Blocked Members Report API", True, 
+                                  f"Retrieved blocked members report with {total_count} total attempts, {len(attempts)} in response")
+                    
+                    # Store first attempt ID for review testing
+                    if attempts:
+                        self.blocked_attempt_id = attempts[0]["id"]
+                    
+                    # Test filtering by status
+                    response = requests.get(f"{API_BASE}/reports/blocked-members?status=pending", headers=self.headers)
+                    if response.status_code == 200:
+                        filtered_data = response.json()
+                        self.log_result("Blocked Members Report Filtering", True, 
+                                      f"Filtered report by status=pending returned {len(filtered_data.get('blocked_attempts', []))} attempts")
+                    else:
+                        self.log_result("Blocked Members Report Filtering", False, 
+                                      f"Failed to filter report: {response.status_code}")
+                    
+                    return True
+                else:
+                    self.log_result("Blocked Members Report API", False, "Report response missing required fields")
+                    return False
+            else:
+                self.log_result("Blocked Members Report API", False, 
+                              f"Failed to get blocked members report: {response.status_code}")
+                return False
+                
+        except Exception as e:
+            self.log_result("Blocked Members Report API", False, f"Error testing report API: {str(e)}")
+            return False
+    
+    def test_csv_export(self):
+        """Test GET /api/reports/blocked-members/csv"""
+        print("\n=== Testing CSV Export ===")
+        
+        try:
+            response = requests.get(f"{API_BASE}/reports/blocked-members/csv", headers=self.headers)
+            if response.status_code == 200:
+                # Check if response is CSV format
+                content_type = response.headers.get('content-type', '')
+                if 'csv' in content_type or 'text/csv' in content_type:
+                    csv_content = response.text
+                    # Check for CSV headers
+                    if "Timestamp" in csv_content and "Attempted Name" in csv_content:
+                        self.log_result("CSV Export", True, 
+                                      f"CSV export successful, content length: {len(csv_content)} characters")
+                    else:
+                        self.log_result("CSV Export", False, "CSV content missing expected headers")
+                else:
+                    self.log_result("CSV Export", False, f"Unexpected content type: {content_type}")
+            else:
+                self.log_result("CSV Export", False, f"Failed to export CSV: {response.status_code}")
+                
+        except Exception as e:
+            self.log_result("CSV Export", False, f"Error testing CSV export: {str(e)}")
+    
+    def test_html_view(self):
+        """Test GET /api/reports/blocked-members/html"""
+        print("\n=== Testing HTML View ===")
+        
+        try:
+            response = requests.get(f"{API_BASE}/reports/blocked-members/html", headers=self.headers)
+            if response.status_code == 200:
+                html_content = response.text
+                # Check for HTML structure
+                if "<html>" in html_content and "<table>" in html_content and "Blocked Member Attempts" in html_content:
+                    self.log_result("HTML View", True, 
+                                  f"HTML view successful, content length: {len(html_content)} characters")
+                else:
+                    self.log_result("HTML View", False, "HTML content missing expected structure")
+            else:
+                self.log_result("HTML View", False, f"Failed to get HTML view: {response.status_code}")
+                
+        except Exception as e:
+            self.log_result("HTML View", False, f"Error testing HTML view: {str(e)}")
+    
+    def test_review_functionality(self):
+        """Test PATCH /api/reports/blocked-members/{attempt_id}/review"""
+        print("\n=== Testing Review Functionality ===")
+        
+        if not self.blocked_attempt_id:
+            self.log_result("Review Functionality", False, "No blocked attempt ID available for testing")
+            return
+        
+        try:
+            # Test approving a blocked attempt
+            review_data = {
+                "action": "approved",
+                "notes": "Approved for testing purposes"
+            }
+            
+            response = requests.patch(f"{API_BASE}/reports/blocked-members/{self.blocked_attempt_id}/review", 
+                                    json=review_data, headers=self.headers)
+            if response.status_code == 200:
+                updated_attempt = response.json()
+                if (updated_attempt.get("review_status") == "approved" and 
+                    updated_attempt.get("reviewed_by") and
+                    updated_attempt.get("reviewed_at")):
+                    self.log_result("Review Functionality", True, 
+                                  f"Successfully reviewed attempt with status: {updated_attempt['review_status']}")
+                else:
+                    self.log_result("Review Functionality", False, "Review fields not updated correctly")
+            else:
+                self.log_result("Review Functionality", False, 
+                              f"Failed to review attempt: {response.status_code}")
+                
+        except Exception as e:
+            self.log_result("Review Functionality", False, f"Error testing review functionality: {str(e)}")
+    
+    def run_phase3_tests(self):
+        """Run all Phase 3 tests"""
+        print("🚀 Starting Phase 3: Blocked Members Report Tests")
+        print(f"Testing against: {API_BASE}")
+        print("=" * 60)
+        
+        if not self.authenticate():
+            print("❌ Authentication failed. Cannot proceed with tests.")
+            return
+        
+        self.test_create_blocked_attempt()
+        self.test_blocked_members_report_api()
+        self.test_csv_export()
+        self.test_html_view()
+        self.test_review_functionality()
+        
+        self.print_summary()
+    
+    def print_summary(self):
+        """Print test summary"""
+        print("\n" + "=" * 60)
+        print("🏁 PHASE 3: BLOCKED MEMBERS REPORT TEST SUMMARY")
+        print("=" * 60)
+        
+        total_tests = len(self.test_results)
+        passed_tests = len([r for r in self.test_results if r["success"]])
+        failed_tests = total_tests - passed_tests
+        
+        print(f"Total Tests: {total_tests}")
+        print(f"✅ Passed: {passed_tests}")
+        print(f"❌ Failed: {failed_tests}")
+        print(f"Success Rate: {(passed_tests/total_tests*100):.1f}%")
+        
+        if failed_tests > 0:
+            print("\n❌ FAILED TESTS:")
+            for result in self.test_results:
+                if not result["success"]:
+                    print(f"  - {result['test']}: {result['message']}")
+
+
+class Phase4RBACTester:
+    """Test Phase 4: RBAC & Permissions functionality"""
+    
+    def __init__(self):
+        self.token = None
+        self.headers = {}
+        self.test_results = []
+        
+    def log_result(self, test_name, success, message, details=None):
+        """Log test result"""
+        result = {
+            "test": test_name,
+            "success": success,
+            "message": message,
+            "timestamp": datetime.now().isoformat(),
+            "details": details or {}
+        }
+        self.test_results.append(result)
+        status = "✅ PASS" if success else "❌ FAIL"
+        print(f"{status}: {test_name} - {message}")
+        if details and not success:
+            print(f"   Details: {details}")
+    
+    def authenticate(self):
+        """Authenticate and get token"""
+        try:
+            response = requests.post(f"{API_BASE}/auth/login", json={
+                "email": TEST_EMAIL,
+                "password": TEST_PASSWORD
+            })
+            
+            if response.status_code == 200:
+                data = response.json()
+                self.token = data["access_token"]
+                self.headers = {"Authorization": f"Bearer {self.token}"}
+                self.log_result("Authentication", True, "Successfully authenticated")
+                return True
+            else:
+                self.log_result("Authentication", False, f"Failed to authenticate: {response.status_code}")
+                return False
+        except Exception as e:
+            self.log_result("Authentication", False, f"Authentication error: {str(e)}")
+            return False
+    
+    def test_permissions_endpoint(self):
+        """Test GET /api/user/permissions"""
+        print("\n=== Testing Permissions Endpoint ===")
+        
+        try:
+            response = requests.get(f"{API_BASE}/user/permissions", headers=self.headers)
+            if response.status_code == 200:
+                permissions_data = response.json()
+                
+                # Check required fields
+                required_fields = ["role", "permissions", "total_permissions", "all_available_permissions"]
+                missing_fields = [field for field in required_fields if field not in permissions_data]
+                
+                if not missing_fields:
+                    role = permissions_data["role"]
+                    user_permissions = permissions_data["permissions"]
+                    total_permissions = permissions_data["total_permissions"]
+                    
+                    self.log_result("Permissions Endpoint Structure", True, 
+                                  f"Permissions endpoint returned correct structure for role: {role}")
+                    
+                    # Check if admin has all permissions
+                    if role == "admin":
+                        all_available = permissions_data["all_available_permissions"]
+                        if len(user_permissions) == len(all_available):
+                            self.log_result("Admin Permissions Check", True, 
+                                          f"Admin has all {len(user_permissions)} permissions")
+                        else:
+                            self.log_result("Admin Permissions Check", False, 
+                                          f"Admin missing permissions: {len(user_permissions)}/{len(all_available)}")
+                    
+                    # Verify permissions match role definitions
+                    expected_admin_permissions = [
+                        "members:read", "members:create", "members:update", "members:delete",
+                        "reports:view", "reports:export", "reports:blocked_members",
+                        "automations:read", "automations:create", "settings:update"
+                    ]
+                    
+                    missing_expected = [perm for perm in expected_admin_permissions if perm not in user_permissions]
+                    if not missing_expected:
+                        self.log_result("Permission Validation", True, 
+                                      "All expected admin permissions present")
+                    else:
+                        self.log_result("Permission Validation", False, 
+                                      f"Missing expected permissions: {missing_expected}")
+                    
+                    return True
+                else:
+                    self.log_result("Permissions Endpoint Structure", False, 
+                                  f"Missing required fields: {missing_fields}")
+                    return False
+            else:
+                self.log_result("Permissions Endpoint", False, 
+                              f"Failed to get permissions: {response.status_code}")
+                return False
+                
+        except Exception as e:
+            self.log_result("Permissions Endpoint", False, f"Error testing permissions endpoint: {str(e)}")
+            return False
+    
+    def test_permissions_module(self):
+        """Test permissions module functionality"""
+        print("\n=== Testing Permissions Module ===")
+        
+        try:
+            # Test importing permissions module
+            import sys
+            sys.path.append('/app/backend')
+            
+            try:
+                from permissions import PERMISSIONS, ROLE_PERMISSIONS, has_permission, get_user_permissions
+                self.log_result("Permissions Module Import", True, "Successfully imported permissions module")
+                
+                # Test ROLE_PERMISSIONS mapping
+                if "admin" in ROLE_PERMISSIONS and "staff" in ROLE_PERMISSIONS:
+                    admin_perms = ROLE_PERMISSIONS["admin"]
+                    staff_perms = ROLE_PERMISSIONS["staff"]
+                    
+                    if len(admin_perms) > len(staff_perms):
+                        self.log_result("Role Permissions Mapping", True, 
+                                      f"Admin has more permissions ({len(admin_perms)}) than staff ({len(staff_perms)})")
+                    else:
+                        self.log_result("Role Permissions Mapping", False, 
+                                      "Admin should have more permissions than staff")
+                
+                # Test has_permission function
+                if has_permission("admin", "members:create") and not has_permission("guest", "members:create"):
+                    self.log_result("Permission Function Test", True, 
+                                  "has_permission() function works correctly")
+                else:
+                    self.log_result("Permission Function Test", False, 
+                                  "has_permission() function not working correctly")
+                
+                return True
+                
+            except ImportError as e:
+                self.log_result("Permissions Module Import", False, f"Failed to import permissions module: {str(e)}")
+                return False
+                
+        except Exception as e:
+            self.log_result("Permissions Module Test", False, f"Error testing permissions module: {str(e)}")
+            return False
+    
+    def run_phase4_tests(self):
+        """Run all Phase 4 tests"""
+        print("🚀 Starting Phase 4: RBAC & Permissions Tests")
+        print(f"Testing against: {API_BASE}")
+        print("=" * 60)
+        
+        if not self.authenticate():
+            print("❌ Authentication failed. Cannot proceed with tests.")
+            return
+        
+        self.test_permissions_endpoint()
+        self.test_permissions_module()
+        
+        self.print_summary()
+    
+    def print_summary(self):
+        """Print test summary"""
+        print("\n" + "=" * 60)
+        print("🏁 PHASE 4: RBAC & PERMISSIONS TEST SUMMARY")
+        print("=" * 60)
+        
+        total_tests = len(self.test_results)
+        passed_tests = len([r for r in self.test_results if r["success"]])
+        failed_tests = total_tests - passed_tests
+        
+        print(f"Total Tests: {total_tests}")
+        print(f"✅ Passed: {passed_tests}")
+        print(f"❌ Failed: {failed_tests}")
+        print(f"Success Rate: {(passed_tests/total_tests*100):.1f}%")
+        
+        if failed_tests > 0:
+            print("\n❌ FAILED TESTS:")
+            for result in self.test_results:
+                if not result["success"]:
+                    print(f"  - {result['test']}: {result['message']}")
+
+
+class Phase5SummaryReportsTester:
+    """Test Phase 5: Summary Reports Dashboard functionality"""
+    
+    def __init__(self):
+        self.token = None
+        self.headers = {}
+        self.test_results = []
+        
+    def log_result(self, test_name, success, message, details=None):
+        """Log test result"""
+        result = {
+            "test": test_name,
+            "success": success,
+            "message": message,
+            "timestamp": datetime.now().isoformat(),
+            "details": details or {}
+        }
+        self.test_results.append(result)
+        status = "✅ PASS" if success else "❌ FAIL"
+        print(f"{status}: {test_name} - {message}")
+        if details and not success:
+            print(f"   Details: {details}")
+    
+    def authenticate(self):
+        """Authenticate and get token"""
+        try:
+            response = requests.post(f"{API_BASE}/auth/login", json={
+                "email": TEST_EMAIL,
+                "password": TEST_PASSWORD
+            })
+            
+            if response.status_code == 200:
+                data = response.json()
+                self.token = data["access_token"]
+                self.headers = {"Authorization": f"Bearer {self.token}"}
+                self.log_result("Authentication", True, "Successfully authenticated")
+                return True
+            else:
+                self.log_result("Authentication", False, f"Failed to authenticate: {response.status_code}")
+                return False
+        except Exception as e:
+            self.log_result("Authentication", False, f"Authentication error: {str(e)}")
+            return False
+    
+    def test_summary_report_api(self):
+        """Test GET /api/reports/summary"""
+        print("\n=== Testing Summary Report API ===")
+        
+        try:
+            response = requests.get(f"{API_BASE}/reports/summary", headers=self.headers)
+            if response.status_code == 200:
+                summary_data = response.json()
+                
+                # Check for all required sections
+                required_sections = [
+                    "members", "revenue", "invoices", "classes", "bookings", 
+                    "access_control", "automations", "duplicate_detection", "system"
+                ]
+                
+                missing_sections = [section for section in required_sections if section not in summary_data]
+                
+                if not missing_sections:
+                    self.log_result("Summary Report Structure", True, 
+                                  f"Summary report contains all {len(required_sections)} required sections")
+                    
+                    # Test Members section
+                    members = summary_data["members"]
+                    member_fields = ["total", "active", "suspended", "new_30d", "growth_rate"]
+                    if all(field in members for field in member_fields):
+                        self.log_result("Members Section", True, 
+                                      f"Members section complete: {members['total']} total, {members['active']} active")
+                    else:
+                        missing_member_fields = [f for f in member_fields if f not in members]
+                        self.log_result("Members Section", False, f"Missing member fields: {missing_member_fields}")
+                    
+                    # Test Revenue section
+                    revenue = summary_data["revenue"]
+                    revenue_fields = ["total", "last_30d", "avg_per_member"]
+                    if all(field in revenue for field in revenue_fields):
+                        self.log_result("Revenue Section", True, 
+                                      f"Revenue section complete: R{revenue['total']} total, R{revenue['last_30d']} last 30d")
+                    else:
+                        missing_revenue_fields = [f for f in revenue_fields if f not in revenue]
+                        self.log_result("Revenue Section", False, f"Missing revenue fields: {missing_revenue_fields}")
+                    
+                    # Test Invoices section
+                    invoices = summary_data["invoices"]
+                    invoice_fields = ["total", "paid", "pending", "overdue", "success_rate"]
+                    if all(field in invoices for field in invoice_fields):
+                        success_rate = invoices["success_rate"]
+                        self.log_result("Invoices Section", True, 
+                                      f"Invoices section complete: {invoices['total']} total, {success_rate}% success rate")
+                    else:
+                        missing_invoice_fields = [f for f in invoice_fields if f not in invoices]
+                        self.log_result("Invoices Section", False, f"Missing invoice fields: {missing_invoice_fields}")
+                    
+                    # Test Classes & Bookings sections
+                    classes = summary_data["classes"]
+                    bookings = summary_data["bookings"]
+                    if "total" in classes and "total" in bookings:
+                        self.log_result("Classes & Bookings Sections", True, 
+                                      f"Classes: {classes['total']}, Bookings: {bookings['total']}")
+                    else:
+                        self.log_result("Classes & Bookings Sections", False, "Missing class or booking totals")
+                    
+                    # Test Access Control section
+                    access_control = summary_data["access_control"]
+                    access_fields = ["total_checkins", "checkins_30d", "avg_per_day"]
+                    if all(field in access_control for field in access_fields):
+                        self.log_result("Access Control Section", True, 
+                                      f"Access control complete: {access_control['total_checkins']} total check-ins")
+                    else:
+                        missing_access_fields = [f for f in access_fields if f not in access_control]
+                        self.log_result("Access Control Section", False, f"Missing access fields: {missing_access_fields}")
+                    
+                    # Test Automations section
+                    automations = summary_data["automations"]
+                    automation_fields = ["total", "enabled", "executions_30d"]
+                    if all(field in automations for field in automation_fields):
+                        self.log_result("Automations Section", True, 
+                                      f"Automations complete: {automations['total']} total, {automations['enabled']} enabled")
+                    else:
+                        missing_automation_fields = [f for f in automation_fields if f not in automations]
+                        self.log_result("Automations Section", False, f"Missing automation fields: {missing_automation_fields}")
+                    
+                    # Test Duplicate Detection section
+                    duplicate_detection = summary_data["duplicate_detection"]
+                    duplicate_fields = ["blocked_attempts", "pending_reviews"]
+                    if all(field in duplicate_detection for field in duplicate_fields):
+                        self.log_result("Duplicate Detection Section", True, 
+                                      f"Duplicate detection complete: {duplicate_detection['blocked_attempts']} blocked attempts")
+                    else:
+                        missing_duplicate_fields = [f for f in duplicate_fields if f not in duplicate_detection]
+                        self.log_result("Duplicate Detection Section", False, f"Missing duplicate fields: {missing_duplicate_fields}")
+                    
+                    # Test System section
+                    system = summary_data["system"]
+                    system_fields = ["api_calls_30d", "success_rate"]
+                    if all(field in system for field in system_fields):
+                        self.log_result("System Section", True, 
+                                      f"System section complete: {system['api_calls_30d']} API calls, {system['success_rate']}% success rate")
+                    else:
+                        missing_system_fields = [f for f in system_fields if f not in system]
+                        self.log_result("System Section", False, f"Missing system fields: {missing_system_fields}")
+                    
+                    return True
+                else:
+                    self.log_result("Summary Report Structure", False, 
+                                  f"Missing required sections: {missing_sections}")
+                    return False
+            else:
+                self.log_result("Summary Report API", False, 
+                              f"Failed to get summary report: {response.status_code}")
+                return False
+                
+        except Exception as e:
+            self.log_result("Summary Report API", False, f"Error testing summary report API: {str(e)}")
+            return False
+    
+    def test_data_accuracy(self):
+        """Test data accuracy by comparing with individual endpoints"""
+        print("\n=== Testing Data Accuracy ===")
+        
+        try:
+            # Get summary report
+            summary_response = requests.get(f"{API_BASE}/reports/summary", headers=self.headers)
+            if summary_response.status_code != 200:
+                self.log_result("Data Accuracy Test", False, "Failed to get summary report for accuracy test")
+                return False
+            
+            summary_data = summary_response.json()
+            
+            # Test members count accuracy
+            members_response = requests.get(f"{API_BASE}/members", headers=self.headers)
+            if members_response.status_code == 200:
+                members_list = members_response.json()
+                actual_members_count = len(members_list)
+                summary_members_count = summary_data["members"]["total"]
+                
+                if actual_members_count == summary_members_count:
+                    self.log_result("Members Count Accuracy", True, 
+                                  f"Members count matches: {actual_members_count}")
+                else:
+                    self.log_result("Members Count Accuracy", False, 
+                                  f"Members count mismatch: summary={summary_members_count}, actual={actual_members_count}")
+            
+            # Test classes count accuracy
+            classes_response = requests.get(f"{API_BASE}/classes", headers=self.headers)
+            if classes_response.status_code == 200:
+                classes_list = classes_response.json()
+                actual_classes_count = len(classes_list)
+                summary_classes_count = summary_data["classes"]["total"]
+                
+                if actual_classes_count == summary_classes_count:
+                    self.log_result("Classes Count Accuracy", True, 
+                                  f"Classes count matches: {actual_classes_count}")
+                else:
+                    self.log_result("Classes Count Accuracy", False, 
+                                  f"Classes count mismatch: summary={summary_classes_count}, actual={actual_classes_count}")
+            
+            # Test automations count accuracy
+            automations_response = requests.get(f"{API_BASE}/automations", headers=self.headers)
+            if automations_response.status_code == 200:
+                automations_list = automations_response.json()
+                actual_automations_count = len(automations_list)
+                summary_automations_count = summary_data["automations"]["total"]
+                
+                if actual_automations_count == summary_automations_count:
+                    self.log_result("Automations Count Accuracy", True, 
+                                  f"Automations count matches: {actual_automations_count}")
+                else:
+                    self.log_result("Automations Count Accuracy", False, 
+                                  f"Automations count mismatch: summary={summary_automations_count}, actual={actual_automations_count}")
+            
+            return True
+            
+        except Exception as e:
+            self.log_result("Data Accuracy Test", False, f"Error testing data accuracy: {str(e)}")
+            return False
+    
+    def run_phase5_tests(self):
+        """Run all Phase 5 tests"""
+        print("🚀 Starting Phase 5: Summary Reports Dashboard Tests")
+        print(f"Testing against: {API_BASE}")
+        print("=" * 60)
+        
+        if not self.authenticate():
+            print("❌ Authentication failed. Cannot proceed with tests.")
+            return
+        
+        self.test_summary_report_api()
+        self.test_data_accuracy()
+        
+        self.print_summary()
+    
+    def print_summary(self):
+        """Print test summary"""
+        print("\n" + "=" * 60)
+        print("🏁 PHASE 5: SUMMARY REPORTS DASHBOARD TEST SUMMARY")
+        print("=" * 60)
+        
+        total_tests = len(self.test_results)
+        passed_tests = len([r for r in self.test_results if r["success"]])
+        failed_tests = total_tests - passed_tests
+        
+        print(f"Total Tests: {total_tests}")
+        print(f"✅ Passed: {passed_tests}")
+        print(f"❌ Failed: {failed_tests}")
+        print(f"Success Rate: {(passed_tests/total_tests*100):.1f}%")
+        
+        if failed_tests > 0:
+            print("\n❌ FAILED TESTS:")
+            for result in self.test_results:
+                if not result["success"]:
+                    print(f"  - {result['test']}: {result['message']}")
+
+
+class RegressionTester:
+    """Test existing functionality to ensure no breaking changes"""
+    
+    def __init__(self):
+        self.token = None
+        self.headers = {}
+        self.test_results = []
+        
+    def log_result(self, test_name, success, message, details=None):
+        """Log test result"""
+        result = {
+            "test": test_name,
+            "success": success,
+            "message": message,
+            "timestamp": datetime.now().isoformat(),
+            "details": details or {}
+        }
+        self.test_results.append(result)
+        status = "✅ PASS" if success else "❌ FAIL"
+        print(f"{status}: {test_name} - {message}")
+        if details and not success:
+            print(f"   Details: {details}")
+    
+    def authenticate(self):
+        """Authenticate and get token"""
+        try:
+            response = requests.post(f"{API_BASE}/auth/login", json={
+                "email": TEST_EMAIL,
+                "password": TEST_PASSWORD
+            })
+            
+            if response.status_code == 200:
+                data = response.json()
+                self.token = data["access_token"]
+                self.headers = {"Authorization": f"Bearer {self.token}"}
+                self.log_result("Authentication", True, "Successfully authenticated")
+                return True
+            else:
+                self.log_result("Authentication", False, f"Failed to authenticate: {response.status_code}")
+                return False
+        except Exception as e:
+            self.log_result("Authentication", False, f"Authentication error: {str(e)}")
+            return False
+    
+    def test_existing_endpoints(self):
+        """Test that existing endpoints still work"""
+        print("\n=== Testing Existing Functionality ===")
+        
+        endpoints_to_test = [
+            ("/members", "GET", "Members List"),
+            ("/membership-types", "GET", "Membership Types"),
+            ("/classes", "GET", "Classes List"),
+            ("/bookings", "GET", "Bookings List"),
+            ("/automations", "GET", "Automations List"),
+            ("/auth/me", "GET", "User Profile")
+        ]
+        
+        for endpoint, method, description in endpoints_to_test:
+            try:
+                if method == "GET":
+                    response = requests.get(f"{API_BASE}{endpoint}", headers=self.headers)
+                
+                if response.status_code == 200:
+                    self.log_result(f"Regression: {description}", True, 
+                                  f"{description} endpoint working correctly")
+                else:
+                    self.log_result(f"Regression: {description}", False, 
+                                  f"{description} endpoint failed: {response.status_code}")
+                    
+            except Exception as e:
+                self.log_result(f"Regression: {description}", False, 
+                              f"Error testing {description}: {str(e)}")
+    
+    def test_member_creation_still_works(self):
+        """Test that member creation with normalization still works"""
+        print("\n=== Testing Member Creation (Regression) ===")
+        
+        try:
+            # Get membership type
+            response = requests.get(f"{API_BASE}/membership-types", headers=self.headers)
+            if response.status_code != 200:
+                self.log_result("Member Creation Regression", False, "Failed to get membership types")
+                return
+            
+            membership_types = response.json()
+            if not membership_types:
+                self.log_result("Member Creation Regression", False, "No membership types found")
+                return
+            
+            membership_type_id = membership_types[0]["id"]
+            
+            # Create a unique member
+            unique_timestamp = int(time.time())
+            member_data = {
+                "first_name": "Regression",
+                "last_name": f"Test{unique_timestamp}",
+                "email": f"regression.test{unique_timestamp}@example.com",
+                "phone": f"+27123{unique_timestamp % 1000000:06d}",
+                "membership_type_id": membership_type_id
+            }
+            
+            response = requests.post(f"{API_BASE}/members", json=member_data, headers=self.headers)
+            if response.status_code == 200:
+                member = response.json()
+                # Check that normalized fields are populated
+                if (member.get("norm_email") and member.get("norm_phone") and 
+                    member.get("norm_first_name") and member.get("norm_last_name")):
+                    self.log_result("Member Creation with Normalization", True, 
+                                  "Member created successfully with normalized fields populated")
+                else:
+                    self.log_result("Member Creation with Normalization", False, 
+                                  "Member created but normalized fields missing")
+            else:
+                self.log_result("Member Creation Regression", False, 
+                              f"Failed to create member: {response.status_code}")
+                
+        except Exception as e:
+            self.log_result("Member Creation Regression", False, f"Error testing member creation: {str(e)}")
+    
+    def run_regression_tests(self):
+        """Run all regression tests"""
+        print("🚀 Starting Regression Tests")
+        print(f"Testing against: {API_BASE}")
+        print("=" * 60)
+        
+        if not self.authenticate():
+            print("❌ Authentication failed. Cannot proceed with tests.")
+            return
+        
+        self.test_existing_endpoints()
+        self.test_member_creation_still_works()
+        
+        self.print_summary()
+    
+    def print_summary(self):
+        """Print test summary"""
+        print("\n" + "=" * 60)
+        print("🏁 REGRESSION TEST SUMMARY")
+        print("=" * 60)
+        
+        total_tests = len(self.test_results)
+        passed_tests = len([r for r in self.test_results if r["success"]])
+        failed_tests = total_tests - passed_tests
+        
+        print(f"Total Tests: {total_tests}")
+        print(f"✅ Passed: {passed_tests}")
+        print(f"❌ Failed: {failed_tests}")
+        print(f"Success Rate: {(passed_tests/total_tests*100):.1f}%")
+        
+        if failed_tests > 0:
+            print("\n❌ FAILED TESTS:")
+            for result in self.test_results:
+                if not result["success"]:
+                    print(f"  - {result['test']}: {result['message']}")
+
+
 if __name__ == "__main__":
-    # Run Enhanced Duplicate Detection & Audit Logging Tests
-    print("🎯 ENHANCED DUPLICATE DETECTION & AUDIT LOGGING SYSTEM TESTS")
+    print("🎯 COMPREHENSIVE TESTING OF ALL 5 PHASES")
+    print("=" * 80)
+    print("Testing Enhanced Duplicate Detection, Audit Logging, Blocked Members Report,")
+    print("RBAC Permissions, and Summary Reports Dashboard for ERP360 gym management")
     print("=" * 80)
     
-    duplicate_tester = DuplicateDetectionTester()
-    duplicate_tester.run_duplicate_detection_tests()
+    # Phase 3: Blocked Members Report Testing
+    phase3_tester = Phase3BlockedMembersTester()
+    phase3_tester.run_phase3_tests()
     
-    print("\n" + "="*80 + "\n")
+    print("\n" + "="*80)
     
-    # Run Audit Logging Tests
-    audit_tester = AuditLoggingTester()
-    audit_tester.run_audit_logging_tests()
+    # Phase 4: RBAC & Permissions Testing
+    phase4_tester = Phase4RBACTester()
+    phase4_tester.run_phase4_tests()
     
-    print("\n" + "="*80 + "\n")
+    print("\n" + "="*80)
     
-    # Run CSV Import tests as requested
-    csv_tester = CSVImportTester()
-    csv_tester.run_csv_import_tests()
+    # Phase 5: Summary Reports Dashboard Testing
+    phase5_tester = Phase5SummaryReportsTester()
+    phase5_tester.run_phase5_tests()
+    
+    print("\n" + "="*80)
+    
+    # Regression Testing
+    regression_tester = RegressionTester()
+    regression_tester.run_regression_tests()
+    
+    print("\n" + "="*80)
+    print("🏁 ALL PHASES TESTING COMPLETED")
+    print("="*80)
