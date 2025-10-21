@@ -5483,11 +5483,12 @@ class DuplicateDetectionTester:
             return False
         
         # Create member with Gmail email with dots and plus
+        timestamp = int(time.time())
         member_data_1 = {
             "first_name": "Sarah",
-            "last_name": "Johnson",
-            "email": "sarah.johnson+gym@gmail.com",
-            "phone": "+27823456789",
+            "last_name": f"Johnson{timestamp}",
+            "email": f"sarah.johnson{timestamp}+gym@gmail.com",
+            "phone": f"+2782345{timestamp % 10000:04d}",
             "membership_type_id": membership_type_id
         }
         
