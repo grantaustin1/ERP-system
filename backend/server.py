@@ -4942,6 +4942,472 @@ async def validate_field(
         "message": errors[0] if errors else "Valid"
     }
 
+
+
+# ===================== POS (Point of Sale) API Endpoints =====================
+
+# Product Categories
+@api_router.get("/pos/categories")
+async def get_product_categories(current_user: User = Depends(get_current_user)):
+    """Get all product categories"""
+    categories = await db.product_categories.find({"is_active": True}).sort("display_order", 1).to_list(length=None)
+    return {"categories": categories, "total": len(categories)}
+
+@api_router.post("/pos/categories")
+async def create_product_category(category: ProductCategoryCreate, current_user: User = Depends(get_current_user)):
+    """Create a new product category"""
+    category_data = category.dict()
+    category_data["id"] = str(uuid.uuid4())
+    category_data["is_active"] = True
+    category_data["created_at"] = datetime.now(timezone.utc).isoformat()
+    
+    await db.product_categories.insert_one(category_data)
+    return {"success": True, "category": category_data}
+
+@api_router.put("/pos/categories/{category_id}")
+async def update_product_category(
+    category_id: str,
+    updates: dict,
+    current_user: User = Depends(get_current_user)
+):
+    """Update a product category"""
+    await db.product_categories.update_one(
+        {"id": category_id},
+        {"$set": updates}
+    )
+    return {"success": True, "message": "Category updated"}
+
+@api_router.delete("/pos/categories/{category_id}")
+async def delete_product_category(category_id: str, current_user: User = Depends(get_current_user)):
+    """Soft delete a product category"""
+    await db.product_categories.update_one(
+        {"id": category_id},
+        {"$set": {"is_active": False}}
+    )
+    return {"success": True, "message": "Category deleted"}
+
+# Products
+@api_router.get("/pos/products")
+async def get_products(
+    category_id: Optional[str] = None,
+    is_favorite: Optional[bool] = None,
+    search: Optional[str] = None,
+    current_user: User = Depends(get_current_user)
+):
+    """Get all products with optional filtering"""
+    query = {"is_active": True}
+    
+    if category_id:
+        query["category_id"] = category_id
+    if is_favorite is not None:
+        query["is_favorite"] = is_favorite
+    if search:
+        query["$or"] = [
+            {"name": {"$regex": search, "$options": "i"}},
+            {"sku": {"$regex": search, "$options": "i"}}
+        ]
+    
+    products = await db.products.find(query).to_list(length=None)
+    
+    # Enrich with category names
+    for product in products:
+        if product.get("category_id"):
+            category = await db.product_categories.find_one({"id": product["category_id"]})
+            if category:
+                product["category_name"] = category["name"]
+    
+    return {"products": products, "total": len(products)}
+
+@api_router.post("/pos/products")
+async def create_product(product: ProductCreate, current_user: User = Depends(get_current_user)):
+    """Create a new product"""
+    # Calculate selling price
+    selling_price = product.cost_price * (1 + product.markup_percent / 100)
+    
+    # Get category name
+    category = await db.product_categories.find_one({"id": product.category_id})
+    if not category:
+        raise HTTPException(status_code=400, detail="Invalid category")
+    
+    product_data = product.dict()
+    product_data["id"] = str(uuid.uuid4())
+    product_data["selling_price"] = round(selling_price, 2)
+    product_data["category_name"] = category["name"]
+    product_data["is_active"] = True
+    product_data["created_at"] = datetime.now(timezone.utc).isoformat()
+    product_data["updated_at"] = datetime.now(timezone.utc).isoformat()
+    product_data["created_by"] = current_user.id
+    
+    await db.products.insert_one(product_data)
+    return {"success": True, "product": product_data}
+
+@api_router.put("/pos/products/{product_id}")
+async def update_product(
+    product_id: str,
+    updates: ProductUpdate,
+    current_user: User = Depends(get_current_user)
+):
+    """Update a product"""
+    update_data = {k: v for k, v in updates.dict().items() if v is not None}
+    
+    # Recalculate selling price if cost_price or markup_percent changed
+    if "cost_price" in update_data or "markup_percent" in update_data:
+        product = await db.products.find_one({"id": product_id})
+        if not product:
+            raise HTTPException(status_code=404, detail="Product not found")
+        
+        cost_price = update_data.get("cost_price", product["cost_price"])
+        markup_percent = update_data.get("markup_percent", product["markup_percent"])
+        update_data["selling_price"] = round(cost_price * (1 + markup_percent / 100), 2)
+    
+    # Update category name if category changed
+    if "category_id" in update_data:
+        category = await db.product_categories.find_one({"id": update_data["category_id"]})
+        if category:
+            update_data["category_name"] = category["name"]
+    
+    update_data["updated_at"] = datetime.now(timezone.utc).isoformat()
+    
+    await db.products.update_one(
+        {"id": product_id},
+        {"$set": update_data}
+    )
+    
+    return {"success": True, "message": "Product updated"}
+
+@api_router.delete("/pos/products/{product_id}")
+async def delete_product(product_id: str, current_user: User = Depends(get_current_user)):
+    """Soft delete a product"""
+    await db.products.update_one(
+        {"id": product_id},
+        {"$set": {"is_active": False}}
+    )
+    return {"success": True, "message": "Product deleted"}
+
+@api_router.get("/pos/products/low-stock")
+async def get_low_stock_products(current_user: User = Depends(get_current_user)):
+    """Get products with low stock"""
+    products = await db.products.find({
+        "is_active": True,
+        "$expr": {"$lte": ["$stock_quantity", "$low_stock_threshold"]}
+    }).to_list(length=None)
+    
+    return {"products": products, "total": len(products)}
+
+# Stock Management
+@api_router.post("/pos/stock/adjust")
+async def adjust_stock(adjustment: StockAdjustmentCreate, current_user: User = Depends(get_current_user)):
+    """Adjust product stock"""
+    product = await db.products.find_one({"id": adjustment.product_id})
+    if not product:
+        raise HTTPException(status_code=404, detail="Product not found")
+    
+    previous_quantity = product["stock_quantity"]
+    new_quantity = previous_quantity + adjustment.quantity_change
+    
+    if new_quantity < 0:
+        raise HTTPException(status_code=400, detail="Stock quantity cannot be negative")
+    
+    # Update product stock
+    await db.products.update_one(
+        {"id": adjustment.product_id},
+        {"$set": {"stock_quantity": new_quantity, "updated_at": datetime.now(timezone.utc).isoformat()}}
+    )
+    
+    # Create stock adjustment record
+    adjustment_record = {
+        "id": str(uuid.uuid4()),
+        "product_id": adjustment.product_id,
+        "product_name": product["name"],
+        "adjustment_type": adjustment.adjustment_type,
+        "quantity_change": adjustment.quantity_change,
+        "previous_quantity": previous_quantity,
+        "new_quantity": new_quantity,
+        "reason": adjustment.reason,
+        "adjusted_by_user_id": current_user.id,
+        "adjusted_by_name": current_user.full_name,
+        "adjustment_date": datetime.now(timezone.utc).isoformat()
+    }
+    
+    await db.stock_adjustments.insert_one(adjustment_record)
+    
+    return {
+        "success": True,
+        "message": f"Stock adjusted from {previous_quantity} to {new_quantity}",
+        "adjustment": adjustment_record
+    }
+
+@api_router.get("/pos/stock/history/{product_id}")
+async def get_stock_history(product_id: str, current_user: User = Depends(get_current_user)):
+    """Get stock adjustment history for a product"""
+    adjustments = await db.stock_adjustments.find(
+        {"product_id": product_id}
+    ).sort("adjustment_date", -1).to_list(length=100)
+    
+    return {"adjustments": adjustments, "total": len(adjustments)}
+
+# POS Transactions
+@api_router.post("/pos/transactions")
+async def create_pos_transaction(
+    transaction: POSTransactionCreate,
+    current_user: User = Depends(get_current_user)
+):
+    """Create a POS transaction (sale)"""
+    # Generate transaction number
+    today = datetime.now(timezone.utc)
+    today_str = today.strftime("%Y%m%d")
+    
+    # Count today's transactions
+    today_start = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
+    count = await db.pos_transactions.count_documents({
+        "transaction_date": {"$gte": today_start.isoformat()}
+    })
+    
+    transaction_number = f"POS-{today_str}-{count + 1:04d}"
+    
+    # Get member info if member_id provided
+    member_name = None
+    if transaction.member_id:
+        member = await db.members.find_one({"id": transaction.member_id})
+        if member:
+            member_name = f"{member['first_name']} {member['last_name']}"
+    
+    # Create transaction record
+    transaction_data = transaction.dict()
+    transaction_data["id"] = str(uuid.uuid4())
+    transaction_data["transaction_number"] = transaction_number
+    transaction_data["transaction_date"] = datetime.now(timezone.utc).isoformat()
+    transaction_data["captured_by_user_id"] = current_user.id
+    transaction_data["captured_by_name"] = current_user.full_name
+    transaction_data["member_name"] = member_name
+    transaction_data["status"] = "completed"
+    
+    # Process based on transaction type
+    if transaction.transaction_type == "product_sale":
+        # Deduct stock for each product
+        for item in transaction.items:
+            product = await db.products.find_one({"id": item.product_id})
+            if not product:
+                raise HTTPException(status_code=400, detail=f"Product {item.product_id} not found")
+            
+            new_stock = product["stock_quantity"] - item.quantity
+            if new_stock < 0:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Insufficient stock for {product['name']}. Available: {product['stock_quantity']}"
+                )
+            
+            # Update stock
+            await db.products.update_one(
+                {"id": item.product_id},
+                {"$set": {"stock_quantity": new_stock, "updated_at": datetime.now(timezone.utc).isoformat()}}
+            )
+            
+            # Create stock adjustment record
+            adjustment = {
+                "id": str(uuid.uuid4()),
+                "product_id": item.product_id,
+                "product_name": product["name"],
+                "adjustment_type": "sale",
+                "quantity_change": -item.quantity,
+                "previous_quantity": product["stock_quantity"],
+                "new_quantity": new_stock,
+                "reason": f"POS Sale - {transaction_number}",
+                "adjusted_by_user_id": current_user.id,
+                "adjusted_by_name": current_user.full_name,
+                "adjustment_date": datetime.now(timezone.utc).isoformat()
+            }
+            await db.stock_adjustments.insert_one(adjustment)
+    
+    elif transaction.transaction_type in ["membership_payment", "session_payment", "debt_payment", "account_payment"]:
+        # Create a payment record linked to member
+        if not transaction.member_id:
+            raise HTTPException(status_code=400, detail="Member ID required for this payment type")
+        
+        payment_data = {
+            "id": str(uuid.uuid4()),
+            "member_id": transaction.member_id,
+            "amount": transaction.total_amount,
+            "payment_date": datetime.now(timezone.utc).isoformat(),
+            "payment_method": transaction.payment_method,
+            "payment_reference": transaction.payment_reference,
+            "payment_type": transaction.transaction_type,
+            "pos_transaction_id": transaction_data["id"],
+            "pos_transaction_number": transaction_number,
+            "captured_by": current_user.full_name,
+            "notes": transaction.notes
+        }
+        
+        # If linked to an invoice, update invoice status
+        if transaction.invoice_id:
+            invoice = await db.invoices.find_one({"id": transaction.invoice_id})
+            if invoice:
+                await db.invoices.update_one(
+                    {"id": transaction.invoice_id},
+                    {"$set": {
+                        "status": "paid",
+                        "paid_date": datetime.now(timezone.utc).isoformat(),
+                        "payment_method": transaction.payment_method
+                    }}
+                )
+                payment_data["invoice_id"] = transaction.invoice_id
+        
+        # If debt payment, reduce member's debt
+        if transaction.transaction_type == "debt_payment":
+            member = await db.members.find_one({"id": transaction.member_id})
+            if member:
+                current_debt = member.get("debt_amount", 0)
+                new_debt = max(0, current_debt - transaction.total_amount)
+                await db.members.update_one(
+                    {"id": transaction.member_id},
+                    {"$set": {
+                        "debt_amount": new_debt,
+                        "is_debtor": new_debt > 0
+                    }}
+                )
+        
+        # Save payment record
+        await db.payments.insert_one(payment_data)
+        transaction_data["payment_id"] = payment_data["id"]
+    
+    # Save transaction
+    await db.pos_transactions.insert_one(transaction_data)
+    
+    return {
+        "success": True,
+        "message": "Transaction completed successfully",
+        "transaction": transaction_data
+    }
+
+@api_router.get("/pos/transactions")
+async def get_pos_transactions(
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+    transaction_type: Optional[str] = None,
+    member_id: Optional[str] = None,
+    current_user: User = Depends(get_current_user)
+):
+    """Get POS transactions with filtering"""
+    query = {"status": "completed"}
+    
+    if start_date and end_date:
+        query["transaction_date"] = {
+            "$gte": start_date,
+            "$lte": end_date
+        }
+    if transaction_type:
+        query["transaction_type"] = transaction_type
+    if member_id:
+        query["member_id"] = member_id
+    
+    transactions = await db.pos_transactions.find(query).sort("transaction_date", -1).to_list(length=None)
+    
+    return {"transactions": transactions, "total": len(transactions)}
+
+@api_router.get("/pos/transactions/{transaction_id}")
+async def get_pos_transaction(transaction_id: str, current_user: User = Depends(get_current_user)):
+    """Get a specific POS transaction"""
+    transaction = await db.pos_transactions.find_one({"id": transaction_id})
+    if not transaction:
+        raise HTTPException(status_code=404, detail="Transaction not found")
+    
+    return {"transaction": transaction}
+
+@api_router.post("/pos/transactions/{transaction_id}/void")
+async def void_pos_transaction(
+    transaction_id: str,
+    void_reason: str,
+    current_user: User = Depends(get_current_user)
+):
+    """Void a POS transaction"""
+    transaction = await db.pos_transactions.find_one({"id": transaction_id})
+    if not transaction:
+        raise HTTPException(status_code=404, detail="Transaction not found")
+    
+    if transaction["status"] != "completed":
+        raise HTTPException(status_code=400, detail="Can only void completed transactions")
+    
+    # Restore stock if product sale
+    if transaction["transaction_type"] == "product_sale":
+        for item in transaction["items"]:
+            await db.products.update_one(
+                {"id": item["product_id"]},
+                {"$inc": {"stock_quantity": item["quantity"]}}
+            )
+    
+    # Update transaction status
+    await db.pos_transactions.update_one(
+        {"id": transaction_id},
+        {"$set": {
+            "status": "void",
+            "void_reason": void_reason,
+            "voided_by": current_user.id,
+            "voided_at": datetime.now(timezone.utc).isoformat()
+        }}
+    )
+    
+    return {"success": True, "message": "Transaction voided"}
+
+# POS Reports
+@api_router.get("/pos/reports/daily-summary")
+async def get_daily_pos_summary(date: Optional[str] = None, current_user: User = Depends(get_current_user)):
+    """Get daily POS summary for cash-up"""
+    if not date:
+        date = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    
+    # Parse date
+    target_date = datetime.strptime(date, "%Y-%m-%d")
+    start_of_day = target_date.replace(hour=0, minute=0, second=0, microsecond=0)
+    end_of_day = start_of_day + timedelta(days=1)
+    
+    # Get all completed transactions for the day
+    transactions = await db.pos_transactions.find({
+        "status": "completed",
+        "transaction_date": {
+            "$gte": start_of_day.isoformat(),
+            "$lt": end_of_day.isoformat()
+        }
+    }).to_list(length=None)
+    
+    # Calculate summary
+    total_sales = sum(t["total_amount"] for t in transactions)
+    total_transactions = len(transactions)
+    
+    # Breakdown by payment method
+    payment_methods = {}
+    for t in transactions:
+        method = t["payment_method"]
+        payment_methods[method] = payment_methods.get(method, 0) + t["total_amount"]
+    
+    # Breakdown by transaction type
+    transaction_types = {}
+    for t in transactions:
+        ttype = t["transaction_type"]
+        transaction_types[ttype] = transaction_types.get(ttype, 0) + t["total_amount"]
+    
+    # Staff performance
+    staff_performance = {}
+    for t in transactions:
+        staff = t["captured_by_name"]
+        if staff not in staff_performance:
+            staff_performance[staff] = {"count": 0, "total": 0}
+        staff_performance[staff]["count"] += 1
+        staff_performance[staff]["total"] += t["total_amount"]
+    
+    return {
+        "date": date,
+        "summary": {
+            "total_sales": round(total_sales, 2),
+            "total_transactions": total_transactions,
+            "average_transaction": round(total_sales / total_transactions, 2) if total_transactions > 0 else 0
+        },
+        "payment_methods": payment_methods,
+        "transaction_types": transaction_types,
+        "staff_performance": staff_performance,
+        "transactions": transactions
+    }
+
+
 # Include the router in the main app
 app.include_router(api_router)
 
