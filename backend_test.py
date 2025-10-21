@@ -7238,7 +7238,7 @@ class RBACTester:
                 self.created_user_id = created_user.get("id")
                 
                 # Verify user creation
-                if (created_user.get("email") == "test_trainer@gym.com" and 
+                if (created_user.get("email") == unique_email and 
                     created_user.get("role") == "personal_trainer" and
                     created_user.get("role_display_name") == "Personal Trainer"):
                     self.log_result("Create Staff User", True, f"Successfully created user: {created_user['full_name']}")
