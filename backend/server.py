@@ -3406,16 +3406,19 @@ async def check_member_duplicate(
     last_name: Optional[str] = None,
     current_user: User = Depends(get_current_user)
 ):
-    """Check if a member with given details already exists"""
+    """Check if a member with given details already exists using enhanced normalization"""
     duplicates = []
     
-    # Check email
+    # Check email with normalization
     if email:
-        email_exists = await db.members.find_one({"email": email.lower()}, {"_id": 0})
+        norm_email = normalize_email(email)
+        email_exists = await db.members.find_one({"norm_email": norm_email}, {"_id": 0})
         if email_exists:
             duplicates.append({
                 "field": "email",
                 "value": email,
+                "normalized_value": norm_email,
+                "match_type": "normalized_email",
                 "existing_member": {
                     "id": email_exists["id"],
                     "name": f"{email_exists['first_name']} {email_exists['last_name']}",
@@ -3425,13 +3428,16 @@ async def check_member_duplicate(
                 }
             })
     
-    # Check phone
+    # Check phone with normalization
     if phone:
-        phone_exists = await db.members.find_one({"phone": phone}, {"_id": 0})
+        norm_phone = normalize_phone(phone)
+        phone_exists = await db.members.find_one({"norm_phone": norm_phone}, {"_id": 0})
         if phone_exists:
             duplicates.append({
                 "field": "phone",
                 "value": phone,
+                "normalized_value": norm_phone,
+                "match_type": "normalized_phone",
                 "existing_member": {
                     "id": phone_exists["id"],
                     "name": f"{phone_exists['first_name']} {phone_exists['last_name']}",
@@ -3441,18 +3447,19 @@ async def check_member_duplicate(
                 }
             })
     
-    # Check name
+    # Check name with normalization and nickname canonicalization
     if first_name and last_name:
-        name_regex = {"$regex": f"^{first_name}$", "$options": "i"}
-        lastname_regex = {"$regex": f"^{last_name}$", "$options": "i"}
+        norm_first, norm_last = normalize_full_name(first_name, last_name)
         name_exists = await db.members.find_one({
-            "first_name": name_regex,
-            "last_name": lastname_regex
+            "norm_first_name": norm_first,
+            "norm_last_name": norm_last
         }, {"_id": 0})
         if name_exists:
             duplicates.append({
                 "field": "name",
                 "value": f"{first_name} {last_name}",
+                "normalized_value": f"{norm_first} {norm_last}",
+                "match_type": "normalized_name",
                 "existing_member": {
                     "id": name_exists["id"],
                     "name": f"{name_exists['first_name']} {name_exists['last_name']}",
@@ -3464,7 +3471,12 @@ async def check_member_duplicate(
     
     return {
         "has_duplicates": len(duplicates) > 0,
-        "duplicates": duplicates
+        "duplicates": duplicates,
+        "normalization_info": {
+            "email_normalized": normalize_email(email) if email else None,
+            "phone_normalized": normalize_phone(phone) if phone else None,
+            "name_normalized": f"{normalize_name(first_name)} {normalize_name(last_name)}" if first_name and last_name else None
+        }
     }
 
 @api_router.post("/import/members")
