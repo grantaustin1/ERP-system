@@ -221,6 +221,24 @@ export default function POS() {
     setCart(cart.filter(item => item.product_id !== productId));
   };
 
+  const updateItemDiscount = (productId, discountPercent) => {
+    setCart(cart.map(item => {
+      if (item.product_id !== productId) return item;
+      
+      const discountAmount = item.subtotal * (discountPercent / 100);
+      const totalAfterDiscount = item.subtotal - discountAmount;
+      const taxAfterDiscount = totalAfterDiscount * (item.tax_rate / 100);
+      
+      return {
+        ...item,
+        item_discount_percent: discountPercent,
+        item_discount_amount: discountAmount,
+        tax_amount: taxAfterDiscount,
+        total: totalAfterDiscount + taxAfterDiscount
+      };
+    }));
+  };
+
   const calculateTotals = () => {
     const subtotal = cart.reduce((sum, item) => sum + item.subtotal, 0);
     const taxAmount = cart.reduce((sum, item) => sum + item.tax_amount, 0);
