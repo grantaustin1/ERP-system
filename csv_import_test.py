@@ -11,7 +11,7 @@ import os
 from datetime import datetime, timezone, timedelta
 
 # Configuration
-BASE_URL = os.getenv('REACT_APP_BACKEND_URL', 'https://rbac-pos-control.preview.emergentagent.com')
+BASE_URL = os.getenv('REACT_APP_BACKEND_URL', 'https://pos-receipt-3.preview.emergentagent.com')
 API_BASE = f"{BASE_URL}/api"
 
 # Test credentials
