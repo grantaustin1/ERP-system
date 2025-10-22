@@ -1039,6 +1039,54 @@ frontend:
         agent: "testing"
         comment: "✅ Enhanced Package Setup UI fully functional: Page loads correctly with proper title 'Enhanced Package Setup' and subtitle. Both tabs (Membership Structure, Payment Options) present and working. Membership Structure tab active by default. Create Base Membership functionality available. Found 11 existing membership cards with Add Variation buttons. Payment Options tab switching works properly. Payment Options management interface complete with membership selection functionality. All UI elements (icons, badges, buttons) render correctly with proper styling. Tab navigation, dialog opening, form fields, and auto-renewal configuration options all verified and working."
 
+  - task: "POS System - Frontend Remove Mock Data"
+    implemented: false
+    working: "NA"
+    file: "/app/frontend/src/pages/POS.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Need to remove test mode fallbacks and mock transaction simulation. Frontend currently falls back to test mode when backend not accessible. Remove all console.warn and mock transaction handling."
+
+  - task: "POS System - Per-Item Discount UI"
+    implemented: false
+    working: "NA"
+    file: "/app/frontend/src/pages/POS.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Need to add per-item discount functionality to cart UI. Add discount input fields for each cart item. Calculate and display item-level discounts alongside cart-level discount."
+
+  - task: "POS System - Thermal Printer Integration"
+    implemented: false
+    working: "NA"
+    file: "/app/frontend/src/pages/POS.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Need to implement Epson thermal printer integration with ESC/POS commands. Add print receipt button. Generate properly formatted thermal receipt with business details, items, discounts, tax, total."
+
+  - task: "POS System - Member Search & Selection"
+    implemented: true
+    working: "NA"
+    file: "/app/frontend/src/pages/POS.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Member search and selection already implemented. Member dialog with search functionality, member selection for transactions, displays selected member in checkout."
+
   - task: "Enhanced Access Control & Check-in System API"
     implemented: true
     working: true
