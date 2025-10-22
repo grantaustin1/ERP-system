@@ -5488,6 +5488,419 @@ async def get_daily_pos_summary(date: Optional[str] = None, current_user: User =
     }
 
 
+# ============================================================================
+# EFT SDV Integration Endpoints
+# ============================================================================
+
+from eft_utils import EFTFileGenerator, EFTFileParser, save_eft_file, setup_eft_folders
+
+# Setup EFT folders on startup
+EFT_FOLDERS = setup_eft_folders()
+
+@api_router.get("/eft/settings")
+async def get_eft_settings(current_user: User = Depends(get_current_user)):
+    """Get EFT configuration settings"""
+    settings = await db.eft_settings.find_one({})
+    if not settings:
+        # Return default/placeholder settings
+        return {
+            "id": "default",
+            "client_profile_number": "0000000000",
+            "nominated_account": "0000000000000000",
+            "charges_account": "0000000000000000",
+            "service_user_number": "",
+            "branch_code": "",
+            "bank_name": "Nedbank",
+            "enable_notifications": False,
+            "notification_email": "",
+            "is_configured": False
+        }
+    
+    settings.pop("_id", None)
+    settings["is_configured"] = True
+    return settings
+
+
+@api_router.post("/eft/settings")
+async def create_or_update_eft_settings(
+    data: EFTSettingsUpdate,
+    current_user: User = Depends(get_current_user)
+):
+    """Create or update EFT settings"""
+    existing = await db.eft_settings.find_one({})
+    
+    if existing:
+        # Update existing settings
+        update_data = {k: v for k, v in data.dict(exclude_unset=True).items() if v is not None}
+        update_data["updated_at"] = datetime.now(timezone.utc).isoformat()
+        
+        await db.eft_settings.update_one(
+            {"id": existing["id"]},
+            {"$set": update_data}
+        )
+        
+        updated = await db.eft_settings.find_one({"id": existing["id"]})
+        updated.pop("_id", None)
+        return updated
+    else:
+        # Create new settings
+        settings_data = EFTSettings(
+            **data.dict(exclude_unset=True)
+        ).dict()
+        
+        await db.eft_settings.insert_one(settings_data)
+        settings_data.pop("_id", None)
+        return settings_data
+
+
+@api_router.post("/eft/generate/billing")
+async def generate_billing_eft_file(
+    invoice_ids: List[str],
+    action_date: Optional[str] = None,
+    current_user: User = Depends(get_current_user)
+):
+    """Generate EFT file for billing/membership invoices"""
+    # Get EFT settings
+    settings = await db.eft_settings.find_one({})
+    if not settings:
+        raise HTTPException(
+            status_code=400,
+            detail="EFT settings not configured. Please configure EFT settings first."
+        )
+    
+    # Get invoices
+    invoices = await db.invoices.find({"id": {"$in": invoice_ids}}).to_list(length=None)
+    if not invoices:
+        raise HTTPException(status_code=404, detail="No invoices found")
+    
+    # Build transactions list
+    transactions = []
+    for invoice in invoices:
+        # Get member details
+        member = await db.members.find_one({"id": invoice["member_id"]})
+        if not member:
+            continue
+        
+        # Check if member has bank details
+        if not member.get("bank_account") or not member.get("bank_branch"):
+            continue
+        
+        transactions.append({
+            "member_name": f"{member['first_name']} {member['last_name']}",
+            "member_account": member.get("bank_account"),
+            "member_branch": member.get("bank_branch"),
+            "amount": invoice["amount"],
+            "invoice_id": invoice["id"],
+            "action_date": action_date or date.today().isoformat()
+        })
+    
+    if not transactions:
+        raise HTTPException(
+            status_code=400,
+            detail="No valid transactions found. Members must have bank account details."
+        )
+    
+    # Generate EFT file
+    generator = EFTFileGenerator(
+        client_profile_number=settings["client_profile_number"],
+        nominated_account=settings["nominated_account"],
+        charges_account=settings["charges_account"]
+    )
+    
+    filename, content = generator.generate_debit_order_file(transactions)
+    
+    # Save file
+    filepath = save_eft_file(filename, content)
+    
+    # Create EFT transaction record
+    eft_txn = EFTTransaction(
+        file_type="outgoing_debit",
+        file_name=filename,
+        file_sequence=generator.generate_file_sequence_number(),
+        transaction_type="billing",
+        total_transactions=len(transactions),
+        total_amount=sum(t["amount"] for t in transactions),
+        status="generated"
+    ).dict()
+    
+    await db.eft_transactions.insert_one(eft_txn)
+    
+    # Create individual transaction items
+    for idx, txn in enumerate(transactions):
+        item = EFTTransactionItem(
+            eft_transaction_id=eft_txn["id"],
+            member_id=txn.get("member_id", ""),
+            member_name=txn["member_name"],
+            member_account=txn["member_account"],
+            member_branch=txn["member_branch"],
+            invoice_id=txn["invoice_id"],
+            amount=txn["amount"],
+            action_date=datetime.now(timezone.utc),
+            payment_reference=f"{eft_txn['file_sequence']}{str(idx+1).zfill(10)}",
+            status="pending"
+        ).dict()
+        
+        await db.eft_transaction_items.insert_one(item)
+    
+    return {
+        "success": True,
+        "file_name": filename,
+        "file_path": filepath,
+        "transaction_id": eft_txn["id"],
+        "total_transactions": len(transactions),
+        "total_amount": sum(t["amount"] for t in transactions)
+    }
+
+
+@api_router.post("/eft/generate/levies")
+async def generate_levies_eft_file(
+    levy_ids: List[str],
+    action_date: Optional[str] = None,
+    current_user: User = Depends(get_current_user)
+):
+    """Generate EFT file for levies"""
+    # Get EFT settings
+    settings = await db.eft_settings.find_one({})
+    if not settings:
+        raise HTTPException(
+            status_code=400,
+            detail="EFT settings not configured. Please configure EFT settings first."
+        )
+    
+    # Get levies
+    levies = await db.levies.find({"id": {"$in": levy_ids}}).to_list(length=None)
+    if not levies:
+        raise HTTPException(status_code=404, detail="No levies found")
+    
+    # Build transactions list
+    transactions = []
+    for levy in levies:
+        # Get member details
+        member = await db.members.find_one({"id": levy["member_id"]})
+        if not member:
+            continue
+        
+        # Check if member has bank details
+        if not member.get("bank_account") or not member.get("bank_branch"):
+            continue
+        
+        transactions.append({
+            "member_name": levy["member_name"],
+            "member_account": member.get("bank_account"),
+            "member_branch": member.get("bank_branch"),
+            "amount": levy["amount"],
+            "levy_id": levy["id"],
+            "action_date": action_date or date.today().isoformat()
+        })
+    
+    if not transactions:
+        raise HTTPException(
+            status_code=400,
+            detail="No valid transactions found. Members must have bank account details."
+        )
+    
+    # Generate EFT file
+    generator = EFTFileGenerator(
+        client_profile_number=settings["client_profile_number"],
+        nominated_account=settings["nominated_account"],
+        charges_account=settings["charges_account"]
+    )
+    
+    filename, content = generator.generate_debit_order_file(transactions)
+    
+    # Save file
+    filepath = save_eft_file(filename, content)
+    
+    # Create EFT transaction record
+    eft_txn = EFTTransaction(
+        file_type="outgoing_debit",
+        file_name=filename,
+        file_sequence=generator.generate_file_sequence_number(),
+        transaction_type="levy",
+        total_transactions=len(transactions),
+        total_amount=sum(t["amount"] for t in transactions),
+        status="generated"
+    ).dict()
+    
+    await db.eft_transactions.insert_one(eft_txn)
+    
+    # Create individual transaction items
+    for idx, txn in enumerate(transactions):
+        item = EFTTransactionItem(
+            eft_transaction_id=eft_txn["id"],
+            member_id=txn.get("member_id", ""),
+            member_name=txn["member_name"],
+            member_account=txn["member_account"],
+            member_branch=txn["member_branch"],
+            levy_id=txn["levy_id"],
+            amount=txn["amount"],
+            action_date=datetime.now(timezone.utc),
+            payment_reference=f"{eft_txn['file_sequence']}{str(idx+1).zfill(10)}",
+            status="pending"
+        ).dict()
+        
+        await db.eft_transaction_items.insert_one(item)
+    
+    return {
+        "success": True,
+        "file_name": filename,
+        "file_path": filepath,
+        "transaction_id": eft_txn["id"],
+        "total_transactions": len(transactions),
+        "total_amount": sum(t["amount"] for t in transactions)
+    }
+
+
+@api_router.get("/eft/transactions")
+async def get_eft_transactions(
+    transaction_type: Optional[str] = None,
+    status: Optional[str] = None,
+    current_user: User = Depends(get_current_user)
+):
+    """Get all EFT transactions with optional filtering"""
+    query = {}
+    if transaction_type:
+        query["transaction_type"] = transaction_type
+    if status:
+        query["status"] = status
+    
+    transactions = await db.eft_transactions.find(query, {"_id": 0}).to_list(length=None)
+    return transactions
+
+
+@api_router.get("/eft/transactions/{transaction_id}")
+async def get_eft_transaction_details(
+    transaction_id: str,
+    current_user: User = Depends(get_current_user)
+):
+    """Get detailed EFT transaction with all items"""
+    transaction = await db.eft_transactions.find_one({"id": transaction_id}, {"_id": 0})
+    if not transaction:
+        raise HTTPException(status_code=404, detail="EFT transaction not found")
+    
+    # Get transaction items
+    items = await db.eft_transaction_items.find(
+        {"eft_transaction_id": transaction_id},
+        {"_id": 0}
+    ).to_list(length=None)
+    
+    transaction["items"] = items
+    return transaction
+
+
+@api_router.post("/eft/process-incoming")
+async def process_incoming_eft_file(
+    file_name: str,
+    file_content: str,
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Process incoming EFT response file from bank
+    Handles ACK, NACK, and Unpaid files
+    """
+    try:
+        # Parse the file
+        parsed_data = EFTFileParser.parse_response_file(file_content)
+        
+        # Get EFT settings for notification preference
+        settings = await db.eft_settings.find_one({})
+        enable_notifications = settings.get("enable_notifications", False) if settings else False
+        
+        # Process each transaction
+        for txn_response in parsed_data["transactions"]:
+            payment_ref = txn_response["payment_reference"]
+            
+            # Find the original transaction item
+            item = await db.eft_transaction_items.find_one({"payment_reference": payment_ref})
+            
+            if item:
+                # Update item status
+                update_data = {
+                    "status": "processed" if txn_response.get("status") == "processed" else "failed",
+                    "processed_at": datetime.now(timezone.utc).isoformat(),
+                    "response_code": txn_response.get("response_code"),
+                    "response_message": txn_response.get("response_message")
+                }
+                
+                await db.eft_transaction_items.update_one(
+                    {"id": item["id"]},
+                    {"$set": update_data}
+                )
+                
+                # If processed successfully, update invoice/levy and member balance
+                if txn_response.get("status") == "processed":
+                    # Update invoice if exists
+                    if item.get("invoice_id"):
+                        invoice = await db.invoices.find_one({"id": item["invoice_id"]})
+                        if invoice:
+                            await db.invoices.update_one(
+                                {"id": item["invoice_id"]},
+                                {"$set": {
+                                    "status": "paid",
+                                    "paid_date": datetime.now(timezone.utc).isoformat()
+                                }}
+                            )
+                            
+                            # Create payment record
+                            payment = PaymentCreate(
+                                member_id=item["member_id"],
+                                invoice_id=item["invoice_id"],
+                                amount=item["amount"],
+                                payment_method="EFT",
+                                payment_gateway="EFT_DEBIT_ORDER",
+                                reference_number=payment_ref,
+                                notes="Auto-processed from EFT response file"
+                            ).dict()
+                            payment["id"] = str(uuid.uuid4())
+                            payment["payment_date"] = datetime.now(timezone.utc).isoformat()
+                            
+                            await db.payments.insert_one(payment)
+                            
+                            # Update member debt
+                            await calculate_member_debt(item["member_id"])
+                    
+                    # Update levy if exists
+                    if item.get("levy_id"):
+                        await db.levies.update_one(
+                            {"id": item["levy_id"]},
+                            {"$set": {
+                                "status": "paid",
+                                "paid_date": datetime.now(timezone.utc).isoformat()
+                            }}
+                        )
+                    
+                    # Send notification if enabled
+                    if enable_notifications:
+                        member = await db.members.find_one({"id": item["member_id"]})
+                        if member and member.get("email"):
+                            # Here you would integrate with email service
+                            # For now, we'll just log it
+                            print(f"Notification: Payment confirmed for {member.get('first_name')} {member.get('last_name')} - Amount: R{item['amount']}")
+        
+        # Update parent EFT transaction
+        file_sequence = parsed_data["header"]["file_sequence"]
+        eft_txn = await db.eft_transactions.find_one({"file_sequence": file_sequence})
+        
+        if eft_txn:
+            await db.eft_transactions.update_one(
+                {"id": eft_txn["id"]},
+                {"$set": {
+                    "status": "processed",
+                    "processed_at": datetime.now(timezone.utc).isoformat(),
+                    "response_file": file_name
+                }}
+            )
+        
+        return {
+            "success": True,
+            "message": "EFT response file processed successfully",
+            "transactions_processed": len(parsed_data["transactions"])
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Failed to process EFT file: {str(e)}")
+
+
 # Include the router in the main app
 app.include_router(api_router)
 
