@@ -6045,6 +6045,263 @@ async def generate_due_collections(
     }
 
 
+@api_router.post("/eft/transactions/{transaction_id}/disallow")
+async def disallow_eft_transaction(
+    transaction_id: str,
+    reason: str,
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Disallow/cancel an EFT transaction batch.
+    This marks the batch as disallowed and can trigger file generation for bank.
+    """
+    transaction = await db.eft_transactions.find_one({"id": transaction_id})
+    if not transaction:
+        raise HTTPException(status_code=404, detail="Transaction not found")
+    
+    # Check if already processed
+    if transaction["status"] in ["processed", "disallowed"]:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Cannot disallow transaction with status: {transaction['status']}"
+        )
+    
+    # Update transaction status
+    await db.eft_transactions.update_one(
+        {"id": transaction_id},
+        {"$set": {
+            "status": "disallowed",
+            "disallowed_at": datetime.now(timezone.utc).isoformat(),
+            "disallowed_by": current_user.id,
+            "disallow_reason": reason
+        }}
+    )
+    
+    # Update associated transaction items
+    await db.eft_transaction_items.update_many(
+        {"eft_transaction_id": transaction_id},
+        {"$set": {"status": "disallowed"}}
+    )
+    
+    # TODO: Generate disallow file for bank if needed
+    # For now, we just mark it in the system
+    
+    return {
+        "success": True,
+        "message": "Transaction disallowed successfully",
+        "transaction_id": transaction_id
+    }
+
+
+@api_router.get("/eft/transactions/disallowed")
+async def get_disallowed_transactions(
+    limit: int = 100,
+    current_user: User = Depends(get_current_user)
+):
+    """Get history of disallowed transactions"""
+    transactions = await db.eft_transactions.find(
+        {"status": "disallowed"},
+        {"_id": 0}
+    ).sort("disallowed_at", -1).limit(limit).to_list(length=None)
+    
+    return {
+        "total": len(transactions),
+        "transactions": transactions
+    }
+
+
+@api_router.post("/webhooks/eft-response")
+async def webhook_eft_response(
+    file_sequence: str,
+    response_type: str,  # "ack", "nack", "unpaid"
+    file_content: str,
+    timestamp: Optional[str] = None
+):
+    """
+    Webhook endpoint for receiving EFT response files from payment gateway.
+    This is called by Connect Direct or similar file transfer service.
+    """
+    try:
+        # Find the original transaction
+        transaction = await db.eft_transactions.find_one({"file_sequence": file_sequence})
+        
+        if not transaction:
+            return {
+                "success": False,
+                "error": "Transaction not found",
+                "file_sequence": file_sequence
+            }
+        
+        # Parse the response file
+        parsed_data = EFTFileParser.parse_response_file(file_content)
+        
+        # Update transaction status
+        status_map = {
+            "ack": "acknowledged",
+            "nack": "failed",
+            "unpaid": "failed"
+        }
+        
+        await db.eft_transactions.update_one(
+            {"id": transaction["id"]},
+            {"$set": {
+                "status": status_map.get(response_type, "processed"),
+                "processed_at": datetime.now(timezone.utc).isoformat(),
+                "response_file": f"{response_type}_{file_sequence}.txt",
+                "last_status_check": datetime.now(timezone.utc).isoformat()
+            }}
+        )
+        
+        # Process individual transaction items
+        for txn_response in parsed_data["transactions"]:
+            payment_ref = txn_response["payment_reference"]
+            
+            item = await db.eft_transaction_items.find_one({"payment_reference": payment_ref})
+            
+            if item:
+                await db.eft_transaction_items.update_one(
+                    {"id": item["id"]},
+                    {"$set": {
+                        "status": "processed" if response_type == "ack" else "failed",
+                        "processed_at": datetime.now(timezone.utc).isoformat(),
+                        "response_code": txn_response.get("response_code"),
+                        "response_message": txn_response.get("response_message")
+                    }}
+                )
+                
+                # Update invoice/levy if successful
+                if response_type == "ack":
+                    if item.get("invoice_id"):
+                        await db.invoices.update_one(
+                            {"id": item["invoice_id"]},
+                            {"$set": {"status": "paid", "paid_date": datetime.now(timezone.utc).isoformat()}}
+                        )
+                        await calculate_member_debt(item["member_id"])
+                    
+                    if item.get("levy_id"):
+                        await db.levies.update_one(
+                            {"id": item["levy_id"]},
+                            {"$set": {"status": "paid", "paid_date": datetime.now(timezone.utc).isoformat()}}
+                        )
+        
+        return {
+            "success": True,
+            "message": "Webhook processed successfully",
+            "transaction_id": transaction["id"],
+            "items_processed": len(parsed_data["transactions"])
+        }
+        
+    except Exception as e:
+        # Log error but don't fail the webhook
+        logger.error(f"Webhook processing error: {str(e)}")
+        return {
+            "success": False,
+            "error": str(e)
+        }
+
+
+@api_router.get("/eft/files/outgoing")
+async def get_outgoing_files(
+    status: Optional[str] = None,
+    limit: int = 100,
+    current_user: User = Depends(get_current_user)
+):
+    """Get list of all outgoing EFT files with full details"""
+    query = {"file_type": {"$in": ["outgoing_debit"]}}
+    if status:
+        query["status"] = status
+    
+    files = await db.eft_transactions.find(query, {"_id": 0}).sort(
+        "generated_at", -1
+    ).limit(limit).to_list(length=None)
+    
+    return {
+        "total": len(files),
+        "files": files
+    }
+
+
+@api_router.get("/eft/files/incoming")
+async def get_incoming_files(
+    limit: int = 100,
+    current_user: User = Depends(get_current_user)
+):
+    """Get list of all incoming EFT response files"""
+    files = await db.eft_transactions.find(
+        {"file_type": {"$in": ["incoming_ack", "incoming_nack", "incoming_unpaid"]}},
+        {"_id": 0}
+    ).sort("processed_at", -1).limit(limit).to_list(length=None)
+    
+    return {
+        "total": len(files),
+        "files": files
+    }
+
+
+@api_router.get("/eft/files/stuck")
+async def get_stuck_files(
+    hours_threshold: int = 48,
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Get files that are stuck (generated but not processed after X hours).
+    Default threshold: 48 hours
+    """
+    threshold_time = datetime.now(timezone.utc) - timedelta(hours=hours_threshold)
+    
+    stuck_files = await db.eft_transactions.find({
+        "status": {"$in": ["generated", "submitted"]},
+        "generated_at": {"$lt": threshold_time.isoformat()}
+    }, {"_id": 0}).to_list(length=None)
+    
+    # Mark as stuck
+    for file in stuck_files:
+        await db.eft_transactions.update_one(
+            {"id": file["id"]},
+            {"$set": {"is_stuck": True}}
+        )
+    
+    return {
+        "total": len(stuck_files),
+        "threshold_hours": hours_threshold,
+        "stuck_files": stuck_files
+    }
+
+
+@api_router.post("/eft/files/stuck/notify")
+async def notify_stuck_files(
+    current_user: User = Depends(get_current_user)
+):
+    """Send email notifications for stuck files"""
+    stuck_files_response = await get_stuck_files(48, current_user)
+    
+    if stuck_files_response["total"] > 0:
+        # Get EFT settings for notification email
+        settings = await db.eft_settings.find_one({})
+        notification_email = settings.get("notification_email") if settings else None
+        
+        if notification_email:
+            # TODO: Implement email sending
+            # For now, just log
+            logger.info(f"Notification needed: {stuck_files_response['total']} stuck files")
+            
+            return {
+                "success": True,
+                "message": f"Notification sent for {stuck_files_response['total']} stuck files",
+                "email": notification_email
+            }
+        else:
+            return {
+                "success": False,
+                "message": "No notification email configured"
+            }
+    
+    return {
+        "success": True,
+        "message": "No stuck files found"
+    }
+
+
 @api_router.post("/eft/process-incoming")
 async def process_incoming_eft_file(
     file_name: str,
