@@ -5323,7 +5323,7 @@ async def get_pos_transactions(
 @api_router.get("/pos/transactions/{transaction_id}")
 async def get_pos_transaction(transaction_id: str, current_user: User = Depends(get_current_user)):
     """Get a specific POS transaction"""
-    transaction = await db.pos_transactions.find_one({"id": transaction_id})
+    transaction = await db.pos_transactions.find_one({"id": transaction_id}, {"_id": 0})
     if not transaction:
         raise HTTPException(status_code=404, detail="Transaction not found")
     
