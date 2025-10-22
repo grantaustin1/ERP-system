@@ -6537,6 +6537,137 @@ async def get_debicheck_collections(
     return collections
 
 
+@api_router.get("/debicheck/mandates-due-for-collection")
+async def get_mandates_due_for_collection(
+    advance_days: Optional[int] = None,
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Get approved mandates that are due for collection based on advance billing days.
+    Returns mandates where: today + advance_days >= next_collection_date
+    """
+    # Get settings
+    settings = await db.eft_settings.find_one({})
+    if not settings:
+        raise HTTPException(status_code=400, detail="EFT settings not configured")
+    
+    days_advance = advance_days if advance_days is not None else settings.get("advance_billing_days", 5)
+    
+    # Calculate collection window
+    today = date.today()
+    collection_date = today + timedelta(days=days_advance)
+    
+    # Find approved mandates
+    mandates = await db.debicheck_mandates.find(
+        {"status": "approved"},
+        {"_id": 0}
+    ).to_list(length=None)
+    
+    # Filter mandates based on collection schedule
+    mandates_due = []
+    for mandate in mandates:
+        # Calculate next collection date based on frequency and last collection
+        last_collection = mandate.get("last_collection_date")
+        first_collection = datetime.fromisoformat(mandate["first_collection_date"]) if isinstance(mandate["first_collection_date"], str) else mandate["first_collection_date"]
+        
+        next_collection_date = None
+        
+        if not last_collection:
+            # First collection
+            next_collection_date = first_collection.date()
+        else:
+            # Calculate next based on frequency
+            last_date = datetime.fromisoformat(last_collection).date() if isinstance(last_collection, str) else last_collection
+            frequency = mandate["frequency"]
+            
+            if frequency == "W":  # Weekly
+                next_collection_date = last_date + timedelta(weeks=1)
+            elif frequency == "F":  # Fortnightly
+                next_collection_date = last_date + timedelta(weeks=2)
+            elif frequency == "M":  # Monthly
+                next_collection_date = last_date + timedelta(days=30)
+            elif frequency == "Q":  # Quarterly
+                next_collection_date = last_date + timedelta(days=90)
+            elif frequency == "H":  # Biannually
+                next_collection_date = last_date + timedelta(days=182)
+            elif frequency == "Y":  # Yearly
+                next_collection_date = last_date + timedelta(days=365)
+        
+        # Check if due for collection
+        if next_collection_date and next_collection_date <= collection_date:
+            mandates_due.append({
+                "mandate_id": mandate["id"],
+                "mandate_reference_number": mandate["mandate_reference_number"],
+                "member_id": mandate["member_id"],
+                "member_name": mandate["member_name"],
+                "contract_reference": mandate["contract_reference"],
+                "installment_amount": mandate["installment_amount"],
+                "maximum_amount": mandate["maximum_amount"],
+                "next_collection_date": next_collection_date.isoformat(),
+                "days_until_due": (next_collection_date - today).days,
+                "frequency": mandate["frequency"]
+            })
+    
+    return {
+        "collection_date": collection_date.isoformat(),
+        "advance_days": days_advance,
+        "total_mandates": len(mandates_due),
+        "total_amount": sum(m["installment_amount"] for m in mandates_due),
+        "mandates": mandates_due
+    }
+
+
+@api_router.post("/debicheck/generate-due-collections")
+async def generate_debicheck_due_collections(
+    advance_days: Optional[int] = None,
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Automatically generate DebiCheck collection files for mandates due for collection.
+    """
+    # Get mandates due
+    mandates_response = await get_mandates_due_for_collection(advance_days, current_user)
+    
+    if mandates_response["total_mandates"] == 0:
+        return {
+            "success": True,
+            "message": "No mandates due for collection",
+            "total_mandates": 0
+        }
+    
+    # Create collections for each mandate
+    collection_ids = []
+    for mandate_data in mandates_response["mandates"]:
+        collection = await create_debicheck_collection(
+            mandate_id=mandate_data["mandate_id"],
+            collection_amount=mandate_data["installment_amount"],
+            action_date=mandate_data["next_collection_date"],
+            collection_type="R",  # Recurring
+            current_user=current_user
+        )
+        collection_ids.append(collection["id"])
+    
+    # Generate collection file
+    if collection_ids:
+        file_result = await generate_debicheck_collection_file(
+            collection_ids=collection_ids,
+            current_user=current_user
+        )
+        
+        return {
+            "success": True,
+            "advance_days": mandates_response["advance_days"],
+            "total_mandates": mandates_response["total_mandates"],
+            "total_amount": mandates_response["total_amount"],
+            "file_result": file_result
+        }
+    
+    return {
+        "success": False,
+        "message": "Failed to create collections"
+    }
+
+
 # Include the router in the main app
 app.include_router(api_router)
 
