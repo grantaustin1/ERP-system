@@ -1145,15 +1145,7 @@ metadata:
   run_ui: false
 
 test_plan:
-  current_focus:
-    - "POS System - Per-Item Discount Support"
-    - "POS System - Member Account Linking"
-    - "POS System - Payment Allocation & Financial Integration"
-    - "POS System - Stock Management & Deduction"
-    - "POS System - Frontend Remove Mock Data"
-    - "POS System - Per-Item Discount UI"
-    - "POS System - Thermal Printer Integration"
-    - "POS System - Member Search & Selection"
+  current_focus: []
   stuck_tasks: []
   test_all: false
   test_priority: "high_first"
