@@ -26,6 +26,7 @@ class MemberImportTester:
         self.token = None
         self.headers = {}
         self.test_results = []
+        self.created_members = []  # Track created members for cleanup
         
     def log_result(self, test_name, success, message, details=None):
         """Log test result"""
@@ -63,6 +64,18 @@ class MemberImportTester:
         except Exception as e:
             self.log_result("Authentication", False, f"Authentication error: {str(e)}")
             return False
+    
+    def create_test_csv(self, filename, data):
+        """Create a test CSV file with given data"""
+        try:
+            with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.csv', newline='') as f:
+                writer = csv.DictWriter(f, fieldnames=data[0].keys())
+                writer.writeheader()
+                writer.writerows(data)
+                return f.name
+        except Exception as e:
+            self.log_result("Create Test CSV", False, f"Failed to create CSV: {str(e)}")
+            return None
     
     def test_automation_crud(self):
         """Test automation CRUD operations"""
