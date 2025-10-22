@@ -501,68 +501,60 @@ class MemberImportTester:
         
         return True
     
-    def test_member_joined_trigger(self):
-        """Test member_joined trigger by creating a member"""
-        print("\n=== Testing Member Joined Trigger ===")
+    def test_phase5_import_create_anyway(self):
+        """PHASE 5: Test member import with create anyway"""
+        print("\n=== PHASE 5: Member Import with Create Anyway ===")
         
-        # First, get a membership type
+        # Create CSV with known duplicates
+        create_anyway_data = [
+            {"Full Name": "Alice Johnson", "Email": "alice.johnson@example.com", "Phone": "0834567890", "Address": "Duplicate Create 1"},
+            {"Full Name": "Bob Smith", "Email": "bob.smith@gmail.com", "Phone": "+27845678901", "Address": "Duplicate Create 2"}
+        ]
+        
+        csv_file = self.create_test_csv("create_anyway_members.csv", create_anyway_data)
+        if not csv_file:
+            return False
+        
         try:
-            response = requests.get(f"{API_BASE}/membership-types", headers=self.headers)
-            if response.status_code != 200:
-                self.log_result("Get Membership Types", False, "Failed to get membership types")
-                return
-            
-            membership_types = response.json()
-            if not membership_types:
-                self.log_result("Get Membership Types", False, "No membership types found")
-                return
-            
-            membership_type_id = membership_types[0]["id"]
-            
-            # Create a test member
-            member_data = {
-                "first_name": "Jane",
-                "last_name": "Smith",
-                "email": f"jane.smith.test.{int(time.time())}@example.com",
-                "phone": "+27987654321",
-                "membership_type_id": membership_type_id
+            field_mapping = {
+                "first_name": "Full Name",
+                "email": "Email", 
+                "phone": "Phone",
+                "address": "Address"
             }
             
-            response = requests.post(f"{API_BASE}/members", json=member_data, headers=self.headers)
+            with open(csv_file, 'rb') as f:
+                files = {'file': ('create_anyway_members.csv', f, 'text/csv')}
+                data = {
+                    'field_mapping': json.dumps(field_mapping),
+                    'duplicate_action': 'create'
+                }
+                response = requests.post(f"{API_BASE}/import/members", 
+                                       files=files, data=data, headers=self.headers)
+            
             if response.status_code == 200:
-                member = response.json()
-                member_id = member["id"]
-                self.log_result("Create Member (Trigger Test)", True, 
-                              f"Member created successfully, should trigger automations",
-                              {"member_id": member_id, "member_name": f"{member['first_name']} {member['last_name']}"})
+                result = response.json()
                 
-                # Wait a moment for automation to process
-                time.sleep(2)
+                successful = result.get("successful", 0)
+                skipped = result.get("skipped", 0)
                 
-                # Check if automation executions were created
-                executions_response = requests.get(f"{API_BASE}/automation-executions?limit=10", 
-                                                 headers=self.headers)
-                if executions_response.status_code == 200:
-                    recent_executions = executions_response.json()
-                    member_joined_executions = [
-                        ex for ex in recent_executions 
-                        if ex.get("trigger_data", {}).get("member_id") == member_id
-                    ]
-                    
-                    if member_joined_executions:
-                        self.log_result("Member Joined Automation Triggered", True, 
-                                      f"Found {len(member_joined_executions)} automation executions for new member")
-                    else:
-                        self.log_result("Member Joined Automation Triggered", False, 
-                                      "No automation executions found for new member")
-                
+                if successful >= 2 and skipped == 0:  # Should create duplicates anyway
+                    self.log_result("Import Create Anyway", True, 
+                                  f"Import create anyway completed: {successful} created, {skipped} skipped")
+                else:
+                    self.log_result("Import Create Anyway", False, 
+                                  f"Unexpected results: {successful} created, {skipped} skipped (expected 2 created, 0 skipped)")
             else:
-                self.log_result("Create Member (Trigger Test)", False, 
-                              f"Failed to create member: {response.status_code}",
+                self.log_result("Import Create Anyway", False, f"Create anyway import failed: {response.status_code}",
                               {"response": response.text})
                 
         except Exception as e:
-            self.log_result("Member Joined Trigger Test", False, f"Error testing member joined trigger: {str(e)}")
+            self.log_result("Import Create Anyway", False, f"Error in create anyway import: {str(e)}")
+        finally:
+            if os.path.exists(csv_file):
+                os.unlink(csv_file)
+        
+        return True
     
     def test_payment_failed_trigger(self):
         """Test payment_failed trigger"""
