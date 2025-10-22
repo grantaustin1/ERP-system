@@ -7508,12 +7508,710 @@ class RBACTester:
         
         print("\n" + "=" * 60)
 
+class POSSystemTester:
+    def __init__(self):
+        self.token = None
+        self.headers = {}
+        self.test_results = []
+        self.created_products = []
+        self.created_members = []
+        self.created_transactions = []
+        
+    def log_result(self, test_name, success, message, details=None):
+        """Log test result"""
+        result = {
+            "test": test_name,
+            "success": success,
+            "message": message,
+            "timestamp": datetime.now().isoformat(),
+            "details": details or {}
+        }
+        self.test_results.append(result)
+        status = "✅ PASS" if success else "❌ FAIL"
+        print(f"{status}: {test_name} - {message}")
+        if details and not success:
+            print(f"   Details: {details}")
+    
+    def authenticate(self):
+        """Authenticate and get token"""
+        try:
+            response = requests.post(f"{API_BASE}/auth/login", json={
+                "email": TEST_EMAIL,
+                "password": TEST_PASSWORD
+            })
+            
+            if response.status_code == 200:
+                data = response.json()
+                self.token = data["access_token"]
+                self.headers = {"Authorization": f"Bearer {self.token}"}
+                self.log_result("Authentication", True, "Successfully authenticated")
+                return True
+            else:
+                self.log_result("Authentication", False, f"Failed to authenticate: {response.status_code}", 
+                              {"response": response.text})
+                return False
+        except Exception as e:
+            self.log_result("Authentication", False, f"Authentication error: {str(e)}")
+            return False
+    
+    def setup_test_data(self):
+        """Create test products and members for POS testing"""
+        print("\n=== Setting Up Test Data ===")
+        
+        # Create test products
+        test_products = [
+            {
+                "name": "Protein Shake",
+                "sku": "PROT001",
+                "category_id": "supplements",
+                "cost_price": 25.00,
+                "markup_percent": 100.0,  # 100% markup = R50 selling price
+                "stock_quantity": 50,
+                "low_stock_threshold": 10,
+                "description": "Whey protein shake"
+            },
+            {
+                "name": "Energy Bar",
+                "sku": "EBAR001", 
+                "category_id": "snacks",
+                "cost_price": 8.00,
+                "markup_percent": 150.0,  # 150% markup = R20 selling price
+                "stock_quantity": 100,
+                "low_stock_threshold": 20,
+                "description": "High energy protein bar"
+            },
+            {
+                "name": "Gym Towel",
+                "sku": "TOWEL001",
+                "category_id": "accessories", 
+                "cost_price": 15.00,
+                "markup_percent": 200.0,  # 200% markup = R45 selling price
+                "stock_quantity": 25,
+                "low_stock_threshold": 5,
+                "description": "Premium gym towel"
+            }
+        ]
+        
+        # Create categories first
+        categories = [
+            {"name": "Supplements", "id": "supplements"},
+            {"name": "Snacks", "id": "snacks"},
+            {"name": "Accessories", "id": "accessories"}
+        ]
+        
+        for category in categories:
+            try:
+                response = requests.post(f"{API_BASE}/pos/categories", 
+                                       json=category, headers=self.headers)
+                if response.status_code == 200:
+                    self.log_result(f"Create Category {category['name']}", True, "Category created")
+                else:
+                    # Category might already exist, that's ok
+                    pass
+            except Exception as e:
+                pass
+        
+        # Create products
+        for product_data in test_products:
+            try:
+                response = requests.post(f"{API_BASE}/pos/products", 
+                                       json=product_data, headers=self.headers)
+                if response.status_code == 200:
+                    product = response.json()["product"]
+                    self.created_products.append(product)
+                    self.log_result(f"Create Product {product_data['name']}", True, 
+                                  f"Product created with selling price R{product['selling_price']}")
+                else:
+                    self.log_result(f"Create Product {product_data['name']}", False, 
+                                  f"Failed to create: {response.status_code}")
+            except Exception as e:
+                self.log_result(f"Create Product {product_data['name']}", False, f"Error: {str(e)}")
+        
+        # Create test members
+        try:
+            # Get membership types
+            response = requests.get(f"{API_BASE}/membership-types", headers=self.headers)
+            if response.status_code == 200:
+                membership_types = response.json()
+                if membership_types:
+                    membership_type_id = membership_types[0]["id"]
+                    
+                    test_members = [
+                        {
+                            "first_name": "Sarah",
+                            "last_name": "Johnson",
+                            "email": f"sarah.johnson.pos.{int(time.time())}@example.com",
+                            "phone": "+27834567890",
+                            "membership_type_id": membership_type_id
+                        },
+                        {
+                            "first_name": "Mike",
+                            "last_name": "Wilson", 
+                            "email": f"mike.wilson.pos.{int(time.time())}@example.com",
+                            "phone": "+27845678901",
+                            "membership_type_id": membership_type_id
+                        }
+                    ]
+                    
+                    for member_data in test_members:
+                        response = requests.post(f"{API_BASE}/members", 
+                                               json=member_data, headers=self.headers)
+                        if response.status_code == 200:
+                            member = response.json()
+                            self.created_members.append(member)
+                            self.log_result(f"Create Member {member_data['first_name']}", True, 
+                                          f"Member created: {member['first_name']} {member['last_name']}")
+        except Exception as e:
+            self.log_result("Create Test Members", False, f"Error: {str(e)}")
+        
+        return len(self.created_products) >= 3 and len(self.created_members) >= 2
+    
+    def test_product_sale_with_per_item_discounts(self):
+        """Test 1: Create product_sale transaction with per-item discounts"""
+        print("\n=== Test 1: Product Sale with Per-Item Discounts ===")
+        
+        if len(self.created_products) < 3:
+            self.log_result("Product Sale Test", False, "Insufficient test products")
+            return
+        
+        # Create transaction with multiple items and per-item discounts
+        transaction_data = {
+            "transaction_type": "product_sale",
+            "payment_method": "Card",
+            "payment_reference": "CARD123456",
+            "items": [
+                {
+                    "product_id": self.created_products[0]["id"],
+                    "product_name": self.created_products[0]["name"],
+                    "quantity": 2,
+                    "unit_price": self.created_products[0]["selling_price"],
+                    "tax_rate": 15.0,
+                    "item_discount_percent": 10.0,  # 10% discount on protein shakes
+                    "item_discount_amount": 0.0,  # Will be calculated
+                    "subtotal": 0.0,  # Will be calculated
+                    "tax_amount": 0.0,  # Will be calculated
+                    "total": 0.0  # Will be calculated
+                },
+                {
+                    "product_id": self.created_products[1]["id"],
+                    "product_name": self.created_products[1]["name"],
+                    "quantity": 3,
+                    "unit_price": self.created_products[1]["selling_price"],
+                    "tax_rate": 15.0,
+                    "item_discount_percent": 5.0,  # 5% discount on energy bars
+                    "item_discount_amount": 0.0,
+                    "subtotal": 0.0,
+                    "tax_amount": 0.0,
+                    "total": 0.0
+                },
+                {
+                    "product_id": self.created_products[2]["id"],
+                    "product_name": self.created_products[2]["name"],
+                    "quantity": 1,
+                    "unit_price": self.created_products[2]["selling_price"],
+                    "tax_rate": 15.0,
+                    "item_discount_percent": 0.0,  # No discount on towel
+                    "item_discount_amount": 0.0,
+                    "subtotal": 0.0,
+                    "tax_amount": 0.0,
+                    "total": 0.0
+                }
+            ],
+            "subtotal": 0.0,
+            "tax_amount": 0.0,
+            "discount_percent": 5.0,  # Cart-level 5% discount
+            "discount_amount": 0.0,
+            "total_amount": 0.0,
+            "notes": "Test transaction with per-item discounts"
+        }
+        
+        # Calculate totals
+        cart_subtotal = 0.0
+        cart_tax = 0.0
+        
+        for item in transaction_data["items"]:
+            item_subtotal = item["quantity"] * item["unit_price"]
+            item_discount = item_subtotal * (item["item_discount_percent"] / 100)
+            item_after_discount = item_subtotal - item_discount
+            item_tax = item_after_discount * (item["tax_rate"] / 100)
+            item_total = item_after_discount + item_tax
+            
+            item["subtotal"] = item_subtotal
+            item["item_discount_amount"] = item_discount
+            item["tax_amount"] = item_tax
+            item["total"] = item_total
+            
+            cart_subtotal += item_subtotal
+            cart_tax += item_tax
+        
+        # Apply cart-level discount
+        cart_discount = cart_subtotal * (transaction_data["discount_percent"] / 100)
+        final_total = cart_subtotal + cart_tax - cart_discount
+        
+        transaction_data["subtotal"] = cart_subtotal
+        transaction_data["tax_amount"] = cart_tax
+        transaction_data["discount_amount"] = cart_discount
+        transaction_data["total_amount"] = final_total
+        
+        try:
+            response = requests.post(f"{API_BASE}/pos/transactions", 
+                                   json=transaction_data, headers=self.headers)
+            if response.status_code == 200:
+                result = response.json()
+                transaction = result["transaction"]
+                self.created_transactions.append(transaction["id"])
+                
+                # Verify transaction details
+                expected_items = 3
+                actual_items = len(transaction["items"])
+                
+                if actual_items == expected_items:
+                    self.log_result("Product Sale with Per-Item Discounts", True, 
+                                  f"Transaction created successfully with {actual_items} items, total: R{transaction['total_amount']:.2f}")
+                else:
+                    self.log_result("Product Sale with Per-Item Discounts", False, 
+                                  f"Expected {expected_items} items, got {actual_items}")
+                
+                return transaction["id"]
+            else:
+                self.log_result("Product Sale with Per-Item Discounts", False, 
+                              f"Failed to create transaction: {response.status_code}",
+                              {"response": response.text})
+                return None
+        except Exception as e:
+            self.log_result("Product Sale with Per-Item Discounts", False, f"Error: {str(e)}")
+            return None
+    
+    def test_member_debt_payment(self):
+        """Test 2: Create debt_payment transaction linked to member"""
+        print("\n=== Test 2: Member Debt Payment ===")
+        
+        if not self.created_members:
+            self.log_result("Debt Payment Test", False, "No test members available")
+            return
+        
+        member = self.created_members[0]
+        
+        # First, create some debt for the member (simulate overdue invoice)
+        try:
+            # Create an invoice
+            invoice_data = {
+                "member_id": member["id"],
+                "amount": 150.00,
+                "description": "Monthly membership fee",
+                "due_date": (datetime.now(timezone.utc) - timedelta(days=5)).isoformat()
+            }
+            
+            response = requests.post(f"{API_BASE}/invoices", 
+                                   json=invoice_data, headers=self.headers)
+            if response.status_code == 200:
+                invoice = response.json()
+                
+                # Mark invoice as overdue to create debt
+                response = requests.post(f"{API_BASE}/invoices/{invoice['id']}/mark-overdue", 
+                                       headers=self.headers)
+                
+                if response.status_code == 200:
+                    # Now create debt payment transaction
+                    debt_payment_data = {
+                        "transaction_type": "debt_payment",
+                        "member_id": member["id"],
+                        "payment_method": "Cash",
+                        "payment_reference": None,
+                        "items": [],
+                        "subtotal": 150.00,
+                        "tax_amount": 0.0,
+                        "discount_percent": 0.0,
+                        "discount_amount": 0.0,
+                        "total_amount": 150.00,
+                        "notes": "Debt payment for overdue membership"
+                    }
+                    
+                    response = requests.post(f"{API_BASE}/pos/transactions", 
+                                           json=debt_payment_data, headers=self.headers)
+                    if response.status_code == 200:
+                        result = response.json()
+                        transaction = result["transaction"]
+                        self.created_transactions.append(transaction["id"])
+                        
+                        # Verify member debt was reduced
+                        member_response = requests.get(f"{API_BASE}/members/{member['id']}", 
+                                                     headers=self.headers)
+                        if member_response.status_code == 200:
+                            updated_member = member_response.json()
+                            debt_amount = updated_member.get("debt_amount", 0)
+                            
+                            if debt_amount == 0:
+                                self.log_result("Member Debt Payment", True, 
+                                              f"Debt payment successful, member debt reduced to R{debt_amount}")
+                            else:
+                                self.log_result("Member Debt Payment", False, 
+                                              f"Debt not fully cleared, remaining: R{debt_amount}")
+                        
+                        return transaction["id"]
+                    else:
+                        self.log_result("Member Debt Payment", False, 
+                                      f"Failed to create debt payment: {response.status_code}")
+        except Exception as e:
+            self.log_result("Member Debt Payment", False, f"Error: {str(e)}")
+        
+        return None
+    
+    def test_membership_payment_with_invoice(self):
+        """Test 3: Create membership_payment transaction with invoice_id"""
+        print("\n=== Test 3: Membership Payment with Invoice Link ===")
+        
+        if not self.created_members:
+            self.log_result("Membership Payment Test", False, "No test members available")
+            return
+        
+        member = self.created_members[1]
+        
+        try:
+            # Create an invoice for membership payment
+            invoice_data = {
+                "member_id": member["id"],
+                "amount": 500.00,
+                "description": "Monthly membership renewal",
+                "due_date": datetime.now(timezone.utc).isoformat()
+            }
+            
+            response = requests.post(f"{API_BASE}/invoices", 
+                                   json=invoice_data, headers=self.headers)
+            if response.status_code == 200:
+                invoice = response.json()
+                
+                # Create membership payment transaction
+                payment_data = {
+                    "transaction_type": "membership_payment",
+                    "member_id": member["id"],
+                    "payment_method": "EFT",
+                    "payment_reference": "EFT789012",
+                    "items": [],
+                    "subtotal": 500.00,
+                    "tax_amount": 0.0,
+                    "discount_percent": 0.0,
+                    "discount_amount": 0.0,
+                    "total_amount": 500.00,
+                    "invoice_id": invoice["id"],
+                    "notes": "Monthly membership payment"
+                }
+                
+                response = requests.post(f"{API_BASE}/pos/transactions", 
+                                       json=payment_data, headers=self.headers)
+                if response.status_code == 200:
+                    result = response.json()
+                    transaction = result["transaction"]
+                    self.created_transactions.append(transaction["id"])
+                    
+                    # Verify invoice status was updated to paid
+                    invoice_response = requests.get(f"{API_BASE}/invoices/{invoice['id']}", 
+                                                  headers=self.headers)
+                    if invoice_response.status_code == 200:
+                        updated_invoice = invoice_response.json()
+                        
+                        if updated_invoice["status"] == "paid":
+                            self.log_result("Membership Payment with Invoice", True, 
+                                          f"Payment successful, invoice status updated to: {updated_invoice['status']}")
+                        else:
+                            self.log_result("Membership Payment with Invoice", False, 
+                                          f"Invoice status not updated, current: {updated_invoice['status']}")
+                    
+                    return transaction["id"]
+                else:
+                    self.log_result("Membership Payment with Invoice", False, 
+                                  f"Failed to create payment: {response.status_code}")
+        except Exception as e:
+            self.log_result("Membership Payment with Invoice", False, f"Error: {str(e)}")
+        
+        return None
+    
+    def test_stock_deduction_verification(self):
+        """Test 4: Verify stock deduction after product sales"""
+        print("\n=== Test 4: Stock Deduction Verification ===")
+        
+        try:
+            # Get current stock levels
+            response = requests.get(f"{API_BASE}/pos/products", headers=self.headers)
+            if response.status_code == 200:
+                products = response.json()["products"]
+                
+                # Find our test products and check stock levels
+                stock_verified = True
+                for product in products:
+                    if product["id"] in [p["id"] for p in self.created_products]:
+                        original_product = next(p for p in self.created_products if p["id"] == product["id"])
+                        original_stock = original_product["stock_quantity"]
+                        current_stock = product["stock_quantity"]
+                        
+                        # Calculate expected deduction based on our test transaction
+                        if product["name"] == "Protein Shake":
+                            expected_stock = original_stock - 2  # We sold 2 units
+                        elif product["name"] == "Energy Bar":
+                            expected_stock = original_stock - 3  # We sold 3 units
+                        elif product["name"] == "Gym Towel":
+                            expected_stock = original_stock - 1  # We sold 1 unit
+                        else:
+                            expected_stock = original_stock
+                        
+                        if current_stock == expected_stock:
+                            self.log_result(f"Stock Deduction - {product['name']}", True, 
+                                          f"Stock correctly updated: {original_stock} → {current_stock}")
+                        else:
+                            self.log_result(f"Stock Deduction - {product['name']}", False, 
+                                          f"Stock incorrect: expected {expected_stock}, got {current_stock}")
+                            stock_verified = False
+                
+                if stock_verified:
+                    self.log_result("Stock Deduction Verification", True, 
+                                  "All product stock levels correctly updated after sales")
+                else:
+                    self.log_result("Stock Deduction Verification", False, 
+                                  "Some stock levels not correctly updated")
+            else:
+                self.log_result("Stock Deduction Verification", False, 
+                              f"Failed to get products: {response.status_code}")
+        except Exception as e:
+            self.log_result("Stock Deduction Verification", False, f"Error: {str(e)}")
+    
+    def test_stock_adjustment_records(self):
+        """Test 5: Verify stock adjustment records are created"""
+        print("\n=== Test 5: Stock Adjustment Records ===")
+        
+        if not self.created_products:
+            self.log_result("Stock Adjustment Records", False, "No test products available")
+            return
+        
+        try:
+            # Check stock adjustment history for first product
+            product_id = self.created_products[0]["id"]
+            response = requests.get(f"{API_BASE}/pos/stock/history/{product_id}", 
+                                  headers=self.headers)
+            
+            if response.status_code == 200:
+                adjustments = response.json()["adjustments"]
+                
+                # Look for sale adjustments
+                sale_adjustments = [adj for adj in adjustments if adj["adjustment_type"] == "sale"]
+                
+                if sale_adjustments:
+                    latest_adjustment = sale_adjustments[0]  # Most recent
+                    
+                    if (latest_adjustment["quantity_change"] == -2 and  # We sold 2 protein shakes
+                        "POS Sale" in latest_adjustment["reason"]):
+                        self.log_result("Stock Adjustment Records", True, 
+                                      f"Stock adjustment record created: {latest_adjustment['quantity_change']} units, reason: {latest_adjustment['reason']}")
+                    else:
+                        self.log_result("Stock Adjustment Records", False, 
+                                      f"Incorrect adjustment record: {latest_adjustment}")
+                else:
+                    self.log_result("Stock Adjustment Records", False, 
+                                  "No sale adjustment records found")
+            else:
+                self.log_result("Stock Adjustment Records", False, 
+                              f"Failed to get stock history: {response.status_code}")
+        except Exception as e:
+            self.log_result("Stock Adjustment Records", False, f"Error: {str(e)}")
+    
+    def test_transaction_retrieval_and_filtering(self):
+        """Test 6: Test transaction retrieval and filtering"""
+        print("\n=== Test 6: Transaction Retrieval and Filtering ===")
+        
+        try:
+            # Test 1: Get all transactions
+            response = requests.get(f"{API_BASE}/pos/transactions", headers=self.headers)
+            if response.status_code == 200:
+                all_transactions = response.json()["transactions"]
+                
+                if len(all_transactions) >= len(self.created_transactions):
+                    self.log_result("Get All Transactions", True, 
+                                  f"Retrieved {len(all_transactions)} transactions")
+                else:
+                    self.log_result("Get All Transactions", False, 
+                                  f"Expected at least {len(self.created_transactions)} transactions, got {len(all_transactions)}")
+            
+            # Test 2: Filter by transaction type
+            response = requests.get(f"{API_BASE}/pos/transactions?transaction_type=product_sale", 
+                                  headers=self.headers)
+            if response.status_code == 200:
+                product_sales = response.json()["transactions"]
+                
+                # All should be product_sale type
+                all_product_sales = all(t["transaction_type"] == "product_sale" for t in product_sales)
+                
+                if all_product_sales and len(product_sales) >= 1:
+                    self.log_result("Filter by Transaction Type", True, 
+                                  f"Filtered {len(product_sales)} product_sale transactions")
+                else:
+                    self.log_result("Filter by Transaction Type", False, 
+                                  "Transaction type filtering not working correctly")
+            
+            # Test 3: Filter by member
+            if self.created_members:
+                member_id = self.created_members[0]["id"]
+                response = requests.get(f"{API_BASE}/pos/transactions?member_id={member_id}", 
+                                      headers=self.headers)
+                if response.status_code == 200:
+                    member_transactions = response.json()["transactions"]
+                    
+                    # All should be for this member
+                    all_member_transactions = all(t.get("member_id") == member_id for t in member_transactions)
+                    
+                    if all_member_transactions:
+                        self.log_result("Filter by Member", True, 
+                                      f"Filtered {len(member_transactions)} transactions for member")
+                    else:
+                        self.log_result("Filter by Member", False, 
+                                      "Member filtering not working correctly")
+            
+            # Test 4: Get specific transaction
+            if self.created_transactions:
+                transaction_id = self.created_transactions[0]
+                response = requests.get(f"{API_BASE}/pos/transactions/{transaction_id}", 
+                                      headers=self.headers)
+                if response.status_code == 200:
+                    transaction = response.json()["transaction"]
+                    
+                    if transaction["id"] == transaction_id:
+                        self.log_result("Get Specific Transaction", True, 
+                                      f"Retrieved specific transaction: {transaction['transaction_number']}")
+                    else:
+                        self.log_result("Get Specific Transaction", False, 
+                                      "Retrieved transaction ID doesn't match")
+                else:
+                    self.log_result("Get Specific Transaction", False, 
+                                  f"Failed to get specific transaction: {response.status_code}")
+        
+        except Exception as e:
+            self.log_result("Transaction Retrieval and Filtering", False, f"Error: {str(e)}")
+    
+    def test_transaction_number_generation(self):
+        """Test 7: Test transaction number generation"""
+        print("\n=== Test 7: Transaction Number Generation ===")
+        
+        try:
+            # Get all our created transactions and check their numbers
+            if self.created_transactions:
+                response = requests.get(f"{API_BASE}/pos/transactions", headers=self.headers)
+                if response.status_code == 200:
+                    all_transactions = response.json()["transactions"]
+                    
+                    # Find our transactions
+                    our_transactions = [t for t in all_transactions if t["id"] in self.created_transactions]
+                    
+                    # Check transaction number format
+                    valid_numbers = True
+                    today_str = datetime.now(timezone.utc).strftime("%Y%m%d")
+                    
+                    for transaction in our_transactions:
+                        number = transaction["transaction_number"]
+                        
+                        # Should be format: POS-YYYYMMDD-NNNN
+                        if not (number.startswith(f"POS-{today_str}-") and len(number) == 17):
+                            valid_numbers = False
+                            break
+                    
+                    if valid_numbers:
+                        self.log_result("Transaction Number Generation", True, 
+                                      f"All transaction numbers follow correct format: POS-{today_str}-NNNN")
+                    else:
+                        self.log_result("Transaction Number Generation", False, 
+                                      "Some transaction numbers don't follow expected format")
+                else:
+                    self.log_result("Transaction Number Generation", False, 
+                                  "Failed to retrieve transactions for number verification")
+        except Exception as e:
+            self.log_result("Transaction Number Generation", False, f"Error: {str(e)}")
+    
+    def test_payment_method_tracking(self):
+        """Test 8: Test payment method tracking"""
+        print("\n=== Test 8: Payment Method Tracking ===")
+        
+        try:
+            if self.created_transactions:
+                response = requests.get(f"{API_BASE}/pos/transactions", headers=self.headers)
+                if response.status_code == 200:
+                    all_transactions = response.json()["transactions"]
+                    
+                    # Find our transactions
+                    our_transactions = [t for t in all_transactions if t["id"] in self.created_transactions]
+                    
+                    # Check payment methods are recorded
+                    payment_methods_found = []
+                    for transaction in our_transactions:
+                        method = transaction.get("payment_method")
+                        if method:
+                            payment_methods_found.append(method)
+                    
+                    expected_methods = ["Card", "Cash", "EFT"]  # From our test transactions
+                    methods_correct = all(method in expected_methods for method in payment_methods_found)
+                    
+                    if methods_correct and len(payment_methods_found) >= 3:
+                        self.log_result("Payment Method Tracking", True, 
+                                      f"Payment methods correctly tracked: {', '.join(set(payment_methods_found))}")
+                    else:
+                        self.log_result("Payment Method Tracking", False, 
+                                      f"Payment method tracking issues: {payment_methods_found}")
+                else:
+                    self.log_result("Payment Method Tracking", False, 
+                                  "Failed to retrieve transactions for payment method verification")
+        except Exception as e:
+            self.log_result("Payment Method Tracking", False, f"Error: {str(e)}")
+    
+    def run_pos_system_tests(self):
+        """Run all POS system tests"""
+        print("🚀 Starting POS System Backend Tests")
+        print(f"Testing against: {API_BASE}")
+        print("=" * 60)
+        
+        # Authenticate first
+        if not self.authenticate():
+            print("❌ Authentication failed. Cannot proceed with tests.")
+            return
+        
+        # Setup test data
+        if not self.setup_test_data():
+            print("❌ Failed to setup test data. Cannot proceed with tests.")
+            return
+        
+        # Run all test scenarios
+        self.test_product_sale_with_per_item_discounts()
+        self.test_member_debt_payment()
+        self.test_membership_payment_with_invoice()
+        self.test_stock_deduction_verification()
+        self.test_stock_adjustment_records()
+        self.test_transaction_retrieval_and_filtering()
+        self.test_transaction_number_generation()
+        self.test_payment_method_tracking()
+        
+        # Print summary
+        self.print_summary()
+    
+    def print_summary(self):
+        """Print test summary"""
+        print("\n" + "=" * 60)
+        print("🏁 POS SYSTEM TEST SUMMARY")
+        print("=" * 60)
+        
+        total_tests = len(self.test_results)
+        passed_tests = len([r for r in self.test_results if r["success"]])
+        failed_tests = total_tests - passed_tests
+        
+        print(f"Total Tests: {total_tests}")
+        print(f"✅ Passed: {passed_tests}")
+        print(f"❌ Failed: {failed_tests}")
+        print(f"Success Rate: {(passed_tests/total_tests*100):.1f}%")
+        
+        if failed_tests > 0:
+            print("\n❌ FAILED TESTS:")
+            for result in self.test_results:
+                if not result["success"]:
+                    print(f"  - {result['test']}: {result['message']}")
+        
+        print("\n" + "=" * 60)
+
 
 if __name__ == "__main__":
-    # Run RBAC tests
-    rbac_tester = RBACTester()
-    rbac_tester.run_rbac_tests()
-    
-    print("\n" + "="*80)
-    print("🏁 ALL PHASES TESTING COMPLETED")
-    print("="*80)
+    # Run POS system tests
+    pos_tester = POSSystemTester()
+    pos_tester.run_pos_system_tests()
