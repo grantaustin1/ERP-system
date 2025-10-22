@@ -73,6 +73,8 @@ export default function POS() {
   const [showMemberDialog, setShowMemberDialog] = useState(false);
   const [showCheckoutDialog, setShowCheckoutDialog] = useState(false);
   const [processing, setProcessing] = useState(false);
+  const [lastTransaction, setLastTransaction] = useState(null);
+  const [showReceiptDialog, setShowReceiptDialog] = useState(false);
 
   useEffect(() => {
     fetchInitialData();
