@@ -7651,19 +7651,20 @@ class POSSystemTester:
                 if membership_types:
                     membership_type_id = membership_types[0]["id"]
                     
+                    timestamp = int(time.time())
                     test_members = [
                         {
-                            "first_name": "Sarah",
-                            "last_name": "Johnson",
-                            "email": f"sarah.johnson.pos.{int(time.time())}@example.com",
-                            "phone": "+27834567890",
+                            "first_name": "Alex",
+                            "last_name": f"POSTest{timestamp}",
+                            "email": f"alex.pos.test.{timestamp}@example.com",
+                            "phone": f"+2783456{timestamp % 10000:04d}",
                             "membership_type_id": membership_type_id
                         },
                         {
-                            "first_name": "Mike",
-                            "last_name": "Wilson", 
-                            "email": f"mike.wilson.pos.{int(time.time())}@example.com",
-                            "phone": "+27845678901",
+                            "first_name": "Jordan",
+                            "last_name": f"POSTest{timestamp + 1}", 
+                            "email": f"jordan.pos.test.{timestamp + 1}@example.com",
+                            "phone": f"+2784567{(timestamp + 1) % 10000:04d}",
                             "membership_type_id": membership_type_id
                         }
                     ]
