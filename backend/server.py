@@ -637,6 +637,8 @@ class EFTSettings(BaseModel):
     bank_name: str = "Nedbank"  # Bank name
     enable_notifications: bool = False  # Send payment confirmation notifications
     notification_email: Optional[str] = None  # Email for EFT notifications
+    advance_billing_days: int = 5  # Days before due date to generate billing files
+    enable_auto_generation: bool = False  # Enable automatic file generation based on due dates
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: Optional[datetime] = None
 
@@ -650,6 +652,8 @@ class EFTSettingsUpdate(BaseModel):
     bank_name: Optional[str] = None
     enable_notifications: Optional[bool] = None
     notification_email: Optional[str] = None
+    advance_billing_days: Optional[int] = None
+    enable_auto_generation: Optional[bool] = None
 
 
 class EFTTransaction(BaseModel):
