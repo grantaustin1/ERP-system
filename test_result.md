@@ -760,6 +760,54 @@ backend:
         agent: "testing"
         comment: "✅ CSV Import Name Splitting Fix WORKING CORRECTLY. Comprehensive testing completed: (1) CSV parsing works correctly with all 6 test cases, (2) CSV import successfully processes all name formats with proper field mapping, (3) Name splitting logic correctly handles: 'MR JOHN DOE' → first_name='JOHN', last_name='DOE'; 'MISS JANE SMITH' → 'JANE'/'SMITH'; 'DR ROBERT JOHNSON' → 'ROBERT'/'JOHNSON'; 'SARAH WILLIAMS' → 'SARAH'/'WILLIAMS'; 'MIKE' → 'MIKE'/'MIKE' (single name); 'MRS EMILY BROWN ANDERSON' → 'EMILY'/'BROWN ANDERSON' (multiple last names). (4) All imported members have required first_name and last_name fields populated, preventing Pydantic validation errors. (5) Manual member creation still works correctly. The fix successfully resolves the original issue where CSV imports with 'Full Name' mapped to first_name would cause 'failed to fetch members' errors due to missing last_name fields. Note: Existing database contains legacy members without last_name causing 500 errors on full member fetch, but new imports work correctly."
 
+  - task: "POS System - Per-Item Discount Support"
+    implemented: true
+    working: "NA"
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Enhanced POSTransactionItem model to support per-item discounts. Added item_discount_percent and item_discount_amount fields. Cart-level discount already existed. Now supports both cart-level and per-item discount functionality as required."
+
+  - task: "POS System - Member Account Linking"
+    implemented: true
+    working: "NA"
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Member account linking already fully implemented. POS transactions support member_id and member_name fields. Transaction types include membership_payment, session_payment, debt_payment, account_payment. Payment allocation to member accounts working with invoice linking and debt reduction."
+
+  - task: "POS System - Payment Allocation & Financial Integration"
+    implemented: true
+    working: "NA"
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Full payment allocation system already implemented. Creates payment records linked to members, updates invoice status when invoice_id provided, reduces member debt for debt_payment type, tracks payment method and reference. All financial integration complete."
+
+  - task: "POS System - Stock Management & Deduction"
+    implemented: true
+    working: "NA"
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Stock management fully implemented. Automatic stock deduction on product sales with validation for insufficient stock. Creates stock adjustment records for audit trail. Stock adjustment API endpoints for manual adjustments. Low stock threshold tracking and alerts."
+
 frontend:
 
   - task: "Permission Matrix UI Component"
