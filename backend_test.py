@@ -741,12 +741,12 @@ class MemberImportTester:
                 
                 with open(long_csv, 'rb') as f:
                     files = {'file': ('long_values.csv', f, 'text/csv')}
-                    data = {
+                    params = {
                         'field_mapping': json.dumps(field_mapping),
                         'duplicate_action': 'create'
                     }
                     response = requests.post(f"{API_BASE}/import/members", 
-                                           files=files, data=data, headers=self.headers)
+                                           files=files, params=params, headers=self.headers)
                 
                 if response.status_code == 200:
                     result = response.json()
