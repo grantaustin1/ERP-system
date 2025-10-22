@@ -224,6 +224,15 @@ export default function Settings() {
     }
   };
 
+  const handleSaveEftSettings = async () => {
+    try {
+      await axios.post(`${API}/eft/settings`, eftSettings);
+      toast.success('EFT settings saved successfully!');
+      fetchData();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Failed to save EFT settings');
+    }
+  };
 
 
   return (
