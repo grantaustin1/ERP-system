@@ -218,32 +218,133 @@ class MemberImportTester:
         
         return True
     
-    def test_automation_toggle(self, automation_id):
-        """Test automation enable/disable toggle"""
-        print("\n=== Testing Automation Toggle ===")
+    def test_phase2_duplicate_detection(self):
+        """PHASE 2: Test duplicate detection endpoint"""
+        print("\n=== PHASE 2: Duplicate Detection Test ===")
         
+        # First, create 3 test members manually
+        test_members = [
+            {
+                "first_name": "Alice",
+                "last_name": "Johnson",
+                "email": "alice.johnson@example.com",
+                "phone": "0834567890"
+            },
+            {
+                "first_name": "Bob",
+                "last_name": "Smith", 
+                "email": "bob.smith@gmail.com",
+                "phone": "+27845678901"
+            },
+            {
+                "first_name": "Charlie",
+                "last_name": "Brown",
+                "email": "charlie.brown@test.com",
+                "phone": "0856789012"
+            }
+        ]
+        
+        # Get membership type for member creation
         try:
-            response = requests.post(f"{API_BASE}/automations/{automation_id}/toggle", 
+            response = requests.get(f"{API_BASE}/membership-types", headers=self.headers)
+            if response.status_code != 200:
+                self.log_result("Get Membership Types", False, "Failed to get membership types")
+                return False
+            
+            membership_types = response.json()
+            if not membership_types:
+                self.log_result("Get Membership Types", False, "No membership types found")
+                return False
+            
+            membership_type_id = membership_types[0]["id"]
+            
+            # Create test members
+            created_member_ids = []
+            for member_data in test_members:
+                member_data["membership_type_id"] = membership_type_id
+                response = requests.post(f"{API_BASE}/members", json=member_data, headers=self.headers)
+                if response.status_code == 200:
+                    member = response.json()
+                    created_member_ids.append(member["id"])
+                    self.created_members.append(member["id"])
+            
+            if len(created_member_ids) != 3:
+                self.log_result("Create Test Members", False, f"Only created {len(created_member_ids)} of 3 test members")
+                return False
+            
+            self.log_result("Create Test Members", True, f"Created {len(created_member_ids)} test members for duplicate testing")
+            
+            # Test 1: Exact email match
+            response = requests.post(f"{API_BASE}/members/check-duplicate", 
+                                   params={"email": "alice.johnson@example.com"}, 
                                    headers=self.headers)
             if response.status_code == 200:
                 result = response.json()
-                enabled_status = result.get("enabled")
-                self.log_result("Toggle Automation", True, f"Automation toggled to: {enabled_status}",
-                              {"enabled": enabled_status})
-                
-                # Toggle back
-                response2 = requests.post(f"{API_BASE}/automations/{automation_id}/toggle", 
-                                        headers=self.headers)
-                if response2.status_code == 200:
-                    result2 = response2.json()
-                    self.log_result("Toggle Back", True, f"Automation toggled back to: {result2.get('enabled')}")
+                if result.get("has_duplicates") and len(result.get("duplicates", [])) > 0:
+                    self.log_result("Exact Email Match", True, "Detected duplicate for exact email match")
                 else:
-                    self.log_result("Toggle Back", False, f"Failed to toggle back: {response2.status_code}")
-            else:
-                self.log_result("Toggle Automation", False, f"Failed to toggle: {response.status_code}",
-                              {"response": response.text})
+                    self.log_result("Exact Email Match", False, "Failed to detect duplicate for exact email")
+            
+            # Test 2: Gmail normalized email (dots and + addressing)
+            response = requests.post(f"{API_BASE}/members/check-duplicate", 
+                                   params={"email": "b.o.b.smith+test@gmail.com"}, 
+                                   headers=self.headers)
+            if response.status_code == 200:
+                result = response.json()
+                if result.get("has_duplicates"):
+                    self.log_result("Gmail Normalized Email", True, "Detected duplicate for Gmail normalized email")
+                else:
+                    self.log_result("Gmail Normalized Email", False, "Failed to detect Gmail normalized duplicate")
+            
+            # Test 3: Exact phone match
+            response = requests.post(f"{API_BASE}/members/check-duplicate", 
+                                   params={"phone": "0834567890"}, 
+                                   headers=self.headers)
+            if response.status_code == 200:
+                result = response.json()
+                if result.get("has_duplicates"):
+                    self.log_result("Exact Phone Match", True, "Detected duplicate for exact phone match")
+                else:
+                    self.log_result("Exact Phone Match", False, "Failed to detect duplicate for exact phone")
+            
+            # Test 4: Phone format variations (+27 vs 0)
+            response = requests.post(f"{API_BASE}/members/check-duplicate", 
+                                   params={"phone": "0845678901"}, 
+                                   headers=self.headers)
+            if response.status_code == 200:
+                result = response.json()
+                if result.get("has_duplicates"):
+                    self.log_result("Phone Format Variation", True, "Detected duplicate for phone format variation (+27 vs 0)")
+                else:
+                    self.log_result("Phone Format Variation", False, "Failed to detect phone format variation duplicate")
+            
+            # Test 5: Exact name match
+            response = requests.post(f"{API_BASE}/members/check-duplicate", 
+                                   params={"first_name": "Charlie", "last_name": "Brown"}, 
+                                   headers=self.headers)
+            if response.status_code == 200:
+                result = response.json()
+                if result.get("has_duplicates"):
+                    self.log_result("Exact Name Match", True, "Detected duplicate for exact name match")
+                else:
+                    self.log_result("Exact Name Match", False, "Failed to detect duplicate for exact name")
+            
+            # Test 6: Nickname variations (Bob vs Robert)
+            response = requests.post(f"{API_BASE}/members/check-duplicate", 
+                                   params={"first_name": "Robert", "last_name": "Smith"}, 
+                                   headers=self.headers)
+            if response.status_code == 200:
+                result = response.json()
+                if result.get("has_duplicates"):
+                    self.log_result("Nickname Variation", True, "Detected duplicate for nickname variation (Bob vs Robert)")
+                else:
+                    self.log_result("Nickname Variation", False, "Failed to detect nickname variation duplicate")
+            
+            return True
+            
         except Exception as e:
-            self.log_result("Toggle Automation", False, f"Error toggling automation: {str(e)}")
+            self.log_result("Duplicate Detection Test", False, f"Error in duplicate detection: {str(e)}")
+            return False
     
     def test_automation_test_endpoint(self, automation_id):
         """Test the automation test endpoint"""
