@@ -31,8 +31,10 @@ import {
   Receipt,
   X,
   Star,
-  Package
+  Package,
+  Printer
 } from 'lucide-react';
+import { generateThermalReceipt, printThermalReceipt, downloadReceiptAsText } from '../utils/thermalPrinter';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:8001';
 
