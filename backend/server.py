@@ -689,6 +689,67 @@ class EFTTransactionItem(BaseModel):
     processed_at: Optional[datetime] = None
 
 
+class DebiCheckMandate(BaseModel):
+    """DebiCheck mandate for authenticated debit orders"""
+    model_config = ConfigDict(extra="ignore")
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    mandate_reference_number: str  # Unique MRN (25 chars)
+    member_id: str
+    member_name: str
+    contract_reference: str  # 14-char contract/policy number
+    mandate_type: str  # F=Fixed, V=Variable, U=Usage-based
+    transaction_type: str  # TT1=Real-time, TT2=Batch, TT3=Card&Pin
+    debtor_id_number: str  # SA ID or passport
+    debtor_bank_account: str  # 16-digit account
+    debtor_branch_code: str  # 6-digit branch
+    account_type: str = "1"  # 1=Current, 2=Savings, 3=Transmission
+    first_collection_date: datetime
+    collection_day: int  # Day of month (1-31)
+    frequency: str  # M=Monthly, Q=Quarterly, Y=Yearly
+    installment_amount: float
+    maximum_amount: float
+    adjustment_category: str = "0"  # 0=Never, 1=Quarterly, 2=Biannually, 3=Annually, 4=Repo
+    adjustment_rate: float = 0.0
+    status: str = "pending"  # pending, approved, rejected, suspended, cancelled
+    status_reason: Optional[str] = None
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    approved_at: Optional[datetime] = None
+    last_collection_date: Optional[datetime] = None
+    total_collections: int = 0
+
+
+class DebiCheckMandateCreate(BaseModel):
+    member_id: str
+    contract_reference: str
+    mandate_type: str = "F"  # F, V, U
+    transaction_type: str = "TT2"  # TT1, TT2, TT3
+    first_collection_date: datetime
+    collection_day: Optional[int] = None
+    frequency: str = "M"
+    installment_amount: float
+    maximum_amount: Optional[float] = None
+    adjustment_category: str = "0"
+    adjustment_rate: float = 0.0
+
+
+class DebiCheckCollection(BaseModel):
+    """DebiCheck collection request record"""
+    model_config = ConfigDict(extra="ignore")
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    mandate_id: str
+    mandate_reference_number: str
+    member_id: str
+    contract_reference: str
+    collection_amount: float
+    action_date: datetime
+    collection_type: str = "R"  # R=Recurring, F=Final, O=Once-off
+    status: str = "pending"  # pending, processed, failed, disputed
+    response_code: Optional[str] = None
+    response_message: Optional[str] = None
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    processed_at: Optional[datetime] = None
+
+
 class Automation(BaseModel):
     model_config = ConfigDict(extra="ignore")
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
