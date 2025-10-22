@@ -632,70 +632,132 @@ class MemberImportTester:
         
         return True
     
-    def test_invoice_overdue_trigger(self):
-        """Test invoice_overdue trigger"""
-        print("\n=== Testing Invoice Overdue Trigger ===")
+    def test_phase7_edge_cases(self):
+        """PHASE 7: Test various edge cases"""
+        print("\n=== PHASE 7: Edge Cases Testing ===")
         
-        try:
-            # Get invoices to test with
-            response = requests.get(f"{API_BASE}/invoices?limit=5", headers=self.headers)
-            if response.status_code != 200:
-                self.log_result("Get Invoices for Overdue Test", False, "Failed to get invoices")
-                return
-            
-            invoices = response.json()
-            if not invoices:
-                self.log_result("Get Invoices for Overdue Test", False, "No invoices found to test with")
-                return
-            
-            # Use first pending invoice
-            test_invoice = None
-            for invoice in invoices:
-                if invoice.get("status") == "pending":
-                    test_invoice = invoice
-                    break
-            
-            if not test_invoice:
-                self.log_result("Find Test Invoice for Overdue", False, "No pending invoices found to test with")
-                return
-            
-            invoice_id = test_invoice["id"]
-            
-            # Mark invoice as overdue
-            response = requests.post(f"{API_BASE}/invoices/{invoice_id}/mark-overdue", 
-                                   headers=self.headers)
-            
-            if response.status_code == 200:
-                self.log_result("Mark Invoice Overdue", True, 
-                              "Invoice marked as overdue, should trigger automations",
-                              {"invoice_id": invoice_id})
+        # Test 1: Empty CSV file
+        empty_csv = self.create_test_csv("empty.csv", [])
+        if empty_csv:
+            try:
+                with open(empty_csv, 'rb') as f:
+                    files = {'file': ('empty.csv', f, 'text/csv')}
+                    response = requests.post(f"{API_BASE}/import/parse-csv", 
+                                           files=files, headers=self.headers)
                 
-                # Wait for automation processing
-                time.sleep(2)
+                if response.status_code == 400:  # Should fail gracefully
+                    self.log_result("Empty CSV Handling", True, "Empty CSV handled correctly with error response")
+                else:
+                    self.log_result("Empty CSV Handling", False, f"Unexpected response for empty CSV: {response.status_code}")
+            except Exception as e:
+                self.log_result("Empty CSV Handling", False, f"Error testing empty CSV: {str(e)}")
+            finally:
+                if os.path.exists(empty_csv):
+                    os.unlink(empty_csv)
+        
+        # Test 2: CSV with only headers
+        headers_only_data = []  # Will create CSV with headers but no data rows
+        headers_only_csv = self.create_test_csv("headers_only.csv", [{"Full Name": "", "Email": "", "Phone": ""}])
+        if headers_only_csv:
+            try:
+                with open(headers_only_csv, 'rb') as f:
+                    files = {'file': ('headers_only.csv', f, 'text/csv')}
+                    response = requests.post(f"{API_BASE}/import/parse-csv", 
+                                           files=files, headers=self.headers)
                 
-                # Check for automation executions
-                executions_response = requests.get(f"{API_BASE}/automation-executions?limit=10", 
-                                                 headers=self.headers)
-                if executions_response.status_code == 200:
-                    recent_executions = executions_response.json()
-                    overdue_executions = [
-                        ex for ex in recent_executions 
-                        if ex.get("trigger_data", {}).get("invoice_id") == invoice_id
-                    ]
-                    
-                    if overdue_executions:
-                        self.log_result("Invoice Overdue Automation Triggered", True, 
-                                      f"Found {len(overdue_executions)} automation executions for overdue invoice")
+                if response.status_code == 200:
+                    result = response.json()
+                    if result.get("total_rows") == 1 and len(result.get("sample_data", [])) <= 1:
+                        self.log_result("Headers Only CSV", True, "Headers-only CSV parsed correctly")
                     else:
-                        self.log_result("Invoice Overdue Automation Triggered", False, 
-                                      "No automation executions found for overdue invoice")
-            else:
-                self.log_result("Mark Invoice Overdue", False, 
-                              f"Failed to mark invoice as overdue: {response.status_code}",
-                              {"response": response.text})
+                        self.log_result("Headers Only CSV", False, "Headers-only CSV parsing unexpected results")
+                else:
+                    self.log_result("Headers Only CSV", False, f"Headers-only CSV failed: {response.status_code}")
+            except Exception as e:
+                self.log_result("Headers Only CSV", False, f"Error testing headers-only CSV: {str(e)}")
+            finally:
+                if os.path.exists(headers_only_csv):
+                    os.unlink(headers_only_csv)
+        
+        # Test 3: CSV with special characters
+        special_chars_data = [
+            {"Full Name": "O'Brien José", "Email": "obrien.jose@test.com", "Phone": "0821234567"},
+            {"Full Name": "François Müller", "Email": "francois.muller@test.com", "Phone": "0821234568"},
+            {"Full Name": "李小明", "Email": "li.xiaoming@test.com", "Phone": "0821234569"}
+        ]
+        
+        special_csv = self.create_test_csv("special_chars.csv", special_chars_data)
+        if special_csv:
+            try:
+                with open(special_csv, 'rb') as f:
+                    files = {'file': ('special_chars.csv', f, 'text/csv')}
+                    response = requests.post(f"{API_BASE}/import/parse-csv", 
+                                           files=files, headers=self.headers)
                 
-        except Exception as e:
-            self.log_result("Invoice Overdue Trigger Test", False, f"Error testing invoice overdue trigger: {str(e)}")
+                if response.status_code == 200:
+                    result = response.json()
+                    sample_data = result.get("sample_data", [])
+                    if len(sample_data) >= 3:
+                        # Check if special characters are preserved
+                        has_special_chars = any("O'Brien" in str(row) or "José" in str(row) for row in sample_data)
+                        if has_special_chars:
+                            self.log_result("Special Characters", True, "Special characters in names handled correctly")
+                        else:
+                            self.log_result("Special Characters", False, "Special characters not preserved")
+                    else:
+                        self.log_result("Special Characters", False, "Special characters CSV not parsed correctly")
+                else:
+                    self.log_result("Special Characters", False, f"Special characters CSV failed: {response.status_code}")
+            except Exception as e:
+                self.log_result("Special Characters", False, f"Error testing special characters: {str(e)}")
+            finally:
+                if os.path.exists(special_csv):
+                    os.unlink(special_csv)
+        
+        # Test 4: CSV with very long field values
+        long_values_data = [
+            {
+                "Full Name": "A" * 100,  # Very long name
+                "Email": "very.long.email.address.that.exceeds.normal.length@verylongdomainname.com",
+                "Phone": "0821234567",
+                "Address": "A very long address that goes on and on and includes many details about the location including street number, street name, suburb, city, province, postal code and additional notes about the property" * 2
+            }
+        ]
+        
+        long_csv = self.create_test_csv("long_values.csv", long_values_data)
+        if long_csv:
+            try:
+                field_mapping = {
+                    "first_name": "Full Name",
+                    "email": "Email", 
+                    "phone": "Phone",
+                    "address": "Address"
+                }
+                
+                with open(long_csv, 'rb') as f:
+                    files = {'file': ('long_values.csv', f, 'text/csv')}
+                    data = {
+                        'field_mapping': json.dumps(field_mapping),
+                        'duplicate_action': 'create'
+                    }
+                    response = requests.post(f"{API_BASE}/import/members", 
+                                           files=files, data=data, headers=self.headers)
+                
+                if response.status_code == 200:
+                    result = response.json()
+                    if result.get("successful", 0) > 0:
+                        self.log_result("Long Field Values", True, "Long field values handled correctly")
+                    else:
+                        self.log_result("Long Field Values", False, "Long field values caused import failure")
+                else:
+                    self.log_result("Long Field Values", False, f"Long values import failed: {response.status_code}")
+            except Exception as e:
+                self.log_result("Long Field Values", False, f"Error testing long values: {str(e)}")
+            finally:
+                if os.path.exists(long_csv):
+                    os.unlink(long_csv)
+        
+        return True
     
     def test_complex_automation(self):
         """Test complex automation with multiple actions and conditions"""
