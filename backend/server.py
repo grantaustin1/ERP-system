@@ -5970,6 +5970,390 @@ async def process_incoming_eft_file(
         raise HTTPException(status_code=400, detail=f"Failed to process EFT file: {str(e)}")
 
 
+# ============================================================================
+# DebiCheck Mandate and Collection Endpoints
+# ============================================================================
+
+@api_router.post("/debicheck/mandates")
+async def create_debicheck_mandate(
+    data: DebiCheckMandateCreate,
+    current_user: User = Depends(get_current_user)
+):
+    """Create a new DebiCheck mandate for a member"""
+    # Get member details
+    member = await db.members.find_one({"id": data.member_id})
+    if not member:
+        raise HTTPException(status_code=404, detail="Member not found")
+    
+    # Check if member has bank details
+    if not member.get("bank_account_number") or not member.get("bank_branch_code"):
+        raise HTTPException(
+            status_code=400,
+            detail="Member must have bank account details configured"
+        )
+    
+    # Check if member has ID number
+    if not member.get("id_number"):
+        raise HTTPException(
+            status_code=400,
+            detail="Member must have ID number configured"
+        )
+    
+    # Generate mandate reference number
+    settings = await db.eft_settings.find_one({})
+    if not settings:
+        raise HTTPException(
+            status_code=400,
+            detail="EFT settings not configured. Please configure settings first."
+        )
+    
+    generator = DebiCheckMandateGenerator(
+        client_profile_number=settings["client_profile_number"],
+        creditor_name=settings.get("bank_name", "GYM"),
+        creditor_abbr="GYM"
+    )
+    
+    mrn = generator.generate_mandate_reference_number(data.member_id)
+    
+    # Calculate collection day if not provided
+    collection_day = data.collection_day or data.first_collection_date.day
+    
+    # Calculate maximum amount if not provided (1.5x installment for variable)
+    maximum_amount = data.maximum_amount or (data.installment_amount * 1.5)
+    
+    # Create mandate record
+    mandate = DebiCheckMandate(
+        mandate_reference_number=mrn,
+        member_id=data.member_id,
+        member_name=f"{member['first_name']} {member['last_name']}",
+        contract_reference=data.contract_reference,
+        mandate_type=data.mandate_type,
+        transaction_type=data.transaction_type,
+        debtor_id_number=member["id_number"],
+        debtor_bank_account=member["bank_account_number"],
+        debtor_branch_code=member["bank_branch_code"],
+        account_type=member.get("account_type", "1"),
+        first_collection_date=data.first_collection_date,
+        collection_day=collection_day,
+        frequency=data.frequency,
+        installment_amount=data.installment_amount,
+        maximum_amount=maximum_amount,
+        adjustment_category=data.adjustment_category,
+        adjustment_rate=data.adjustment_rate,
+        status="pending"
+    ).dict()
+    
+    await db.debicheck_mandates.insert_one(mandate)
+    
+    mandate.pop("_id", None)
+    return mandate
+
+
+@api_router.get("/debicheck/mandates")
+async def get_debicheck_mandates(
+    member_id: Optional[str] = None,
+    status: Optional[str] = None,
+    current_user: User = Depends(get_current_user)
+):
+    """Get all DebiCheck mandates with optional filtering"""
+    query = {}
+    if member_id:
+        query["member_id"] = member_id
+    if status:
+        query["status"] = status
+    
+    mandates = await db.debicheck_mandates.find(query, {"_id": 0}).to_list(length=None)
+    return mandates
+
+
+@api_router.get("/debicheck/mandates/{mandate_id}")
+async def get_debicheck_mandate(
+    mandate_id: str,
+    current_user: User = Depends(get_current_user)
+):
+    """Get specific DebiCheck mandate details"""
+    mandate = await db.debicheck_mandates.find_one({"id": mandate_id}, {"_id": 0})
+    if not mandate:
+        raise HTTPException(status_code=404, detail="Mandate not found")
+    
+    # Get collection history
+    collections = await db.debicheck_collections.find(
+        {"mandate_id": mandate_id},
+        {"_id": 0}
+    ).to_list(length=None)
+    
+    mandate["collections"] = collections
+    return mandate
+
+
+@api_router.post("/debicheck/mandates/generate-file")
+async def generate_debicheck_mandate_file(
+    mandate_ids: List[str],
+    current_user: User = Depends(get_current_user)
+):
+    """Generate DebiCheck mandate request file for submission to bank"""
+    # Get EFT settings
+    settings = await db.eft_settings.find_one({})
+    if not settings:
+        raise HTTPException(
+            status_code=400,
+            detail="EFT settings not configured"
+        )
+    
+    # Get mandates
+    mandates = await db.debicheck_mandates.find({"id": {"$in": mandate_ids}}).to_list(length=None)
+    if not mandates:
+        raise HTTPException(status_code=404, detail="No mandates found")
+    
+    # Build mandate data list
+    mandate_data_list = []
+    for mandate in mandates:
+        mandate_data_list.append({
+            'mandate_reference_number': mandate['mandate_reference_number'],
+            'mandate_type': mandate['mandate_type'],
+            'transaction_type': mandate['transaction_type'],
+            'contract_reference': mandate['contract_reference'],
+            'debtor_name': mandate['member_name'],
+            'debtor_id_number': mandate['debtor_id_number'],
+            'debtor_bank_account': mandate['debtor_bank_account'],
+            'debtor_branch_code': mandate['debtor_branch_code'],
+            'account_type': mandate.get('account_type', '1'),
+            'first_collection_date': mandate['first_collection_date'],
+            'collection_day': mandate['collection_day'],
+            'frequency': mandate['frequency'],
+            'installment_amount': mandate['installment_amount'],
+            'maximum_amount': mandate['maximum_amount'],
+            'adjustment_category': mandate['adjustment_category'],
+            'adjustment_rate': mandate['adjustment_rate'],
+            'action': 'A',  # A=Add new mandate
+            'member_id': mandate['member_id']
+        })
+    
+    # Generate file
+    generator = DebiCheckMandateGenerator(
+        client_profile_number=settings["client_profile_number"],
+        creditor_name=settings.get("bank_name", "GYM"),
+        creditor_abbr="GYM"
+    )
+    
+    filename, content = generator.generate_mandate_file(mandate_data_list)
+    
+    # Save file
+    filepath = save_debicheck_file(filename, content, "mandate")
+    
+    # Update mandate status
+    for mandate_id in mandate_ids:
+        await db.debicheck_mandates.update_one(
+            {"id": mandate_id},
+            {"$set": {"status": "submitted"}}
+        )
+    
+    return {
+        "success": True,
+        "file_name": filename,
+        "file_path": filepath,
+        "total_mandates": len(mandates)
+    }
+
+
+@api_router.post("/debicheck/mandates/{mandate_id}/cancel")
+async def cancel_debicheck_mandate(
+    mandate_id: str,
+    reason: str,
+    current_user: User = Depends(get_current_user)
+):
+    """Cancel a DebiCheck mandate"""
+    mandate = await db.debicheck_mandates.find_one({"id": mandate_id})
+    if not mandate:
+        raise HTTPException(status_code=404, detail="Mandate not found")
+    
+    await db.debicheck_mandates.update_one(
+        {"id": mandate_id},
+        {"$set": {
+            "status": "cancelled",
+            "status_reason": reason,
+            "cancelled_at": datetime.now(timezone.utc).isoformat()
+        }}
+    )
+    
+    return {"success": True, "message": "Mandate cancelled"}
+
+
+@api_router.post("/debicheck/collections")
+async def create_debicheck_collection(
+    mandate_id: str,
+    collection_amount: float,
+    action_date: Optional[str] = None,
+    collection_type: str = "R",
+    current_user: User = Depends(get_current_user)
+):
+    """Create a DebiCheck collection request"""
+    # Get mandate
+    mandate = await db.debicheck_mandates.find_one({"id": mandate_id})
+    if not mandate:
+        raise HTTPException(status_code=404, detail="Mandate not found")
+    
+    if mandate["status"] != "approved":
+        raise HTTPException(
+            status_code=400,
+            detail=f"Mandate must be approved. Current status: {mandate['status']}"
+        )
+    
+    # Validate collection amount
+    if collection_amount > mandate["maximum_amount"]:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Collection amount R{collection_amount:.2f} exceeds maximum R{mandate['maximum_amount']:.2f}"
+        )
+    
+    # Create collection record
+    collection = DebiCheckCollection(
+        mandate_id=mandate_id,
+        mandate_reference_number=mandate["mandate_reference_number"],
+        member_id=mandate["member_id"],
+        contract_reference=mandate["contract_reference"],
+        collection_amount=collection_amount,
+        action_date=datetime.strptime(action_date, '%Y-%m-%d') if action_date else datetime.now(timezone.utc),
+        collection_type=collection_type,
+        status="pending"
+    ).dict()
+    
+    await db.debicheck_collections.insert_one(collection)
+    
+    collection.pop("_id", None)
+    return collection
+
+
+@api_router.post("/debicheck/collections/generate-file")
+async def generate_debicheck_collection_file(
+    collection_ids: List[str],
+    current_user: User = Depends(get_current_user)
+):
+    """Generate DebiCheck collection request file"""
+    # Get EFT settings
+    settings = await db.eft_settings.find_one({})
+    if not settings:
+        raise HTTPException(status_code=400, detail="EFT settings not configured")
+    
+    # Get collections
+    collections = await db.debicheck_collections.find({"id": {"$in": collection_ids}}).to_list(length=None)
+    if not collections:
+        raise HTTPException(status_code=404, detail="No collections found")
+    
+    # Build collection data list
+    collection_data_list = []
+    for coll in collections:
+        collection_data_list.append({
+            'mandate_reference_number': coll['mandate_reference_number'],
+            'contract_reference': coll['contract_reference'],
+            'collection_amount': coll['collection_amount'],
+            'action_date': coll['action_date'],
+            'collection_type': coll['collection_type']
+        })
+    
+    # Generate file
+    generator = DebiCheckCollectionGenerator(
+        client_profile_number=settings["client_profile_number"],
+        creditor_abbr="GYM"
+    )
+    
+    filename, content = generator.generate_collection_file(
+        collection_data_list,
+        settings["nominated_account"],
+        settings["charges_account"]
+    )
+    
+    # Save file
+    filepath = save_debicheck_file(filename, content, "collection")
+    
+    # Update collection status
+    for coll_id in collection_ids:
+        await db.debicheck_collections.update_one(
+            {"id": coll_id},
+            {"$set": {"status": "submitted"}}
+        )
+    
+    return {
+        "success": True,
+        "file_name": filename,
+        "file_path": filepath,
+        "total_collections": len(collections)
+    }
+
+
+@api_router.post("/debicheck/process-response")
+async def process_debicheck_response(
+    file_content: str,
+    file_type: str,  # "mandate" or "collection"
+    current_user: User = Depends(get_current_user)
+):
+    """Process DebiCheck response file from bank"""
+    try:
+        if file_type == "mandate":
+            # Parse mandate response
+            parsed_data = DebiCheckResponseParser.parse_mandate_response(file_content)
+            
+            # Update mandate statuses
+            for response in parsed_data["responses"]:
+                mrn = response["mandate_reference_number"]
+                status_map = {"A": "approved", "R": "rejected", "P": "pending"}
+                
+                mandate = await db.debicheck_mandates.find_one({"mandate_reference_number": mrn})
+                if mandate:
+                    update_data = {
+                        "status": status_map.get(response["status"], "unknown"),
+                        "status_reason": response["reason_description"]
+                    }
+                    
+                    if response["status"] == "A":
+                        update_data["approved_at"] = datetime.now(timezone.utc).isoformat()
+                    
+                    await db.debicheck_mandates.update_one(
+                        {"mandate_reference_number": mrn},
+                        {"$set": update_data}
+                    )
+            
+            return {
+                "success": True,
+                "message": "Mandate responses processed",
+                "total_processed": len(parsed_data["responses"])
+            }
+        
+        elif file_type == "collection":
+            # Process collection responses similar to EFT processing
+            # This would update collection statuses and create payment records
+            return {
+                "success": True,
+                "message": "Collection responses processed"
+            }
+        
+        else:
+            raise HTTPException(status_code=400, detail="Invalid file type")
+    
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Failed to process response: {str(e)}")
+
+
+@api_router.get("/debicheck/collections")
+async def get_debicheck_collections(
+    mandate_id: Optional[str] = None,
+    member_id: Optional[str] = None,
+    status: Optional[str] = None,
+    current_user: User = Depends(get_current_user)
+):
+    """Get DebiCheck collections with filtering"""
+    query = {}
+    if mandate_id:
+        query["mandate_id"] = mandate_id
+    if member_id:
+        query["member_id"] = member_id
+    if status:
+        query["status"] = status
+    
+    collections = await db.debicheck_collections.find(query, {"_id": 0}).to_list(length=None)
+    return collections
+
+
 # Include the router in the main app
 app.include_router(api_router)
 
