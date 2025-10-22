@@ -5153,7 +5153,7 @@ async def adjust_stock(adjustment: StockAdjustmentCreate, current_user: User = D
 async def get_stock_history(product_id: str, current_user: User = Depends(get_current_user)):
     """Get stock adjustment history for a product"""
     adjustments = await db.stock_adjustments.find(
-        {"product_id": product_id}
+        {"product_id": product_id}, {"_id": 0}
     ).sort("adjustment_date", -1).to_list(length=100)
     
     return {"adjustments": adjustments, "total": len(adjustments)}
