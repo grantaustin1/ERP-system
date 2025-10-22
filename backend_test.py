@@ -759,101 +759,61 @@ class MemberImportTester:
         
         return True
     
-    def test_complex_automation(self):
-        """Test complex automation with multiple actions and conditions"""
-        print("\n=== Testing Complex Automation ===")
+    def test_phase8_leads_import(self):
+        """PHASE 8: Test leads import (if exists)"""
+        print("\n=== PHASE 8: Leads Import Test ===")
         
-        complex_automation = {
-            "name": "Complex Payment Failed Automation",
-            "description": "Multi-step automation for payment failures with conditions",
-            "trigger_type": "payment_failed",
-            "conditions": {
-                "amount": {"operator": ">=", "value": 100}
-            },
-            "actions": [
-                {
-                    "type": "send_sms",
-                    "delay_minutes": 0,
-                    "message": "Hi {member_name}, your payment of R{amount} failed. Please update your payment method."
-                },
-                {
-                    "type": "send_email",
-                    "delay_minutes": 60,
-                    "subject": "Payment Failed - Action Required",
-                    "body": "Dear {member_name}, your payment for invoice {invoice_number} has failed. Amount: R{amount}"
-                },
-                {
-                    "type": "create_task",
-                    "delay_minutes": 1440,  # 24 hours
-                    "task_title": "Follow up on failed payment",
-                    "task_description": "Contact {member_name} regarding failed payment of R{amount}",
-                    "assigned_to": "admin@gym.com"
-                }
-            ]
-        }
+        # Create test leads CSV
+        leads_data = [
+            {"Full Name": "Lead One", "Email": "lead1@prospect.com", "Phone": "0821111001", "Source": "facebook", "Interest": "Personal Training"},
+            {"Full Name": "Lead Two", "Email": "lead2@prospect.com", "Phone": "0821111002", "Source": "instagram", "Interest": "Group Classes"},
+            {"Full Name": "Lead Three", "Email": "lead3@prospect.com", "Phone": "0821111003", "Source": "walk_in", "Interest": "Membership Info"}
+        ]
+        
+        csv_file = self.create_test_csv("leads_import.csv", leads_data)
+        if not csv_file:
+            return False
         
         try:
-            response = requests.post(f"{API_BASE}/automations", 
-                                   json=complex_automation, headers=self.headers)
+            field_mapping = {
+                "full_name": "Full Name",
+                "email": "Email", 
+                "phone": "Phone",
+                "source": "Source",
+                "interest": "Interest"
+            }
+            
+            with open(csv_file, 'rb') as f:
+                files = {'file': ('leads_import.csv', f, 'text/csv')}
+                data = {
+                    'field_mapping': json.dumps(field_mapping)
+                }
+                response = requests.post(f"{API_BASE}/import/leads", 
+                                       files=files, data=data, headers=self.headers)
+            
             if response.status_code == 200:
-                automation = response.json()
-                automation_id = automation["id"]
-                self.log_result("Create Complex Automation", True, 
-                              f"Complex automation created with {len(automation['actions'])} actions",
-                              {"automation_id": automation_id})
+                result = response.json()
                 
-                # Test with sample data that meets conditions
-                test_data = {
-                    "member_id": "test-member-456",
-                    "member_name": "Alice Johnson",
-                    "email": "alice.johnson@example.com",
-                    "phone": "+27111222333",
-                    "invoice_id": "test-invoice-789",
-                    "invoice_number": "INV-TEST-001",
-                    "amount": 150.00,  # Meets condition >= 100
-                    "failure_reason": "Insufficient funds"
-                }
+                successful = result.get("successful", 0)
+                failed = result.get("failed", 0)
                 
-                test_response = requests.post(f"{API_BASE}/automations/test/{automation_id}", 
-                                            json=test_data, headers=self.headers)
-                
-                if test_response.status_code == 200:
-                    test_result = test_response.json()
-                    if test_result.get("success"):
-                        self.log_result("Test Complex Automation", True, 
-                                      "Complex automation test executed successfully",
-                                      {"actions_executed": test_result.get("result", {}).get("actions_executed")})
-                    else:
-                        self.log_result("Test Complex Automation", False, 
-                                      f"Complex automation test failed: {test_result.get('message')}")
-                
-                # Test with data that doesn't meet conditions
-                test_data_no_condition = {
-                    "member_id": "test-member-789",
-                    "member_name": "Bob Wilson",
-                    "amount": 50.00,  # Doesn't meet condition >= 100
-                }
-                
-                test_response2 = requests.post(f"{API_BASE}/automations/test/{automation_id}", 
-                                             json=test_data_no_condition, headers=self.headers)
-                
-                if test_response2.status_code == 200:
-                    test_result2 = test_response2.json()
-                    result_data = test_result2.get("result", {})
-                    if result_data.get("skipped"):
-                        self.log_result("Test Condition Filtering", True, 
-                                      "Automation correctly skipped due to unmet conditions")
-                    else:
-                        self.log_result("Test Condition Filtering", False, 
-                                      "Automation should have been skipped due to conditions")
-                
+                if successful == 3 and failed == 0:
+                    self.log_result("Leads Import", True, 
+                                  f"Leads import successful: {successful} leads imported, {failed} failed")
+                else:
+                    self.log_result("Leads Import", False, 
+                                  f"Leads import issues: {successful} successful, {failed} failed (expected 3, 0)")
             else:
-                self.log_result("Create Complex Automation", False, 
-                              f"Failed to create complex automation: {response.status_code}",
+                self.log_result("Leads Import", False, f"Leads import failed: {response.status_code}",
                               {"response": response.text})
                 
         except Exception as e:
-            self.log_result("Complex Automation Test", False, f"Error testing complex automation: {str(e)}")
+            self.log_result("Leads Import", False, f"Error in leads import: {str(e)}")
+        finally:
+            if os.path.exists(csv_file):
+                os.unlink(csv_file)
+        
+        return True
     
     def cleanup_test_automation(self, automation_id):
         """Clean up test automation"""
