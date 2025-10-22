@@ -3581,9 +3581,11 @@ class POSTransactionItem(BaseModel):
     quantity: int
     unit_price: float  # Price per unit (including markup)
     tax_rate: float
+    item_discount_percent: float = 0.0  # Per-item discount percentage
+    item_discount_amount: float = 0.0  # Per-item discount in currency
     subtotal: float  # quantity * unit_price
     tax_amount: float  # subtotal * (tax_rate / 100)
-    total: float  # subtotal + tax_amount
+    total: float  # subtotal + tax_amount - item_discount_amount
 
 class POSTransaction(BaseModel):
     """Complete POS transaction/sale"""
