@@ -5582,13 +5582,14 @@ async def generate_billing_eft_file(
             continue
         
         # Check if member has bank details
-        if not member.get("bank_account") or not member.get("bank_branch"):
+        if not member.get("bank_account_number") or not member.get("bank_branch_code"):
             continue
         
         transactions.append({
             "member_name": f"{member['first_name']} {member['last_name']}",
-            "member_account": member.get("bank_account"),
-            "member_branch": member.get("bank_branch"),
+            "member_id": member["id"],
+            "member_account": member.get("bank_account_number"),
+            "member_branch": member.get("bank_branch_code"),
             "amount": invoice["amount"],
             "invoice_id": invoice["id"],
             "action_date": action_date or date.today().isoformat()
