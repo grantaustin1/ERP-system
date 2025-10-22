@@ -1073,6 +1073,56 @@ export default function Settings() {
                     </div>
                   </div>
 
+                  {/* Billing Schedule Settings */}
+                  <div className="border-t border-slate-700 pt-6 mt-6">
+                    <h3 className="text-lg font-semibold text-white mb-4">Billing Schedule & Automation</h3>
+                    
+                    <div className="space-y-4">
+                      <div className="space-y-2">
+                        <Label className="text-white text-base">Advance Billing Days</Label>
+                        <div className="flex items-start gap-4">
+                          <Input
+                            type="number"
+                            min="0"
+                            max="30"
+                            value={eftSettings.advance_billing_days}
+                            onChange={(e) => setEftSettings({...eftSettings, advance_billing_days: parseInt(e.target.value) || 5})}
+                            className="bg-slate-700 border-slate-600 text-white w-32"
+                          />
+                          <div className="flex-1">
+                            <p className="text-sm text-slate-400">
+                              Generate billing files <strong className="text-emerald-400">{eftSettings.advance_billing_days} days</strong> before payment due date
+                            </p>
+                            <p className="text-xs text-slate-500 mt-1">
+                              Recommended: 5 days to allow time for payment gateway processing
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center justify-between p-4 bg-slate-700/50 rounded-lg">
+                        <div>
+                          <Label className="text-white text-base">Enable Automatic File Generation</Label>
+                          <p className="text-sm text-slate-400 mt-1">
+                            Automatically generate EFT/DebiCheck files based on due dates
+                          </p>
+                        </div>
+                        <Switch
+                          checked={eftSettings.enable_auto_generation}
+                          onCheckedChange={(checked) => setEftSettings({...eftSettings, enable_auto_generation: checked})}
+                        />
+                      </div>
+
+                      {eftSettings.enable_auto_generation && (
+                        <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-4">
+                          <p className="text-sm text-blue-300">
+                            <strong>Auto-generation enabled:</strong> Files will be automatically generated {eftSettings.advance_billing_days} days before invoice/levy due dates.
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
                   {/* Notification Settings */}
                   <div className="border-t border-slate-700 pt-6 mt-6">
                     <h3 className="text-lg font-semibold text-white mb-4">Payment Notification Settings</h3>
