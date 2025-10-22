@@ -501,35 +501,56 @@ export default function POS() {
               {/* Cart Items */}
               <div className="space-y-3 mb-4 max-h-[300px] overflow-y-auto">
                 {cart.map(item => (
-                  <div key={item.product_id} className="flex items-center gap-2 p-2 border rounded">
-                    <div className="flex-1">
-                      <p className="font-medium text-sm">{item.product_name}</p>
-                      <p className="text-xs text-gray-500">R{item.unit_price.toFixed(2)} each</p>
-                    </div>
-                    <div className="flex items-center gap-1">
+                  <div key={item.product_id} className="p-3 border rounded space-y-2">
+                    <div className="flex items-center gap-2">
+                      <div className="flex-1">
+                        <p className="font-medium text-sm">{item.product_name}</p>
+                        <p className="text-xs text-gray-500">R{item.unit_price.toFixed(2)} each</p>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => updateCartQuantity(item.product_id, item.quantity - 1)}
+                        >
+                          <Minus className="h-3 w-3" />
+                        </Button>
+                        <span className="w-8 text-center">{item.quantity}</span>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => updateCartQuantity(item.product_id, item.quantity + 1)}
+                        >
+                          <Plus className="h-3 w-3" />
+                        </Button>
+                      </div>
                       <Button
                         size="sm"
-                        variant="outline"
-                        onClick={() => updateCartQuantity(item.product_id, item.quantity - 1)}
+                        variant="ghost"
+                        onClick={() => removeFromCart(item.product_id)}
                       >
-                        <Minus className="h-3 w-3" />
-                      </Button>
-                      <span className="w-8 text-center">{item.quantity}</span>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => updateCartQuantity(item.product_id, item.quantity + 1)}
-                      >
-                        <Plus className="h-3 w-3" />
+                        <Trash2 className="h-4 w-4 text-red-500" />
                       </Button>
                     </div>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => removeFromCart(item.product_id)}
-                    >
-                      <Trash2 className="h-4 w-4 text-red-500" />
-                    </Button>
+                    
+                    {/* Per-item discount */}
+                    <div className="flex items-center gap-2 pl-2 border-t pt-2">
+                      <Label className="text-xs">Item Disc %:</Label>
+                      <Input
+                        type="number"
+                        min="0"
+                        max="100"
+                        value={item.item_discount_percent || 0}
+                        onChange={(e) => updateItemDiscount(item.product_id, parseFloat(e.target.value) || 0)}
+                        className="w-20 h-7 text-xs"
+                      />
+                      <span className="text-xs text-gray-600 ml-auto">
+                        Total: R{item.total.toFixed(2)}
+                        {item.item_discount_amount > 0 && (
+                          <span className="text-green-600 ml-1">(-R{item.item_discount_amount.toFixed(2)})</span>
+                        )}
+                      </span>
+                    </div>
                   </div>
                 ))}
               </div>
