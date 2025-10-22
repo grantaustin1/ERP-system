@@ -227,25 +227,26 @@ class MemberImportTester:
         """PHASE 2: Test duplicate detection endpoint"""
         print("\n=== PHASE 2: Duplicate Detection Test ===")
         
-        # First, create 3 test members manually
+        # First, create 3 test members manually with unique timestamps
+        timestamp = int(time.time())
         test_members = [
             {
                 "first_name": "Alice",
                 "last_name": "Johnson",
-                "email": "alice.johnson@example.com",
-                "phone": "0834567890"
+                "email": f"alice.johnson.{timestamp}@example.com",
+                "phone": f"083456{timestamp % 10000:04d}"
             },
             {
                 "first_name": "Bob",
                 "last_name": "Smith", 
-                "email": "bob.smith@gmail.com",
-                "phone": "+27845678901"
+                "email": f"bob.smith.{timestamp}@gmail.com",
+                "phone": f"+2784567{timestamp % 1000:03d}"
             },
             {
                 "first_name": "Charlie",
                 "last_name": "Brown",
-                "email": "charlie.brown@test.com",
-                "phone": "0856789012"
+                "email": f"charlie.brown.{timestamp}@test.com",
+                "phone": f"085678{timestamp % 10000:04d}"
             }
         ]
         
