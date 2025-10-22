@@ -283,38 +283,8 @@ export default function POS() {
       });
       
       if (!response.ok) {
-        // If backend not accessible, simulate successful transaction for testing
-        console.warn('Backend not accessible, simulating transaction with stock update');
-        const mockTransactionNumber = `POS-TEST-${Date.now()}`;
-        
-        // Update stock quantities locally for test mode
-        setProducts(prevProducts => 
-          prevProducts.map(product => {
-            const cartItem = cart.find(item => item.product_id === product.id);
-            if (cartItem) {
-              return {
-                ...product,
-                stock_quantity: Math.max(0, product.stock_quantity - cartItem.quantity)
-              };
-            }
-            return product;
-          })
-        );
-        
-        toast({
-          title: "Test Mode - Transaction Simulated",
-          description: `Transaction ${mockTransactionNumber} completed. Stock updated locally.`,
-        });
-        
-        // Reset cart and form
-        setCart([]);
-        setSelectedMember(null);
-        setDiscountPercent(0);
-        setPaymentReference('');
-        setNotes('');
-        setShowCheckoutDialog(false);
-        
-        return;
+        const error = await response.json();
+        throw new Error(error.detail || 'Transaction failed');
       }
       
       const result = await response.json();
@@ -337,37 +307,11 @@ export default function POS() {
       
     } catch (error) {
       console.error('Transaction error:', error);
-      
-      // Fallback to test mode on error with stock update
-      const mockTransactionNumber = `POS-TEST-${Date.now()}`;
-      
-      // Update stock quantities locally for test mode
-      setProducts(prevProducts => 
-        prevProducts.map(product => {
-          const cartItem = cart.find(item => item.product_id === product.id);
-          if (cartItem) {
-            return {
-              ...product,
-              stock_quantity: Math.max(0, product.stock_quantity - cartItem.quantity)
-            };
-          }
-          return product;
-        })
-      );
-      
       toast({
-        title: "Test Mode - Transaction Simulated",
-        description: `Transaction ${mockTransactionNumber} completed. Stock updated locally.`,
+        title: "Transaction Failed",
+        description: error.message || "Failed to complete transaction",
+        variant: "destructive"
       });
-      
-      // Reset cart and form
-      setCart([]);
-      setSelectedMember(null);
-      setDiscountPercent(0);
-      setPaymentReference('');
-      setNotes('');
-      setShowCheckoutDialog(false);
-      
     } finally {
       setProcessing(false);
     }
