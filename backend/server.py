@@ -6799,6 +6799,255 @@ async def get_debicheck_collections(
     return collections
 
 
+# ============================================================================
+# Export Reports Endpoints
+# ============================================================================
+
+@api_router.get("/reports/payments/export")
+async def export_payments_report(
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+    format: str = "csv",  # csv or excel
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Export payments report with filtering.
+    Returns CSV data that can be downloaded.
+    """
+    import csv
+    import io
+    
+    # Build query
+    query = {}
+    if start_date:
+        query["payment_date"] = {"$gte": start_date}
+    if end_date:
+        if "payment_date" in query:
+            query["payment_date"]["$lte"] = end_date
+        else:
+            query["payment_date"] = {"$lte": end_date}
+    
+    # Get payments
+    payments = await db.payments.find(query, {"_id": 0}).to_list(length=None)
+    
+    # Get member details for each payment
+    report_data = []
+    for payment in payments:
+        member = await db.members.find_one({"id": payment["member_id"]}, {"_id": 0})
+        if member:
+            report_data.append({
+                "Payment ID": payment["id"],
+                "Member Name": f"{member['first_name']} {member['last_name']}",
+                "Member Email": member.get("email", ""),
+                "Amount": payment["amount"],
+                "Payment Method": payment["payment_method"],
+                "Payment Date": payment["payment_date"],
+                "Reference": payment.get("reference_number", ""),
+                "Invoice ID": payment.get("invoice_id", ""),
+                "Status": "Paid"
+            })
+    
+    if format == "csv":
+        # Generate CSV
+        output = io.StringIO()
+        if report_data:
+            fieldnames = report_data[0].keys()
+            writer = csv.DictWriter(output, fieldnames=fieldnames)
+            writer.writeheader()
+            writer.writerows(report_data)
+        
+        return {
+            "success": True,
+            "format": "csv",
+            "filename": f"payments_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
+            "data": output.getvalue(),
+            "total_records": len(report_data),
+            "total_amount": sum(p["amount"] for p in payments)
+        }
+    
+    return {
+        "success": True,
+        "format": "json",
+        "data": report_data,
+        "total_records": len(report_data),
+        "total_amount": sum(p["amount"] for p in payments)
+    }
+
+
+@api_router.get("/reports/unpaid/export")
+async def export_unpaid_report(
+    format: str = "csv",
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Export unpaid invoices and levies report.
+    """
+    import csv
+    import io
+    
+    # Get unpaid invoices
+    unpaid_invoices = await db.invoices.find(
+        {"status": {"$ne": "paid"}},
+        {"_id": 0}
+    ).to_list(length=None)
+    
+    # Get unpaid levies
+    unpaid_levies = await db.levies.find(
+        {"status": {"$ne": "paid"}},
+        {"_id": 0}
+    ).to_list(length=None)
+    
+    report_data = []
+    
+    # Process invoices
+    for invoice in unpaid_invoices:
+        member = await db.members.find_one({"id": invoice["member_id"]}, {"_id": 0})
+        if member:
+            report_data.append({
+                "Type": "Invoice",
+                "ID": invoice["id"],
+                "Member Name": f"{member['first_name']} {member['last_name']}",
+                "Member Email": member.get("email", ""),
+                "Amount": invoice["amount"],
+                "Due Date": invoice.get("due_date", ""),
+                "Status": invoice["status"],
+                "Days Overdue": (datetime.now().date() - datetime.strptime(invoice.get("due_date", datetime.now().isoformat()[:10]), '%Y-%m-%d').date()).days if invoice.get("due_date") else 0
+            })
+    
+    # Process levies
+    for levy in unpaid_levies:
+        report_data.append({
+            "Type": "Levy",
+            "ID": levy["id"],
+            "Member Name": levy["member_name"],
+            "Member Email": "",
+            "Amount": levy["amount"],
+            "Due Date": levy.get("due_date", ""),
+            "Status": levy["status"],
+            "Days Overdue": (datetime.now().date() - datetime.strptime(levy.get("due_date", datetime.now().isoformat()[:10]), '%Y-%m-%d').date()).days if levy.get("due_date") else 0
+        })
+    
+    if format == "csv":
+        output = io.StringIO()
+        if report_data:
+            fieldnames = report_data[0].keys()
+            writer = csv.DictWriter(output, fieldnames=fieldnames)
+            writer.writeheader()
+            writer.writerows(report_data)
+        
+        return {
+            "success": True,
+            "format": "csv",
+            "filename": f"unpaid_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
+            "data": output.getvalue(),
+            "total_records": len(report_data),
+            "total_unpaid_amount": sum(item["Amount"] for item in report_data)
+        }
+    
+    return {
+        "success": True,
+        "format": "json",
+        "data": report_data,
+        "total_records": len(report_data),
+        "total_unpaid_amount": sum(item["Amount"] for item in report_data)
+    }
+
+
+@api_router.get("/reports/monthly-billing/export")
+async def export_monthly_billing_report(
+    month: Optional[int] = None,
+    year: Optional[int] = None,
+    format: str = "csv",
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Export monthly billing report showing all billing activity for a month.
+    """
+    import csv
+    import io
+    
+    # Default to current month
+    if not month or not year:
+        now = datetime.now()
+        month = month or now.month
+        year = year or now.year
+    
+    # Calculate date range
+    start_date = datetime(year, month, 1)
+    if month == 12:
+        end_date = datetime(year + 1, 1, 1)
+    else:
+        end_date = datetime(year, month + 1, 1)
+    
+    # Get invoices for the month
+    invoices = await db.invoices.find({
+        "created_at": {
+            "$gte": start_date.isoformat(),
+            "$lt": end_date.isoformat()
+        }
+    }, {"_id": 0}).to_list(length=None)
+    
+    # Get payments for the month
+    payments = await db.payments.find({
+        "payment_date": {
+            "$gte": start_date.isoformat(),
+            "$lt": end_date.isoformat()
+        }
+    }, {"_id": 0}).to_list(length=None)
+    
+    report_data = []
+    
+    # Process invoices
+    for invoice in invoices:
+        member = await db.members.find_one({"id": invoice["member_id"]}, {"_id": 0})
+        if member:
+            # Find payment for this invoice
+            payment = next((p for p in payments if p.get("invoice_id") == invoice["id"]), None)
+            
+            report_data.append({
+                "Month": f"{year}-{str(month).zfill(2)}",
+                "Member Name": f"{member['first_name']} {member['last_name']}",
+                "Member Email": member.get("email", ""),
+                "Membership Type": member.get("membership_type", ""),
+                "Invoice Amount": invoice["amount"],
+                "Payment Amount": payment["amount"] if payment else 0,
+                "Payment Date": payment.get("payment_date", "") if payment else "",
+                "Payment Method": payment.get("payment_method", "") if payment else "",
+                "Status": "Paid" if payment else invoice["status"],
+                "Balance": invoice["amount"] - (payment["amount"] if payment else 0)
+            })
+    
+    if format == "csv":
+        output = io.StringIO()
+        if report_data:
+            fieldnames = report_data[0].keys()
+            writer = csv.DictWriter(output, fieldnames=fieldnames)
+            writer.writeheader()
+            writer.writerows(report_data)
+        
+        return {
+            "success": True,
+            "format": "csv",
+            "filename": f"monthly_billing_{year}_{str(month).zfill(2)}.csv",
+            "data": output.getvalue(),
+            "total_records": len(report_data),
+            "total_invoiced": sum(item["Invoice Amount"] for item in report_data),
+            "total_collected": sum(item["Payment Amount"] for item in report_data),
+            "total_outstanding": sum(item["Balance"] for item in report_data)
+        }
+    
+    return {
+        "success": True,
+        "format": "json",
+        "data": report_data,
+        "month": f"{year}-{str(month).zfill(2)}",
+        "total_records": len(report_data),
+        "total_invoiced": sum(item["Invoice Amount"] for item in report_data),
+        "total_collected": sum(item["Payment Amount"] for item in report_data),
+        "total_outstanding": sum(item["Balance"] for item in report_data)
+    }
+
+
 @api_router.get("/debicheck/mandates-due-for-collection")
 async def get_mandates_due_for_collection(
     advance_days: Optional[int] = None,
