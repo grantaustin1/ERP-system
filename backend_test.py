@@ -77,101 +77,146 @@ class MemberImportTester:
             self.log_result("Create Test CSV", False, f"Failed to create CSV: {str(e)}")
             return None
     
-    def test_automation_crud(self):
-        """Test automation CRUD operations"""
-        print("\n=== Testing Automation CRUD Operations ===")
+    def test_phase1_csv_parsing(self):
+        """PHASE 1: Test CSV parsing endpoint"""
+        print("\n=== PHASE 1: CSV Parsing Test ===")
         
-        # Test 1: Create automation
-        automation_data = {
-            "name": "Welcome New Member Test",
-            "description": "Send welcome SMS when member joins - Test Automation",
-            "trigger_type": "member_joined",
-            "conditions": {},
-            "actions": [
-                {
-                    "type": "send_sms",
-                    "delay_minutes": 0,
-                    "message": "Welcome {member_name}! Thank you for joining our gym. Your membership: {membership_type}"
-                }
-            ]
-        }
+        # Create test CSV with various member data formats
+        test_data = [
+            {
+                "Full Name": "MR JOHN DOE",
+                "Email": "john.doe@gmail.com",
+                "Phone": "0821234567",
+                "Address": "123 Main St, Cape Town",
+                "ID Number": "8001015009087",
+                "Bank Account": "1234567890123456",
+                "Bank Branch": "198765"
+            },
+            {
+                "Full Name": "MRS JANE SMITH",
+                "Email": "jane.smith+gym@gmail.com",
+                "Phone": "+27821234568",
+                "Address": "456 Oak Ave, Johannesburg",
+                "ID Number": "7505125008088",
+                "Bank Account": "2345678901234567",
+                "Bank Branch": "250655"
+            },
+            {
+                "Full Name": "ROBERT BROWN",
+                "Email": "robert.brown@yahoo.com",
+                "Phone": "082-123-4569",
+                "Address": "789 Pine Rd, Durban",
+                "ID Number": "9203156009089",
+                "Bank Account": "3456789012345678",
+                "Bank Branch": "470010"
+            },
+            {
+                "Full Name": "MIKE",
+                "Email": "mike.single@hotmail.com",
+                "Phone": "0821234570",
+                "Address": "321 Elm St, Pretoria",
+                "ID Number": "8512075009090",
+                "Bank Account": "4567890123456789",
+                "Bank Branch": "632005"
+            },
+            {
+                "Full Name": "MRS EMILY BROWN ANDERSON",
+                "Email": "emily.anderson@test.co.za",
+                "Phone": "+27821234571",
+                "Address": "654 Maple Dr, Port Elizabeth",
+                "ID Number": "7808125008091",
+                "Bank Account": "5678901234567890",
+                "Bank Branch": "051001"
+            },
+            {
+                "Full Name": "DR SARAH WILLIAMS",
+                "Email": "sarah.williams@university.ac.za",
+                "Phone": "0821234572",
+                "Address": "987 Cedar Ln, Bloemfontein",
+                "ID Number": "8906145009092",
+                "Bank Account": "6789012345678901",
+                "Bank Branch": "630130"
+            },
+            {
+                "Full Name": "PROF MICHAEL JOHNSON",
+                "Email": "m.johnson@research.org",
+                "Phone": "+27821234573",
+                "Address": "147 Birch St, East London",
+                "ID Number": "7704085008093",
+                "Bank Account": "7890123456789012",
+                "Bank Branch": "431010"
+            },
+            {
+                "Full Name": "MS LISA DAVIS",
+                "Email": "lisa.davis.work@company.com",
+                "Phone": "082-123-4574",
+                "Address": "258 Willow Ave, Kimberley",
+                "ID Number": "8411125009094",
+                "Bank Account": "8901234567890123",
+                "Bank Branch": "462005"
+            },
+            {
+                "Full Name": "MISS JENNIFER WILSON",
+                "Email": "jennifer.wilson@email.net",
+                "Phone": "0821234575",
+                "Address": "369 Spruce Rd, Polokwane",
+                "ID Number": "9009155008095",
+                "Bank Account": "9012345678901234",
+                "Bank Branch": "290845"
+            },
+            {
+                "Full Name": "DAVID TAYLOR",
+                "Email": "david.taylor@provider.co.za",
+                "Phone": "+27821234576",
+                "Address": "741 Ash Blvd, Nelspruit",
+                "ID Number": "8207095009096",
+                "Bank Account": "0123456789012345",
+                "Bank Branch": "460835"
+            }
+        ]
+        
+        csv_file = self.create_test_csv("test_members.csv", test_data)
+        if not csv_file:
+            return False
         
         try:
-            response = requests.post(f"{API_BASE}/automations", 
-                                   json=automation_data, headers=self.headers)
+            with open(csv_file, 'rb') as f:
+                files = {'file': ('test_members.csv', f, 'text/csv')}
+                response = requests.post(f"{API_BASE}/import/parse-csv", 
+                                       files=files, headers=self.headers)
+            
             if response.status_code == 200:
-                created_automation = response.json()
-                automation_id = created_automation["id"]
-                self.log_result("Create Automation", True, "Automation created successfully",
-                              {"automation_id": automation_id})
+                result = response.json()
+                
+                # Verify response structure
+                expected_headers = ["Full Name", "Email", "Phone", "Address", "ID Number", "Bank Account", "Bank Branch"]
+                actual_headers = result.get("headers", [])
+                
+                headers_match = all(h in actual_headers for h in expected_headers)
+                sample_data_count = len(result.get("sample_data", []))
+                total_rows = result.get("total_rows", 0)
+                filename = result.get("filename", "")
+                
+                if headers_match and sample_data_count == 5 and total_rows == 10 and filename == "test_members.csv":
+                    self.log_result("CSV Parsing", True, 
+                                  f"CSV parsed successfully: {len(actual_headers)} headers, {sample_data_count} sample rows, {total_rows} total rows",
+                                  {"headers": actual_headers, "filename": filename})
+                else:
+                    self.log_result("CSV Parsing", False, 
+                                  f"CSV parsing incomplete: headers_match={headers_match}, sample_count={sample_data_count}, total={total_rows}",
+                                  {"expected_headers": expected_headers, "actual_headers": actual_headers})
             else:
-                self.log_result("Create Automation", False, f"Failed to create: {response.status_code}",
+                self.log_result("CSV Parsing", False, f"Failed to parse CSV: {response.status_code}",
                               {"response": response.text})
-                return None
+                
         except Exception as e:
-            self.log_result("Create Automation", False, f"Error creating automation: {str(e)}")
-            return None
+            self.log_result("CSV Parsing", False, f"Error parsing CSV: {str(e)}")
+        finally:
+            # Cleanup
+            if os.path.exists(csv_file):
+                os.unlink(csv_file)
         
-        # Test 2: Get all automations
-        try:
-            response = requests.get(f"{API_BASE}/automations", headers=self.headers)
-            if response.status_code == 200:
-                automations = response.json()
-                self.log_result("List Automations", True, f"Retrieved {len(automations)} automations")
-            else:
-                self.log_result("List Automations", False, f"Failed to list: {response.status_code}",
-                              {"response": response.text})
-        except Exception as e:
-            self.log_result("List Automations", False, f"Error listing automations: {str(e)}")
-        
-        # Test 3: Get specific automation
-        try:
-            response = requests.get(f"{API_BASE}/automations/{automation_id}", headers=self.headers)
-            if response.status_code == 200:
-                automation = response.json()
-                self.log_result("Get Automation", True, "Retrieved automation successfully",
-                              {"name": automation.get("name")})
-            else:
-                self.log_result("Get Automation", False, f"Failed to get: {response.status_code}",
-                              {"response": response.text})
-        except Exception as e:
-            self.log_result("Get Automation", False, f"Error getting automation: {str(e)}")
-        
-        # Test 4: Update automation
-        update_data = {
-            "name": "Welcome New Member Test - Updated",
-            "description": "Updated description for test automation",
-            "trigger_type": "member_joined",
-            "conditions": {"membership_type": "Premium"},
-            "actions": [
-                {
-                    "type": "send_sms",
-                    "delay_minutes": 5,
-                    "message": "Welcome {member_name}! Premium membership activated."
-                },
-                {
-                    "type": "send_email",
-                    "delay_minutes": 10,
-                    "subject": "Welcome to Premium Membership",
-                    "body": "Dear {member_name}, welcome to our premium membership!"
-                }
-            ]
-        }
-        
-        try:
-            response = requests.put(f"{API_BASE}/automations/{automation_id}", 
-                                  json=update_data, headers=self.headers)
-            if response.status_code == 200:
-                updated_automation = response.json()
-                self.log_result("Update Automation", True, "Automation updated successfully",
-                              {"actions_count": len(updated_automation.get("actions", []))})
-            else:
-                self.log_result("Update Automation", False, f"Failed to update: {response.status_code}",
-                              {"response": response.text})
-        except Exception as e:
-            self.log_result("Update Automation", False, f"Error updating automation: {str(e)}")
-        
-        return automation_id
+        return True
     
     def test_automation_toggle(self, automation_id):
         """Test automation enable/disable toggle"""
