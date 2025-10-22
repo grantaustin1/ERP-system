@@ -436,37 +436,70 @@ class MemberImportTester:
         
         return True
     
-    def test_execution_history(self):
-        """Test automation execution history"""
-        print("\n=== Testing Execution History ===")
+    def test_phase4_import_update_duplicates(self):
+        """PHASE 4: Test member import with update duplicates"""
+        print("\n=== PHASE 4: Member Import with Update Duplicates ===")
+        
+        # Create CSV with updates to existing members
+        update_data = [
+            {"Full Name": "Alice Johnson", "Email": "alice.johnson@example.com", "Phone": "0834567890", "Address": "UPDATED: 999 New Address St"},
+            {"Full Name": "Bob Smith", "Email": "bob.smith@gmail.com", "Phone": "+27845678901", "Address": "UPDATED: 888 Changed Ave"}
+        ]
+        
+        csv_file = self.create_test_csv("update_members.csv", update_data)
+        if not csv_file:
+            return False
         
         try:
-            response = requests.get(f"{API_BASE}/automation-executions", headers=self.headers)
+            field_mapping = {
+                "first_name": "Full Name",
+                "email": "Email", 
+                "phone": "Phone",
+                "address": "Address"
+            }
+            
+            with open(csv_file, 'rb') as f:
+                files = {'file': ('update_members.csv', f, 'text/csv')}
+                data = {
+                    'field_mapping': json.dumps(field_mapping),
+                    'duplicate_action': 'update'
+                }
+                response = requests.post(f"{API_BASE}/import/members", 
+                                       files=files, data=data, headers=self.headers)
+            
             if response.status_code == 200:
-                executions = response.json()
-                self.log_result("Get Execution History", True, f"Retrieved {len(executions)} execution records")
+                result = response.json()
                 
-                # Test filtering by automation_id if we have executions
-                if executions and len(executions) > 0:
-                    first_execution = executions[0]
-                    automation_id = first_execution.get("automation_id")
-                    if automation_id:
-                        filtered_response = requests.get(
-                            f"{API_BASE}/automation-executions?automation_id={automation_id}", 
-                            headers=self.headers
-                        )
-                        if filtered_response.status_code == 200:
-                            filtered_executions = filtered_response.json()
-                            self.log_result("Filter Execution History", True, 
-                                          f"Retrieved {len(filtered_executions)} filtered executions")
+                updated = result.get("updated", 0)
+                successful = result.get("successful", 0)
+                
+                if updated >= 1:  # At least one update should occur
+                    self.log_result("Import Update Duplicates", True, 
+                                  f"Import update completed: {updated} updated, {successful} new")
+                    
+                    # Verify updates persisted
+                    members_response = requests.get(f"{API_BASE}/members", headers=self.headers)
+                    if members_response.status_code == 200:
+                        members = members_response.json()
+                        alice = next((m for m in members if m.get("email") == "alice.johnson@example.com"), None)
+                        if alice and "UPDATED:" in alice.get("address", ""):
+                            self.log_result("Update Persistence", True, "Member updates persisted correctly")
                         else:
-                            self.log_result("Filter Execution History", False, 
-                                          f"Failed to filter: {filtered_response.status_code}")
+                            self.log_result("Update Persistence", False, "Member updates did not persist")
+                else:
+                    self.log_result("Import Update Duplicates", False, 
+                                  f"No updates occurred: {updated} updated")
             else:
-                self.log_result("Get Execution History", False, f"Failed to get history: {response.status_code}",
+                self.log_result("Import Update Duplicates", False, f"Update import failed: {response.status_code}",
                               {"response": response.text})
+                
         except Exception as e:
-            self.log_result("Get Execution History", False, f"Error getting execution history: {str(e)}")
+            self.log_result("Import Update Duplicates", False, f"Error in update import: {str(e)}")
+        finally:
+            if os.path.exists(csv_file):
+                os.unlink(csv_file)
+        
+        return True
     
     def test_member_joined_trigger(self):
         """Test member_joined trigger by creating a member"""
