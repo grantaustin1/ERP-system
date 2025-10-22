@@ -556,71 +556,81 @@ class MemberImportTester:
         
         return True
     
-    def test_payment_failed_trigger(self):
-        """Test payment_failed trigger"""
-        print("\n=== Testing Payment Failed Trigger ===")
+    def test_phase6_import_logs_verification(self):
+        """PHASE 6: Test import logs verification"""
+        print("\n=== PHASE 6: Import Logs Verification ===")
         
         try:
-            # Get invoices to test with
-            response = requests.get(f"{API_BASE}/invoices?limit=5", headers=self.headers)
-            if response.status_code != 200:
-                self.log_result("Get Invoices for Test", False, "Failed to get invoices")
-                return
-            
-            invoices = response.json()
-            if not invoices:
-                self.log_result("Get Invoices for Test", False, "No invoices found to test with")
-                return
-            
-            # Use first pending invoice
-            test_invoice = None
-            for invoice in invoices:
-                if invoice.get("status") == "pending":
-                    test_invoice = invoice
-                    break
-            
-            if not test_invoice:
-                self.log_result("Find Test Invoice", False, "No pending invoices found to test with")
-                return
-            
-            invoice_id = test_invoice["id"]
-            
-            # Mark invoice as failed
-            response = requests.post(f"{API_BASE}/invoices/{invoice_id}/mark-failed", 
-                                   json={"failure_reason": "Debit order failed - Test"}, 
-                                   headers=self.headers)
+            # Get import logs
+            response = requests.get(f"{API_BASE}/import/logs", headers=self.headers)
             
             if response.status_code == 200:
-                self.log_result("Mark Invoice Failed", True, 
-                              "Invoice marked as failed, should trigger automations",
-                              {"invoice_id": invoice_id})
+                logs = response.json()
                 
-                # Wait for automation processing
-                time.sleep(2)
-                
-                # Check for automation executions
-                executions_response = requests.get(f"{API_BASE}/automation-executions?limit=10", 
-                                                 headers=self.headers)
-                if executions_response.status_code == 200:
-                    recent_executions = executions_response.json()
-                    payment_failed_executions = [
-                        ex for ex in recent_executions 
-                        if ex.get("trigger_data", {}).get("invoice_id") == invoice_id
-                    ]
+                if len(logs) > 0:
+                    # Find our recent import logs
+                    member_logs = [log for log in logs if log.get("import_type") == "members"]
                     
-                    if payment_failed_executions:
-                        self.log_result("Payment Failed Automation Triggered", True, 
-                                      f"Found {len(payment_failed_executions)} automation executions for failed payment")
+                    if member_logs:
+                        recent_log = member_logs[0]  # Most recent
+                        
+                        # Verify log structure
+                        required_fields = ["filename", "total_rows", "successful_rows", "failed_rows", "field_mapping", "error_log"]
+                        has_all_fields = all(field in recent_log for field in required_fields)
+                        
+                        if has_all_fields:
+                            self.log_result("Import Logs Structure", True, 
+                                          f"Import log contains all required fields: {', '.join(required_fields)}")
+                        else:
+                            missing_fields = [field for field in required_fields if field not in recent_log]
+                            self.log_result("Import Logs Structure", False, 
+                                          f"Import log missing fields: {', '.join(missing_fields)}")
+                        
+                        # Verify log data makes sense
+                        total = recent_log.get("total_rows", 0)
+                        successful = recent_log.get("successful_rows", 0)
+                        failed = recent_log.get("failed_rows", 0)
+                        
+                        if total > 0 and (successful + failed) <= total:
+                            self.log_result("Import Logs Data", True, 
+                                          f"Import log data consistent: {total} total, {successful} successful, {failed} failed")
+                        else:
+                            self.log_result("Import Logs Data", False, 
+                                          f"Import log data inconsistent: {total} total, {successful} successful, {failed} failed")
                     else:
-                        self.log_result("Payment Failed Automation Triggered", False, 
-                                      "No automation executions found for failed payment")
+                        self.log_result("Import Logs Content", False, "No member import logs found")
+                else:
+                    self.log_result("Import Logs Retrieval", False, "No import logs found")
             else:
-                self.log_result("Mark Invoice Failed", False, 
-                              f"Failed to mark invoice as failed: {response.status_code}",
+                self.log_result("Import Logs Retrieval", False, f"Failed to get import logs: {response.status_code}",
                               {"response": response.text})
+            
+            # Check blocked member attempts
+            response = requests.get(f"{API_BASE}/reports/blocked-members", headers=self.headers)
+            
+            if response.status_code == 200:
+                blocked_report = response.json()
+                blocked_attempts = blocked_report.get("blocked_attempts", [])
+                
+                if len(blocked_attempts) > 0:
+                    # Find import-related blocked attempts
+                    import_blocked = [attempt for attempt in blocked_attempts if attempt.get("source") == "import"]
+                    
+                    if import_blocked:
+                        self.log_result("Blocked Attempts Logging", True, 
+                                      f"Found {len(import_blocked)} blocked import attempts logged for review")
+                    else:
+                        self.log_result("Blocked Attempts Logging", False, 
+                                      "No import-related blocked attempts found")
+                else:
+                    self.log_result("Blocked Attempts Logging", False, "No blocked attempts found")
+            else:
+                self.log_result("Blocked Attempts Retrieval", False, f"Failed to get blocked attempts: {response.status_code}")
                 
         except Exception as e:
-            self.log_result("Payment Failed Trigger Test", False, f"Error testing payment failed trigger: {str(e)}")
+            self.log_result("Import Logs Verification", False, f"Error verifying import logs: {str(e)}")
+        
+        return True
     
     def test_invoice_overdue_trigger(self):
         """Test invoice_overdue trigger"""
