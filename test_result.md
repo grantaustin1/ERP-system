@@ -2761,3 +2761,93 @@ agent_communication:
       4. All core functionality working, issues are primarily API response format differences
       
       RECOMMENDATION: Update API responses to match expected field names or update frontend to handle current format.
+
+  - agent: "main"
+    message: |
+      🎉 EFT SDV INTEGRATION - PHASE 5 IMPLEMENTATION COMPLETED
+      
+      USER REQUEST: Integrate EFT SDV (Same Day Value) file format for automated billing and levy collection with Nedbank CPS format
+      
+      IMPLEMENTATION STATUS: ✅ ALL CORE FEATURES COMPLETED
+      
+      ✅ BACKEND IMPLEMENTATION COMPLETED:
+      1. ✅ EFT Utilities Module (eft_utils.py):
+         - EFTFileGenerator class: generates Nedbank CPS format files with header, transaction, trailer, security records
+         - EFTFileParser class: parses incoming bank response files (ACK, NACK, Unpaid)
+         - File management: auto-save to /app/eft_files folders (outgoing, incoming, processed, failed)
+         - All records follow 320-character fixed-width format per Nedbank specifications
+      
+      2. ✅ EFT Settings Management:
+         - GET /api/eft/settings: Retrieve configuration (returns placeholders if not configured)
+         - POST /api/eft/settings: Create/update settings
+         - Models: EFTSettings, EFTSettingsUpdate
+         - Fields: client_profile_number (10-digit), nominated/charges accounts (16-digit), branch code, notifications
+      
+      3. ✅ Outgoing File Generation:
+         - POST /api/eft/generate/billing: Generate debit order files from invoices
+         - POST /api/eft/generate/levies: Generate debit order files from levies
+         - Validates member bank details (bank_account_number, bank_branch_code)
+         - Creates EFT transaction records and individual items for tracking
+         - Auto-saves to /app/eft_files/outgoing folder
+      
+      4. ✅ Incoming File Processing:
+         - POST /api/eft/process-incoming: Process bank response files
+         - Auto-matches payments by payment reference
+         - Updates invoice/levy status to 'paid'
+         - Creates payment records automatically
+         - Recalculates member debt
+         - Optional payment notifications (configurable)
+      
+      5. ✅ Transaction Tracking:
+         - GET /api/eft/transactions: List all EFT transactions with filtering
+         - GET /api/eft/transactions/{id}: Detailed view with all items
+         - Complete audit trail of file generation and processing
+      
+      6. ✅ Data Models:
+         - EFTSettings: Configuration storage
+         - EFTTransaction: Parent file tracking
+         - EFTTransactionItem: Individual debit/credit items
+      
+      ✅ FRONTEND IMPLEMENTATION COMPLETED:
+      1. ✅ EFT Settings Tab in Settings Page:
+         - New tab with comprehensive configuration form
+         - All required fields: client profile number, accounts, branch code
+         - Notification settings with enable/disable toggle
+         - Conditional notification email field
+         - Information box with EFT folder locations and process details
+         - Responsive two-column grid layout
+         - Integrated with GET/POST /api/eft/settings endpoints
+      
+      TECHNICAL IMPLEMENTATION DETAILS:
+      - Backend: 7 new API endpoints, 3 new Pydantic models, complete EFT utilities module
+      - Frontend: Updated Settings.js with new EFT tab and configuration form
+      - File Format: Nedbank CPS SDV format with fixed-width records (320 chars)
+      - Folder Structure: /app/eft_files/{outgoing, incoming, processed, failed}
+      - Integration: Works with existing Member, Invoice, and Levy models
+      
+      FEATURES IMPLEMENTED:
+      ✅ Generate EFT files for billing invoices
+      ✅ Generate EFT files for levy collections
+      ✅ Process incoming bank response files
+      ✅ Auto-match payments to member accounts
+      ✅ Update invoice/levy status automatically
+      ✅ Recalculate member debt on payment confirmation
+      ✅ Optional member notifications
+      ✅ Complete audit trail and transaction tracking
+      ✅ EFT settings configuration UI
+      ✅ Placeholder/default settings for initial setup
+      
+      FILE MONITORING:
+      - Outgoing files auto-saved to monitored folder
+      - Ready for bank submission
+      - Incoming files can be processed via API endpoint
+      - Full integration with payment reconciliation
+      
+      READY FOR TESTING:
+      - Backend: All 7 EFT API endpoints
+      - Frontend: EFT Settings tab in Settings page
+      - File generation: Test with sample invoices/levies
+      - File processing: Test with mock bank response files
+      - Payment reconciliation: Verify invoice updates and debt calculations
+      
+      Starting backend testing now...
