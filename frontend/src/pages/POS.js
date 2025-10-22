@@ -699,6 +699,60 @@ export default function POS() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Receipt Print Dialog */}
+      <Dialog open={showReceiptDialog} onOpenChange={setShowReceiptDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Transaction Complete</DialogTitle>
+            <DialogDescription>
+              {lastTransaction && `Transaction ${lastTransaction.transaction_number} completed successfully`}
+            </DialogDescription>
+          </DialogHeader>
+          {lastTransaction && (
+            <div className="space-y-4">
+              <div className="text-center p-4 bg-green-50 rounded">
+                <div className="text-3xl font-bold text-green-600">
+                  R{lastTransaction.total_amount.toFixed(2)}
+                </div>
+                <p className="text-sm text-gray-600 mt-1">Payment Received</p>
+              </div>
+              
+              <div className="flex gap-2">
+                <Button
+                  className="flex-1"
+                  variant="outline"
+                  onClick={() => {
+                    const receiptContent = generateThermalReceipt(lastTransaction);
+                    printThermalReceipt(receiptContent);
+                  }}
+                >
+                  <Printer className="h-4 w-4 mr-2" />
+                  Print Receipt
+                </Button>
+                <Button
+                  className="flex-1"
+                  variant="outline"
+                  onClick={() => {
+                    const receiptContent = generateThermalReceipt(lastTransaction);
+                    downloadReceiptAsText(receiptContent, lastTransaction.transaction_number);
+                  }}
+                >
+                  <Receipt className="h-4 w-4 mr-2" />
+                  Download
+                </Button>
+              </div>
+              
+              <Button
+                className="w-full"
+                onClick={() => setShowReceiptDialog(false)}
+              >
+                Close
+              </Button>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
