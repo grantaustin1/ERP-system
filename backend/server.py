@@ -4952,7 +4952,7 @@ async def validate_field(
 @api_router.get("/pos/categories")
 async def get_product_categories(current_user: User = Depends(get_current_user)):
     """Get all product categories"""
-    categories = await db.product_categories.find({"is_active": True}).sort("display_order", 1).to_list(length=None)
+    categories = await db.product_categories.find({"is_active": True}, {"_id": 0}).sort("display_order", 1).to_list(length=None)
     return {"categories": categories, "total": len(categories)}
 
 @api_router.post("/pos/categories")
