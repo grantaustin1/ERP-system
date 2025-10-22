@@ -239,7 +239,7 @@ class EFTFileParser:
                 txn = EFTFileParser.parse_transaction_response(line)
                 transactions.append(txn)
             elif record_type == "03":  # Trailer
-                trailer = EFTFileParser.parse_trailer_record(line)
+                _ = EFTFileParser.parse_trailer_record(line)  # Parse but don't need to use
             elif record_type == "04":  # Security
                 pass  # Skip security record
         
