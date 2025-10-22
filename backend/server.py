@@ -5682,13 +5682,14 @@ async def generate_levies_eft_file(
             continue
         
         # Check if member has bank details
-        if not member.get("bank_account") or not member.get("bank_branch"):
+        if not member.get("bank_account_number") or not member.get("bank_branch_code"):
             continue
         
         transactions.append({
             "member_name": levy["member_name"],
-            "member_account": member.get("bank_account"),
-            "member_branch": member.get("bank_branch"),
+            "member_id": member["id"],
+            "member_account": member.get("bank_account_number"),
+            "member_branch": member.get("bank_branch_code"),
             "amount": levy["amount"],
             "levy_id": levy["id"],
             "action_date": action_date or date.today().isoformat()
