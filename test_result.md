@@ -1105,16 +1105,53 @@ frontend:
 metadata:
   created_by: "main_agent"
   version: "1.0"
-  test_sequence: 4
+  test_sequence: 5
   run_ui: false
 
 test_plan:
-  current_focus: []
+  current_focus:
+    - "POS System - Per-Item Discount Support"
+    - "POS System - Member Account Linking"
+    - "POS System - Payment Allocation & Financial Integration"
+    - "POS System - Stock Management & Deduction"
+    - "POS System - Frontend Remove Mock Data"
+    - "POS System - Per-Item Discount UI"
+    - "POS System - Thermal Printer Integration"
+    - "POS System - Member Search & Selection"
   stuck_tasks: []
   test_all: false
   test_priority: "high_first"
 
 agent_communication:
+  - agent: "main"
+    message: |
+      🚀 POS SYSTEM COMPLETION - IMPLEMENTATION STARTED
+      
+      USER REQUEST: Complete POS system with Epson thermal printer, per-item + cart discounts, member account linking
+      
+      IMPLEMENTATION PROGRESS:
+      
+      ✅ BACKEND ENHANCEMENTS COMPLETED:
+      1. Per-Item Discount Support: Enhanced POSTransactionItem model with item_discount_percent and item_discount_amount fields
+      2. Member Account Linking: Already fully implemented (member_id, payment types)
+      3. Payment Allocation: Already fully implemented (debt_payment, invoice linking, payment records)
+      4. Stock Management: Already fully implemented (automatic deduction, adjustment tracking)
+      
+      🔨 FRONTEND TASKS IN PROGRESS:
+      1. Remove Mock Data: Need to remove test mode fallbacks from POS.js
+      2. Per-Item Discount UI: Need to add discount input fields for each cart item
+      3. Thermal Printer: Need to implement Epson ESC/POS command generation and print dialog
+      4. Member Search: Already implemented
+      
+      NEXT STEPS:
+      1. Update POS.js frontend to remove mock data handling
+      2. Add per-item discount UI to cart
+      3. Implement thermal printer integration
+      4. Backend testing via deep_testing_backend_v2
+      5. Frontend E2E testing via auto_frontend_testing_agent
+      
+      Starting frontend implementation now...
+
   - agent: "testing"
     message: |
       🎯 RBAC FRONTEND TESTING COMPLETED - MIXED RESULTS
