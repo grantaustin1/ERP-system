@@ -762,51 +762,87 @@ backend:
 
   - task: "POS System - Per-Item Discount Support"
     implemented: true
-    working: "NA"
+    working: true
     file: "/app/backend/server.py"
     stuck_count: 0
     priority: "high"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
       - working: "NA"
         agent: "main"
         comment: "Enhanced POSTransactionItem model to support per-item discounts. Added item_discount_percent and item_discount_amount fields. Cart-level discount already existed. Now supports both cart-level and per-item discount functionality as required."
+      - working: true
+        agent: "testing"
+        comment: "✅ POS Per-Item Discount Support WORKING PERFECTLY: Successfully created product_sale transaction with multiple items having different per-item discounts (10% on Protein Shake, 5% on Energy Bar, 0% on Gym Towel) plus cart-level 5% discount. Transaction total calculated correctly at R223.55 with proper tax and discount calculations. Both per-item and cart-level discounts functioning as designed."
 
   - task: "POS System - Member Account Linking"
     implemented: true
-    working: "NA"
+    working: true
     file: "/app/backend/server.py"
     stuck_count: 0
     priority: "high"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
       - working: "NA"
         agent: "main"
         comment: "Member account linking already fully implemented. POS transactions support member_id and member_name fields. Transaction types include membership_payment, session_payment, debt_payment, account_payment. Payment allocation to member accounts working with invoice linking and debt reduction."
+      - working: true
+        agent: "testing"
+        comment: "✅ POS Member Account Linking WORKING CORRECTLY: Successfully tested debt_payment transaction linked to member account. Member debt was properly reduced from R150.00 to R0.00 after payment. Member name automatically populated in transaction record. All transaction types (product_sale, membership_payment, debt_payment) correctly link to member accounts with proper member_id and member_name tracking."
 
   - task: "POS System - Payment Allocation & Financial Integration"
     implemented: true
-    working: "NA"
+    working: true
     file: "/app/backend/server.py"
     stuck_count: 0
     priority: "high"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
       - working: "NA"
         agent: "main"
         comment: "Full payment allocation system already implemented. Creates payment records linked to members, updates invoice status when invoice_id provided, reduces member debt for debt_payment type, tracks payment method and reference. All financial integration complete."
+      - working: true
+        agent: "testing"
+        comment: "✅ POS Payment Allocation & Financial Integration WORKING PERFECTLY: Successfully tested membership_payment transaction with invoice_id linking. Invoice status automatically updated from 'pending' to 'paid' when payment processed. Payment records created and linked to members. Debt reduction working correctly for debt_payment transactions. Payment method tracking (Card, Cash, EFT) functioning properly with reference numbers stored."
 
   - task: "POS System - Stock Management & Deduction"
     implemented: true
-    working: "NA"
+    working: true
     file: "/app/backend/server.py"
     stuck_count: 0
     priority: "high"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
       - working: "NA"
         agent: "main"
         comment: "Stock management fully implemented. Automatic stock deduction on product sales with validation for insufficient stock. Creates stock adjustment records for audit trail. Stock adjustment API endpoints for manual adjustments. Low stock threshold tracking and alerts."
+      - working: true
+        agent: "testing"
+        comment: "✅ POS Stock Management & Deduction WORKING CORRECTLY: Automatic stock deduction verified after product sales - Protein Shake: 50→48 (-2 units), Energy Bar: 100→97 (-3 units), Gym Towel: 25→24 (-1 unit). Stock adjustment records created with proper audit trail showing adjustment_type='sale', quantity_change=-2, reason='POS Sale - POS-20251022-0007'. Stock history API working correctly. All stock management features operational."
+
+  - task: "POS System - Transaction Types & Processing"
+    implemented: true
+    working: true
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "testing"
+        comment: "✅ POS Transaction Types & Processing WORKING PERFECTLY: All 5 transaction types tested successfully - product_sale (with multiple items and discounts), membership_payment (with invoice linking), session_payment, debt_payment (with debt reduction), account_payment. Transaction number generation following correct format POS-YYYYMMDD-NNNN. Payment method tracking (Card, Cash, EFT) working correctly. Transaction retrieval and filtering by type, member, and date ranges all functional."
+
+  - task: "POS System - Transaction Retrieval & Filtering"
+    implemented: true
+    working: true
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "testing"
+        comment: "✅ POS Transaction Retrieval & Filtering WORKING CORRECTLY: GET /api/pos/transactions returns all transactions properly. Filtering by transaction_type (product_sale) working correctly. Filtering by member_id returns only transactions for specific member. GET /api/pos/transactions/{id} retrieves specific transactions correctly. All endpoints return proper JSON without ObjectId serialization issues (fixed during testing)."
 
 frontend:
 
