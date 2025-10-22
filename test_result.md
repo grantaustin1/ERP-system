@@ -1040,40 +1040,40 @@ frontend:
         comment: "✅ Enhanced Package Setup UI fully functional: Page loads correctly with proper title 'Enhanced Package Setup' and subtitle. Both tabs (Membership Structure, Payment Options) present and working. Membership Structure tab active by default. Create Base Membership functionality available. Found 11 existing membership cards with Add Variation buttons. Payment Options tab switching works properly. Payment Options management interface complete with membership selection functionality. All UI elements (icons, badges, buttons) render correctly with proper styling. Tab navigation, dialog opening, form fields, and auto-renewal configuration options all verified and working."
 
   - task: "POS System - Frontend Remove Mock Data"
-    implemented: false
+    implemented: true
     working: "NA"
     file: "/app/frontend/src/pages/POS.js"
     stuck_count: 0
     priority: "high"
-    needs_retesting: false
+    needs_retesting: true
     status_history:
       - working: "NA"
         agent: "main"
-        comment: "Need to remove test mode fallbacks and mock transaction simulation. Frontend currently falls back to test mode when backend not accessible. Remove all console.warn and mock transaction handling."
+        comment: "✅ COMPLETED: Removed all test mode fallbacks and mock transaction simulation from POS.js. fetchInitialData() now properly throws errors instead of falling back to test data. completeTransaction() no longer simulates transactions - it properly handles API errors and displays error messages. Clean error handling with proper user feedback implemented."
 
   - task: "POS System - Per-Item Discount UI"
-    implemented: false
+    implemented: true
     working: "NA"
     file: "/app/frontend/src/pages/POS.js"
     stuck_count: 0
     priority: "high"
-    needs_retesting: false
+    needs_retesting: true
     status_history:
       - working: "NA"
         agent: "main"
-        comment: "Need to add per-item discount functionality to cart UI. Add discount input fields for each cart item. Calculate and display item-level discounts alongside cart-level discount."
+        comment: "✅ COMPLETED: Added per-item discount functionality. Each cart item now displays an 'Item Disc %' input field. updateItemDiscount() function calculates discount amount, adjusts tax and total per item. Cart display shows both item total and discount amount. Works alongside cart-level discount for maximum flexibility."
 
   - task: "POS System - Thermal Printer Integration"
-    implemented: false
+    implemented: true
     working: "NA"
-    file: "/app/frontend/src/pages/POS.js"
+    file: "/app/frontend/src/pages/POS.js, /app/frontend/src/utils/thermalPrinter.js"
     stuck_count: 0
     priority: "high"
-    needs_retesting: false
+    needs_retesting: true
     status_history:
       - working: "NA"
         agent: "main"
-        comment: "Need to implement Epson thermal printer integration with ESC/POS commands. Add print receipt button. Generate properly formatted thermal receipt with business details, items, discounts, tax, total."
+        comment: "✅ COMPLETED: Created thermal printer utility with ESC/POS formatting. generateThermalReceipt() formats receipts with business header, transaction details, itemized list with per-item discounts, tax breakdown, payment info. printThermalReceipt() opens browser print dialog configured for 80mm thermal paper. downloadReceiptAsText() allows text file download. Receipt dialog appears after successful transaction with Print Receipt and Download buttons."
 
   - task: "POS System - Member Search & Selection"
     implemented: true
