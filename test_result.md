@@ -867,6 +867,90 @@ backend:
         agent: "testing"
         comment: "✅ POS SYSTEM FRONTEND COMPREHENSIVE TESTING COMPLETED - ALL MAJOR FUNCTIONALITY WORKING: **CRITICAL BACKEND FIX APPLIED**: Fixed ObjectId serialization error in /api/pos/categories endpoint by adding {\"_id\": 0} exclusion. **FRONTEND TESTING RESULTS**: ✅ POS Page Navigation & Loading - Page loads correctly with 'Point of Sale' title, Products and Cart sections visible, no test mode messages (using live backend data). ✅ Product Display & Filtering - 28 products displayed with prices (R10.00-R450.00), stock counts (15-200 in stock), favorite stars visible, category dropdown with 31 backend categories working, search functionality operational. ✅ Quick Access section showing 5 favorite products. ✅ Cart Management - Products can be added to cart, quantity increase/decrease buttons present, remove buttons available. ✅ Per-Item Discount Functionality (NEW FEATURE) - Discount input fields present in cart items, green discount display working. ✅ Member Selection - Transaction type dropdown functional, member selection dialog opens for non-product-sale transactions, member search working. ✅ Transaction Types - All 5 types available (Product Sale, Membership Payment, Session Payment, Account Payment, Debt Payment), member requirement enforced correctly. ✅ Checkout Flow - Checkout dialog opens, payment method selection (Cash, Card, EFT, Mobile Payment), payment reference input, cart-level discount, notes input, totals display correctly. ✅ Receipt Dialog (NEW FEATURE) - Transaction Complete dialog appears after successful payment, transaction number and amount displayed, Print Receipt and Download buttons present, Close button functional. ✅ Stock Updates - Cart clears after transaction, totals reset to R0.00. ✅ Error Handling - Checkout button disabled for empty cart, proper validation. ✅ Thermal Printer Integration - Receipt generation and download utilities implemented. **REMOVED TEST MODE BEHAVIORS CONFIRMED** - No fallback to test data, entirely dependent on live backend APIs. All core POS functionality operational and production-ready."
 
+  - task: "EFT SDV File Format Utilities"
+    implemented: true
+    working: "NA"
+    file: "/app/backend/eft_utils.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Created eft_utils.py with EFT file generation and parsing utilities. Implements Nedbank CPS format specifications: EFTFileGenerator class for creating outgoing debit order files (header, transaction, trailer, security records), EFTFileParser class for parsing incoming bank response files (ACK, NACK, Unpaid), helper functions for file saving and folder management. All record formats follow 320-character fixed-width layout. Includes proper field positioning, data types, and business logic from Nedbank CPS manual."
+
+  - task: "EFT Settings Management API"
+    implemented: true
+    working: "NA"
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Created EFT settings API endpoints: GET /api/eft/settings (retrieve EFT configuration with placeholder defaults if not configured), POST /api/eft/settings (create or update EFT settings). Settings include: client_profile_number (10-digit), nominated_account (16-digit), charges_account (16-digit), service_user_number, branch_code, bank_name, enable_notifications, notification_email. Added EFTSettings and EFTSettingsUpdate Pydantic models."
+
+  - task: "Outgoing EFT File Generation - Billing"
+    implemented: true
+    working: "NA"
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Created POST /api/eft/generate/billing endpoint for generating EFT debit order files from invoices. Accepts list of invoice_ids and optional action_date. Validates EFT settings configured, retrieves invoices and member bank details (bank_account_number, bank_branch_code), generates EFT file in Nedbank format, saves to /app/eft_files/outgoing folder, creates EFT transaction record and individual transaction items. Returns file details and transaction summary."
+
+  - task: "Outgoing EFT File Generation - Levies"
+    implemented: true
+    working: "NA"
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Created POST /api/eft/generate/levies endpoint for generating EFT debit order files from levies. Accepts list of levy_ids and optional action_date. Validates EFT settings, retrieves levies and member bank details, generates EFT file, saves to outgoing folder, creates transaction records. Mirrors billing endpoint structure but processes levy collection instead of invoices."
+
+  - task: "Incoming EFT File Processing"
+    implemented: true
+    working: "NA"
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Created POST /api/eft/process-incoming endpoint for processing bank response files (ACK, NACK, Unpaid). Parses incoming file content using EFTFileParser, matches transactions by payment reference, updates transaction item status (processed/failed), creates payment records for successful transactions, updates invoice status to 'paid', updates levy status to 'paid', recalculates member debt automatically, sends optional notifications if enabled in settings. Handles complete payment reconciliation workflow."
+
+  - task: "EFT Transaction Tracking API"
+    implemented: true
+    working: "NA"
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Created EFT transaction tracking endpoints: GET /api/eft/transactions (list all EFT transactions with optional filtering by transaction_type and status), GET /api/eft/transactions/{transaction_id} (get detailed transaction with all items). Provides audit trail and monitoring capability for all EFT file generation and processing activities."
+
+  - task: "EFT Data Models"
+    implemented: true
+    working: "NA"
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Added Pydantic models for EFT functionality: EFTSettings (configuration storage), EFTSettingsUpdate (update payload), EFTTransaction (parent transaction record tracking files), EFTTransactionItem (individual debit/credit items within a file). Models support complete EFT lifecycle from configuration to file generation to response processing."
+
 frontend:
 
   - task: "Permission Matrix UI Component"
