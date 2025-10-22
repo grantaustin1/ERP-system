@@ -5014,7 +5014,7 @@ async def get_products(
             {"sku": {"$regex": search, "$options": "i"}}
         ]
     
-    products = await db.products.find(query).to_list(length=None)
+    products = await db.products.find(query, {"_id": 0}).to_list(length=None)
     
     # Enrich with category names
     for product in products:
