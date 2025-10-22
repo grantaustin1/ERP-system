@@ -7676,6 +7676,9 @@ class POSSystemTester:
                             self.created_members.append(member)
                             self.log_result(f"Create Member {member_data['first_name']}", True, 
                                           f"Member created: {member['first_name']} {member['last_name']}")
+                        else:
+                            self.log_result(f"Create Member {member_data['first_name']}", False, 
+                                          f"Failed to create: {response.status_code} - {response.text}")
         except Exception as e:
             self.log_result("Create Test Members", False, f"Error: {str(e)}")
         
