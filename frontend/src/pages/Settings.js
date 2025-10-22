@@ -65,7 +65,9 @@ export default function Settings() {
     branch_code: '',
     bank_name: 'Nedbank',
     enable_notifications: false,
-    notification_email: ''
+    notification_email: '',
+    advance_billing_days: 5,
+    enable_auto_generation: false
   });
 
   useEffect(() => {
