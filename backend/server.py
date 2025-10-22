@@ -625,6 +625,70 @@ class Levy(BaseModel):
     paid_date: Optional[datetime] = None
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
+class EFTSettings(BaseModel):
+    """EFT configuration settings for bank integration"""
+    model_config = ConfigDict(extra="ignore")
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    client_profile_number: str  # 10-digit Nedbank client number
+    nominated_account: str  # 16-digit Nedbank account for credits
+    charges_account: str  # 16-digit Nedbank account for fees/charges
+    service_user_number: Optional[str] = None  # Additional service identifier
+    branch_code: Optional[str] = None  # Bank branch code
+    bank_name: str = "Nedbank"  # Bank name
+    enable_notifications: bool = False  # Send payment confirmation notifications
+    notification_email: Optional[str] = None  # Email for EFT notifications
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: Optional[datetime] = None
+
+
+class EFTSettingsUpdate(BaseModel):
+    client_profile_number: Optional[str] = None
+    nominated_account: Optional[str] = None
+    charges_account: Optional[str] = None
+    service_user_number: Optional[str] = None
+    branch_code: Optional[str] = None
+    bank_name: Optional[str] = None
+    enable_notifications: Optional[bool] = None
+    notification_email: Optional[str] = None
+
+
+class EFTTransaction(BaseModel):
+    """EFT transaction record for tracking generated files and responses"""
+    model_config = ConfigDict(extra="ignore")
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    file_type: str  # "outgoing_debit", "incoming_ack", "incoming_nack", "incoming_unpaid"
+    file_name: str
+    file_sequence: str  # Unique file sequence number
+    transaction_type: str  # "billing", "levy", "refund"
+    total_transactions: int = 0
+    total_amount: float = 0.0
+    status: str = "generated"  # generated, submitted, acknowledged, processed, failed
+    generated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    processed_at: Optional[datetime] = None
+    response_file: Optional[str] = None
+    notes: Optional[str] = None
+
+
+class EFTTransactionItem(BaseModel):
+    """Individual transaction item within an EFT file"""
+    model_config = ConfigDict(extra="ignore")
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    eft_transaction_id: str  # Parent EFT transaction
+    member_id: str
+    member_name: str
+    member_account: Optional[str] = None  # Bank account number
+    member_branch: Optional[str] = None  # Branch code
+    invoice_id: Optional[str] = None
+    levy_id: Optional[str] = None
+    amount: float
+    action_date: datetime
+    payment_reference: str  # Unique payment reference
+    status: str = "pending"  # pending, processed, failed, returned
+    response_code: Optional[str] = None
+    response_message: Optional[str] = None
+    processed_at: Optional[datetime] = None
+
+
 class Automation(BaseModel):
     model_config = ConfigDict(extra="ignore")
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
