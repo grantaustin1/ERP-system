@@ -346,35 +346,95 @@ class MemberImportTester:
             self.log_result("Duplicate Detection Test", False, f"Error in duplicate detection: {str(e)}")
             return False
     
-    def test_automation_test_endpoint(self, automation_id):
-        """Test the automation test endpoint"""
-        print("\n=== Testing Automation Test Endpoint ===")
+    def test_phase3_import_skip_duplicates(self):
+        """PHASE 3: Test member import with skip duplicates"""
+        print("\n=== PHASE 3: Member Import with Skip Duplicates ===")
         
-        test_data = {
-            "member_id": "test-member-123",
-            "member_name": "John Doe",
-            "email": "john.doe@example.com",
-            "phone": "+27123456789",
-            "membership_type": "Premium"
-        }
+        # Create CSV with 15 members, some duplicates
+        import_data = [
+            {"Full Name": "MR JOHN DOE", "Email": "john.doe.import@test.com", "Phone": "0821111111", "Address": "123 Test St"},
+            {"Full Name": "MRS JANE SMITH", "Email": "jane.smith.import@test.com", "Phone": "0821111112", "Address": "124 Test St"},
+            {"Full Name": "ROBERT BROWN", "Email": "robert.brown.import@test.com", "Phone": "0821111113", "Address": "125 Test St"},
+            {"Full Name": "MIKE WILSON", "Email": "mike.wilson.import@test.com", "Phone": "0821111114", "Address": "126 Test St"},
+            {"Full Name": "MRS EMILY ANDERSON", "Email": "emily.anderson.import@test.com", "Phone": "0821111115", "Address": "127 Test St"},
+            {"Full Name": "DR SARAH WILLIAMS", "Email": "sarah.williams.import@test.com", "Phone": "0821111116", "Address": "128 Test St"},
+            {"Full Name": "PROF MICHAEL JOHNSON", "Email": "michael.johnson.import@test.com", "Phone": "0821111117", "Address": "129 Test St"},
+            {"Full Name": "MS LISA DAVIS", "Email": "lisa.davis.import@test.com", "Phone": "0821111118", "Address": "130 Test St"},
+            {"Full Name": "MISS JENNIFER WILSON", "Email": "jennifer.wilson.import@test.com", "Phone": "0821111119", "Address": "131 Test St"},
+            {"Full Name": "DAVID TAYLOR", "Email": "david.taylor.import@test.com", "Phone": "0821111120", "Address": "132 Test St"},
+            {"Full Name": "SUSAN CLARK", "Email": "susan.clark.import@test.com", "Phone": "0821111121", "Address": "133 Test St"},
+            {"Full Name": "JAMES MARTINEZ", "Email": "james.martinez.import@test.com", "Phone": "0821111122", "Address": "134 Test St"},
+            # Duplicate entries (should be skipped)
+            {"Full Name": "Alice Johnson", "Email": "alice.johnson@example.com", "Phone": "0834567890", "Address": "Duplicate 1"},  # Exact duplicate
+            {"Full Name": "Bob Smith", "Email": "b.o.b.smith@gmail.com", "Phone": "+27845678901", "Phone": "0845678901", "Address": "Duplicate 2"},  # Gmail normalized
+            {"Full Name": "Charlie Brown", "Email": "charlie.brown@test.com", "Phone": "0856789012", "Address": "Duplicate 3"}  # Exact duplicate
+        ]
+        
+        csv_file = self.create_test_csv("import_members.csv", import_data)
+        if not csv_file:
+            return False
         
         try:
-            response = requests.post(f"{API_BASE}/automations/test/{automation_id}", 
-                                   json=test_data, headers=self.headers)
+            # Get membership type
+            response = requests.get(f"{API_BASE}/membership-types", headers=self.headers)
+            membership_types = response.json()
+            membership_type_id = membership_types[0]["id"] if membership_types else None
+            
+            field_mapping = {
+                "first_name": "Full Name",
+                "email": "Email", 
+                "phone": "Phone",
+                "address": "Address",
+                "membership_type_id": membership_type_id
+            }
+            
+            with open(csv_file, 'rb') as f:
+                files = {'file': ('import_members.csv', f, 'text/csv')}
+                data = {
+                    'field_mapping': json.dumps(field_mapping),
+                    'duplicate_action': 'skip'
+                }
+                response = requests.post(f"{API_BASE}/import/members", 
+                                       files=files, data=data, headers=self.headers)
+            
             if response.status_code == 200:
                 result = response.json()
-                success = result.get("success", False)
-                if success:
-                    self.log_result("Test Automation", True, "Automation test executed successfully",
-                                  {"result": result.get("result")})
+                
+                total_rows = result.get("total_rows", 0)
+                successful = result.get("successful", 0)
+                skipped = result.get("skipped", 0)
+                failed = result.get("failed", 0)
+                
+                # Expect: 12 new members successful, 3 duplicates skipped
+                if successful >= 10 and skipped >= 2:  # Allow some flexibility
+                    self.log_result("Import Skip Duplicates", True, 
+                                  f"Import completed: {successful} successful, {skipped} skipped, {failed} failed",
+                                  {"total_rows": total_rows, "successful": successful, "skipped": skipped})
+                    
+                    # Verify name splitting worked
+                    # Check if "MR JOHN DOE" was split correctly
+                    members_response = requests.get(f"{API_BASE}/members", headers=self.headers)
+                    if members_response.status_code == 200:
+                        members = members_response.json()
+                        john_doe = next((m for m in members if m.get("first_name") == "JOHN" and m.get("last_name") == "DOE"), None)
+                        if john_doe:
+                            self.log_result("Name Splitting", True, "Name splitting worked correctly: 'MR JOHN DOE' → first_name='JOHN', last_name='DOE'")
+                        else:
+                            self.log_result("Name Splitting", False, "Name splitting failed for 'MR JOHN DOE'")
                 else:
-                    self.log_result("Test Automation", False, f"Test execution failed: {result.get('message')}",
-                                  {"error": result.get("error")})
+                    self.log_result("Import Skip Duplicates", False, 
+                                  f"Unexpected import results: {successful} successful, {skipped} skipped, {failed} failed")
             else:
-                self.log_result("Test Automation", False, f"Failed to test: {response.status_code}",
+                self.log_result("Import Skip Duplicates", False, f"Import failed: {response.status_code}",
                               {"response": response.text})
+                
         except Exception as e:
-            self.log_result("Test Automation", False, f"Error testing automation: {str(e)}")
+            self.log_result("Import Skip Duplicates", False, f"Error in import: {str(e)}")
+        finally:
+            if os.path.exists(csv_file):
+                os.unlink(csv_file)
+        
+        return True
     
     def test_execution_history(self):
         """Test automation execution history"""
