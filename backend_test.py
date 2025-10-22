@@ -1,14 +1,17 @@
 #!/usr/bin/env python3
 """
-Backend Test Suite for Automation and Trigger Engine
-Tests all automation CRUD operations, trigger integrations, and execution logic
+Backend Test Suite for Member/Prospects Import Functionality
+Comprehensive testing of CSV import, duplicate detection, and field mapping
 """
 
 import requests
 import json
 import time
-from datetime import datetime, timezone, timedelta
+import csv
+import io
+import tempfile
 import os
+from datetime import datetime, timezone, timedelta
 
 # Configuration
 BASE_URL = os.getenv('REACT_APP_BACKEND_URL', 'https://payment-gateway-hub-3.preview.emergentagent.com')
