@@ -666,11 +666,16 @@ class EFTTransaction(BaseModel):
     transaction_type: str  # "billing", "levy", "refund"
     total_transactions: int = 0
     total_amount: float = 0.0
-    status: str = "generated"  # generated, submitted, acknowledged, processed, failed
+    status: str = "generated"  # generated, submitted, acknowledged, processed, failed, disallowed
     generated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     processed_at: Optional[datetime] = None
     response_file: Optional[str] = None
     notes: Optional[str] = None
+    disallowed_at: Optional[datetime] = None
+    disallowed_by: Optional[str] = None
+    disallow_reason: Optional[str] = None
+    is_stuck: bool = False
+    last_status_check: Optional[datetime] = None
 
 
 class EFTTransactionItem(BaseModel):
