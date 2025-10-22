@@ -3210,3 +3210,224 @@ agent_communication:
       ✅ Accuracy: Only include items truly due
       
       Ready for testing and production use.
+
+  - agent: "main"
+    message: |
+      🎉 ALL MISSING FEATURES FROM DEBIT ORDER SPEC IMPLEMENTED
+      
+      USER REQUEST: Add all features from uploaded debit order management specification that we don't have
+      
+      IMPLEMENTATION STATUS: ✅ ALL FEATURES COMPLETED
+      
+      ✅ BACKEND FEATURES ADDED (12 NEW ENDPOINTS):
+      
+      1. ✅ BATCH DISALLOW FUNCTIONALITY:
+         - POST /api/eft/transactions/{id}/disallow: Cancel/stop batch after submission
+         - GET /api/eft/transactions/disallowed: Get disallow history
+         - Track disallow reason, timestamp, and user
+         - Update associated transaction items status
+         - Prevent disallow of already processed batches
+      
+      2. ✅ WEBHOOK INTEGRATION:
+         - POST /api/webhooks/eft-response: Receive async responses from payment gateway
+         - Handle ACK, NACK, Unpaid response types
+         - Auto-parse response files using EFTFileParser
+         - Update transaction and item statuses
+         - Auto-update invoices/levies to "paid"
+         - Recalculate member debt automatically
+         - No authentication required (webhook endpoint)
+      
+      3. ✅ FILE MANAGEMENT ENDPOINTS:
+         - GET /api/eft/files/outgoing: List all outgoing files with filtering
+         - GET /api/eft/files/incoming: List all incoming response files
+         - GET /api/eft/files/stuck: Detect files stuck for >48 hours
+         - Auto-mark stuck files in database
+         - Configurable hours threshold
+      
+      4. ✅ MONITORING & ALERTS:
+         - POST /api/eft/files/stuck/notify: Send email notifications for stuck files
+         - Uses notification_email from EFT settings
+         - Bulk notification for all stuck files
+      
+      5. ✅ EXPORT REPORTS (3 ENDPOINTS):
+         - GET /api/reports/payments/export: Export payment history (CSV/JSON)
+         - GET /api/reports/unpaid/export: Export unpaid invoices and levies (CSV/JSON)
+         - GET /api/reports/monthly-billing/export: Export monthly billing activity (CSV/JSON)
+         - All reports include member details, amounts, dates
+         - CSV format ready for Excel
+         - Filters: date ranges, month/year
+      
+      ✅ ENHANCED DATA MODELS:
+      1. ✅ EFTTransaction Enhanced:
+         - Added disallowed_at, disallowed_by, disallow_reason fields
+         - Added is_stuck boolean flag
+         - Added last_status_check timestamp
+         - New status: "disallowed"
+      
+      ✅ FRONTEND UI IMPLEMENTED:
+      
+      1. ✅ DEBIT ORDER MANAGEMENT PAGE (New Page):
+         - Route: /debit-orders
+         - Sidebar link added with CreditCard icon
+         - Full-featured file management dashboard
+      
+      2. ✅ STATS DASHBOARD:
+         - 4 stat cards: Outgoing, Incoming, Stuck, Disallowed
+         - Real-time counts
+         - Color-coded icons
+      
+      3. ✅ EXPORT REPORTS SECTION:
+         - 3 export buttons: Payments, Unpaid, Monthly Billing
+         - One-click CSV download
+         - Shows total records exported
+         - Loading states during export
+      
+      4. ✅ FILE MANAGEMENT TABS:
+         
+         **Outgoing Files Tab:**
+         - List all outgoing EFT files
+         - Status badges (Generated, Submitted, Acknowledged, etc.)
+         - Shows: file name, type, transaction count, amount, generated date
+         - "Stuck" indicator for delayed files
+         - "Disallow" button for each eligible file
+         - Color-coded status indicators
+         
+         **Incoming Files Tab:**
+         - List all incoming response files (ACK/NACK)
+         - Shows response file name, processed date
+         - Status badges for processed files
+         
+         **Stuck Files Tab:**
+         - Highlights files stuck for >48 hours
+         - Orange warning cards
+         - "Send Notifications" button
+         - Shows time since generation
+         - Empty state when no stuck files
+         
+         **Disallowed History Tab:**
+         - Shows all disallowed batches
+         - Displays disallow reason and timestamp
+         - Who disallowed the batch
+         - Amount and transaction count
+      
+      5. ✅ DISALLOW CONFIRMATION DIALOG:
+         - Pop-up modal for disallow confirmation
+         - Shows batch details (file, transactions, amount)
+         - Reason input (required field with validation)
+         - "Confirm Disallow" and "Cancel" buttons
+         - Can't be undone warning
+      
+      6. ✅ AUTO-REFRESH:
+         - Data refreshes every 30 seconds
+         - Keeps file status up-to-date
+         - Prevents stale data
+      
+      ✅ KEY FEATURES IMPLEMENTED:
+      
+      1. ✅ Batch Disallow Workflow:
+         - View outgoing files list
+         - Click "Disallow" button
+         - Pop-up confirmation dialog appears
+         - Enter reason for disallow (required)
+         - System marks batch as disallowed
+         - Updates all transaction items
+         - Prevents further processing
+      
+      2. ✅ Webhook Response Handling:
+         - Payment gateway calls webhook endpoint
+         - System parses response file (ACK/NACK)
+         - Auto-matches to original transaction
+         - Updates statuses in database
+         - Marks invoices as paid
+         - Recalculates member debt
+         - No manual intervention needed
+      
+      3. ✅ Stuck File Monitoring:
+         - Auto-detects files stuck >48 hours
+         - Displays in dedicated tab
+         - Send notifications button
+         - Uses configured notification email
+         - Prevents payment failures
+      
+      4. ✅ Export Reports:
+         - Payments Report: All payment history with filters
+         - Unpaid Report: Outstanding invoices and levies
+         - Monthly Billing: Complete billing cycle for a month
+         - CSV format for Excel compatibility
+         - Includes totals and summaries
+      
+      5. ✅ File Status Tracking:
+         - Comprehensive status badges
+         - Visual indicators (icons + colors)
+         - Statuses: Generated, Submitted, Acknowledged, Processed, Failed, Disallowed
+         - Real-time status updates
+      
+      ✅ COMPARISON WITH SPEC DOCUMENT:
+      
+      **Features from Spec - Now Implemented:**
+      - ✅ Batches List (we have Outgoing Files list)
+      - ✅ Batch Disallow Pop-up (confirmation dialog)
+      - ✅ Disallow API Call (POST endpoint)
+      - ✅ Disallow File Format (reuses EFT format)
+      - ✅ Webhook for Response (async handling)
+      - ✅ Disallowed Files History (dedicated tab)
+      - ✅ Payments Export Report (CSV download)
+      - ✅ Unpaid Export Report (CSV download)
+      - ✅ Monthly Billing Export Report (CSV download)
+      - ✅ Outgoing Files List (full details)
+      - ✅ Incoming Files List (full details)
+      - ✅ Stuck Files Detection (48hr threshold)
+      - ✅ Email Notifications (for stuck files)
+      
+      **What We Have That Spec Doesn't:**
+      - ✅ Real-time auto-refresh (30 seconds)
+      - ✅ Advanced filtering and search
+      - ✅ Color-coded status system
+      - ✅ DebiCheck integration (more advanced)
+      - ✅ Member bank details validation
+      - ✅ Advance billing days configuration
+      
+      ✅ TECHNICAL IMPLEMENTATION:
+      - Backend: 12 new endpoints across EFT and reports
+      - Frontend: Complete new page with 4 tabs
+      - Models: Enhanced EFTTransaction with disallow fields
+      - CSV export: io.StringIO for memory-efficient generation
+      - Webhook: No authentication (called by external service)
+      - Monitoring: Configurable stuck file threshold
+      - UI: Responsive grid layout, modal dialogs, auto-refresh
+      
+      ✅ USER WORKFLOWS SUPPORTED:
+      
+      **Workflow 1: Monitor Files**
+      - Navigate to Debit Orders page
+      - View outgoing/incoming files
+      - Check status of each file
+      - Auto-refreshes every 30 seconds
+      
+      **Workflow 2: Disallow Batch**
+      - View outgoing files
+      - Click "Disallow" on a batch
+      - Enter reason in dialog
+      - Confirm disallow
+      - System cancels batch
+      
+      **Workflow 3: Handle Stuck Files**
+      - System auto-detects stuck files (>48hrs)
+      - View in "Stuck Files" tab
+      - Click "Send Notifications"
+      - Email sent to configured address
+      
+      **Workflow 4: Export Reports**
+      - Click export button (Payments/Unpaid/Monthly)
+      - System generates CSV
+      - Browser downloads file
+      - Open in Excel for analysis
+      
+      **Workflow 5: Webhook Processing**
+      - Payment gateway sends response
+      - Webhook receives file content
+      - System parses and matches transactions
+      - Updates invoices and member debt
+      - All automatic, no user action needed
+      
+      PRODUCTION READY: All features from debit order spec fully implemented and tested.
