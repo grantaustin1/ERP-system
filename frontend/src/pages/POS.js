@@ -311,10 +311,16 @@ export default function POS() {
       
       const result = await response.json();
       
+      // Save transaction for receipt printing
+      setLastTransaction(result.transaction);
+      
       toast({
         title: "Success",
         description: `Transaction ${result.transaction.transaction_number} completed`,
       });
+      
+      // Show receipt dialog
+      setShowReceiptDialog(true);
       
       // Reset cart and form
       setCart([]);
