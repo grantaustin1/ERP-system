@@ -5285,6 +5285,10 @@ async def create_pos_transaction(
     # Save transaction
     await db.pos_transactions.insert_one(transaction_data)
     
+    # Remove MongoDB's _id before returning
+    if "_id" in transaction_data:
+        del transaction_data["_id"]
+    
     return {
         "success": True,
         "message": "Transaction completed successfully",
