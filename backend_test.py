@@ -7597,22 +7597,34 @@ class POSSystemTester:
         
         # Create categories first
         categories = [
-            {"name": "Supplements", "id": "supplements"},
-            {"name": "Snacks", "id": "snacks"},
-            {"name": "Accessories", "id": "accessories"}
+            {"name": "Supplements", "description": "Protein powders and supplements", "display_order": 1},
+            {"name": "Snacks", "description": "Energy bars and healthy snacks", "display_order": 2},
+            {"name": "Accessories", "description": "Gym accessories and equipment", "display_order": 3}
         ]
         
+        created_categories = {}
         for category in categories:
             try:
                 response = requests.post(f"{API_BASE}/pos/categories", 
                                        json=category, headers=self.headers)
                 if response.status_code == 200:
+                    created_cat = response.json()["category"]
+                    created_categories[category["name"].lower()] = created_cat["id"]
                     self.log_result(f"Create Category {category['name']}", True, "Category created")
                 else:
-                    # Category might already exist, that's ok
-                    pass
+                    self.log_result(f"Create Category {category['name']}", False, f"Failed: {response.status_code}")
             except Exception as e:
-                pass
+                self.log_result(f"Create Category {category['name']}", False, f"Error: {str(e)}")
+        
+        # Update product data with actual category IDs
+        if created_categories:
+            for product in test_products:
+                if product["category_id"] == "supplements":
+                    product["category_id"] = created_categories.get("supplements", "supplements")
+                elif product["category_id"] == "snacks":
+                    product["category_id"] = created_categories.get("snacks", "snacks")
+                elif product["category_id"] == "accessories":
+                    product["category_id"] = created_categories.get("accessories", "accessories")
         
         # Create products
         for product_data in test_products:
