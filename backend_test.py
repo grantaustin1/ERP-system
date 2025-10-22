@@ -7566,6 +7566,7 @@ class POSSystemTester:
                 "category_id": "supplements",
                 "cost_price": 25.00,
                 "markup_percent": 100.0,  # 100% markup = R50 selling price
+                "tax_rate": 15.0,
                 "stock_quantity": 50,
                 "low_stock_threshold": 10,
                 "description": "Whey protein shake"
@@ -7576,6 +7577,7 @@ class POSSystemTester:
                 "category_id": "snacks",
                 "cost_price": 8.00,
                 "markup_percent": 150.0,  # 150% markup = R20 selling price
+                "tax_rate": 15.0,
                 "stock_quantity": 100,
                 "low_stock_threshold": 20,
                 "description": "High energy protein bar"
@@ -7586,6 +7588,7 @@ class POSSystemTester:
                 "category_id": "accessories", 
                 "cost_price": 15.00,
                 "markup_percent": 200.0,  # 200% markup = R45 selling price
+                "tax_rate": 15.0,
                 "stock_quantity": 25,
                 "low_stock_threshold": 5,
                 "description": "Premium gym towel"
