@@ -371,7 +371,7 @@ class MemberImportTester:
             {"Full Name": "JAMES MARTINEZ", "Email": "james.martinez.import@test.com", "Phone": "0821111122", "Address": "134 Test St"},
             # Duplicate entries (should be skipped)
             {"Full Name": "Alice Johnson", "Email": "alice.johnson@example.com", "Phone": "0834567890", "Address": "Duplicate 1"},  # Exact duplicate
-            {"Full Name": "Bob Smith", "Email": "b.o.b.smith@gmail.com", "Phone": "+27845678901", "Phone": "0845678901", "Address": "Duplicate 2"},  # Gmail normalized
+            {"Full Name": "Bob Smith", "Email": "b.o.b.smith@gmail.com", "Phone": "0845678901", "Address": "Duplicate 2"},  # Gmail normalized
             {"Full Name": "Charlie Brown", "Email": "charlie.brown@test.com", "Phone": "0856789012", "Address": "Duplicate 3"}  # Exact duplicate
         ]
         
