@@ -97,9 +97,8 @@ export default function POS() {
         })
       ]);
 
-      if (!categoriesRes.ok || !productsRes.ok) {
-        // Fallback to test data for POS testing
-        console.warn('POS API not accessible, using test data');
+      if (!categoriesRes.ok || !productsRes.ok || !membersRes.ok) {
+        throw new Error('Failed to fetch POS data');
         const testCategories = [
           { id: 'cat_cold_drinks', name: 'Cold Drinks' },
           { id: 'cat_hot_drinks', name: 'Hot Drinks' },
