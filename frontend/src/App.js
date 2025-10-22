@@ -67,6 +67,7 @@ function App() {
           <Route path="/products" element={<PrivateRoute><ProductManagement /></PrivateRoute>} />
           <Route path="/settings" element={<PrivateRoute><SettingsNew /></PrivateRoute>} />
           <Route path="/settings-old" element={<PrivateRoute><Settings /></PrivateRoute>} />
+          <Route path="/debit-orders" element={<PrivateRoute><DebitOrderManagement /></PrivateRoute>} />
         </Routes>
       </BrowserRouter>
       <Toaster />
