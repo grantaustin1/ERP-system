@@ -267,6 +267,10 @@ export default function Settings() {
                 <CheckSquare className="w-4 h-4 mr-2" />
                 Field Configuration
               </TabsTrigger>
+              <TabsTrigger value="eft" className="data-[state=active]:bg-emerald-500">
+                <SettingsIcon className="w-4 h-4 mr-2" />
+                EFT Settings
+              </TabsTrigger>
             </TabsList>
 
             {/* Membership Packages Tab */}
