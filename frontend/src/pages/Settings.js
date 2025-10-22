@@ -1176,8 +1176,10 @@ export default function Settings() {
                       <li>• EFT files are generated in Nedbank CPS format for Same Day Value processing</li>
                       <li>• Generated files are auto-saved to <code className="bg-slate-700 px-1 rounded">/app/eft_files/outgoing</code></li>
                       <li>• Incoming bank response files are monitored in <code className="bg-slate-700 px-1 rounded">/app/eft_files/incoming</code></li>
+                      <li>• <strong>Advance billing:</strong> Files created {eftSettings.advance_billing_days} days before due date for payment gateway processing</li>
                       <li>• Payment confirmations automatically update member balances and invoice statuses</li>
                       <li>• All EFT transactions are logged for audit purposes</li>
+                      <li>• Use manual generation or enable auto-generation based on your workflow</li>
                     </ul>
                   </div>
                 </CardContent>
