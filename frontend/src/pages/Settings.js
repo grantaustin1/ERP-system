@@ -57,20 +57,33 @@ export default function Settings() {
     display_order: 0
   });
 
+  const [eftSettings, setEftSettings] = useState({
+    client_profile_number: '',
+    nominated_account: '',
+    charges_account: '',
+    service_user_number: '',
+    branch_code: '',
+    bank_name: 'Nedbank',
+    enable_notifications: false,
+    notification_email: ''
+  });
+
   useEffect(() => {
     fetchData();
   }, []);
 
   const fetchData = async () => {
     try {
-      const [membershipsRes, sourcesRes, fieldConfigsRes] = await Promise.all([
+      const [membershipsRes, sourcesRes, fieldConfigsRes, eftSettingsRes] = await Promise.all([
         axios.get(`${API}/membership-types`),
         axios.get(`${API}/payment-sources`),
-        axios.get(`${API}/field-configurations`)
+        axios.get(`${API}/field-configurations`),
+        axios.get(`${API}/eft/settings`)
       ]);
       setMembershipTypes(membershipsRes.data);
       setPaymentSources(sourcesRes.data);
       setFieldConfigurations(fieldConfigsRes.data);
+      setEftSettings(eftSettingsRes.data);
     } catch (error) {
       toast.error('Failed to fetch data');
     } finally {
