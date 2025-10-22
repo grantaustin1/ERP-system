@@ -68,6 +68,11 @@ class MemberImportTester:
     def create_test_csv(self, filename, data):
         """Create a test CSV file with given data"""
         try:
+            if not data:  # Handle empty data
+                with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.csv', newline='') as f:
+                    f.write("")  # Empty file
+                    return f.name
+            
             with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.csv', newline='') as f:
                 writer = csv.DictWriter(f, fieldnames=data[0].keys())
                 writer.writeheader()
