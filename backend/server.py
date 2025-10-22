@@ -5861,6 +5861,185 @@ async def get_eft_transaction_details(
     return transaction
 
 
+@api_router.get("/eft/invoices-due-for-collection")
+async def get_invoices_due_for_collection(
+    advance_days: Optional[int] = None,
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Get invoices that are due for collection based on advance billing days.
+    Returns invoices where: today + advance_days >= due_date
+    """
+    # Get settings to determine advance days
+    settings = await db.eft_settings.find_one({})
+    if not settings:
+        raise HTTPException(
+            status_code=400,
+            detail="EFT settings not configured"
+        )
+    
+    # Use provided advance_days or get from settings
+    days_advance = advance_days if advance_days is not None else settings.get("advance_billing_days", 5)
+    
+    # Calculate the collection window
+    today = date.today()
+    collection_date = today + timedelta(days=days_advance)
+    
+    # Find unpaid invoices with due_date <= collection_date
+    # and due_date >= today (not overdue yet)
+    query = {
+        "status": {"$ne": "paid"},
+        "due_date": {
+            "$exists": True,
+            "$lte": collection_date.isoformat()
+        }
+    }
+    
+    invoices = await db.invoices.find(query, {"_id": 0}).to_list(length=None)
+    
+    # Get member details for each invoice
+    invoice_details = []
+    for invoice in invoices:
+        member = await db.members.find_one({"id": invoice["member_id"]}, {"_id": 0})
+        if member and member.get("bank_account_number") and member.get("bank_branch_code"):
+            invoice_details.append({
+                "invoice_id": invoice["id"],
+                "member_id": invoice["member_id"],
+                "member_name": f"{member['first_name']} {member['last_name']}",
+                "amount": invoice["amount"],
+                "due_date": invoice["due_date"],
+                "days_until_due": (datetime.strptime(invoice["due_date"], '%Y-%m-%d').date() - today).days,
+                "has_bank_details": True
+            })
+    
+    return {
+        "collection_date": collection_date.isoformat(),
+        "advance_days": days_advance,
+        "total_invoices": len(invoice_details),
+        "total_amount": sum(inv["amount"] for inv in invoice_details),
+        "invoices": invoice_details
+    }
+
+
+@api_router.get("/eft/levies-due-for-collection")
+async def get_levies_due_for_collection(
+    advance_days: Optional[int] = None,
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Get levies that are due for collection based on advance billing days.
+    """
+    # Get settings
+    settings = await db.eft_settings.find_one({})
+    if not settings:
+        raise HTTPException(status_code=400, detail="EFT settings not configured")
+    
+    days_advance = advance_days if advance_days is not None else settings.get("advance_billing_days", 5)
+    
+    # Calculate collection window
+    today = date.today()
+    collection_date = today + timedelta(days=days_advance)
+    
+    # Find unpaid levies with due_date <= collection_date
+    query = {
+        "status": {"$ne": "paid"},
+        "due_date": {
+            "$exists": True,
+            "$lte": collection_date.isoformat()
+        }
+    }
+    
+    levies = await db.levies.find(query, {"_id": 0}).to_list(length=None)
+    
+    # Get member details for each levy
+    levy_details = []
+    for levy in levies:
+        member = await db.members.find_one({"id": levy["member_id"]}, {"_id": 0})
+        if member and member.get("bank_account_number") and member.get("bank_branch_code"):
+            levy_details.append({
+                "levy_id": levy["id"],
+                "member_id": levy["member_id"],
+                "member_name": levy["member_name"],
+                "amount": levy["amount"],
+                "due_date": levy["due_date"],
+                "days_until_due": (datetime.strptime(levy["due_date"], '%Y-%m-%d').date() - today).days,
+                "has_bank_details": True
+            })
+    
+    return {
+        "collection_date": collection_date.isoformat(),
+        "advance_days": days_advance,
+        "total_levies": len(levy_details),
+        "total_amount": sum(lev["amount"] for lev in levy_details),
+        "levies": levy_details
+    }
+
+
+@api_router.post("/eft/generate-due-collections")
+async def generate_due_collections(
+    collection_type: str,  # "billing" or "levies" or "both"
+    advance_days: Optional[int] = None,
+    action_date: Optional[str] = None,
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Automatically generate EFT files for invoices/levies due for collection.
+    Uses advance_billing_days setting to determine which items to include.
+    """
+    # Get settings
+    settings = await db.eft_settings.find_one({})
+    if not settings:
+        raise HTTPException(status_code=400, detail="EFT settings not configured")
+    
+    days_advance = advance_days if advance_days is not None else settings.get("advance_billing_days", 5)
+    
+    results = {
+        "billing": None,
+        "levies": None
+    }
+    
+    # Generate billing file
+    if collection_type in ["billing", "both"]:
+        # Get invoices due
+        invoices_response = await get_invoices_due_for_collection(days_advance, current_user)
+        
+        if invoices_response["total_invoices"] > 0:
+            invoice_ids = [inv["invoice_id"] for inv in invoices_response["invoices"]]
+            
+            # Generate file
+            billing_result = await generate_billing_eft_file(
+                invoice_ids=invoice_ids,
+                action_date=action_date,
+                current_user=current_user
+            )
+            
+            results["billing"] = billing_result
+    
+    # Generate levies file
+    if collection_type in ["levies", "both"]:
+        # Get levies due
+        levies_response = await get_levies_due_for_collection(days_advance, current_user)
+        
+        if levies_response["total_levies"] > 0:
+            levy_ids = [lev["levy_id"] for lev in levies_response["levies"]]
+            
+            # Generate file
+            levies_result = await generate_levies_eft_file(
+                levy_ids=levy_ids,
+                action_date=action_date,
+                current_user=current_user
+            )
+            
+            results["levies"] = levies_result
+    
+    return {
+        "success": True,
+        "advance_days": days_advance,
+        "collection_type": collection_type,
+        "results": results
+    }
+
+
 @api_router.post("/eft/process-incoming")
 async def process_incoming_eft_file(
     file_name: str,
