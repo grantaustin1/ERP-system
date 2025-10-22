@@ -104,9 +104,20 @@
 
 
 user_problem_statement: |
-  Enhanced RBAC & Permission Matrix System for ERP360 gym management application.
+  ERP360 gym management application - EFT SDV (Same Day Value) File Integration (PHASE 5).
   
-  CURRENT TESTING FOCUS - RBAC & PERMISSION MATRIX (PHASE 4):
+  CURRENT TESTING FOCUS - EFT SDV INTEGRATION (PHASE 5):
+  - Generate outgoing EFT files for billing and levies (Nedbank format)
+  - Process incoming EFT response files from bank (auto-match, update balances)
+  - EFT Settings configuration in Settings page
+  - Auto-save generated files to monitored folder
+  - File monitor service for incoming files
+  - Auto-match payments to member accounts/invoices
+  - Update member balances automatically
+  - Optional notifications on payment confirmation
+  
+  PREVIOUS PHASES COMPLETED:
+  PHASE 4 - RBAC & PERMISSION MATRIX (COMPLETED):
   - 15 roles implemented with sensible default permissions
   - Permission matrix management UI for admins
   - User role assignment and management UI
