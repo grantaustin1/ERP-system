@@ -2851,3 +2851,155 @@ agent_communication:
       - Payment reconciliation: Verify invoice updates and debt calculations
       
       Starting backend testing now...
+
+  - agent: "main"
+    message: |
+      🎉 DEBICHECK INTEGRATION - PHASE 5 CONTINUATION COMPLETED
+      
+      USER REQUEST: Continue with DebiCheck from CPS and other manuals
+      
+      IMPLEMENTATION STATUS: ✅ ALL DEBICHECK CORE FEATURES COMPLETED
+      
+      ✅ DEBICHECK UTILITIES MODULE (debicheck_utils.py):
+      1. ✅ DebiCheckMandateGenerator Class:
+         - Generates Nedbank CPS format mandate request files
+         - Supports 3 mandate types: Fixed (F), Variable (V), Usage-based (U)
+         - Supports 3 transaction types: TT1 (Real-time), TT2 (Batch), TT3 (Card&Pin)
+         - Format header, mandate request, trailer, security records
+         - Generates unique Mandate Reference Numbers (MRN) - 25 chars
+         - Handles adjustment categories (Never, Quarterly, Biannually, Annually, Repo)
+         - Frequency support: Weekly, Fortnightly, Monthly, Quarterly, Annually
+      
+      2. ✅ DebiCheckCollectionGenerator Class:
+         - Generates collection request files for approved mandates
+         - Supports collection types: R (Recurring), F (Final), O (Once-off)
+         - Validates against mandate maximum amounts
+         - Links collections to existing mandates via MRN
+      
+      3. ✅ DebiCheckResponseParser Class:
+         - Parses mandate response files (Approved/Rejected/Pending)
+         - Extracts status codes and reason codes
+         - Provides human-readable status and reason descriptions
+      
+      4. ✅ File Management:
+         - Auto-save to /app/debicheck_files/{outgoing/mandate, outgoing/collection}
+         - 320-character fixed-width format per Nedbank specifications
+      
+      ✅ DEBICHECK BACKEND API (10 NEW ENDPOINTS):
+      1. ✅ POST /api/debicheck/mandates:
+         - Create new DebiCheck mandate for member
+         - Auto-generates unique MRN
+         - Validates member has bank details and ID number
+         - Calculates maximum amount (1.5x installment for variable)
+         - Status: pending → submitted → approved/rejected
+      
+      2. ✅ GET /api/debicheck/mandates:
+         - List all mandates with filtering (member_id, status)
+         - Returns mandate details and metadata
+      
+      3. ✅ GET /api/debicheck/mandates/{mandate_id}:
+         - Get specific mandate with collection history
+         - Shows all collections linked to mandate
+      
+      4. ✅ POST /api/debicheck/mandates/generate-file:
+         - Generate mandate request file from selected mandates
+         - Batch processing: multiple mandates in one file
+         - Updates mandate status to "submitted"
+         - Returns file path and mandate count
+      
+      5. ✅ POST /api/debicheck/mandates/{mandate_id}/cancel:
+         - Cancel existing mandate with reason
+         - Updates status to "cancelled"
+         - Records cancellation timestamp
+      
+      6. ✅ POST /api/debicheck/collections:
+         - Create collection request for approved mandate
+         - Validates mandate is approved
+         - Validates amount ≤ maximum amount
+         - Supports collection types (R/F/O)
+      
+      7. ✅ POST /api/debicheck/collections/generate-file:
+         - Generate collection request file
+         - Batch processing for multiple collections
+         - Updates collection status to "submitted"
+      
+      8. ✅ POST /api/debicheck/process-response:
+         - Process bank response files (mandate or collection)
+         - Auto-updates mandate statuses (approved/rejected/pending)
+         - Records approval timestamps
+         - Updates reason codes and descriptions
+      
+      9. ✅ GET /api/debicheck/collections:
+         - List collections with filtering (mandate_id, member_id, status)
+         - Returns collection history and status
+      
+      ✅ DATA MODELS:
+      1. ✅ DebiCheckMandate:
+         - Complete mandate structure with all required fields
+         - MRN, member details, bank details, collection schedule
+         - Installment/maximum amounts, adjustment rules
+         - Status tracking (pending, submitted, approved, rejected, suspended, cancelled)
+         - Collection counter and last collection date
+      
+      2. ✅ DebiCheckMandateCreate:
+         - Simplified creation model
+         - Auto-calculates derived fields
+      
+      3. ✅ DebiCheckCollection:
+         - Collection request structure
+         - Links to parent mandate
+         - Amount validation
+         - Status tracking
+      
+      DEBICHECK FEATURES IMPLEMENTED:
+      ✅ Mandate Types:
+         - Fixed: Fixed installment amounts (microloans, short-term)
+         - Variable: Calculated monthly (home loans, life insurance, vehicle finance)
+         - Usage-based: Based on service usage (cellphone, municipal)
+      
+      ✅ Authentication Methods:
+         - TT1 (Real-time): Immediate approval within 120 seconds
+         - TT2 (Batch): Delayed approval (2 business days)
+         - TT3 (Card&Pin): Real-time with card machine
+      
+      ✅ Adjustment Categories:
+         - Never (0): No adjustments
+         - Quarterly (1): Adjust every 3 months
+         - Biannually (2): Adjust every 6 months
+         - Annually (3): Adjust yearly
+         - Repo Rate (4): Linked to repo rate
+      
+      ✅ Collection Frequencies:
+         - Weekly, Fortnightly, Monthly, Quarterly, Biannually, Annually
+      
+      ✅ Dispute Protection:
+         - First collections: No dispute (unless fraud)
+         - Recurring: No dispute if amount ≤ installment amount
+         - Amount validation: Prevents collections > maximum amount
+      
+      ✅ Integration with Existing System:
+         - Uses Member model (bank_account_number, bank_branch_code, id_number)
+         - Uses EFT Settings (client_profile_number, accounts)
+         - Ready for invoice/levy integration
+      
+      TECHNICAL SPECIFICATIONS:
+      - File Format: Nedbank CPS DebiCheck (320-character fixed-width)
+      - MRN Format: {BankNumber(4)}{CreationDate(8)}{FreeFormat(13)}
+      - Maximum Amount: Up to 1.5x installment (regulatory limit: R1 million)
+      - Folder Structure: /app/debicheck_files/{outgoing/mandate, outgoing/collection}
+      
+      READY FOR TESTING:
+      - Backend: All 10 DebiCheck API endpoints
+      - File Generation: Mandate and collection request files
+      - Response Processing: Parse bank approval/rejection responses
+      - Validation: Amount limits, mandate status checks
+      - Integration: Member bank details, EFT settings
+      
+      NEXT STEPS FOR FRONTEND:
+      1. DebiCheck Mandates management UI in Billing/Settings
+      2. Create mandate form with member selection
+      3. View mandate status and collection history
+      4. Generate collection requests from approved mandates
+      5. Display mandate statistics and analytics
+      
+      Backend implementation complete. Ready for testing.
