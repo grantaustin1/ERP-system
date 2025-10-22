@@ -175,6 +175,8 @@ export default function POS() {
         quantity: 1,
         unit_price: product.selling_price,
         tax_rate: product.tax_rate,
+        item_discount_percent: 0,
+        item_discount_amount: 0,
         subtotal: product.selling_price,
         tax_amount: product.selling_price * (product.tax_rate / 100),
         total: product.selling_price * (1 + product.tax_rate / 100)
