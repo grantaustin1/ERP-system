@@ -1245,6 +1245,18 @@ frontend:
         agent: "testing"
         comment: "✅ COMPREHENSIVE ACCESS CONTROL TESTING COMPLETED - 96% SUCCESS (24/25 tests passed). All major functionality working: Enhanced access validation with member details and location tracking ✅, Override functionality for blocked members ✅, Quick check-in endpoint with staff override recording ✅, Class booking integration with automatic status updates ✅, Access logs with comprehensive filtering (status, location, member) ✅, Access analytics with accurate calculations and breakdowns ✅, Enhanced access log data fields (member_email, membership_type, location, device_id, temperature, notes) ✅. Minor: One test expected 'suspended' reason but got 'debt' reason (both are valid denial scenarios). All core access control features operational and ready for production."
 
+  - task: "EFT Settings UI in Settings Page"
+    implemented: true
+    working: "NA"
+    file: "/app/frontend/src/pages/Settings.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Added EFT Settings tab to Settings page with comprehensive configuration UI. Features: New 'EFT Settings' tab with gear icon, form fields for all EFT configuration (client_profile_number, nominated_account, charges_account, service_user_number, branch_code, bank_name), notification settings toggle with conditional email input, save button integrated with API, information box with EFT folder locations and process details, responsive two-column grid layout, proper validation and field constraints (max lengths, placeholders). Loads existing settings on page load, updates via POST /api/eft/settings endpoint."
+
 metadata:
   created_by: "main_agent"
   version: "1.0"
