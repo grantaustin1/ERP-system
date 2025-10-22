@@ -3086,3 +3086,127 @@ agent_communication:
       5. Display mandate statistics and analytics
       
       Backend implementation complete. Ready for testing.
+
+  - agent: "main"
+    message: |
+      🎉 ADVANCE BILLING SCHEDULE FEATURE ADDED
+      
+      USER REQUEST: Billing files must be created X days before payment due date (configurable, default 5 days)
+      
+      IMPLEMENTATION STATUS: ✅ COMPLETED
+      
+      ✅ NEW SETTINGS ADDED:
+      1. ✅ advance_billing_days (integer):
+         - Configurable days before due date to generate files
+         - Default: 5 days
+         - Range: 0-30 days
+         - Purpose: Give time for payment gateway processing
+      
+      2. ✅ enable_auto_generation (boolean):
+         - Enable/disable automatic file generation
+         - Default: false (manual control)
+         - When enabled: Files auto-generated based on due dates
+      
+      ✅ NEW API ENDPOINTS (6 ENDPOINTS):
+      1. ✅ GET /api/eft/invoices-due-for-collection:
+         - Returns invoices due within advance billing window
+         - Filters: today + advance_days >= due_date
+         - Validates members have bank details
+         - Returns: total invoices, total amount, invoice details
+         - Shows days_until_due for each invoice
+      
+      2. ✅ GET /api/eft/levies-due-for-collection:
+         - Returns levies due within advance billing window
+         - Same filtering logic as invoices
+         - Validates bank details present
+      
+      3. ✅ POST /api/eft/generate-due-collections:
+         - Auto-generates EFT files for due items
+         - Parameters: collection_type ("billing", "levies", "both")
+         - Uses advance_billing_days from settings
+         - Can override with custom advance_days parameter
+         - Generates separate files for billing and levies
+      
+      4. ✅ GET /api/debicheck/mandates-due-for-collection:
+         - Returns mandates due for collection
+         - Calculates next collection date based on frequency
+         - Supports: Weekly, Fortnightly, Monthly, Quarterly, Biannually, Yearly
+         - Handles first collection and recurring collections
+      
+      5. ✅ POST /api/debicheck/generate-due-collections:
+         - Auto-generates DebiCheck collection files for due mandates
+         - Creates collection records for each mandate
+         - Uses installment amounts from mandates
+         - Generates single collection file for batch
+      
+      ✅ FRONTEND UPDATES:
+      1. ✅ EFT Settings UI Enhanced:
+         - New "Billing Schedule & Automation" section
+         - Advance Billing Days input field (0-30)
+         - Real-time display: "Generate files X days before due date"
+         - Enable Auto-generation toggle switch
+         - Conditional info message when auto-generation enabled
+         - Updated information box with advance billing details
+      
+      ✅ FEATURES & LOGIC:
+      1. ✅ Flexible Advance Days:
+         - User configurable (not hardcoded)
+         - Can be overridden per API call if needed
+         - Default: 5 days (industry standard)
+      
+      2. ✅ Collection Window Calculation:
+         - Today + advance_days = collection_date
+         - Include items with: due_date <= collection_date
+         - Excludes already paid items
+      
+      3. ✅ Bank Details Validation:
+         - Only includes members with bank_account_number and bank_branch_code
+         - Prevents file generation errors
+      
+      4. ✅ Separate File Generation:
+         - Billing and levies can be separate files
+         - Or combined with "both" option
+         - Maintains separate audit trails
+      
+      5. ✅ DebiCheck Recurring Logic:
+         - Calculates next collection based on frequency
+         - Tracks last_collection_date on mandates
+         - Supports multiple frequency types
+         - Handles first vs recurring collections
+      
+      ✅ USE CASES:
+      
+      **Example 1: Manual Review & Generation**
+      - Set advance_billing_days = 5
+      - Keep enable_auto_generation = false
+      - Call GET /api/eft/invoices-due-for-collection daily
+      - Review list of invoices due
+      - Call POST /api/eft/generate-due-collections when ready
+      
+      **Example 2: Automated Daily Generation**
+      - Set advance_billing_days = 5
+      - Set enable_auto_generation = true
+      - System automatically generates files for items due
+      - Staff only monitors and submits to bank
+      
+      **Example 3: Custom Advance Days**
+      - Standard setting: advance_billing_days = 5
+      - Override for urgent: advance_days = 2
+      - Override for early: advance_days = 10
+      
+      ✅ TECHNICAL DETAILS:
+      - EFTSettings model updated with 2 new fields
+      - EFTSettingsUpdate model updated
+      - Frontend state management updated
+      - Validation: advance_billing_days capped at 30 days
+      - Date calculations use timedelta for accuracy
+      
+      BENEFITS:
+      ✅ Flexible: Configure days based on bank/gateway requirements
+      ✅ Control: Manual or automatic generation
+      ✅ Visibility: See what's due before generating
+      ✅ Compliance: Meet payment gateway timing requirements
+      ✅ Efficiency: Batch process all due items
+      ✅ Accuracy: Only include items truly due
+      
+      Ready for testing and production use.
