@@ -974,6 +974,163 @@ export default function Settings() {
                 </CardContent>
               </Card>
             </TabsContent>
+
+            {/* EFT Settings Tab */}
+            <TabsContent value="eft">
+              <Card className="bg-slate-800 border-slate-700">
+                <CardHeader>
+                  <CardTitle className="text-white flex items-center">
+                    <SettingsIcon className="w-5 h-5 mr-2" />
+                    EFT SDV Configuration
+                  </CardTitle>
+                  <CardDescription className="text-slate-400">
+                    Configure Electronic Funds Transfer settings for automated billing and levy collection
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  <div className="grid md:grid-cols-2 gap-6">
+                    {/* Client Profile Number */}
+                    <div className="space-y-2">
+                      <Label className="text-white">Client Profile Number <span className="text-red-500">*</span></Label>
+                      <Input
+                        type="text"
+                        maxLength={10}
+                        placeholder="0000000000"
+                        value={eftSettings.client_profile_number}
+                        onChange={(e) => setEftSettings({...eftSettings, client_profile_number: e.target.value})}
+                        className="bg-slate-700 border-slate-600 text-white"
+                      />
+                      <p className="text-xs text-slate-400">10-digit Nedbank client number</p>
+                    </div>
+
+                    {/* Nominated Account */}
+                    <div className="space-y-2">
+                      <Label className="text-white">Nominated Account <span className="text-red-500">*</span></Label>
+                      <Input
+                        type="text"
+                        maxLength={16}
+                        placeholder="0000000000000000"
+                        value={eftSettings.nominated_account}
+                        onChange={(e) => setEftSettings({...eftSettings, nominated_account: e.target.value})}
+                        className="bg-slate-700 border-slate-600 text-white"
+                      />
+                      <p className="text-xs text-slate-400">16-digit Nedbank account for credits</p>
+                    </div>
+
+                    {/* Charges Account */}
+                    <div className="space-y-2">
+                      <Label className="text-white">Charges Account <span className="text-red-500">*</span></Label>
+                      <Input
+                        type="text"
+                        maxLength={16}
+                        placeholder="0000000000000000"
+                        value={eftSettings.charges_account}
+                        onChange={(e) => setEftSettings({...eftSettings, charges_account: e.target.value})}
+                        className="bg-slate-700 border-slate-600 text-white"
+                      />
+                      <p className="text-xs text-slate-400">16-digit Nedbank account for fees/charges</p>
+                    </div>
+
+                    {/* Service User Number */}
+                    <div className="space-y-2">
+                      <Label className="text-white">Service User Number</Label>
+                      <Input
+                        type="text"
+                        placeholder="Optional service identifier"
+                        value={eftSettings.service_user_number}
+                        onChange={(e) => setEftSettings({...eftSettings, service_user_number: e.target.value})}
+                        className="bg-slate-700 border-slate-600 text-white"
+                      />
+                      <p className="text-xs text-slate-400">Additional service identifier (optional)</p>
+                    </div>
+
+                    {/* Branch Code */}
+                    <div className="space-y-2">
+                      <Label className="text-white">Branch Code</Label>
+                      <Input
+                        type="text"
+                        maxLength={6}
+                        placeholder="000000"
+                        value={eftSettings.branch_code}
+                        onChange={(e) => setEftSettings({...eftSettings, branch_code: e.target.value})}
+                        className="bg-slate-700 border-slate-600 text-white"
+                      />
+                      <p className="text-xs text-slate-400">6-digit bank branch code</p>
+                    </div>
+
+                    {/* Bank Name */}
+                    <div className="space-y-2">
+                      <Label className="text-white">Bank Name</Label>
+                      <Input
+                        type="text"
+                        value={eftSettings.bank_name}
+                        onChange={(e) => setEftSettings({...eftSettings, bank_name: e.target.value})}
+                        className="bg-slate-700 border-slate-600 text-white"
+                      />
+                      <p className="text-xs text-slate-400">Bank name (default: Nedbank)</p>
+                    </div>
+                  </div>
+
+                  {/* Notification Settings */}
+                  <div className="border-t border-slate-700 pt-6 mt-6">
+                    <h3 className="text-lg font-semibold text-white mb-4">Payment Notification Settings</h3>
+                    
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between p-4 bg-slate-700/50 rounded-lg">
+                        <div>
+                          <Label className="text-white text-base">Enable Payment Notifications</Label>
+                          <p className="text-sm text-slate-400 mt-1">
+                            Send automated notifications to members when payments are confirmed
+                          </p>
+                        </div>
+                        <Switch
+                          checked={eftSettings.enable_notifications}
+                          onCheckedChange={(checked) => setEftSettings({...eftSettings, enable_notifications: checked})}
+                        />
+                      </div>
+
+                      {eftSettings.enable_notifications && (
+                        <div className="space-y-2">
+                          <Label className="text-white">Notification Email</Label>
+                          <Input
+                            type="email"
+                            placeholder="notifications@yourgym.com"
+                            value={eftSettings.notification_email}
+                            onChange={(e) => setEftSettings({...eftSettings, notification_email: e.target.value})}
+                            className="bg-slate-700 border-slate-600 text-white"
+                          />
+                          <p className="text-xs text-slate-400">
+                            Email address for EFT notification copies (optional)
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Save Button */}
+                  <div className="flex justify-end pt-4 border-t border-slate-700">
+                    <Button 
+                      onClick={handleSaveEftSettings}
+                      className="bg-emerald-500 hover:bg-emerald-600 text-white"
+                    >
+                      Save EFT Settings
+                    </Button>
+                  </div>
+
+                  {/* Information Box */}
+                  <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-4 mt-6">
+                    <h4 className="text-blue-400 font-semibold mb-2">📋 Important Information</h4>
+                    <ul className="text-sm text-slate-300 space-y-1">
+                      <li>• EFT files are generated in Nedbank CPS format for Same Day Value processing</li>
+                      <li>• Generated files are auto-saved to <code className="bg-slate-700 px-1 rounded">/app/eft_files/outgoing</code></li>
+                      <li>• Incoming bank response files are monitored in <code className="bg-slate-700 px-1 rounded">/app/eft_files/incoming</code></li>
+                      <li>• Payment confirmations automatically update member balances and invoice statuses</li>
+                      <li>• All EFT transactions are logged for audit purposes</li>
+                    </ul>
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
           </Tabs>
         </div>
       </div>
