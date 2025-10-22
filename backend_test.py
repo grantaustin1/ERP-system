@@ -892,9 +892,11 @@ class MemberImportTester:
                 if not result["success"]:
                     print(f"  - {result['test']}: {result['message']}")
         
-        print("\n" + "=" * 60)
+        print("\n" + "=" * 80)
 
-class ClassesAndBookingsTester:
+if __name__ == "__main__":
+    tester = MemberImportTester()
+    tester.run_all_tests()
     def __init__(self):
         self.token = None
         self.headers = {}
