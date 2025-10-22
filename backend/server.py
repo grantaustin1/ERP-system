@@ -5316,7 +5316,7 @@ async def get_pos_transactions(
     if member_id:
         query["member_id"] = member_id
     
-    transactions = await db.pos_transactions.find(query).sort("transaction_date", -1).to_list(length=None)
+    transactions = await db.pos_transactions.find(query, {"_id": 0}).sort("transaction_date", -1).to_list(length=None)
     
     return {"transactions": transactions, "total": len(transactions)}
 
