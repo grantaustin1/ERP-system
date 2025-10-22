@@ -1,5 +1,5 @@
 import { useNavigate, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Users, ScanLine, FileText, UserX, DollarSign, TrendingUp, Package, Settings, LogOut, Dumbbell, Zap, BarChart3, Calendar, Upload, Shield, UserCog, ShoppingCart, Tag } from 'lucide-react';
+import { LayoutDashboard, Users, ScanLine, FileText, UserX, DollarSign, TrendingUp, Package, Settings, LogOut, Dumbbell, Zap, BarChart3, Calendar, Upload, Shield, UserCog, ShoppingCart, Tag, CreditCard } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 export default function Sidebar() {
