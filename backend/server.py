@@ -261,6 +261,22 @@ class AccessLogCreate(BaseModel):
     temperature: Optional[float] = None
     notes: Optional[str] = None
 
+class MemberNote(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    note_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    member_id: str
+    content: str
+    created_by: str  # Staff member ID or email
+    created_by_name: Optional[str] = None  # Staff member name for display
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: Optional[datetime] = None
+
+class MemberNoteCreate(BaseModel):
+    content: str
+
+class MemberNoteUpdate(BaseModel):
+    content: str
+
 class Invoice(BaseModel):
     model_config = ConfigDict(extra="ignore")
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
