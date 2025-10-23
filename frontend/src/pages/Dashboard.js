@@ -57,6 +57,57 @@ export default function Dashboard() {
     }
   };
 
+  const fetchStatDetails = async (statType) => {
+    try {
+      setSelectedStat(statType);
+      
+      switch(statType) {
+        case 'Total Members':
+        case 'Active Members':
+        case 'Blocked Members':
+          const response = await axios.get(`${API}/members`);
+          let members = response.data;
+          
+          if (statType === 'Active Members') {
+            members = members.filter(m => m.status === 'active');
+          } else if (statType === 'Blocked Members') {
+            members = members.filter(m => m.status === 'suspended' || m.status === 'blocked');
+          }
+          
+          setStatDetailData(members);
+          break;
+          
+        case 'Pending Invoices':
+          const invoicesResponse = await axios.get(`${API}/invoices`);
+          const pendingInvoices = invoicesResponse.data.filter(i => 
+            i.status === 'pending' || i.status === 'overdue'
+          );
+          setStatDetailData(pendingInvoices);
+          break;
+          
+        case 'Total Revenue':
+          const allInvoices = await axios.get(`${API}/invoices`);
+          setStatDetailData(allInvoices.data);
+          break;
+          
+        case "Today's Access":
+          const accessResponse = await axios.get(`${API}/member-access`);
+          const today = new Date().toISOString().split('T')[0];
+          const todayAccess = accessResponse.data.filter(a => 
+            a.access_date?.startsWith(today)
+          );
+          setStatDetailData(todayAccess);
+          break;
+          
+        default:
+          setStatDetailData([]);
+      }
+    } catch (error) {
+      console.error('Failed to fetch stat details:', error);
+      setStatDetailData([]);
+    }
+  };
+
   const fetchClassBookingStats = async () => {
     try {
       // Fetch all classes
