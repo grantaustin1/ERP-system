@@ -57,6 +57,7 @@ function Classes() {
   });
 
   const [memberSearchOpen, setMemberSearchOpen] = useState(false);
+  const [memberNoShowInfo, setMemberNoShowInfo] = useState(null);
   
   // Separate date/time fields for auto-advance
   const [dateFields, setDateFields] = useState({
