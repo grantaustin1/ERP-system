@@ -507,6 +507,10 @@ export default function SettingsNew() {
           {renderAvsSettings()}
         </TabsContent>
 
+        <TabsContent value="ti">
+          {renderTiSettings()}
+        </TabsContent>
+
         {/* STAFF & SECURITY */}
         <TabsContent value="staff">
           <div className="text-center py-12">
