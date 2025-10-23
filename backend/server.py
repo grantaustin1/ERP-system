@@ -497,6 +497,7 @@ class PaymentOptionUpdate(BaseModel):
     display_order: Optional[int] = None
     is_default: Optional[bool] = None
     is_active: Optional[bool] = None
+    is_levy: Optional[bool] = None
 
 # ============= MULTIPLE MEMBERS MODELS =============
 
