@@ -176,6 +176,16 @@ export default function SettingsNew() {
     }
   };
 
+  const handleSaveAvsSettings = async () => {
+    try {
+      await axios.post(`${API}/api/avs/config`, avsSettings);
+      toast({ title: "Success", description: "AVS settings saved!" });
+      fetchData();
+    } catch (error) {
+      toast({ title: "Error", description: error.response?.data?.detail || "Failed to save", variant: "destructive" });
+    }
+  };
+
   const handleUpdateFieldConfig = async (fieldId, updates) => {
     try {
       await axios.patch(`${API}/api/field-configurations/${fieldId}`, updates);
