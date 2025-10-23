@@ -8299,6 +8299,250 @@ async def get_pti_transactions(
     }
 
 
+# ============================================================================
+# Member Engagement Alert Endpoints
+# ============================================================================
+
+@api_router.get("/alerts/config")
+async def get_alert_config(current_user: User = Depends(get_current_user)):
+    """Get alert configuration settings"""
+    config = await db.alert_config.find_one({})
+    if not config:
+        # Return default config
+        return {
+            "id": "default",
+            "days_period": 30,
+            "green_threshold": 10,
+            "amber_min_threshold": 1,
+            "amber_max_threshold": 4,
+            "red_threshold": 0,
+            "is_configured": False
+        }
+    
+    config.pop("_id", None)
+    config["is_configured"] = True
+    return config
+
+
+@api_router.post("/alerts/config")
+async def create_or_update_alert_config(
+    data: AlertConfigurationUpdate,
+    current_user: User = Depends(get_current_user)
+):
+    """Create or update alert configuration"""
+    existing = await db.alert_config.find_one({})
+    
+    if existing:
+        # Update existing config
+        update_data = {k: v for k, v in data.dict(exclude_unset=True).items() if v is not None}
+        update_data["updated_at"] = datetime.now(timezone.utc).isoformat()
+        
+        await db.alert_config.update_one(
+            {"id": existing["id"]},
+            {"$set": update_data}
+        )
+        
+        updated = await db.alert_config.find_one({"id": existing["id"]})
+        updated.pop("_id", None)
+        return updated
+    else:
+        # Create new config
+        config = AlertConfiguration(**data.dict(exclude_unset=True))
+        config_dict = config.dict()
+        config_dict["created_at"] = config_dict["created_at"].isoformat()
+        if config_dict.get("updated_at"):
+            config_dict["updated_at"] = config_dict["updated_at"].isoformat()
+        
+        await db.alert_config.insert_one(config_dict)
+        config_dict.pop("_id", None)
+        return config_dict
+
+
+@api_router.post("/member-access")
+async def record_member_access(
+    member_id: str,
+    access_type: str = "check-in",
+    location: Optional[str] = None,
+    notes: Optional[str] = None,
+    current_user: User = Depends(get_current_user)
+):
+    """Record a member access/check-in"""
+    member = await db.members.find_one({"id": member_id})
+    if not member:
+        raise HTTPException(status_code=404, detail="Member not found")
+    
+    access_record = MemberAccess(
+        member_id=member_id,
+        access_type=access_type,
+        location=location,
+        notes=notes
+    )
+    
+    access_dict = access_record.dict()
+    access_dict["access_date"] = access_dict["access_date"].isoformat()
+    
+    await db.member_access.insert_one(access_dict)
+    
+    return {
+        "success": True,
+        "message": "Access recorded",
+        "access_id": access_record.id
+    }
+
+
+@api_router.get("/member-access/stats")
+async def get_member_access_stats(current_user: User = Depends(get_current_user)):
+    """
+    Get member access statistics with alert classifications
+    
+    Returns members categorized by their access frequency:
+    - Green: Highly engaged (>= green_threshold visits)
+    - Amber: Moderately engaged (amber_min to amber_max visits)
+    - Red: At risk (0 visits)
+    """
+    # Get alert configuration
+    config = await db.alert_config.find_one({})
+    if not config:
+        config = {
+            "days_period": 30,
+            "green_threshold": 10,
+            "amber_min_threshold": 1,
+            "amber_max_threshold": 4,
+            "red_threshold": 0
+        }
+    
+    days_period = config.get("days_period", 30)
+    green_threshold = config.get("green_threshold", 10)
+    amber_min = config.get("amber_min_threshold", 1)
+    amber_max = config.get("amber_max_threshold", 4)
+    
+    # Calculate date threshold
+    cutoff_date = datetime.now(timezone.utc) - timedelta(days=days_period)
+    
+    # Get all active members
+    members = await db.members.find({"membership_status": "active"}).to_list(length=None)
+    
+    # Initialize alert categories
+    green_members = []
+    amber_members = []
+    red_members = []
+    
+    for member in members:
+        # Count access records for this member in the period
+        access_count = await db.member_access.count_documents({
+            "member_id": member["id"],
+            "access_date": {"$gte": cutoff_date.isoformat()}
+        })
+        
+        # Get last access date
+        last_access = await db.member_access.find_one(
+            {"member_id": member["id"]},
+            sort=[("access_date", -1)]
+        )
+        
+        member_data = {
+            "id": member["id"],
+            "first_name": member.get("first_name", ""),
+            "last_name": member.get("last_name", ""),
+            "email": member.get("email", ""),
+            "phone": member.get("phone", ""),
+            "membership_type": member.get("membership_type", ""),
+            "access_count": access_count,
+            "last_access_date": last_access.get("access_date") if last_access else None,
+            "days_since_last_access": (datetime.now(timezone.utc) - datetime.fromisoformat(last_access.get("access_date").replace('Z', '+00:00'))).days if last_access and last_access.get("access_date") else days_period
+        }
+        
+        # Categorize member
+        if access_count >= green_threshold:
+            green_members.append(member_data)
+        elif amber_min <= access_count <= amber_max:
+            amber_members.append(member_data)
+        else:  # access_count == 0
+            red_members.append(member_data)
+    
+    return {
+        "success": True,
+        "config": {
+            "days_period": days_period,
+            "green_threshold": green_threshold,
+            "amber_range": f"{amber_min}-{amber_max}",
+            "red_threshold": 0
+        },
+        "summary": {
+            "total_members": len(members),
+            "green_count": len(green_members),
+            "amber_count": len(amber_members),
+            "red_count": len(red_members)
+        },
+        "green_members": green_members,
+        "amber_members": amber_members,
+        "red_members": red_members
+    }
+
+
+@api_router.post("/member-access/generate-mock-data")
+async def generate_mock_access_data(current_user: User = Depends(get_current_user)):
+    """
+    Generate mock access data for testing alert system
+    
+    Creates realistic access patterns for existing members
+    """
+    members = await db.members.find({"membership_status": "active"}).to_list(length=None)
+    
+    if not members:
+        raise HTTPException(status_code=400, detail="No active members found")
+    
+    import random
+    
+    # Clear existing mock data
+    await db.member_access.delete_many({})
+    
+    records_created = 0
+    now = datetime.now(timezone.utc)
+    
+    for member in members:
+        # Randomly assign engagement level
+        engagement_level = random.choices(
+            ['high', 'medium', 'low', 'none'],
+            weights=[0.3, 0.3, 0.25, 0.15]  # 30% high, 30% medium, 25% low, 15% none
+        )[0]
+        
+        if engagement_level == 'high':
+            # 12-20 visits in past 30 days
+            num_visits = random.randint(12, 20)
+        elif engagement_level == 'medium':
+            # 2-4 visits in past 30 days
+            num_visits = random.randint(2, 4)
+        elif engagement_level == 'low':
+            # 1 visit in past 30 days
+            num_visits = 1
+        else:  # none
+            num_visits = 0
+        
+        # Generate access records
+        for i in range(num_visits):
+            # Random date in past 30 days
+            days_ago = random.randint(0, 30)
+            hours_ago = random.randint(6, 22)  # Between 6 AM and 10 PM
+            access_date = now - timedelta(days=days_ago, hours=hours_ago)
+            
+            access_record = {
+                "id": str(uuid.uuid4()),
+                "member_id": member["id"],
+                "access_date": access_date.isoformat(),
+                "access_type": random.choice(["check-in", "class", "service"]),
+                "location": "Main Gym"
+            }
+            
+            await db.member_access.insert_one(access_record)
+            records_created += 1
+    
+    return {
+        "success": True,
+        "message": f"Generated {records_created} mock access records for {len(members)} members"
+    }
+
+
 # Include the router in the main app (must be after all route definitions)
 app.include_router(api_router)
 
