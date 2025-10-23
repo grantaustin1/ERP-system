@@ -797,7 +797,7 @@ export default function Dashboard() {
                 ) : (
                   <>
                     {/* Members Detail View */}
-                    {(selectedStat === 'Total Members' || selectedStat === 'Active Members' || selectedStat === 'Blocked Members') && (
+                    {(selectedStat === 'Total Members' || selectedStat === 'Active Members' || selectedStat === 'Blocked Members') && !selectedDetailItem && (
                       <div className="space-y-2">
                         <div className="bg-slate-700/50 p-3 rounded-lg font-semibold grid grid-cols-4 gap-4">
                           <div>Name</div>
@@ -806,7 +806,14 @@ export default function Dashboard() {
                           <div>Status</div>
                         </div>
                         {statDetailData.map(member => (
-                          <div key={member.id} className="bg-slate-700/30 p-3 rounded-lg grid grid-cols-4 gap-4 hover:bg-slate-700/50">
+                          <div 
+                            key={member.id} 
+                            className="bg-slate-700/30 p-3 rounded-lg grid grid-cols-4 gap-4 hover:bg-slate-700/50 cursor-pointer transition-all hover:scale-[1.02]"
+                            onClick={() => {
+                              setSelectedDetailItem(member);
+                              setDetailItemType('member');
+                            }}
+                          >
                             <div>{member.first_name} {member.last_name}</div>
                             <div className="text-sm text-slate-400">{member.email}</div>
                             <div className="text-sm">{member.membership_type || 'N/A'}</div>
@@ -817,6 +824,145 @@ export default function Dashboard() {
                             </div>
                           </div>
                         ))}
+                      </div>
+                    )}
+
+                    {/* Member Profile Detail (Second Level) */}
+                    {detailItemType === 'member' && selectedDetailItem && (
+                      <div className="space-y-4">
+                        <Button 
+                          onClick={() => {
+                            setSelectedDetailItem(null);
+                            setDetailItemType(null);
+                          }}
+                          variant="outline"
+                          className="border-slate-600 text-white mb-4"
+                        >
+                          ← Back to Member List
+                        </Button>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                          {/* Personal Information */}
+                          <Card className="bg-slate-700/50 border-slate-600">
+                            <CardHeader>
+                              <CardTitle className="text-white">Personal Information</CardTitle>
+                            </CardHeader>
+                            <CardContent className="space-y-3">
+                              <div>
+                                <p className="text-xs text-slate-400">Full Name</p>
+                                <p className="text-white font-semibold">{selectedDetailItem.first_name} {selectedDetailItem.last_name}</p>
+                              </div>
+                              <div>
+                                <p className="text-xs text-slate-400">Email</p>
+                                <p className="text-white">{selectedDetailItem.email}</p>
+                              </div>
+                              <div>
+                                <p className="text-xs text-slate-400">Phone</p>
+                                <p className="text-white">{selectedDetailItem.phone || 'N/A'}</p>
+                              </div>
+                              <div>
+                                <p className="text-xs text-slate-400">ID Number</p>
+                                <p className="text-white">{selectedDetailItem.id_number || 'N/A'}</p>
+                              </div>
+                              <div>
+                                <p className="text-xs text-slate-400">Date of Birth</p>
+                                <p className="text-white">
+                                  {selectedDetailItem.date_of_birth 
+                                    ? new Date(selectedDetailItem.date_of_birth).toLocaleDateString() 
+                                    : 'N/A'}
+                                </p>
+                              </div>
+                            </CardContent>
+                          </Card>
+
+                          {/* Membership Information */}
+                          <Card className="bg-slate-700/50 border-slate-600">
+                            <CardHeader>
+                              <CardTitle className="text-white">Membership Details</CardTitle>
+                            </CardHeader>
+                            <CardContent className="space-y-3">
+                              <div>
+                                <p className="text-xs text-slate-400">Membership Type</p>
+                                <p className="text-white font-semibold">{selectedDetailItem.membership_type || 'N/A'}</p>
+                              </div>
+                              <div>
+                                <p className="text-xs text-slate-400">Status</p>
+                                <Badge className={selectedDetailItem.status === 'active' ? 'bg-green-500' : 'bg-red-500'}>
+                                  {selectedDetailItem.status}
+                                </Badge>
+                              </div>
+                              <div>
+                                <p className="text-xs text-slate-400">Join Date</p>
+                                <p className="text-white">
+                                  {selectedDetailItem.join_date 
+                                    ? new Date(selectedDetailItem.join_date).toLocaleDateString() 
+                                    : 'N/A'}
+                                </p>
+                              </div>
+                              <div>
+                                <p className="text-xs text-slate-400">Contract End Date</p>
+                                <p className="text-white">
+                                  {selectedDetailItem.contract_end_date 
+                                    ? new Date(selectedDetailItem.contract_end_date).toLocaleDateString() 
+                                    : 'N/A'}
+                                </p>
+                              </div>
+                              <div>
+                                <p className="text-xs text-slate-400">Membership Number</p>
+                                <p className="text-white font-mono">{selectedDetailItem.membership_number || 'N/A'}</p>
+                              </div>
+                            </CardContent>
+                          </Card>
+
+                          {/* Financial Information */}
+                          <Card className="bg-slate-700/50 border-slate-600">
+                            <CardHeader>
+                              <CardTitle className="text-white">Financial Summary</CardTitle>
+                            </CardHeader>
+                            <CardContent className="space-y-3">
+                              <div>
+                                <p className="text-xs text-slate-400">Total Debt</p>
+                                <p className="text-red-400 font-bold text-xl">
+                                  R {selectedDetailItem.total_debt?.toFixed(2) || '0.00'}
+                                </p>
+                              </div>
+                              <div>
+                                <p className="text-xs text-slate-400">Total Payments</p>
+                                <p className="text-green-400 font-semibold">
+                                  R {selectedDetailItem.total_payments?.toFixed(2) || '0.00'}
+                                </p>
+                              </div>
+                              <div>
+                                <p className="text-xs text-slate-400">Account Balance</p>
+                                <p className={`font-semibold ${(selectedDetailItem.total_debt || 0) > 0 ? 'text-red-400' : 'text-green-400'}`}>
+                                  R {((selectedDetailItem.total_payments || 0) - (selectedDetailItem.total_debt || 0)).toFixed(2)}
+                                </p>
+                              </div>
+                            </CardContent>
+                          </Card>
+
+                          {/* Additional Information */}
+                          <Card className="bg-slate-700/50 border-slate-600">
+                            <CardHeader>
+                              <CardTitle className="text-white">Additional Details</CardTitle>
+                            </CardHeader>
+                            <CardContent className="space-y-3">
+                              <div>
+                                <p className="text-xs text-slate-400">Emergency Contact</p>
+                                <p className="text-white">{selectedDetailItem.emergency_contact_name || 'N/A'}</p>
+                                <p className="text-sm text-slate-400">{selectedDetailItem.emergency_contact_phone || ''}</p>
+                              </div>
+                              <div>
+                                <p className="text-xs text-slate-400">Medical Conditions</p>
+                                <p className="text-white">{selectedDetailItem.medical_conditions || 'None reported'}</p>
+                              </div>
+                              <div>
+                                <p className="text-xs text-slate-400">Notes</p>
+                                <p className="text-white text-sm">{selectedDetailItem.notes || 'No notes'}</p>
+                              </div>
+                            </CardContent>
+                          </Card>
+                        </div>
                       </div>
                     )}
 
