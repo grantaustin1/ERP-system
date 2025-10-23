@@ -250,6 +250,94 @@ export default function Members() {
     setQrDialogOpen(true);
   };
 
+  // Profile dialog functions
+  const fetchMemberProfile = async (memberId) => {
+    setProfileLoading(true);
+    try {
+      const [profileRes, accessLogsRes, bookingsRes, invoicesRes, notesRes] = await Promise.all([
+        axios.get(`${API}/members/${memberId}/profile`),
+        axios.get(`${API}/members/${memberId}/access-logs?limit=20`),
+        axios.get(`${API}/members/${memberId}/bookings?limit=20`),
+        axios.get(`${API}/members/${memberId}/invoices?limit=20`),
+        axios.get(`${API}/members/${memberId}/notes`)
+      ]);
+      
+      setProfileData(profileRes.data);
+      setAccessLogs(accessLogsRes.data);
+      setBookings(bookingsRes.data);
+      setInvoices(invoicesRes.data);
+      setNotes(notesRes.data);
+      setEditedMember(profileRes.data.member);
+    } catch (error) {
+      console.error('Error fetching profile:', error);
+      toast.error('Failed to load member profile');
+    } finally {
+      setProfileLoading(false);
+    }
+  };
+
+  const handleEditMember = () => {
+    setIsEditing(true);
+  };
+
+  const handleCancelEdit = () => {
+    setIsEditing(false);
+    if (profileData) {
+      setEditedMember(profileData.member);
+    }
+  };
+
+  const handleSaveEdit = async () => {
+    try {
+      await axios.put(`${API}/members/${editedMember.id}`, editedMember);
+      toast.success('Member updated successfully');
+      setIsEditing(false);
+      await fetchMemberProfile(editedMember.id);
+      fetchMembers(); // Refresh the main members list
+    } catch (error) {
+      console.error('Error updating member:', error);
+      toast.error('Failed to update member');
+    }
+  };
+
+  const handleAddNote = async () => {
+    if (!newNoteContent.trim()) {
+      toast.error('Note content cannot be empty');
+      return;
+    }
+
+    try {
+      await axios.post(`${API}/members/${selectedMemberForProfile.id}/notes`, {
+        content: newNoteContent
+      });
+      toast.success('Note added successfully');
+      setNewNoteContent('');
+      const notesRes = await axios.get(`${API}/members/${selectedMemberForProfile.id}/notes`);
+      setNotes(notesRes.data);
+    } catch (error) {
+      console.error('Error adding note:', error);
+      toast.error('Failed to add note');
+    }
+  };
+
+  const handleDeleteNote = async (noteId) => {
+    try {
+      await axios.delete(`${API}/members/${selectedMemberForProfile.id}/notes/${noteId}`);
+      toast.success('Note deleted successfully');
+      const notesRes = await axios.get(`${API}/members/${selectedMemberForProfile.id}/notes`);
+      setNotes(notesRes.data);
+    } catch (error) {
+      console.error('Error deleting note:', error);
+      toast.error('Failed to delete note');
+    }
+  };
+
+  useEffect(() => {
+    if (selectedMemberForProfile && profileDialogOpen) {
+      fetchMemberProfile(selectedMemberForProfile.id);
+    }
+  }, [selectedMemberForProfile, profileDialogOpen]);
+
   // Search and filter logic
   const filteredMembers = members.filter((member) => {
     // Search query filter (name, email, phone, ID)
