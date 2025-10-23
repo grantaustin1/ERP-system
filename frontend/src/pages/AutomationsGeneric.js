@@ -187,6 +187,8 @@ function AutomationsGeneric() {
   const [showDialog, setShowDialog] = useState(false);
   const [editingAutomation, setEditingAutomation] = useState(null);
   const [selectedTemplate, setSelectedTemplate] = useState(null);
+  const [notificationTemplates, setNotificationTemplates] = useState([]);
+  const [useTemplate, setUseTemplate] = useState(false);
 
   const [formData, setFormData] = useState({
     name: '',
@@ -200,6 +202,7 @@ function AutomationsGeneric() {
 
   useEffect(() => {
     fetchAutomations();
+    fetchNotificationTemplates();
   }, []);
 
   useEffect(() => {
