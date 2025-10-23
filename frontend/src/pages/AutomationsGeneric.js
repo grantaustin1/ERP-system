@@ -270,11 +270,19 @@ function AutomationsGeneric() {
       const token = localStorage.getItem('token');
       
       // Build actions array based on template and form data
-      const actions = [{
+      const action = {
         type: formData.action_type,
-        delay_minutes: parseInt(formData.parameters.delay_minutes || 0),
-        message: formData.message
-      }];
+        delay_minutes: parseInt(formData.parameters.delay_minutes || 0)
+      };
+      
+      // Add either template_id or inline message
+      if (useTemplate && formData.template_id) {
+        action.template_id = formData.template_id;
+      } else {
+        action.message = formData.message;
+      }
+      
+      const actions = [action];
 
       const automationData = {
         name: formData.name,
