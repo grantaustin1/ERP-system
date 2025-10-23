@@ -55,6 +55,15 @@ function Classes() {
   });
 
   const [memberSearchOpen, setMemberSearchOpen] = useState(false);
+  
+  // Separate date/time fields for auto-advance
+  const [dateFields, setDateFields] = useState({
+    year: '',
+    month: '',
+    day: '',
+    hour: '',
+    minute: ''
+  });
 
   const API_URL = process.env.REACT_APP_BACKEND_URL;
 
