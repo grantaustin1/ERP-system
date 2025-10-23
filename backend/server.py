@@ -7279,6 +7279,462 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
+# ============================================================================
+# AVS (Account Verification Service) Endpoints
+# ============================================================================
+
+from avs_utils import AVSService
+
+@api_router.get("/avs/config")
+async def get_avs_config(current_user: User = Depends(get_current_user)):
+    """Get AVS configuration settings"""
+    config = await db.avs_config.find_one({})
+    if not config:
+        # Return default/placeholder config
+        return {
+            "id": "default",
+            "profile_number": "0000000000",
+            "profile_user_number": "00000",
+            "charge_account": "0000000000",
+            "mock_mode": True,
+            "use_qa": True,
+            "enable_auto_verify": False,
+            "verify_on_update": False,
+            "is_configured": False
+        }
+    
+    config.pop("_id", None)
+    config["is_configured"] = True
+    return config
+
+
+@api_router.post("/avs/config")
+async def create_or_update_avs_config(
+    data: AVSConfigUpdate,
+    current_user: User = Depends(get_current_user)
+):
+    """Create or update AVS configuration"""
+    existing = await db.avs_config.find_one({})
+    
+    if existing:
+        # Update existing config
+        update_data = {k: v for k, v in data.dict(exclude_unset=True).items() if v is not None}
+        update_data["updated_at"] = datetime.now(timezone.utc).isoformat()
+        
+        await db.avs_config.update_one(
+            {"id": existing["id"]},
+            {"$set": update_data}
+        )
+        
+        updated = await db.avs_config.find_one({"id": existing["id"]})
+        updated.pop("_id", None)
+        return updated
+    else:
+        # Create new config
+        config = AVSConfig(**data.dict(exclude_unset=True))
+        config_dict = config.dict()
+        config_dict["created_at"] = config_dict["created_at"].isoformat()
+        if config_dict.get("updated_at"):
+            config_dict["updated_at"] = config_dict["updated_at"].isoformat()
+        
+        await db.avs_config.insert_one(config_dict)
+        config_dict.pop("_id", None)
+        return config_dict
+
+
+@api_router.post("/avs/verify")
+async def verify_account(
+    request: AVSVerificationRequest,
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Verify a single bank account using Nedbank AVS service
+    
+    Returns verification results including account existence, ownership match,
+    account status, and ability to accept debits/credits.
+    """
+    # Get AVS config
+    config = await db.avs_config.find_one({})
+    if not config:
+        raise HTTPException(
+            status_code=400,
+            detail="AVS not configured. Please configure AVS settings first."
+        )
+    
+    # Initialize AVS service
+    avs_config = {
+        "mock_mode": config.get("mock_mode", True),
+        "profile_number": config.get("profile_number", "0000000000"),
+        "profile_user_number": config.get("profile_user_number", "00000"),
+        "charge_account": config.get("charge_account", "0000000000"),
+        "use_qa": config.get("use_qa", True)
+    }
+    
+    avs_service = AVSService(avs_config)
+    
+    # Prepare verification request
+    verification_data = request.dict()
+    
+    # Perform verification
+    try:
+        result = await avs_service.verify_account([verification_data])
+        
+        if not result.get("verifications"):
+            raise HTTPException(
+                status_code=500,
+                detail="No verification results received"
+            )
+        
+        verification_result = result["verifications"][0]
+        
+        # Get bank name
+        bank_name = AVSService.get_bank_name(request.bank_identifier)
+        
+        # Format summary
+        summary = AVSService.format_verification_summary(verification_result)
+        
+        # Store verification result in database
+        avs_result = AVSVerificationResult(
+            verification_type="manual",
+            bank_identifier=request.bank_identifier,
+            bank_name=bank_name,
+            account_number=request.account_number,
+            sort_code=request.sort_code,
+            identity_number=request.identity_number,
+            identity_type=request.identity_type,
+            initials=request.initials,
+            last_name=request.last_name,
+            result_code=result.get("result_code", "UNKNOWN"),
+            result_code_acct=verification_result.get("result_code_acct", "UNKNOWN"),
+            account_exists=verification_result["verification_results"].get("account_exists", "U"),
+            identification_number_matched=verification_result["verification_results"].get("identification_number_matched", "U"),
+            initials_matched=verification_result["verification_results"].get("initials_matched", "U"),
+            last_name_matched=verification_result["verification_results"].get("last_name_matched", "U"),
+            account_active=verification_result["verification_results"].get("account_active", "U"),
+            account_dormant=verification_result["verification_results"].get("account_dormant", "U"),
+            account_active_3months=verification_result["verification_results"].get("account_active3_months", "U"),
+            can_debit_account=verification_result["verification_results"].get("can_debit_account", "U"),
+            can_credit_account=verification_result["verification_results"].get("can_credit_account", "U"),
+            tax_ref_match=verification_result["verification_results"].get("tax_ref_match", "U"),
+            account_type_match=verification_result["verification_results"].get("account_type_match", "U"),
+            email_id_matched=verification_result["verification_results"].get("email_id_matched", "U"),
+            cell_number_matched=verification_result["verification_results"].get("cell_number_matched", "U"),
+            verification_summary=summary,
+            mock_mode=result.get("mock_mode", False),
+            created_by=current_user.id
+        )
+        
+        # Save to database
+        avs_result_dict = avs_result.dict()
+        avs_result_dict["created_at"] = avs_result_dict["created_at"].isoformat()
+        await db.avs_verifications.insert_one(avs_result_dict)
+        
+        return {
+            "success": True,
+            "result": avs_result.dict(),
+            "summary": summary
+        }
+        
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Account verification failed: {str(e)}"
+        )
+
+
+@api_router.post("/avs/verify-member/{member_id}")
+async def verify_member_account(
+    member_id: str,
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Verify a member's bank account details using AVS
+    
+    Uses the banking details stored in the member's profile.
+    """
+    # Get member
+    member = await db.members.find_one({"id": member_id})
+    if not member:
+        raise HTTPException(status_code=404, detail="Member not found")
+    
+    # Check if member has banking details
+    if not member.get("bank_account_number") or not member.get("bank_branch_code"):
+        raise HTTPException(
+            status_code=400,
+            detail="Member does not have complete banking details"
+        )
+    
+    # Determine bank identifier from branch code
+    # This is a simplified mapping - in production, use proper branch code validation
+    branch_code = member.get("bank_branch_code", "")
+    bank_identifier = "21"  # Default to Nedbank
+    
+    if branch_code:
+        branch_int = int(branch_code) if branch_code.isdigit() else 0
+        if 100000 <= branch_int <= 199999:
+            bank_identifier = "21"  # Nedbank
+        elif 200000 <= branch_int <= 299999:
+            bank_identifier = "05"  # FNB
+        elif 0 <= branch_int <= 99999:
+            bank_identifier = "18"  # Standard Bank
+        elif 630000 <= branch_int <= 659999 or 300000 <= branch_int <= 349999:
+            bank_identifier = "16"  # Absa
+        elif 470000 <= branch_int <= 470999:
+            bank_identifier = "34"  # Capitec
+    
+    # Create verification request
+    verification_request = AVSVerificationRequest(
+        bank_identifier=bank_identifier,
+        account_number=member.get("bank_account_number", ""),
+        sort_code=member.get("bank_branch_code", ""),
+        identity_number=member.get("id_number", ""),
+        identity_type="SID" if member.get("id_type") == "id" else "SPP",
+        initials=member.get("first_name", "")[:1] if member.get("first_name") else None,
+        last_name=member.get("last_name"),
+        email_id=member.get("email"),
+        cell_number=member.get("phone"),
+        customer_reference=member.get("id"),
+        customer_reference2=member.get("first_name", "") + " " + member.get("last_name", "")
+    )
+    
+    # Get AVS config
+    config = await db.avs_config.find_one({})
+    if not config:
+        raise HTTPException(
+            status_code=400,
+            detail="AVS not configured. Please configure AVS settings first."
+        )
+    
+    # Initialize AVS service
+    avs_config = {
+        "mock_mode": config.get("mock_mode", True),
+        "profile_number": config.get("profile_number", "0000000000"),
+        "profile_user_number": config.get("profile_user_number", "00000"),
+        "charge_account": config.get("charge_account", "0000000000"),
+        "use_qa": config.get("use_qa", True)
+    }
+    
+    avs_service = AVSService(avs_config)
+    
+    # Perform verification
+    try:
+        result = await avs_service.verify_account([verification_request.dict()])
+        
+        if not result.get("verifications"):
+            raise HTTPException(
+                status_code=500,
+                detail="No verification results received"
+            )
+        
+        verification_result = result["verifications"][0]
+        
+        # Get bank name
+        bank_name = AVSService.get_bank_name(bank_identifier)
+        
+        # Format summary
+        summary = AVSService.format_verification_summary(verification_result)
+        
+        # Store verification result
+        avs_result = AVSVerificationResult(
+            member_id=member_id,
+            verification_type="member_verification",
+            bank_identifier=bank_identifier,
+            bank_name=bank_name,
+            account_number=verification_request.account_number,
+            sort_code=verification_request.sort_code,
+            identity_number=verification_request.identity_number,
+            identity_type=verification_request.identity_type,
+            initials=verification_request.initials,
+            last_name=verification_request.last_name,
+            result_code=result.get("result_code", "UNKNOWN"),
+            result_code_acct=verification_result.get("result_code_acct", "UNKNOWN"),
+            account_exists=verification_result["verification_results"].get("account_exists", "U"),
+            identification_number_matched=verification_result["verification_results"].get("identification_number_matched", "U"),
+            initials_matched=verification_result["verification_results"].get("initials_matched", "U"),
+            last_name_matched=verification_result["verification_results"].get("last_name_matched", "U"),
+            account_active=verification_result["verification_results"].get("account_active", "U"),
+            account_dormant=verification_result["verification_results"].get("account_dormant", "U"),
+            account_active_3months=verification_result["verification_results"].get("account_active3_months", "U"),
+            can_debit_account=verification_result["verification_results"].get("can_debit_account", "U"),
+            can_credit_account=verification_result["verification_results"].get("can_credit_account", "U"),
+            tax_ref_match=verification_result["verification_results"].get("tax_ref_match", "U"),
+            account_type_match=verification_result["verification_results"].get("account_type_match", "U"),
+            email_id_matched=verification_result["verification_results"].get("email_id_matched", "U"),
+            cell_number_matched=verification_result["verification_results"].get("cell_number_matched", "U"),
+            verification_summary=summary,
+            mock_mode=result.get("mock_mode", False),
+            created_by=current_user.id
+        )
+        
+        # Save to database
+        avs_result_dict = avs_result.dict()
+        avs_result_dict["created_at"] = avs_result_dict["created_at"].isoformat()
+        await db.avs_verifications.insert_one(avs_result_dict)
+        
+        return {
+            "success": True,
+            "member_id": member_id,
+            "member_name": f"{member.get('first_name', '')} {member.get('last_name', '')}",
+            "result": avs_result.dict(),
+            "summary": summary
+        }
+        
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Member account verification failed: {str(e)}"
+        )
+
+
+@api_router.post("/avs/batch-verify")
+async def batch_verify_accounts(
+    request: AVSBatchVerificationRequest,
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Verify multiple bank accounts in a single batch (up to 40 accounts)
+    
+    Useful for bulk verification or CSV imports.
+    """
+    if len(request.verifications) > 40:
+        raise HTTPException(
+            status_code=400,
+            detail="Maximum 40 accounts can be verified in a single batch"
+        )
+    
+    # Get AVS config
+    config = await db.avs_config.find_one({})
+    if not config:
+        raise HTTPException(
+            status_code=400,
+            detail="AVS not configured. Please configure AVS settings first."
+        )
+    
+    # Initialize AVS service
+    avs_config = {
+        "mock_mode": config.get("mock_mode", True),
+        "profile_number": config.get("profile_number", "0000000000"),
+        "profile_user_number": config.get("profile_user_number", "00000"),
+        "charge_account": config.get("charge_account", "0000000000"),
+        "use_qa": config.get("use_qa", True)
+    }
+    
+    avs_service = AVSService(avs_config)
+    
+    # Prepare verification requests
+    verification_data = [v.dict() for v in request.verifications]
+    
+    # Perform batch verification
+    try:
+        result = await avs_service.verify_account(verification_data)
+        
+        if not result.get("verifications"):
+            raise HTTPException(
+                status_code=500,
+                detail="No verification results received"
+            )
+        
+        # Store all verification results
+        stored_results = []
+        for verification_result in result["verifications"]:
+            bank_identifier = verification_result.get("bank_identifier", "21")
+            bank_name = AVSService.get_bank_name(bank_identifier)
+            
+            avs_result = AVSVerificationResult(
+                verification_type="batch",
+                bank_identifier=bank_identifier,
+                bank_name=bank_name,
+                account_number=verification_result.get("account_number", ""),
+                sort_code=verification_result.get("sort_code", ""),
+                identity_number=verification_result.get("identity_number", ""),
+                identity_type=verification_result.get("identity_type", "SID"),
+                initials=verification_result.get("initials"),
+                last_name=verification_result.get("last_name"),
+                result_code=result.get("result_code", "UNKNOWN"),
+                result_code_acct=verification_result.get("result_code_acct", "UNKNOWN"),
+                account_exists=verification_result["verification_results"].get("account_exists", "U"),
+                identification_number_matched=verification_result["verification_results"].get("identification_number_matched", "U"),
+                initials_matched=verification_result["verification_results"].get("initials_matched", "U"),
+                last_name_matched=verification_result["verification_results"].get("last_name_matched", "U"),
+                account_active=verification_result["verification_results"].get("account_active", "U"),
+                account_dormant=verification_result["verification_results"].get("account_dormant", "U"),
+                account_active_3months=verification_result["verification_results"].get("account_active3_months", "U"),
+                can_debit_account=verification_result["verification_results"].get("can_debit_account", "U"),
+                can_credit_account=verification_result["verification_results"].get("can_credit_account", "U"),
+                tax_ref_match=verification_result["verification_results"].get("tax_ref_match", "U"),
+                account_type_match=verification_result["verification_results"].get("account_type_match", "U"),
+                email_id_matched=verification_result["verification_results"].get("email_id_matched", "U"),
+                cell_number_matched=verification_result["verification_results"].get("cell_number_matched", "U"),
+                verification_summary=AVSService.format_verification_summary(verification_result),
+                mock_mode=result.get("mock_mode", False),
+                created_by=current_user.id
+            )
+            
+            # Save to database
+            avs_result_dict = avs_result.dict()
+            avs_result_dict["created_at"] = avs_result_dict["created_at"].isoformat()
+            await db.avs_verifications.insert_one(avs_result_dict)
+            
+            stored_results.append(avs_result.dict())
+        
+        return {
+            "success": True,
+            "total_verified": len(stored_results),
+            "results": stored_results
+        }
+        
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Batch verification failed: {str(e)}"
+        )
+
+
+@api_router.get("/avs/verifications")
+async def get_verification_history(
+    member_id: Optional[str] = None,
+    limit: int = 50,
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Get verification history
+    
+    Optionally filter by member_id to see all verifications for a specific member.
+    """
+    query = {}
+    if member_id:
+        query["member_id"] = member_id
+    
+    verifications = await db.avs_verifications.find(query).sort("created_at", -1).limit(limit).to_list(length=None)
+    
+    for v in verifications:
+        v.pop("_id", None)
+    
+    return {
+        "success": True,
+        "count": len(verifications),
+        "verifications": verifications
+    }
+
+
+@api_router.get("/avs/banks")
+async def get_participating_banks(current_user: User = Depends(get_current_user)):
+    """Get list of participating banks for AVS"""
+    banks = []
+    for bank_id, bank_info in AVSService.PARTICIPATING_BANKS.items():
+        banks.append({
+            "bank_identifier": bank_id,
+            "bank_name": bank_info["name"],
+            "universal_branch": bank_info["universal_branch"]
+        })
+    
+    return {
+        "success": True,
+        "banks": banks
+    }
+
+
 # Audit Logging Middleware
 @app.middleware("http")
 async def audit_logging_middleware(request, call_next):
