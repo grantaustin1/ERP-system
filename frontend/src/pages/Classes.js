@@ -248,6 +248,17 @@ function Classes() {
 
   const handleCreateBooking = async (e) => {
     e.preventDefault();
+    
+    // Debug: Log the booking form data
+    console.log('Submitting booking:', bookingForm);
+    console.log('Date fields:', dateFields);
+    
+    // Validate booking_date is present
+    if (!bookingForm.booking_date) {
+      alert('Please fill in all date and time fields');
+      return;
+    }
+    
     try {
       const token = localStorage.getItem('token');
       const response = await fetch(`${API_URL}/api/bookings`, {
@@ -270,7 +281,7 @@ function Classes() {
       }
     } catch (error) {
       console.error('Error creating booking:', error);
-      alert('Failed to create booking');
+      alert(`Failed to create booking: ${error.message}`);
     }
   };
 
