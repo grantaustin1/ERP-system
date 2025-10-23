@@ -468,6 +468,7 @@ class PaymentOption(BaseModel):
     display_order: int = 0  # For sorting payment options
     is_default: bool = False  # Default selected option
     is_active: bool = True
+    is_levy: bool = False  # Indicates if this payment option is for a levy
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 class PaymentOptionCreate(BaseModel):
