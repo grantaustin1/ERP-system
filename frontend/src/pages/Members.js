@@ -756,7 +756,15 @@ export default function Members() {
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {filteredMembers.map((member) => (
-                <Card key={member.id} className="bg-slate-800/50 border-slate-700 backdrop-blur-lg hover:bg-slate-800/70 transition-all" data-testid={`member-card-${member.id}`}>
+                <Card 
+                  key={member.id} 
+                  className="bg-slate-800/50 border-slate-700 backdrop-blur-lg hover:bg-slate-800/70 transition-all cursor-pointer hover:scale-105 hover:shadow-xl" 
+                  data-testid={`member-card-${member.id}`}
+                  onClick={() => {
+                    setSelectedMemberForProfile(member);
+                    setProfileDialogOpen(true);
+                  }}
+                >
                   <CardHeader>
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
