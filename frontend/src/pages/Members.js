@@ -23,6 +23,9 @@ export default function Members() {
   const [selectedMember, setSelectedMember] = useState(null);
   const [avsVerifying, setAvsVerifying] = useState(false);
   const [avsResult, setAvsResult] = useState(null);
+  // Profile drill-down state
+  const [profileDialogOpen, setProfileDialogOpen] = useState(false);
+  const [selectedMemberForProfile, setSelectedMemberForProfile] = useState(null);
   // Search and filter states
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
