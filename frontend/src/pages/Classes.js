@@ -389,16 +389,56 @@ function Classes() {
   const openBookingDialog = (classItem) => {
     setSelectedClass(classItem);
     
-    // Parse the class date/time and populate the date fields
+    let targetDate;
+    
+    // Calculate the next available date/time for this class
     if (classItem.class_date) {
-      const classDate = new Date(classItem.class_date);
+      // One-time class - use the specific date
+      targetDate = new Date(classItem.class_date);
+    } else if (classItem.is_recurring && classItem.day_of_week && classItem.start_time) {
+      // Recurring class - calculate next occurrence
+      const daysOfWeek = {
+        'Monday': 1,
+        'Tuesday': 2,
+        'Wednesday': 3,
+        'Thursday': 4,
+        'Friday': 5,
+        'Saturday': 6,
+        'Sunday': 0
+      };
       
-      // Format with leading zeros
-      const year = classDate.getFullYear().toString();
-      const month = (classDate.getMonth() + 1).toString().padStart(2, '0');
-      const day = classDate.getDate().toString().padStart(2, '0');
-      const hour = classDate.getHours().toString().padStart(2, '0');
-      const minute = classDate.getMinutes().toString().padStart(2, '0');
+      const today = new Date();
+      const targetDayOfWeek = daysOfWeek[classItem.day_of_week];
+      const currentDayOfWeek = today.getDay();
+      
+      // Calculate days until next occurrence
+      let daysUntil = targetDayOfWeek - currentDayOfWeek;
+      if (daysUntil < 0) {
+        daysUntil += 7; // Next week
+      } else if (daysUntil === 0) {
+        // Same day - check if time has passed
+        const [hours, minutes] = classItem.start_time.split(':').map(Number);
+        if (today.getHours() > hours || (today.getHours() === hours && today.getMinutes() >= minutes)) {
+          daysUntil = 7; // Next week
+        }
+      }
+      
+      // Create target date
+      targetDate = new Date(today);
+      targetDate.setDate(today.getDate() + daysUntil);
+      
+      // Set the time from start_time
+      const [hours, minutes] = classItem.start_time.split(':').map(Number);
+      targetDate.setHours(hours, minutes, 0, 0);
+    }
+    
+    // Populate date fields if we have a target date
+    if (targetDate) {
+      const year = targetDate.getFullYear().toString();
+      const month = (targetDate.getMonth() + 1).toString().padStart(2, '0');
+      const day = targetDate.getDate().toString().padStart(2, '0');
+      const hour = targetDate.getHours().toString().padStart(2, '0');
+      const minute = targetDate.getMinutes().toString().padStart(2, '0');
       
       // Set the date fields
       setDateFields({
