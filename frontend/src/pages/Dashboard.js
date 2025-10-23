@@ -157,6 +157,174 @@ export default function Dashboard() {
               </CardContent>
             </Card>
           </div>
+
+          {/* Member Engagement Alerts */}
+          <div className="mt-8">
+            <Card className="bg-slate-800/50 border-slate-700 backdrop-blur-lg">
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="text-white">Member Engagement Alerts</CardTitle>
+                    <CardDescription className="text-slate-400">
+                      Track member activity based on {alertData?.config?.days_period || 30}-day access patterns
+                    </CardDescription>
+                  </div>
+                  <Button 
+                    onClick={generateMockData}
+                    disabled={generatingMockData}
+                    size="sm"
+                    variant="outline"
+                    className="border-slate-600 text-slate-300"
+                  >
+                    {generatingMockData ? (
+                      <>
+                        <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                        Generating...
+                      </>
+                    ) : (
+                      'Generate Mock Data'
+                    )}
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {alertsLoading ? (
+                  <div className="text-center text-slate-400 py-8">Loading engagement data...</div>
+                ) : (
+                  <>
+                    {/* Alert Summary */}
+                    <div className="grid grid-cols-3 gap-4 mb-6">
+                      <div className="bg-green-500/10 border border-green-500/30 rounded-lg p-4">
+                        <div className="flex items-center gap-2 mb-2">
+                          <CheckCircle className="w-5 h-5 text-green-400" />
+                          <span className="text-sm text-green-400 font-semibold">Highly Engaged</span>
+                        </div>
+                        <div className="text-3xl font-bold text-white">{alertData?.summary?.green_count || 0}</div>
+                        <p className="text-xs text-slate-400 mt-1">≥ {alertData?.config?.green_threshold} visits</p>
+                      </div>
+
+                      <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-4">
+                        <div className="flex items-center gap-2 mb-2">
+                          <AlertTriangle className="w-5 h-5 text-amber-400" />
+                          <span className="text-sm text-amber-400 font-semibold">Moderately Engaged</span>
+                        </div>
+                        <div className="text-3xl font-bold text-white">{alertData?.summary?.amber_count || 0}</div>
+                        <p className="text-xs text-slate-400 mt-1">{alertData?.config?.amber_range} visits</p>
+                      </div>
+
+                      <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4">
+                        <div className="flex items-center gap-2 mb-2">
+                          <AlertCircle className="w-5 h-5 text-red-400" />
+                          <span className="text-sm text-red-400 font-semibold">At Risk</span>
+                        </div>
+                        <div className="text-3xl font-bold text-white">{alertData?.summary?.red_count || 0}</div>
+                        <p className="text-xs text-slate-400 mt-1">0 visits</p>
+                      </div>
+                    </div>
+
+                    {/* Member Lists by Alert Level */}
+                    <Tabs defaultValue="green" className="w-full">
+                      <TabsList className="grid w-full grid-cols-3 bg-slate-700/50">
+                        <TabsTrigger value="green" className="data-[state=active]:bg-green-500">
+                          <CheckCircle className="w-4 h-4 mr-2" />
+                          Green ({alertData?.summary?.green_count || 0})
+                        </TabsTrigger>
+                        <TabsTrigger value="amber" className="data-[state=active]:bg-amber-500">
+                          <AlertTriangle className="w-4 h-4 mr-2" />
+                          Amber ({alertData?.summary?.amber_count || 0})
+                        </TabsTrigger>
+                        <TabsTrigger value="red" className="data-[state=active]:bg-red-500">
+                          <AlertCircle className="w-4 h-4 mr-2" />
+                          Red ({alertData?.summary?.red_count || 0})
+                        </TabsTrigger>
+                      </TabsList>
+
+                      <TabsContent value="green" className="mt-4">
+                        <div className="space-y-2 max-h-96 overflow-y-auto">
+                          {alertData?.green_members?.length > 0 ? (
+                            alertData.green_members.map((member) => (
+                              <div key={member.id} className="flex items-center justify-between p-3 bg-green-500/5 border border-green-500/20 rounded-lg">
+                                <div className="flex-1">
+                                  <div className="font-medium text-white">
+                                    {member.first_name} {member.last_name}
+                                  </div>
+                                  <div className="text-sm text-slate-400">{member.email}</div>
+                                </div>
+                                <div className="text-right">
+                                  <Badge className="bg-green-500/20 text-green-400 border-green-500/50">
+                                    {member.access_count} visits
+                                  </Badge>
+                                  <div className="text-xs text-slate-400 mt-1">
+                                    Last: {member.days_since_last_access} days ago
+                                  </div>
+                                </div>
+                              </div>
+                            ))
+                          ) : (
+                            <div className="text-center text-slate-400 py-8">No members in this category</div>
+                          )}
+                        </div>
+                      </TabsContent>
+
+                      <TabsContent value="amber" className="mt-4">
+                        <div className="space-y-2 max-h-96 overflow-y-auto">
+                          {alertData?.amber_members?.length > 0 ? (
+                            alertData.amber_members.map((member) => (
+                              <div key={member.id} className="flex items-center justify-between p-3 bg-amber-500/5 border border-amber-500/20 rounded-lg">
+                                <div className="flex-1">
+                                  <div className="font-medium text-white">
+                                    {member.first_name} {member.last_name}
+                                  </div>
+                                  <div className="text-sm text-slate-400">{member.email}</div>
+                                </div>
+                                <div className="text-right">
+                                  <Badge className="bg-amber-500/20 text-amber-400 border-amber-500/50">
+                                    {member.access_count} visits
+                                  </Badge>
+                                  <div className="text-xs text-slate-400 mt-1">
+                                    Last: {member.days_since_last_access} days ago
+                                  </div>
+                                </div>
+                              </div>
+                            ))
+                          ) : (
+                            <div className="text-center text-slate-400 py-8">No members in this category</div>
+                          )}
+                        </div>
+                      </TabsContent>
+
+                      <TabsContent value="red" className="mt-4">
+                        <div className="space-y-2 max-h-96 overflow-y-auto">
+                          {alertData?.red_members?.length > 0 ? (
+                            alertData.red_members.map((member) => (
+                              <div key={member.id} className="flex items-center justify-between p-3 bg-red-500/5 border border-red-500/20 rounded-lg">
+                                <div className="flex-1">
+                                  <div className="font-medium text-white">
+                                    {member.first_name} {member.last_name}
+                                  </div>
+                                  <div className="text-sm text-slate-400">{member.email}</div>
+                                </div>
+                                <div className="text-right">
+                                  <Badge className="bg-red-500/20 text-red-400 border-red-500/50">
+                                    0 visits
+                                  </Badge>
+                                  <div className="text-xs text-slate-400 mt-1">
+                                    No activity in {alertData?.config?.days_period} days
+                                  </div>
+                                </div>
+                              </div>
+                            ))
+                          ) : (
+                            <div className="text-center text-slate-400 py-8">No members in this category</div>
+                          )}
+                        </div>
+                      </TabsContent>
+                    </Tabs>
+                  </>
+                )}
+              </CardContent>
+            </Card>
+          </div>
         </div>
       </div>
     </div>
