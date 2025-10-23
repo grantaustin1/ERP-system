@@ -255,7 +255,12 @@ export default function Dashboard() {
               {statCards.map((stat, index) => {
                 const Icon = stat.icon;
                 return (
-                  <Card key={index} className="bg-slate-800/50 border-slate-700 backdrop-blur-lg hover:bg-slate-800/70 transition-all duration-300" data-testid={`stat-card-${index}`}>
+                  <Card 
+                    key={index} 
+                    className="bg-slate-800/50 border-slate-700 backdrop-blur-lg hover:bg-slate-800/70 transition-all duration-300 cursor-pointer hover:scale-105 hover:shadow-xl" 
+                    data-testid={`stat-card-${index}`}
+                    onClick={() => fetchStatDetails(stat.title)}
+                  >
                     <CardHeader className="flex flex-row items-center justify-between pb-2">
                       <CardTitle className="text-sm font-medium text-slate-400">{stat.title}</CardTitle>
                       <div className={`w-10 h-10 rounded-lg bg-gradient-to-br ${stat.color} flex items-center justify-center`}>
@@ -264,6 +269,7 @@ export default function Dashboard() {
                     </CardHeader>
                     <CardContent>
                       <div className="text-3xl font-bold text-white">{stat.value}</div>
+                      <p className="text-xs text-slate-400 mt-2">Click to view details →</p>
                     </CardContent>
                   </Card>
                 );
