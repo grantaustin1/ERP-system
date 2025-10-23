@@ -1027,6 +1027,27 @@ class MemberAccess(BaseModel):
     notes: Optional[str] = None
 
 
+class NotificationTemplate(BaseModel):
+    """Template for member notifications"""
+    model_config = ConfigDict(extra="ignore")
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    name: str
+    category: str  # green_alert, amber_alert, red_alert, general
+    channels: List[str] = []  # whatsapp, email, sms, push
+    subject: Optional[str] = None  # For email
+    message: str  # Template with placeholders: {first_name}, {last_name}, {visit_count}, {days_since_last_visit}
+    is_active: bool = True
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+class BulkNotificationRequest(BaseModel):
+    """Request to send bulk notification"""
+    template_id: str
+    alert_level: str  # green, amber, red
+    channels: List[str]  # whatsapp, email, sms, push
+    member_ids: Optional[List[str]] = None  # If empty, send to all members in alert level
+
+
 class Automation(BaseModel):
     model_config = ConfigDict(extra="ignore")
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
