@@ -37,6 +37,8 @@ export default function Dashboard() {
   // Stat card drill-down state
   const [selectedStat, setSelectedStat] = useState(null);
   const [statDetailData, setStatDetailData] = useState(null);
+  const [selectedDetailItem, setSelectedDetailItem] = useState(null); // Second level drill-down
+  const [detailItemType, setDetailItemType] = useState(null); // member, invoice, access
   
   const navigate = useNavigate();
 
