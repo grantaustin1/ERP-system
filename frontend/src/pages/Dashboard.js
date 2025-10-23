@@ -301,6 +301,19 @@ export default function Dashboard() {
                       </TabsList>
 
                       <TabsContent value="green" className="mt-4">
+                        <div className="flex justify-between items-center mb-4">
+                          <p className="text-sm text-slate-400">
+                            {alertData?.green_members?.length || 0} highly engaged members
+                          </p>
+                          <Button
+                            onClick={() => openNotificationDialog('green')}
+                            size="sm"
+                            className="bg-green-600 hover:bg-green-700"
+                          >
+                            <Send className="w-4 h-4 mr-2" />
+                            Send Notification
+                          </Button>
+                        </div>
                         <div className="space-y-2 max-h-96 overflow-y-auto">
                           {alertData?.green_members?.length > 0 ? (
                             alertData.green_members.map((member) => (
