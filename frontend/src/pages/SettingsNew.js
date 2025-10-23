@@ -777,4 +777,127 @@ export default function SettingsNew() {
       </div>
     );
   }
+
+  function renderAvsSettings() {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-start gap-3 bg-emerald-500/10 border border-emerald-500/30 rounded-lg p-4">
+          <CheckSquare className="w-6 h-6 text-emerald-400 flex-shrink-0 mt-1" />
+          <div>
+            <h3 className="text-xl font-bold text-emerald-400 mb-2">AVS (Account Verification Service)</h3>
+            <p className="text-sm text-slate-300">
+              Configure Nedbank's Account Verification Service to verify member banking details in real-time before processing debit orders.
+            </p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-6">
+          <div>
+            <Label htmlFor="avs_profile_number" className="text-white">Profile Number</Label>
+            <Input
+              id="avs_profile_number"
+              placeholder="10-digit Nedbank profile number"
+              value={avsSettings.profile_number}
+              onChange={(e) => setAvsSettings({...avsSettings, profile_number: e.target.value})}
+              className="bg-slate-700 text-white border-slate-600"
+            />
+            <p className="text-xs text-slate-400 mt-1">Your Nedbank client profile number</p>
+          </div>
+
+          <div>
+            <Label htmlFor="avs_profile_user_number" className="text-white">Profile User Number</Label>
+            <Input
+              id="avs_profile_user_number"
+              placeholder="8-digit user number"
+              value={avsSettings.profile_user_number}
+              onChange={(e) => setAvsSettings({...avsSettings, profile_user_number: e.target.value})}
+              className="bg-slate-700 text-white border-slate-600"
+            />
+            <p className="text-xs text-slate-400 mt-1">Profile user identifier</p>
+          </div>
+
+          <div>
+            <Label htmlFor="avs_charge_account" className="text-white">Charge Account</Label>
+            <Input
+              id="avs_charge_account"
+              placeholder="Account number for verification fees"
+              value={avsSettings.charge_account}
+              onChange={(e) => setAvsSettings({...avsSettings, charge_account: e.target.value})}
+              className="bg-slate-700 text-white border-slate-600"
+            />
+            <p className="text-xs text-slate-400 mt-1">Account to charge for verification fees</p>
+          </div>
+
+          <div className="space-y-4">
+            <div className="flex items-center justify-between bg-slate-700/50 p-3 rounded-lg">
+              <div>
+                <Label className="text-white">Mock Mode</Label>
+                <p className="text-sm text-slate-400 mt-1">Use test data without actual Nedbank connection</p>
+              </div>
+              <Switch
+                checked={avsSettings.mock_mode}
+                onCheckedChange={(checked) => setAvsSettings({...avsSettings, mock_mode: checked})}
+              />
+            </div>
+
+            <div className="flex items-center justify-between bg-slate-700/50 p-3 rounded-lg">
+              <div>
+                <Label className="text-white">Use QA Environment</Label>
+                <p className="text-sm text-slate-400 mt-1">Connect to QA instead of production</p>
+              </div>
+              <Switch
+                checked={avsSettings.use_qa}
+                onCheckedChange={(checked) => setAvsSettings({...avsSettings, use_qa: checked})}
+              />
+            </div>
+          </div>
+        </div>
+
+        <div className="space-y-4">
+          <h4 className="text-lg font-semibold text-white">Automation Settings</h4>
+          
+          <div className="flex items-center justify-between bg-slate-700/50 p-3 rounded-lg">
+            <div>
+              <Label className="text-white">Auto-Verify on Member Onboarding</Label>
+              <p className="text-sm text-slate-400 mt-1">Automatically verify banking details when adding new members</p>
+            </div>
+            <Switch
+              checked={avsSettings.enable_auto_verify}
+              onCheckedChange={(checked) => setAvsSettings({...avsSettings, enable_auto_verify: checked})}
+            />
+          </div>
+
+          <div className="flex items-center justify-between bg-slate-700/50 p-3 rounded-lg">
+            <div>
+              <Label className="text-white">Verify on Banking Details Update</Label>
+              <p className="text-sm text-slate-400 mt-1">Re-verify when members update their banking information</p>
+            </div>
+            <Switch
+              checked={avsSettings.verify_on_update}
+              onCheckedChange={(checked) => setAvsSettings({...avsSettings, verify_on_update: checked})}
+            />
+          </div>
+        </div>
+
+        <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-4">
+          <h4 className="text-blue-400 font-semibold mb-2">ℹ️ AVS Information</h4>
+          <ul className="text-sm text-slate-300 space-y-1">
+            <li>• Verifies account existence and ownership across participating South African banks</li>
+            <li>• Real-time verification (within 45 seconds)</li>
+            <li>• Reduces risk of debit order failures and fraud</li>
+            <li>• Checks: Account exists, ID match, Name match, Account status, Accept debits/credits</li>
+            <li>• Available 03:30 - 00:00 daily</li>
+            <li>• Mock mode enabled: Testing without actual credentials or charges</li>
+            <li>• Participating banks: Nedbank, FNB, Standard Bank, Absa, Capitec, and more</li>
+          </ul>
+        </div>
+
+        <div className="flex justify-end pt-4">
+          <Button onClick={handleSaveAvsSettings} className="bg-emerald-500 hover:bg-emerald-600">
+            Save AVS Settings
+          </Button>
+        </div>
+      </div>
+    );
+  }
 }
