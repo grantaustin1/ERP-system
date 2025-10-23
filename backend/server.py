@@ -8702,6 +8702,27 @@ async def seed_default_templates(current_user: User = Depends(get_current_user))
     }
 
 
+@api_router.get("/notification-templates/by-channel/{channel}")
+async def get_templates_by_channel(
+    channel: str,
+    current_user: User = Depends(get_current_user)
+):
+    """Get templates that support a specific channel (for automation action selection)"""
+    # Find templates where the channel is in the channels array
+    templates = await db.notification_templates.find({
+        "is_active": True,
+        "channels": channel
+    }).to_list(length=None)
+    
+    for t in templates:
+        t.pop("_id", None)
+    
+    return {
+        "success": True,
+        "templates": templates
+    }
+
+
 @api_router.put("/notification-templates/{template_id}")
 async def update_notification_template(
     template_id: str,
