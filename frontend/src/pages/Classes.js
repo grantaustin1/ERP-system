@@ -72,7 +72,10 @@ function Classes() {
   const hourRef = useRef(null);
   const minuteRef = useRef(null);
 
-  const API_URL = process.env.REACT_APP_BACKEND_URL;
+  // Use localhost backend when frontend is on localhost, otherwise use env variable
+  const API_URL = window.location.hostname === 'localhost' 
+    ? 'http://localhost:8001' 
+    : process.env.REACT_APP_BACKEND_URL;
 
   // Auto-advance handler for date/time fields
   const handleDateFieldChange = (field, value, maxLength, nextRef) => {
