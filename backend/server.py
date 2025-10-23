@@ -1135,6 +1135,8 @@ class Class(BaseModel):
     waitlist_capacity: int = 10
     booking_window_days: int = 7  # How many days in advance can members book
     cancel_window_hours: int = 2  # How many hours before class can members cancel
+    check_in_window_minutes: int = 15  # Minutes before/after class start for check-in
+    no_show_threshold: int = 3  # Number of no-shows before blocking bookings
     # Status
     status: str = "active"  # active, cancelled, completed
     # Membership restrictions
