@@ -453,6 +453,49 @@ export default function Members() {
                           className="bg-slate-700/50 border-slate-600"
                         />
                       </div>
+
+                      {/* AVS Verification Button */}
+                      <div className="pt-2">
+                        <Button
+                          type="button"
+                          onClick={handleAvsVerification}
+                          disabled={avsVerifying || !formData.bank_account_number || !formData.bank_branch_code || !formData.id_number}
+                          className="w-full bg-blue-600 hover:bg-blue-700"
+                        >
+                          <Shield className="w-4 h-4 mr-2" />
+                          {avsVerifying ? 'Verifying...' : 'Verify Account with AVS'}
+                        </Button>
+                      </div>
+
+                      {/* AVS Verification Result */}
+                      {avsResult && (
+                        <div className="mt-3 p-3 bg-slate-700/50 rounded border border-slate-600">
+                          <div className="flex items-center gap-2 mb-2">
+                            {avsResult.account_exists === 'Y' && avsResult.identification_number_matched === 'Y' ? (
+                              <CheckCircle className="w-5 h-5 text-green-500" />
+                            ) : (
+                              <AlertCircle className="w-5 h-5 text-yellow-500" />
+                            )}
+                            <span className="font-semibold text-white">
+                              {avsResult.account_exists === 'Y' && avsResult.identification_number_matched === 'Y' 
+                                ? 'Verification Successful' 
+                                : 'Verification Completed'}
+                            </span>
+                          </div>
+                          <div className="text-sm space-y-1 text-slate-300">
+                            <div>Account Exists: <span className={avsResult.account_exists === 'Y' ? 'text-green-400' : 'text-red-400'}>{avsResult.account_exists === 'Y' ? '✓ Yes' : '✗ No'}</span></div>
+                            <div>ID Match: <span className={avsResult.identification_number_matched === 'Y' ? 'text-green-400' : avsResult.identification_number_matched === 'N' ? 'text-red-400' : 'text-yellow-400'}>{avsResult.identification_number_matched === 'Y' ? '✓ Yes' : avsResult.identification_number_matched === 'N' ? '✗ No' : '- Not Verified'}</span></div>
+                            <div>Name Match: <span className={avsResult.last_name_matched === 'Y' ? 'text-green-400' : avsResult.last_name_matched === 'N' ? 'text-red-400' : 'text-yellow-400'}>{avsResult.last_name_matched === 'Y' ? '✓ Yes' : avsResult.last_name_matched === 'N' ? '✗ No' : '- Not Verified'}</span></div>
+                            <div>Account Active: <span className={avsResult.account_active === 'Y' ? 'text-green-400' : 'text-red-400'}>{avsResult.account_active === 'Y' ? '✓ Yes' : '✗ No'}</span></div>
+                            <div>Can Accept Debits: <span className={avsResult.can_debit_account === 'Y' ? 'text-green-400' : 'text-red-400'}>{avsResult.can_debit_account === 'Y' ? '✓ Yes' : '✗ No'}</span></div>
+                            {avsResult.mock_mode && (
+                              <div className="mt-2 text-xs text-blue-400 bg-blue-500/10 px-2 py-1 rounded">
+                                🧪 Mock Mode: Using test data
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
 
