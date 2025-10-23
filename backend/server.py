@@ -3873,6 +3873,52 @@ async def create_booking(booking_data: BookingCreate, current_user: User = Depen
         doc["checked_in_at"] = doc["checked_in_at"].isoformat()
     
     await db.bookings.insert_one(doc)
+    
+    # Send WhatsApp booking confirmation if enabled
+    if class_obj.get("send_booking_confirmation", True):
+        try:
+            # Format booking date/time
+            booking_datetime = new_booking.booking_date
+            formatted_date = booking_datetime.strftime("%A, %B %d, %Y")
+            formatted_time = booking_datetime.strftime("%I:%M %p")
+            
+            # Create confirmation message
+            confirmation_message = f"""🎉 *Booking Confirmed!*
+
+Hi {member.get('first_name', 'Member')}!
+
+Your class booking has been confirmed:
+
+📋 *Class:* {class_obj['name']}
+📅 *Date:* {formatted_date}
+⏰ *Time:* {formatted_time}
+📍 *Location:* {class_obj.get('room', 'Main Studio')}
+👤 *Instructor:* {class_obj.get('instructor_name', 'TBA')}
+
+{"⚠️ You are on the WAITLIST (Position #" + str(waitlist_position) + ")" if is_waitlist else "✅ Your spot is confirmed!"}
+
+💡 *Important:*
+• Please arrive 10 minutes early
+• Remember to check-in at reception
+• Cancellations must be made at least {class_obj.get('cancel_window_hours', 2)} hours before class
+
+See you there! 💪"""
+
+            # Send via respond.io
+            member_phone = member.get('phone') or member.get('phone_number')
+            if member_phone:
+                await send_whatsapp_message(
+                    phone=member_phone,
+                    message=confirmation_message,
+                    first_name=member.get('first_name', 'Member'),
+                    last_name=member.get('last_name', ''),
+                    email=member.get('email', '')
+                )
+                logger.info(f"Booking confirmation sent to {member_phone} for booking {new_booking.id}")
+        except Exception as e:
+            logger.error(f"Failed to send booking confirmation: {str(e)}")
+            # Don't fail the booking if notification fails
+    
     return new_booking
 
 @api_router.get("/bookings/{booking_id}", response_model=Booking)
