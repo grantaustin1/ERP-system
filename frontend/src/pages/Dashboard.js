@@ -34,6 +34,10 @@ export default function Dashboard() {
   const [selectedClassForDrillDown, setSelectedClassForDrillDown] = useState(null);
   const [classBookings, setClassBookings] = useState([]);
   
+  // Stat card drill-down state
+  const [selectedStat, setSelectedStat] = useState(null);
+  const [statDetailData, setStatDetailData] = useState(null);
+  
   const navigate = useNavigate();
 
   useEffect(() => {
