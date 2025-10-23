@@ -777,6 +777,124 @@ export default function Dashboard() {
             </Card>
           </div>
 
+          {/* Stat Details Dialog */}
+          <Dialog open={selectedStat !== null} onOpenChange={() => { setSelectedStat(null); setStatDetailData(null); }}>
+            <DialogContent className="bg-slate-800 text-white border-slate-700 max-w-4xl max-h-[80vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle className="text-2xl">{selectedStat} - Details</DialogTitle>
+                <DialogDescription className="text-slate-400">
+                  Detailed breakdown and information
+                </DialogDescription>
+              </DialogHeader>
+
+              <div className="mt-4">
+                {!statDetailData ? (
+                  <div className="text-center py-8 text-slate-400">Loading details...</div>
+                ) : statDetailData.length === 0 ? (
+                  <div className="text-center py-8 text-slate-400">No data available</div>
+                ) : (
+                  <>
+                    {/* Members Detail View */}
+                    {(selectedStat === 'Total Members' || selectedStat === 'Active Members' || selectedStat === 'Blocked Members') && (
+                      <div className="space-y-2">
+                        <div className="bg-slate-700/50 p-3 rounded-lg font-semibold grid grid-cols-4 gap-4">
+                          <div>Name</div>
+                          <div>Email</div>
+                          <div>Membership</div>
+                          <div>Status</div>
+                        </div>
+                        {statDetailData.map(member => (
+                          <div key={member.id} className="bg-slate-700/30 p-3 rounded-lg grid grid-cols-4 gap-4 hover:bg-slate-700/50">
+                            <div>{member.first_name} {member.last_name}</div>
+                            <div className="text-sm text-slate-400">{member.email}</div>
+                            <div className="text-sm">{member.membership_type || 'N/A'}</div>
+                            <div>
+                              <Badge className={member.status === 'active' ? 'bg-green-500' : 'bg-red-500'}>
+                                {member.status}
+                              </Badge>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Invoices Detail View */}
+                    {(selectedStat === 'Pending Invoices' || selectedStat === 'Total Revenue') && (
+                      <div className="space-y-2">
+                        <div className="bg-slate-700/50 p-3 rounded-lg font-semibold grid grid-cols-5 gap-4">
+                          <div>Invoice #</div>
+                          <div>Member</div>
+                          <div>Amount</div>
+                          <div>Due Date</div>
+                          <div>Status</div>
+                        </div>
+                        {statDetailData.map(invoice => (
+                          <div key={invoice.id} className="bg-slate-700/30 p-3 rounded-lg grid grid-cols-5 gap-4 hover:bg-slate-700/50">
+                            <div className="text-sm font-mono">{invoice.invoice_number}</div>
+                            <div className="text-sm">{invoice.member_name}</div>
+                            <div className="font-semibold">R {invoice.amount?.toFixed(2)}</div>
+                            <div className="text-sm text-slate-400">
+                              {invoice.due_date ? new Date(invoice.due_date).toLocaleDateString() : 'N/A'}
+                            </div>
+                            <div>
+                              <Badge className={
+                                invoice.status === 'paid' ? 'bg-green-500' :
+                                invoice.status === 'overdue' ? 'bg-red-500' :
+                                'bg-yellow-500'
+                              }>
+                                {invoice.status}
+                              </Badge>
+                            </div>
+                          </div>
+                        ))}
+                        {selectedStat === 'Total Revenue' && (
+                          <div className="bg-emerald-500/20 border border-emerald-500/50 p-4 rounded-lg mt-4">
+                            <p className="text-lg font-semibold text-emerald-400">
+                              Total: R {statDetailData.reduce((sum, inv) => sum + (inv.amount || 0), 0).toFixed(2)}
+                            </p>
+                            <p className="text-sm text-slate-400 mt-1">
+                              Paid: R {statDetailData.filter(i => i.status === 'paid').reduce((sum, inv) => sum + (inv.amount || 0), 0).toFixed(2)}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Access Log Detail View */}
+                    {selectedStat === "Today's Access" && (
+                      <div className="space-y-2">
+                        <div className="bg-slate-700/50 p-3 rounded-lg font-semibold grid grid-cols-4 gap-4">
+                          <div>Member</div>
+                          <div>Time</div>
+                          <div>Type</div>
+                          <div>Location</div>
+                        </div>
+                        {statDetailData.map((access, idx) => (
+                          <div key={idx} className="bg-slate-700/30 p-3 rounded-lg grid grid-cols-4 gap-4 hover:bg-slate-700/50">
+                            <div>{access.member_name || 'Unknown'}</div>
+                            <div className="text-sm text-slate-400">
+                              {access.access_date ? new Date(access.access_date).toLocaleTimeString() : 'N/A'}
+                            </div>
+                            <div>
+                              <Badge className="bg-blue-500">{access.access_type || 'check-in'}</Badge>
+                            </div>
+                            <div className="text-sm">{access.location || 'Main Entrance'}</div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+
+              <DialogFooter>
+                <Button onClick={() => { setSelectedStat(null); setStatDetailData(null); }} variant="outline" className="border-slate-600 text-white">
+                  Close
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+
           {/* Notification Dialog */}
           <Dialog open={notificationDialogOpen} onOpenChange={setNotificationDialogOpen}>
             <DialogContent className="bg-slate-800 border-slate-700 text-white max-w-2xl">
