@@ -816,71 +816,135 @@ function Classes() {
         </TabsContent>
 
         <TabsContent value="bookings" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>All Bookings</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead>
-                    <tr className="border-b">
-                      <th className="text-left p-2">Member</th>
-                      <th className="text-left p-2">Class</th>
-                      <th className="text-left p-2">Date/Time</th>
-                      <th className="text-left p-2">Status</th>
-                      <th className="text-left p-2">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {bookings.map(booking => (
-                      <tr key={booking.id} className="border-b hover:bg-gray-50">
-                        <td className="p-2">{booking.member_name}</td>
-                        <td className="p-2">{booking.class_name}</td>
-                        <td className="p-2">
-                          {new Date(booking.booking_date).toLocaleString()}
-                        </td>
-                        <td className="p-2">
-                          <span className={`px-2 py-1 rounded text-xs ${
-                            booking.status === 'confirmed' ? 'bg-green-100 text-green-800' :
-                            booking.status === 'waitlist' ? 'bg-yellow-100 text-yellow-800' :
-                            booking.status === 'attended' ? 'bg-blue-100 text-blue-800' :
-                            'bg-gray-100 text-gray-800'
-                          }`}>
-                            {booking.status}
-                            {booking.is_waitlist && ` (#${booking.waitlist_position})`}
-                          </span>
-                        </td>
-                        <td className="p-2">
-                          <div className="flex space-x-2">
-                            {booking.status === 'confirmed' && (
-                              <Button size="sm" onClick={() => handleCheckIn(booking.id)}>
-                                Check In
-                              </Button>
-                            )}
-                            {['confirmed', 'waitlist'].includes(booking.status) && (
-                              <Button
-                                size="sm"
-                                variant="destructive"
-                                onClick={() => handleCancelBooking(booking.id)}
-                              >
-                                Cancel
-                              </Button>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-                {bookings.length === 0 && (
-                  <div className="text-center py-12">
-                    <p className="text-gray-600">No bookings yet</p>
-                  </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {classes.map(classItem => {
+              const classBookings = getClassBookings(classItem.id);
+              const confirmedCount = classBookings.filter(b => b.status === 'confirmed' || b.status === 'attended').length;
+              const waitlistCount = classBookings.filter(b => b.status === 'waitlist').length;
+              const cancelledCount = classBookings.filter(b => b.status === 'cancelled').length;
+              
+              // Only show classes that have bookings
+              if (classBookings.length === 0) return null;
+
+              return (
+                <Card key={classItem.id} className="hover:shadow-lg transition-shadow">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-lg flex items-center justify-between">
+                      {classItem.name}
+                      <span className={`text-sm px-2 py-1 rounded ${
+                        confirmedCount >= classItem.capacity 
+                          ? 'bg-red-100 text-red-800' 
+                          : confirmedCount >= classItem.capacity * 0.8 
+                          ? 'bg-yellow-100 text-yellow-800' 
+                          : 'bg-green-100 text-green-800'
+                      }`}>
+                        {confirmedCount >= classItem.capacity ? 'FULL' : 'Available'}
+                      </span>
+                    </CardTitle>
+                    <p className="text-sm text-gray-600">
+                      {classItem.class_type} • {classItem.duration_minutes} min
+                    </p>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    {/* Capacity Bar */}
+                    <div>
+                      <div className="flex justify-between text-sm mb-1">
+                        <span className="font-semibold">Capacity</span>
+                        <span>{confirmedCount} / {classItem.capacity}</span>
+                      </div>
+                      <div className="w-full bg-gray-200 rounded-full h-2">
+                        <div
+                          className={`h-2 rounded-full transition-all ${
+                            confirmedCount >= classItem.capacity 
+                              ? 'bg-red-500' 
+                              : confirmedCount >= classItem.capacity * 0.8 
+                              ? 'bg-yellow-500' 
+                              : 'bg-green-500'
+                          }`}
+                          style={{ width: `${Math.min((confirmedCount / classItem.capacity) * 100, 100)}%` }}
+                        ></div>
+                      </div>
+                    </div>
+
+                    {/* Stats Grid */}
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="bg-green-50 p-3 rounded-lg">
+                        <p className="text-xs text-gray-600">Confirmed</p>
+                        <p className="text-2xl font-bold text-green-700">{confirmedCount}</p>
+                      </div>
+                      {waitlistCount > 0 && (
+                        <div className="bg-yellow-50 p-3 rounded-lg">
+                          <p className="text-xs text-gray-600">Waitlist</p>
+                          <p className="text-2xl font-bold text-yellow-700">{waitlistCount}</p>
+                        </div>
+                      )}
+                      {cancelledCount > 0 && (
+                        <div className="bg-gray-50 p-3 rounded-lg">
+                          <p className="text-xs text-gray-600">Cancelled</p>
+                          <p className="text-2xl font-bold text-gray-700">{cancelledCount}</p>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Member List (collapsed by default, expandable) */}
+                    <div className="border-t pt-3">
+                      <details className="cursor-pointer">
+                        <summary className="text-sm font-semibold text-gray-700 hover:text-gray-900">
+                          View Members ({classBookings.length})
+                        </summary>
+                        <div className="mt-2 space-y-1 max-h-40 overflow-y-auto">
+                          {classBookings.map(booking => (
+                            <div key={booking.id} className="flex justify-between items-center text-sm py-1 px-2 hover:bg-gray-50 rounded">
+                              <span>{booking.member_name}</span>
+                              <span className={`px-2 py-0.5 rounded text-xs ${
+                                booking.status === 'confirmed' ? 'bg-green-100 text-green-800' :
+                                booking.status === 'waitlist' ? 'bg-yellow-100 text-yellow-800' :
+                                booking.status === 'attended' ? 'bg-blue-100 text-blue-800' :
+                                'bg-gray-100 text-gray-800'
+                              }`}>
+                                {booking.status}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </details>
+                    </div>
+
+                    {/* Actions */}
+                    <div className="flex gap-2">
+                      <Button 
+                        size="sm" 
+                        variant="outline" 
+                        onClick={() => openEditDialog(classItem)}
+                        className="flex-1"
+                      >
+                        <Edit className="w-3 h-3 mr-1" />
+                        Edit Class
+                      </Button>
+                      <Button 
+                        size="sm" 
+                        onClick={() => openBookingDialog(classItem)}
+                        className="flex-1"
+                      >
+                        <Plus className="w-3 h-3 mr-1" />
+                        Add Booking
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+          
+          {classes.filter(c => getClassBookings(c.id).length > 0).length === 0 && (
+            <Card>
+              <CardContent className="text-center py-12">
+                <Users className="h-16 w-16 mx-auto text-gray-400 mb-4" />
+                <p className="text-gray-600">No bookings yet</p>
+                <p className="text-sm text-gray-500 mt-2">Classes with bookings will appear here</p>
+              </CardContent>
+            </Card>
+          )}
         </TabsContent>
       </Tabs>
 
