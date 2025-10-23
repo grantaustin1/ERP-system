@@ -8530,6 +8530,129 @@ async def record_member_access(
     }
 
 
+@api_router.get("/members/{member_id}/no-show-history")
+async def get_member_no_show_history(
+    member_id: str,
+    current_user: User = Depends(get_current_user)
+):
+    """Get a member's no-show history"""
+    member = await db.members.find_one({"id": member_id})
+    if not member:
+        raise HTTPException(status_code=404, detail="Member not found")
+    
+    # Get all no-show bookings
+    no_show_bookings = await db.bookings.find({
+        "member_id": member_id,
+        "no_show": True
+    }).to_list(length=None)
+    
+    for booking in no_show_bookings:
+        booking.pop("_id", None)
+    
+    # Get total no-show count
+    no_show_count = len(no_show_bookings)
+    
+    # Check if member is blocked from booking
+    sample_class = await db.classes.find_one({})
+    no_show_threshold = sample_class.get("no_show_threshold", 3) if sample_class else 3
+    is_blocked = no_show_count >= no_show_threshold
+    
+    return {
+        "member_id": member_id,
+        "member_name": f"{member.get('first_name')} {member.get('last_name')}",
+        "no_show_count": no_show_count,
+        "no_show_threshold": no_show_threshold,
+        "is_blocked": is_blocked,
+        "no_show_bookings": no_show_bookings
+    }
+
+
+@api_router.post("/bookings/{booking_id}/mark-no-show")
+async def mark_booking_no_show(
+    booking_id: str,
+    current_user: User = Depends(get_current_user)
+):
+    """Mark a booking as no-show (staff action)"""
+    booking = await db.bookings.find_one({"id": booking_id})
+    if not booking:
+        raise HTTPException(status_code=404, detail="Booking not found")
+    
+    await db.bookings.update_one(
+        {"id": booking_id},
+        {"$set": {"no_show": True}}
+    )
+    
+    return {
+        "success": True,
+        "message": "Booking marked as no-show"
+    }
+
+
+@api_router.post("/bookings/process-no-shows")
+async def process_no_shows(current_user: User = Depends(get_current_user)):
+    """Process all past bookings and mark no-shows"""
+    now = datetime.now(timezone.utc)
+    
+    # Get all confirmed bookings that have passed
+    past_bookings = await db.bookings.find({
+        "status": "confirmed",
+        "no_show": False
+    }).to_list(length=None)
+    
+    no_shows_marked = 0
+    
+    for booking in past_bookings:
+        booking_date = booking["booking_date"]
+        if isinstance(booking_date, str):
+            booking_date = datetime.fromisoformat(booking_date.replace('Z', '+00:00'))
+        if booking_date.tzinfo is None:
+            booking_date = booking_date.replace(tzinfo=timezone.utc)
+        
+        # Get class to check check-in window
+        class_obj = await db.classes.find_one({"id": booking["class_id"]})
+        if not class_obj:
+            continue
+        
+        check_in_window_minutes = class_obj.get("check_in_window_minutes", 15)
+        
+        # If booking time + check-in window has passed, mark as no-show
+        window_end = booking_date + timedelta(minutes=check_in_window_minutes)
+        
+        if now > window_end:
+            await db.bookings.update_one(
+                {"id": booking["id"]},
+                {"$set": {"no_show": True, "status": "no-show"}}
+            )
+            no_shows_marked += 1
+    
+    return {
+        "success": True,
+        "message": f"Processed {no_shows_marked} no-shows"
+    }
+
+
+@api_router.post("/members/{member_id}/clear-no-shows")
+async def clear_member_no_shows(
+    member_id: str,
+    current_user: User = Depends(get_current_user)
+):
+    """Clear all no-shows for a member (staff override)"""
+    member = await db.members.find_one({"id": member_id})
+    if not member:
+        raise HTTPException(status_code=404, detail="Member not found")
+    
+    result = await db.bookings.update_many(
+        {"member_id": member_id, "no_show": True},
+        {"$set": {"no_show": False}}
+    )
+    
+    return {
+        "success": True,
+        "message": f"Cleared {result.modified_count} no-shows for member",
+        "cleared_count": result.modified_count
+    }
+
+
 @api_router.get("/member-access/stats")
 async def get_member_access_stats(current_user: User = Depends(get_current_user)):
     """
