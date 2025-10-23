@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { UserPlus, Ban, CheckCircle, QrCode } from 'lucide-react';
+import { UserPlus, Ban, CheckCircle, QrCode, Shield, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function Members() {
