@@ -74,6 +74,30 @@ function Classes() {
 
   const API_URL = process.env.REACT_APP_BACKEND_URL;
 
+  // Auto-advance handler for date/time fields
+  const handleDateFieldChange = (field, value, maxLength, nextRef) => {
+    // Only allow numbers
+    const numericValue = value.replace(/\D/g, '');
+    
+    // Update the field with limited length
+    const limitedValue = numericValue.slice(0, maxLength);
+    setDateFields(prev => ({ ...prev, [field]: limitedValue }));
+    
+    // Auto-advance to next field when current field is filled
+    if (limitedValue.length === maxLength && nextRef && nextRef.current) {
+      nextRef.current.focus();
+    }
+  };
+
+  // Combine date fields into datetime-local format (YYYY-MM-DDTHH:MM)
+  useEffect(() => {
+    const { year, month, day, hour, minute } = dateFields;
+    if (year.length === 4 && month.length === 2 && day.length === 2 && hour.length === 2 && minute.length === 2) {
+      const dateTimeString = `${year}-${month}-${day}T${hour}:${minute}`;
+      setBookingForm(prev => ({ ...prev, booking_date: dateTimeString }));
+    }
+  }, [dateFields]);
+
   useEffect(() => {
     fetchClasses();
     fetchBookings();
