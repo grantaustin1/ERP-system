@@ -1425,6 +1425,42 @@ frontend:
         agent: "main"
         comment: "Added EFT Settings tab to Settings page with comprehensive configuration UI. Features: New 'EFT Settings' tab with gear icon, form fields for all EFT configuration (client_profile_number, nominated_account, charges_account, service_user_number, branch_code, bank_name), notification settings toggle with conditional email input, save button integrated with API, information box with EFT folder locations and process details, responsive two-column grid layout, proper validation and field constraints (max lengths, placeholders). Loads existing settings on page load, updates via POST /api/eft/settings endpoint."
 
+  - task: "Template Management UI in Settings"
+    implemented: true
+    working: "NA"
+    file: "/app/frontend/src/pages/SettingsNew.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Implemented complete Template Management UI in Operations category. Features: 'Notification Templates' tab under Operations with MessageSquare icon, template list view displaying all templates in responsive 2-column grid, template cards showing name/category badge/channels/subject/message preview/edit & delete buttons, category badges color-coded (green/amber/red/general), channel icons for email/whatsapp/sms/push, 'New Template' button in purple, fetchTemplates() function to load templates from API, empty state with centered message and create button. Full CRUD UI integrated with backend API endpoints."
+
+  - task: "Template Create/Edit Dialog"
+    implemented: true
+    working: "NA"
+    file: "/app/frontend/src/pages/SettingsNew.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Implemented comprehensive template dialog for create/edit operations. Features: Modal dialog with 'Create New Template' or 'Edit Template' title, template name input field, category dropdown (green_alert/amber_alert/red_alert/general), notification channels checkboxes grid (email/whatsapp/sms/push) with icons, subject line input (for email), message textarea (8 rows) with placeholder, helper text showing available placeholders, Cancel and Create/Update buttons, handleSaveTemplate() function for create/update logic, handleEditTemplate() to populate form for editing, proper form state management and reset. Dialog integrated with backend API (POST for create, PUT for update)."
+
+  - task: "Template Delete Functionality"
+    implemented: true
+    working: "NA"
+    file: "/app/frontend/src/pages/SettingsNew.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Implemented template deletion with confirmation. Features: Delete button (trash icon) on each template card, confirmation dialog using window.confirm(), handleDeleteTemplate() function calling DELETE endpoint, success toast notification, automatic template list refresh after deletion, error handling with toast notifications. Soft delete on backend (sets is_active=false)."
+
 metadata:
   created_by: "main_agent"
   version: "1.0"
