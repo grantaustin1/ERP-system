@@ -80,6 +80,17 @@ export default function SettingsNew() {
     enable_auto_verify: false,
     verify_on_update: false
   });
+  const [tiSettings, setTiSettings] = useState({
+    profile_number: '',
+    account_number: '',
+    mock_mode: true,
+    use_qa: true,
+    fti_enabled: true,
+    fti_frequency: 'daily',
+    pti_enabled: false,
+    notifications_enabled: false,
+    auto_reconcile: true
+  });
 
   useEffect(() => {
     fetchData();
@@ -87,12 +98,13 @@ export default function SettingsNew() {
 
   const fetchData = async () => {
     try {
-      const [membershipsRes, sourcesRes, fieldConfigsRes, eftSettingsRes, avsSettingsRes] = await Promise.all([
+      const [membershipsRes, sourcesRes, fieldConfigsRes, eftSettingsRes, avsSettingsRes, tiSettingsRes] = await Promise.all([
         axios.get(`${API}/api/membership-types`),
         axios.get(`${API}/api/payment-sources`),
         axios.get(`${API}/api/field-configurations`),
         axios.get(`${API}/api/eft/settings`),
-        axios.get(`${API}/api/avs/config`)
+        axios.get(`${API}/api/avs/config`),
+        axios.get(`${API}/api/ti/config`)
       ]);
       setMembershipTypes(membershipsRes.data);
       setPaymentSources(sourcesRes.data);
