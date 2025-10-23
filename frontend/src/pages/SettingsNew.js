@@ -111,6 +111,7 @@ export default function SettingsNew() {
       setFieldConfigurations(fieldConfigsRes.data);
       setEftSettings(eftSettingsRes.data);
       setAvsSettings(avsSettingsRes.data);
+      setTiSettings(tiSettingsRes.data);
     } catch (error) {
       toast({ title: "Error", description: "Failed to fetch data", variant: "destructive" });
     } finally {
