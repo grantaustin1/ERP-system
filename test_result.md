@@ -1047,6 +1047,18 @@ backend:
         agent: "testing"
         comment: "✅ SETTINGS PAGE FULLY FUNCTIONAL - Comprehensive testing completed successfully. **PAGE STRUCTURE**: Settings page loads correctly with title 'System Settings' and proper navigation. **CATEGORY NAVIGATION**: All 6 categories working perfectly - Business Settings, Payment Integration, Staff & Security, Operations, Automation, System. Each category button is clickable and changes content area correctly. **SUB-TAB NAVIGATION**: Business Settings sub-tabs (Membership Types, Payment Sources) working correctly. Payment Integration sub-tabs (EFT Settings, DebiCheck) switching content properly. **FORM FUNCTIONALITY**: Create Membership Type button - found, enabled, clickable with proper event handlers. Save EFT Settings button - functional and responsive. Save DebiCheck Settings button - working correctly. **TECHNICAL VALIDATION**: No console errors detected during testing. No network failures or API errors. All buttons have proper click handlers attached. Form validation and submission working. **USER EXPERIENCE**: Smooth navigation between categories and sub-tabs. Visual feedback working (active states, button highlighting). Responsive design functioning correctly. **CONCLUSION**: All Settings page functionality is working as designed. No critical issues found. Ready for production use."
 
+  - task: "Payment Options Levy Field Support"
+    implemented: true
+    working: true
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "testing"
+        comment: "✅ PAYMENT OPTIONS LEVY FIELD FULLY FUNCTIONAL - Comprehensive testing completed with 100% success rate. **LEVY PAYMENT OPTION CREATION**: POST /api/payment-options successfully creates payment options with is_levy=True field. Test data: payment_name='Test Levy Payment', payment_type='recurring', payment_frequency='monthly', installment_amount=100.00, number_of_installments=12, is_levy=true, description='Test levy payment option'. **DATABASE STORAGE**: Payment option stored correctly in database with all fields including is_levy field preserved. **RETRIEVAL VERIFICATION**: GET /api/payment-options/{membership_type_id} successfully retrieves payment options with is_levy field present and correct value. **FIELD VALIDATION**: All payment option fields (payment_name, payment_type, payment_frequency, installment_amount, number_of_installments, is_levy, description) stored and retrieved correctly. **COMPARISON TESTING**: Regular payment options with is_levy=false also working correctly for comparison. **CRUD OPERATIONS**: Create, retrieve, and delete operations all functional. Payment option levy field support is production-ready and working as designed."
+
 frontend:
 
   - task: "Permission Matrix UI Component"
