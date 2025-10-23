@@ -188,6 +188,13 @@ class Member(BaseModel):
     # Other
     emergency_contact: Optional[str] = None
     notes: Optional[str] = None
+    # Freeze status
+    freeze_status: bool = False
+    freeze_start_date: Optional[datetime] = None
+    freeze_end_date: Optional[datetime] = None
+    freeze_reason: Optional[str] = None
+    # No-show tracking
+    no_show_count: int = 0
     # Normalized fields for duplicate detection (auto-populated)
     norm_email: Optional[str] = None  # Normalized email for duplicate checking
     norm_phone: Optional[str] = None  # Normalized phone for duplicate checking
