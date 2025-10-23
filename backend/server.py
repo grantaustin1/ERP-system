@@ -1172,6 +1172,9 @@ class ClassCreate(BaseModel):
     cancel_window_hours: int = 2
     check_in_window_minutes: int = 15
     no_show_threshold: int = 3
+    reminder_minutes_before: int = 60
+    send_booking_confirmation: bool = True
+    send_class_reminder: bool = True
     membership_types_allowed: List[str] = []
     drop_in_price: float = 0.0
 
