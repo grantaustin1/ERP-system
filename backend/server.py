@@ -848,6 +848,133 @@ class AVSBatchVerificationRequest(BaseModel):
     verifications: List[AVSVerificationRequest]
 
 
+# TI (Transactional Information) Models
+class TIConfig(BaseModel):
+    """TI configuration settings for Nedbank transactional information services"""
+    model_config = ConfigDict(extra="ignore")
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    profile_number: str  # Nedbank profile number
+    account_number: str  # Account to monitor
+    mock_mode: bool = True  # If true, use mock data
+    use_qa: bool = True  # If true, use QA environment
+    fti_enabled: bool = True  # Enable FTI (Final Transaction Information)
+    fti_frequency: str = "daily"  # daily, weekly, monthly
+    pti_enabled: bool = False  # Enable PTI (Provisional Transaction Information)
+    notifications_enabled: bool = False  # Enable transaction notifications
+    auto_reconcile: bool = True  # Automatically reconcile matched transactions
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: Optional[datetime] = None
+
+
+class TIConfigUpdate(BaseModel):
+    """Update model for TI configuration"""
+    profile_number: Optional[str] = None
+    account_number: Optional[str] = None
+    mock_mode: Optional[bool] = None
+    use_qa: Optional[bool] = None
+    fti_enabled: Optional[bool] = None
+    fti_frequency: Optional[str] = None
+    pti_enabled: Optional[bool] = None
+    notifications_enabled: Optional[bool] = None
+    auto_reconcile: Optional[bool] = None
+
+
+class FTITransaction(BaseModel):
+    """FTI (Final Transaction Information) transaction record"""
+    model_config = ConfigDict(extra="ignore")
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    statement_number: str
+    date: str  # YYYY-MM-DD
+    time: str  # HH:MM:SS
+    balance: float
+    transaction_type: str
+    transaction_type_name: str
+    channel: str
+    channel_name: str
+    amount: float
+    reference: str
+    description: str
+    transaction_key: str
+    process_key: Optional[str] = None
+    is_debit: bool
+    # Reconciliation fields
+    is_reconciled: bool = False
+    matched_invoice_id: Optional[str] = None
+    matched_member_id: Optional[str] = None
+    match_confidence: Optional[str] = None  # high, medium, low
+    match_reason: Optional[str] = None
+    reconciled_at: Optional[datetime] = None
+    reconciled_by: Optional[str] = None
+    # Metadata
+    mock_mode: bool = False
+    imported_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+class PTITransaction(BaseModel):
+    """PTI (Provisional Transaction Information) transaction record"""
+    model_config = ConfigDict(extra="ignore")
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    transaction_key: str
+    date: str
+    time: str
+    transaction_type: str
+    transaction_type_name: str
+    channel: str
+    channel_name: str
+    amount: float
+    reference: str
+    description: str
+    status: str = "provisional"  # provisional, confirmed, cancelled
+    is_debit: bool
+    confirmed_fti_id: Optional[str] = None  # Link to confirmed FTI transaction
+    mock_mode: bool = False
+    received_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+class TINotificationRule(BaseModel):
+    """Notification rule configuration"""
+    model_config = ConfigDict(extra="ignore")
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    name: str
+    description: Optional[str] = None
+    rule_type: str  # payment_received, payment_failed, low_balance, high_value_transaction
+    enabled: bool = True
+    # Conditions
+    min_amount: Optional[float] = None
+    max_amount: Optional[float] = None
+    transaction_types: List[str] = []  # Empty means all types
+    channels: List[str] = []  # Empty means all channels
+    # Actions
+    notify_email: bool = False
+    notify_sms: bool = False
+    email_addresses: List[str] = []
+    sms_numbers: List[str] = []
+    # Metadata
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    last_triggered: Optional[datetime] = None
+    trigger_count: int = 0
+
+
+class ReconciliationResult(BaseModel):
+    """Result of reconciliation process"""
+    model_config = ConfigDict(extra="ignore")
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    reconciliation_date: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    total_transactions: int
+    matched_count: int
+    unmatched_count: int
+    match_rate: float
+    total_matched_amount: float
+    total_unmatched_amount: float
+    high_confidence_matches: int
+    medium_confidence_matches: int
+    low_confidence_matches: int
+    matched_invoice_ids: List[str] = []
+    unmatched_transaction_ids: List[str] = []
+    report_text: Optional[str] = None
+    processed_by: Optional[str] = None
+
+
 class Automation(BaseModel):
     model_config = ConfigDict(extra="ignore")
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
