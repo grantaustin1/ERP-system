@@ -484,6 +484,7 @@ class PaymentOptionCreate(BaseModel):
     description: Optional[str] = None
     display_order: int = 0
     is_default: bool = False
+    is_levy: bool = False
 
 class PaymentOptionUpdate(BaseModel):
     payment_name: Optional[str] = None
