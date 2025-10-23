@@ -87,16 +87,18 @@ export default function SettingsNew() {
 
   const fetchData = async () => {
     try {
-      const [membershipsRes, sourcesRes, fieldConfigsRes, eftSettingsRes] = await Promise.all([
+      const [membershipsRes, sourcesRes, fieldConfigsRes, eftSettingsRes, avsSettingsRes] = await Promise.all([
         axios.get(`${API}/api/membership-types`),
         axios.get(`${API}/api/payment-sources`),
         axios.get(`${API}/api/field-configurations`),
-        axios.get(`${API}/api/eft/settings`)
+        axios.get(`${API}/api/eft/settings`),
+        axios.get(`${API}/api/avs/config`)
       ]);
       setMembershipTypes(membershipsRes.data);
       setPaymentSources(sourcesRes.data);
       setFieldConfigurations(fieldConfigsRes.data);
       setEftSettings(eftSettingsRes.data);
+      setAvsSettings(avsSettingsRes.data);
     } catch (error) {
       toast({ title: "Error", description: "Failed to fetch data", variant: "destructive" });
     } finally {
