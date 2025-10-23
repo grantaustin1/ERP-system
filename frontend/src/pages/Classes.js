@@ -763,18 +763,67 @@ function Classes() {
 
             <div>
               <Label htmlFor="member_id">Member *</Label>
-              <Select value={bookingForm.member_id} onValueChange={(value) => setBookingForm({ ...bookingForm, member_id: value })}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select member" />
-                </SelectTrigger>
-                <SelectContent>
-                  {members.map(member => (
-                    <SelectItem key={member.id} value={member.id}>
-                      {member.first_name} {member.last_name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Popover open={memberSearchOpen} onOpenChange={setMemberSearchOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    role="combobox"
+                    aria-expanded={memberSearchOpen}
+                    className="w-full justify-between"
+                  >
+                    {bookingForm.member_id
+                      ? (() => {
+                          const member = members.find((m) => m.id === bookingForm.member_id);
+                          return member ? `${member.first_name} ${member.last_name}` : "Select member...";
+                        })()
+                      : "Select member..."}
+                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-full p-0">
+                  <Command>
+                    <CommandInput 
+                      placeholder="Search member by name..." 
+                      value={memberSearchValue}
+                      onValueChange={setMemberSearchValue}
+                    />
+                    <CommandList>
+                      <CommandEmpty>No member found.</CommandEmpty>
+                      <CommandGroup>
+                        {members
+                          .filter((member) => {
+                            const searchTerm = memberSearchValue.toLowerCase();
+                            const fullName = `${member.first_name} ${member.last_name}`.toLowerCase();
+                            return fullName.includes(searchTerm);
+                          })
+                          .map((member) => (
+                            <CommandItem
+                              key={member.id}
+                              value={member.id}
+                              onSelect={() => {
+                                setBookingForm({ ...bookingForm, member_id: member.id });
+                                setMemberSearchOpen(false);
+                                setMemberSearchValue('');
+                              }}
+                            >
+                              <Check
+                                className={`mr-2 h-4 w-4 ${
+                                  bookingForm.member_id === member.id ? "opacity-100" : "opacity-0"
+                                }`}
+                              />
+                              {member.first_name} {member.last_name}
+                              {member.membership_number && (
+                                <span className="ml-2 text-xs text-gray-500">
+                                  #{member.membership_number}
+                                </span>
+                              )}
+                            </CommandItem>
+                          ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
             </div>
 
             <div>
