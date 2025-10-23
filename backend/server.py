@@ -507,7 +507,12 @@ class PaymentOptionUpdate(BaseModel):
     display_order: Optional[int] = None
     is_default: Optional[bool] = None
     is_active: Optional[bool] = None
-    is_levy: Optional[bool] = None
+    # Levy configuration
+    levy_enabled: Optional[bool] = None
+    levy_frequency_type: Optional[str] = None
+    levy_amount: Optional[float] = None
+    levy_custom_schedule: Optional[List[Dict]] = None
+    levy_rollover_enabled: Optional[bool] = None
 
 # ============= MULTIPLE MEMBERS MODELS =============
 
