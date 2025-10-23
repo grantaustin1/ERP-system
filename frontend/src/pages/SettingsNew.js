@@ -199,6 +199,16 @@ export default function SettingsNew() {
     }
   };
 
+  const handleSaveTiSettings = async () => {
+    try {
+      await axios.post(`${API}/api/ti/config`, tiSettings);
+      toast({ title: "Success", description: "TI settings saved!" });
+      fetchData();
+    } catch (error) {
+      toast({ title: "Error", description: error.response?.data?.detail || "Failed to save", variant: "destructive" });
+    }
+  };
+
   const handleUpdateFieldConfig = async (fieldId, updates) => {
     try {
       await axios.patch(`${API}/api/field-configurations/${fieldId}`, updates);
