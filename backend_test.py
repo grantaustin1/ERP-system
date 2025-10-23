@@ -1554,8 +1554,14 @@ class NotificationTemplateTester:
         
         # Test update non-existent template
         try:
+            complete_template = {
+                "name": "Test Template",
+                "category": "general",
+                "channels": ["email"],
+                "message": "Test message"
+            }
             response = requests.put(f"{API_BASE}/notification-templates/{fake_template_id}", 
-                                  json={"name": "Test"}, headers=self.headers)
+                                  json=complete_template, headers=self.headers)
             
             if response.status_code == 404:
                 self.log_result("Update Non-existent Template", True, 
