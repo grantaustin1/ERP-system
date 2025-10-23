@@ -27,11 +27,19 @@ export default function Dashboard() {
   const [selectedTemplate, setSelectedTemplate] = useState('');
   const [selectedChannels, setSelectedChannels] = useState([]);
   const [sending, setSending] = useState(false);
+  
+  // Class booking drill-down state
+  const [classBookingStats, setClassBookingStats] = useState(null);
+  const [drillDownLevel, setDrillDownLevel] = useState(1); // 1=overview, 2=class list, 3=member list
+  const [selectedClassForDrillDown, setSelectedClassForDrillDown] = useState(null);
+  const [classBookings, setClassBookings] = useState([]);
+  
   const navigate = useNavigate();
 
   useEffect(() => {
     fetchStats();
     fetchAlertData();
+    fetchClassBookingStats();
   }, []);
 
   const fetchStats = async () => {
