@@ -201,7 +201,8 @@ export default function SettingsNew() {
       label: 'Payment Integration',
       tabs: [
         { id: 'eft', label: 'EFT Settings', icon: FileText },
-        { id: 'debicheck', label: 'DebiCheck', icon: Shield }
+        { id: 'debicheck', label: 'DebiCheck', icon: Shield },
+        { id: 'avs', label: 'AVS (Account Verification)', icon: CheckSquare }
       ]
     },
     staff: {
