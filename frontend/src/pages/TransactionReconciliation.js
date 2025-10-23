@@ -18,7 +18,9 @@ import {
   FileText
 } from 'lucide-react';
 
-const API = process.env.REACT_APP_BACKEND_URL || '';
+const API = window.location.hostname === 'localhost' 
+  ? 'http://localhost:8001' 
+  : (process.env.REACT_APP_BACKEND_URL || 'http://localhost:8001');
 
 export default function TransactionReconciliation() {
   const [loading, setLoading] = useState(true);
