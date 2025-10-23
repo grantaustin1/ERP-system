@@ -3783,6 +3783,9 @@ async def create_booking(booking_data: BookingCreate, current_user: User = Depen
     
     # Check booking window
     booking_date = booking_data.booking_date
+    # Make booking_date timezone-aware if it's naive
+    if booking_date.tzinfo is None:
+        booking_date = booking_date.replace(tzinfo=timezone.utc)
     days_advance = (booking_date - datetime.now(timezone.utc)).days
     if days_advance > class_obj.booking_window_days:
         raise HTTPException(status_code=400, detail=f"Cannot book more than {class_obj.booking_window_days} days in advance")
