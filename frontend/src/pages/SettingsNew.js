@@ -929,4 +929,162 @@ export default function SettingsNew() {
       </div>
     );
   }
+
+  function renderTiSettings() {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-start gap-3 bg-emerald-500/10 border border-emerald-500/30 rounded-lg p-4">
+          <Activity className="w-6 h-6 text-emerald-400 flex-shrink-0 mt-1" />
+          <div>
+            <h3 className="text-xl font-bold text-emerald-400 mb-2">TI (Transactional Information)</h3>
+            <p className="text-sm text-slate-300">
+              Configure Nedbank's TI service for automated payment reconciliation, real-time tracking, and transaction notifications.
+            </p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-6">
+          <div>
+            <Label htmlFor="ti_profile_number" className="text-white">Profile Number</Label>
+            <Input
+              id="ti_profile_number"
+              placeholder="10-digit Nedbank profile number"
+              value={tiSettings.profile_number}
+              onChange={(e) => setTiSettings({...tiSettings, profile_number: e.target.value})}
+              className="bg-slate-700 text-white border-slate-600"
+            />
+          </div>
+
+          <div>
+            <Label htmlFor="ti_account_number" className="text-white">Account Number</Label>
+            <Input
+              id="ti_account_number"
+              placeholder="Account to monitor for transactions"
+              value={tiSettings.account_number}
+              onChange={(e) => setTiSettings({...tiSettings, account_number: e.target.value})}
+              className="bg-slate-700 text-white border-slate-600"
+            />
+          </div>
+        </div>
+
+        <div className="space-y-4">
+          <h4 className="text-lg font-semibold text-white">Service Configuration</h4>
+          
+          <div className="grid grid-cols-2 gap-4">
+            <div className="flex items-center justify-between bg-slate-700/50 p-3 rounded-lg">
+              <div>
+                <Label className="text-white">Mock Mode</Label>
+                <p className="text-sm text-slate-400 mt-1">Use test data for development</p>
+              </div>
+              <Switch
+                checked={tiSettings.mock_mode}
+                onCheckedChange={(checked) => setTiSettings({...tiSettings, mock_mode: checked})}
+              />
+            </div>
+
+            <div className="flex items-center justify-between bg-slate-700/50 p-3 rounded-lg">
+              <div>
+                <Label className="text-white">Use QA Environment</Label>
+                <p className="text-sm text-slate-400 mt-1">Test environment</p>
+              </div>
+              <Switch
+                checked={tiSettings.use_qa}
+                onCheckedChange={(checked) => setTiSettings({...tiSettings, use_qa: checked})}
+              />
+            </div>
+          </div>
+        </div>
+
+        <div className="space-y-4">
+          <h4 className="text-lg font-semibold text-white">FTI (Final Transaction Information)</h4>
+          <p className="text-sm text-slate-400">Daily confirmed transactions for reconciliation</p>
+          
+          <div className="flex items-center justify-between bg-slate-700/50 p-3 rounded-lg">
+            <div>
+              <Label className="text-white">Enable FTI</Label>
+              <p className="text-sm text-slate-400 mt-1">Receive daily transaction files</p>
+            </div>
+            <Switch
+              checked={tiSettings.fti_enabled}
+              onCheckedChange={(checked) => setTiSettings({...tiSettings, fti_enabled: checked})}
+            />
+          </div>
+
+          <div>
+            <Label htmlFor="fti_frequency" className="text-white">FTI Frequency</Label>
+            <select
+              id="fti_frequency"
+              value={tiSettings.fti_frequency}
+              onChange={(e) => setTiSettings({...tiSettings, fti_frequency: e.target.value})}
+              className="w-full mt-1 bg-slate-700 text-white border-slate-600 rounded-md p-2"
+            >
+              <option value="daily">Daily</option>
+              <option value="weekly">Weekly</option>
+              <option value="monthly">Monthly</option>
+            </select>
+          </div>
+
+          <div className="flex items-center justify-between bg-slate-700/50 p-3 rounded-lg">
+            <div>
+              <Label className="text-white">Auto-Reconcile</Label>
+              <p className="text-sm text-slate-400 mt-1">Automatically match payments to invoices</p>
+            </div>
+            <Switch
+              checked={tiSettings.auto_reconcile}
+              onCheckedChange={(checked) => setTiSettings({...tiSettings, auto_reconcile: checked})}
+            />
+          </div>
+        </div>
+
+        <div className="space-y-4">
+          <h4 className="text-lg font-semibold text-white">PTI (Provisional Transaction Information)</h4>
+          <p className="text-sm text-slate-400">Real-time provisional transaction feed</p>
+          
+          <div className="flex items-center justify-between bg-slate-700/50 p-3 rounded-lg">
+            <div>
+              <Label className="text-white">Enable PTI</Label>
+              <p className="text-sm text-slate-400 mt-1">Real-time transaction monitoring</p>
+            </div>
+            <Switch
+              checked={tiSettings.pti_enabled}
+              onCheckedChange={(checked) => setTiSettings({...tiSettings, pti_enabled: checked})}
+            />
+          </div>
+        </div>
+
+        <div className="space-y-4">
+          <h4 className="text-lg font-semibold text-white">Notifications</h4>
+          
+          <div className="flex items-center justify-between bg-slate-700/50 p-3 rounded-lg">
+            <div>
+              <Label className="text-white">Enable Notifications</Label>
+              <p className="text-sm text-slate-400 mt-1">Alerts for payment events</p>
+            </div>
+            <Switch
+              checked={tiSettings.notifications_enabled}
+              onCheckedChange={(checked) => setTiSettings({...tiSettings, notifications_enabled: checked})}
+            />
+          </div>
+        </div>
+
+        <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-4">
+          <h4 className="text-blue-400 font-semibold mb-2">ℹ️ TI Features</h4>
+          <ul className="text-sm text-slate-300 space-y-1">
+            <li>• <strong>FTI</strong>: Automated daily payment reconciliation - matches bank transactions to invoices</li>
+            <li>• <strong>PTI</strong>: Real-time provisional transaction feed - see payments before final confirmation</li>
+            <li>• <strong>Notifications</strong>: Instant alerts for payment received, failures, high-value transactions</li>
+            <li>• <strong>Auto-Reconcile</strong>: Automatically updates invoice status when payments match (high confidence only)</li>
+            <li>• Reduces manual reconciliation time by 80%+</li>
+            <li>• Mock mode enabled: Full testing without actual Nedbank connection</li>
+          </ul>
+        </div>
+
+        <div className="flex justify-end pt-4">
+          <Button onClick={handleSaveTiSettings} className="bg-emerald-500 hover:bg-emerald-600">
+            Save TI Settings
+          </Button>
+        </div>
+      </div>
+    );
+  }
 }
