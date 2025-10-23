@@ -3523,13 +3523,15 @@ async def execute_action(action: dict, trigger_data: dict):
             }
     
     elif action_type == "send_email":
-        # Email action - placeholder for now
+        # Email action with template support
         email = trigger_data.get("email") or action.get("email")
-        subject = action.get("subject", "").format(**trigger_data)
-        body = action.get("body", "").format(**trigger_data)
+        content = await get_message_content(action, trigger_data)
+        subject = content["subject"] or "Notification"
+        body = content["message"]
+        
         # TODO: Integrate email service (SendGrid, AWS SES, etc.)
         logger.info(f"Email Action (Mock): Sending to {email}: {subject}")
-        return {"type": "email", "status": "sent_mock", "email": email, "subject": subject}
+        return {"type": "email", "status": "sent_mock", "email": email, "subject": subject, "body": body}
     
     elif action_type == "update_member_status":
         # Update member status
