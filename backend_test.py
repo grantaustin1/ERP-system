@@ -900,6 +900,335 @@ class MemberImportTester:
         
         print("\n" + "=" * 80)
 
+class PaymentOptionLevyTester:
+    def __init__(self):
+        self.token = None
+        self.headers = {}
+        self.test_results = []
+        self.created_payment_options = []  # Track created payment options for cleanup
+        
+    def log_result(self, test_name, success, message, details=None):
+        """Log test result"""
+        result = {
+            "test": test_name,
+            "success": success,
+            "message": message,
+            "timestamp": datetime.now().isoformat(),
+            "details": details or {}
+        }
+        self.test_results.append(result)
+        status = "✅ PASS" if success else "❌ FAIL"
+        print(f"{status}: {test_name} - {message}")
+        if details and not success:
+            print(f"   Details: {details}")
+    
+    def authenticate(self):
+        """Authenticate and get token"""
+        try:
+            response = requests.post(f"{API_BASE}/auth/login", json={
+                "email": TEST_EMAIL,
+                "password": TEST_PASSWORD
+            })
+            
+            if response.status_code == 200:
+                data = response.json()
+                self.token = data["access_token"]
+                self.headers = {"Authorization": f"Bearer {self.token}"}
+                self.log_result("Authentication", True, "Successfully authenticated")
+                return True
+            else:
+                self.log_result("Authentication", False, f"Failed to authenticate: {response.status_code}", 
+                              {"response": response.text})
+                return False
+        except Exception as e:
+            self.log_result("Authentication", False, f"Authentication error: {str(e)}")
+            return False
+    
+    def get_existing_membership_type(self):
+        """Get an existing membership type ID for testing"""
+        try:
+            response = requests.get(f"{API_BASE}/membership-types", headers=self.headers)
+            if response.status_code == 200:
+                membership_types = response.json()
+                if membership_types:
+                    membership_type_id = membership_types[0]["id"]
+                    self.log_result("Get Membership Type", True, f"Found membership type: {membership_type_id}")
+                    return membership_type_id
+                else:
+                    self.log_result("Get Membership Type", False, "No membership types found")
+                    return None
+            else:
+                self.log_result("Get Membership Type", False, f"Failed to get membership types: {response.status_code}")
+                return None
+        except Exception as e:
+            self.log_result("Get Membership Type", False, f"Error getting membership types: {str(e)}")
+            return None
+    
+    def test_create_payment_option_with_levy(self):
+        """Test creating a payment option with is_levy=True"""
+        print("\n=== Testing Payment Option Creation with Levy Field ===")
+        
+        # Get existing membership type
+        membership_type_id = self.get_existing_membership_type()
+        if not membership_type_id:
+            return False
+        
+        # Test data as specified in the review request
+        test_data = {
+            "membership_type_id": membership_type_id,
+            "payment_name": "Test Levy Payment",
+            "payment_type": "recurring",
+            "payment_frequency": "monthly",
+            "installment_amount": 100.00,
+            "number_of_installments": 12,
+            "is_levy": True,
+            "description": "Test levy payment option"
+        }
+        
+        try:
+            # Create payment option with is_levy=True
+            response = requests.post(f"{API_BASE}/payment-options", 
+                                   json=test_data, headers=self.headers)
+            
+            if response.status_code == 200:
+                payment_option = response.json()
+                payment_option_id = payment_option.get("id")
+                
+                # Track for cleanup
+                if payment_option_id:
+                    self.created_payment_options.append(payment_option_id)
+                
+                # Verify the response contains is_levy field
+                if payment_option.get("is_levy") is True:
+                    self.log_result("Create Payment Option with Levy", True, 
+                                  f"Payment option created successfully with is_levy=True, ID: {payment_option_id}")
+                    
+                    # Verify other fields are correct
+                    if (payment_option.get("payment_name") == "Test Levy Payment" and
+                        payment_option.get("payment_type") == "recurring" and
+                        payment_option.get("payment_frequency") == "monthly" and
+                        payment_option.get("installment_amount") == 100.00 and
+                        payment_option.get("number_of_installments") == 12):
+                        self.log_result("Payment Option Fields Validation", True, 
+                                      "All payment option fields stored correctly")
+                    else:
+                        self.log_result("Payment Option Fields Validation", False, 
+                                      "Some payment option fields not stored correctly",
+                                      {"expected": test_data, "actual": payment_option})
+                    
+                    return payment_option_id
+                else:
+                    self.log_result("Create Payment Option with Levy", False, 
+                                  f"Payment option created but is_levy field missing or incorrect: {payment_option.get('is_levy')}")
+                    return None
+            else:
+                self.log_result("Create Payment Option with Levy", False, 
+                              f"Failed to create payment option: {response.status_code}",
+                              {"response": response.text})
+                return None
+                
+        except Exception as e:
+            self.log_result("Create Payment Option with Levy", False, f"Error creating payment option: {str(e)}")
+            return None
+    
+    def test_retrieve_payment_option_with_levy(self, membership_type_id, payment_option_id):
+        """Test retrieving payment options and verifying is_levy field is present"""
+        print("\n=== Testing Payment Option Retrieval with Levy Field ===")
+        
+        try:
+            # Retrieve payment options for the membership type
+            response = requests.get(f"{API_BASE}/payment-options/{membership_type_id}", 
+                                  headers=self.headers)
+            
+            if response.status_code == 200:
+                payment_options = response.json()
+                
+                # Find our created payment option
+                levy_option = None
+                for option in payment_options:
+                    if option.get("id") == payment_option_id:
+                        levy_option = option
+                        break
+                
+                if levy_option:
+                    # Verify is_levy field is present and True
+                    if levy_option.get("is_levy") is True:
+                        self.log_result("Retrieve Payment Option with Levy", True, 
+                                      "Payment option retrieved successfully with is_levy=True")
+                        
+                        # Verify all fields are still correct
+                        if (levy_option.get("payment_name") == "Test Levy Payment" and
+                            levy_option.get("payment_type") == "recurring" and
+                            levy_option.get("payment_frequency") == "monthly" and
+                            levy_option.get("installment_amount") == 100.00 and
+                            levy_option.get("number_of_installments") == 12):
+                            self.log_result("Retrieved Payment Option Fields", True, 
+                                          "All fields retrieved correctly from database")
+                        else:
+                            self.log_result("Retrieved Payment Option Fields", False, 
+                                          "Some fields not retrieved correctly")
+                        
+                        return True
+                    else:
+                        self.log_result("Retrieve Payment Option with Levy", False, 
+                                      f"Payment option retrieved but is_levy field incorrect: {levy_option.get('is_levy')}")
+                        return False
+                else:
+                    self.log_result("Retrieve Payment Option with Levy", False, 
+                                  f"Created payment option not found in retrieval, ID: {payment_option_id}")
+                    return False
+            else:
+                self.log_result("Retrieve Payment Option with Levy", False, 
+                              f"Failed to retrieve payment options: {response.status_code}",
+                              {"response": response.text})
+                return False
+                
+        except Exception as e:
+            self.log_result("Retrieve Payment Option with Levy", False, f"Error retrieving payment options: {str(e)}")
+            return False
+    
+    def test_create_regular_payment_option(self):
+        """Test creating a regular payment option with is_levy=False for comparison"""
+        print("\n=== Testing Regular Payment Option Creation (is_levy=False) ===")
+        
+        # Get existing membership type
+        membership_type_id = self.get_existing_membership_type()
+        if not membership_type_id:
+            return False
+        
+        # Test data for regular payment option
+        test_data = {
+            "membership_type_id": membership_type_id,
+            "payment_name": "Test Regular Payment",
+            "payment_type": "single",
+            "payment_frequency": "one-time",
+            "installment_amount": 500.00,
+            "number_of_installments": 1,
+            "is_levy": False,
+            "description": "Test regular payment option"
+        }
+        
+        try:
+            # Create regular payment option
+            response = requests.post(f"{API_BASE}/payment-options", 
+                                   json=test_data, headers=self.headers)
+            
+            if response.status_code == 200:
+                payment_option = response.json()
+                payment_option_id = payment_option.get("id")
+                
+                # Track for cleanup
+                if payment_option_id:
+                    self.created_payment_options.append(payment_option_id)
+                
+                # Verify the response contains is_levy field as False
+                if payment_option.get("is_levy") is False:
+                    self.log_result("Create Regular Payment Option", True, 
+                                  f"Regular payment option created successfully with is_levy=False, ID: {payment_option_id}")
+                    return True
+                else:
+                    self.log_result("Create Regular Payment Option", False, 
+                                  f"Regular payment option created but is_levy field incorrect: {payment_option.get('is_levy')}")
+                    return False
+            else:
+                self.log_result("Create Regular Payment Option", False, 
+                              f"Failed to create regular payment option: {response.status_code}",
+                              {"response": response.text})
+                return False
+                
+        except Exception as e:
+            self.log_result("Create Regular Payment Option", False, f"Error creating regular payment option: {str(e)}")
+            return False
+    
+    def cleanup_test_data(self):
+        """Clean up test data created during testing"""
+        print("\n=== Cleaning Up Test Data ===")
+        
+        # Clean up created payment options
+        for option_id in self.created_payment_options:
+            try:
+                response = requests.delete(f"{API_BASE}/payment-options/{option_id}", headers=self.headers)
+                if response.status_code == 200:
+                    self.log_result("Cleanup Payment Option", True, f"Deleted payment option {option_id}")
+                else:
+                    self.log_result("Cleanup Payment Option", False, f"Failed to delete payment option {option_id}")
+            except Exception as e:
+                self.log_result("Cleanup Payment Option", False, f"Error cleaning up payment option {option_id}: {str(e)}")
+        
+        if self.created_payment_options:
+            self.log_result("Cleanup Test Data", True, f"Attempted cleanup of {len(self.created_payment_options)} test payment options")
+    
+    def run_levy_tests(self):
+        """Run all payment option levy tests"""
+        print("🚀 Starting Payment Option Levy Field Tests")
+        print(f"Testing against: {API_BASE}")
+        print("=" * 80)
+        
+        # Authenticate first
+        if not self.authenticate():
+            print("❌ Authentication failed. Cannot proceed with tests.")
+            return
+        
+        print("\n📋 PAYMENT OPTION LEVY FIELD TESTING")
+        print("Testing Requirements:")
+        print("- Create payment option with is_levy=True")
+        print("- Verify storage in database")
+        print("- Retrieve and confirm is_levy field presence")
+        print("- Test regular payment option for comparison")
+        
+        # Get membership type for testing
+        membership_type_id = self.get_existing_membership_type()
+        if not membership_type_id:
+            print("❌ No membership types available. Cannot proceed with tests.")
+            return
+        
+        # Test 1: Create payment option with levy
+        payment_option_id = self.test_create_payment_option_with_levy()
+        
+        # Test 2: Retrieve and verify levy field
+        if payment_option_id:
+            self.test_retrieve_payment_option_with_levy(membership_type_id, payment_option_id)
+        
+        # Test 3: Create regular payment option for comparison
+        self.test_create_regular_payment_option()
+        
+        # Cleanup
+        self.cleanup_test_data()
+        
+        # Print summary
+        self.print_summary()
+    
+    def print_summary(self):
+        """Print test summary"""
+        print("\n" + "=" * 60)
+        print("🏁 PAYMENT OPTION LEVY TEST SUMMARY")
+        print("=" * 60)
+        
+        total_tests = len(self.test_results)
+        passed_tests = len([r for r in self.test_results if r["success"]])
+        failed_tests = total_tests - passed_tests
+        
+        print(f"Total Tests: {total_tests}")
+        print(f"✅ Passed: {passed_tests}")
+        print(f"❌ Failed: {failed_tests}")
+        print(f"Success Rate: {(passed_tests/total_tests*100):.1f}%")
+        
+        if failed_tests > 0:
+            print("\n❌ FAILED TESTS:")
+            for result in self.test_results:
+                if not result["success"]:
+                    print(f"  - {result['test']}: {result['message']}")
+        
+        print("\n" + "=" * 80)
+
 if __name__ == "__main__":
-    tester = MemberImportTester()
-    tester.run_all_tests()
+    import sys
+    
+    if len(sys.argv) > 1 and sys.argv[1] == "levy":
+        # Run payment option levy tests
+        tester = PaymentOptionLevyTester()
+        tester.run_levy_tests()
+    else:
+        # Run original member import tests
+        tester = MemberImportTester()
+        tester.run_all_tests()
