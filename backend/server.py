@@ -8564,6 +8564,198 @@ async def generate_mock_access_data(current_user: User = Depends(get_current_use
     }
 
 
+# ============================================================================
+# Notification Template Endpoints
+# ============================================================================
+
+@api_router.get("/notification-templates")
+async def get_notification_templates(
+    category: Optional[str] = None,
+    current_user: User = Depends(get_current_user)
+):
+    """Get notification templates, optionally filtered by category"""
+    query = {"is_active": True}
+    if category:
+        query["category"] = category
+    
+    templates = await db.notification_templates.find(query).to_list(length=None)
+    
+    for t in templates:
+        t.pop("_id", None)
+    
+    return {
+        "success": True,
+        "templates": templates
+    }
+
+
+@api_router.post("/notification-templates")
+async def create_notification_template(
+    template: NotificationTemplate,
+    current_user: User = Depends(get_current_user)
+):
+    """Create a new notification template"""
+    template_dict = template.dict()
+    template_dict["created_at"] = template_dict["created_at"].isoformat()
+    
+    await db.notification_templates.insert_one(template_dict)
+    
+    return {
+        "success": True,
+        "template": template_dict
+    }
+
+
+@api_router.post("/notification-templates/seed-defaults")
+async def seed_default_templates(current_user: User = Depends(get_current_user)):
+    """Seed default notification templates for each alert category"""
+    
+    default_templates = [
+        {
+            "id": str(uuid.uuid4()),
+            "name": "Green Alert - Thank You",
+            "category": "green_alert",
+            "channels": ["email", "push"],
+            "subject": "Thank You for Being an Active Member!",
+            "message": "Hi {first_name}! 👋\n\nWe noticed you've visited us {visit_count} times in the past month - that's amazing! 💪\n\nYour dedication inspires us. Keep up the great work!\n\nBest regards,\nYour Gym Team",
+            "is_active": True,
+            "created_at": datetime.now(timezone.utc).isoformat()
+        },
+        {
+            "id": str(uuid.uuid4()),
+            "name": "Amber Alert - Encouragement",
+            "category": "amber_alert",
+            "channels": ["email", "whatsapp", "sms"],
+            "subject": "We Miss Seeing You!",
+            "message": "Hi {first_name}! 😊\n\nWe noticed you've only visited {visit_count} times recently. We'd love to help you get back on track!\n\nWould you like to:\n✓ Try a new class?\n✓ Book a free PT session?\n✓ Update your fitness goals?\n\nLet us know how we can support you!\n\nWarm regards,\nYour Gym Team",
+            "is_active": True,
+            "created_at": datetime.now(timezone.utc).isoformat()
+        },
+        {
+            "id": str(uuid.uuid4()),
+            "name": "Red Alert - Win Back",
+            "category": "red_alert",
+            "channels": ["email", "whatsapp", "sms", "push"],
+            "subject": "We Haven't Seen You in a While...",
+            "message": "Hi {first_name},\n\nIt's been {days_since_last_visit} days since your last visit, and we really miss you! 😢\n\nLife gets busy, we understand. But your health and fitness goals are important!\n\n🎁 Special Offer: Come back this week and get:\n• Free PT consultation\n• Complimentary smoothie\n• 10% off next month's membership\n\nLet's get you back on track!\n\nHope to see you soon,\nYour Gym Team",
+            "is_active": True,
+            "created_at": datetime.now(timezone.utc).isoformat()
+        }
+    ]
+    
+    # Clear existing and insert defaults
+    await db.notification_templates.delete_many({})
+    await db.notification_templates.insert_many(default_templates)
+    
+    return {
+        "success": True,
+        "message": f"Seeded {len(default_templates)} default templates"
+    }
+
+
+@api_router.post("/send-bulk-notification")
+async def send_bulk_notification(
+    request: BulkNotificationRequest,
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Send bulk notification to members in a specific alert category
+    
+    Note: This is a placeholder implementation. In production, integrate with:
+    - WhatsApp Business API
+    - Email service (SendGrid, AWS SES)
+    - SMS gateway (Twilio, AWS SNS)
+    - Push notification service (Firebase, OneSignal)
+    """
+    # Get template
+    template = await db.notification_templates.find_one({"id": request.template_id})
+    if not template:
+        raise HTTPException(status_code=404, detail="Template not found")
+    
+    # Get alert config and member stats
+    config = await db.alert_config.find_one({})
+    if not config:
+        config = {"days_period": 30, "green_threshold": 10, "amber_min_threshold": 1, "amber_max_threshold": 4}
+    
+    days_period = config.get("days_period", 30)
+    cutoff_date = datetime.now(timezone.utc) - timedelta(days=days_period)
+    
+    # Determine target members based on alert level
+    members = await db.members.find({"membership_status": "active"}).to_list(length=None)
+    
+    target_members = []
+    for member in members:
+        if request.member_ids and member["id"] not in request.member_ids:
+            continue
+        
+        # Count visits
+        access_count = await db.member_access.count_documents({
+            "member_id": member["id"],
+            "access_date": {"$gte": cutoff_date.isoformat()}
+        })
+        
+        # Get last access
+        last_access = await db.member_access.find_one(
+            {"member_id": member["id"]},
+            sort=[("access_date", -1)]
+        )
+        
+        days_since = (datetime.now(timezone.utc) - datetime.fromisoformat(last_access.get("access_date").replace('Z', '+00:00'))).days if last_access and last_access.get("access_date") else days_period
+        
+        # Filter by alert level
+        if request.alert_level == "green" and access_count >= config.get("green_threshold", 10):
+            target_members.append((member, access_count, days_since))
+        elif request.alert_level == "amber" and config.get("amber_min_threshold", 1) <= access_count <= config.get("amber_max_threshold", 4):
+            target_members.append((member, access_count, days_since))
+        elif request.alert_level == "red" and access_count == 0:
+            target_members.append((member, access_count, days_since))
+    
+    # Prepare notifications
+    notifications_sent = []
+    for member, visit_count, days_since in target_members:
+        # Personalize message
+        message = template["message"].format(
+            first_name=member.get("first_name", "Member"),
+            last_name=member.get("last_name", ""),
+            visit_count=visit_count,
+            days_since_last_visit=days_since
+        )
+        
+        subject = template.get("subject", "").format(
+            first_name=member.get("first_name", "Member"),
+            last_name=member.get("last_name", "")
+        ) if template.get("subject") else None
+        
+        notification_record = {
+            "member_id": member["id"],
+            "member_name": f"{member.get('first_name', '')} {member.get('last_name', '')}",
+            "email": member.get("email"),
+            "phone": member.get("phone"),
+            "channels": request.channels,
+            "subject": subject,
+            "message": message,
+            "status": "mock_sent"  # In production: "queued", "sent", "failed"
+        }
+        
+        notifications_sent.append(notification_record)
+    
+    # In production, integrate with actual notification services here
+    # For now, return mock response
+    
+    return {
+        "success": True,
+        "message": f"Notification sent to {len(notifications_sent)} members",
+        "details": {
+            "template_name": template["name"],
+            "alert_level": request.alert_level,
+            "channels": request.channels,
+            "member_count": len(notifications_sent),
+            "mock_mode": True,
+            "notifications": notifications_sent[:10]  # Return first 10 for preview
+        }
+    }
+
+
 # Include the router in the main app (must be after all route definitions)
 app.include_router(api_router)
 
