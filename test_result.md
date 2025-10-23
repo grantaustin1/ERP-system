@@ -1059,6 +1059,66 @@ backend:
         agent: "testing"
         comment: "✅ PAYMENT OPTIONS LEVY FIELD FULLY FUNCTIONAL - Comprehensive testing completed with 100% success rate. **LEVY PAYMENT OPTION CREATION**: POST /api/payment-options successfully creates payment options with is_levy=True field. Test data: payment_name='Test Levy Payment', payment_type='recurring', payment_frequency='monthly', installment_amount=100.00, number_of_installments=12, is_levy=true, description='Test levy payment option'. **DATABASE STORAGE**: Payment option stored correctly in database with all fields including is_levy field preserved. **RETRIEVAL VERIFICATION**: GET /api/payment-options/{membership_type_id} successfully retrieves payment options with is_levy field present and correct value. **FIELD VALIDATION**: All payment option fields (payment_name, payment_type, payment_frequency, installment_amount, number_of_installments, is_levy, description) stored and retrieved correctly. **COMPARISON TESTING**: Regular payment options with is_levy=false also working correctly for comparison. **CRUD OPERATIONS**: Create, retrieve, and delete operations all functional. Payment option levy field support is production-ready and working as designed."
 
+  - task: "Notification Templates API - GET Templates"
+    implemented: true
+    working: "NA"
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Implemented GET /api/notification-templates endpoint with optional category filter. Returns list of active templates with all fields (id, name, category, channels, subject, message, is_active, created_at). Supports filtering by category (green_alert, amber_alert, red_alert, general). Ready for testing."
+
+  - task: "Notification Templates API - POST Create Template"
+    implemented: true
+    working: "NA"
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Implemented POST /api/notification-templates endpoint for creating new notification templates. Accepts NotificationTemplate model with fields: name, category, channels[], subject (optional), message, is_active. Auto-generates UUID and timestamp. Stores in MongoDB notification_templates collection. Ready for testing."
+
+  - task: "Notification Templates API - PUT Update Template"
+    implemented: true
+    working: "NA"
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Implemented PUT /api/notification-templates/{template_id} endpoint for updating existing templates. Validates template exists (404 if not found), updates all fields while preserving template ID. Returns updated template. Ready for testing."
+
+  - task: "Notification Templates API - DELETE Template"
+    implemented: true
+    working: "NA"
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Implemented DELETE /api/notification-templates/{template_id} endpoint for soft-deleting templates. Sets is_active=False instead of hard delete. Validates template exists (404 if not found). Returns success message. Ready for testing."
+
+  - task: "Notification Templates API - Seed Defaults"
+    implemented: true
+    working: "NA"
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "medium"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Implemented POST /api/notification-templates/seed-defaults endpoint to create default templates. Seeds 3 templates: Green Alert (Thank You), Amber Alert (Encouragement), Red Alert (Win Back). Each with appropriate channels, subject, and message with placeholders. Clears existing templates before seeding. Ready for testing."
+
 frontend:
 
   - task: "Permission Matrix UI Component"
