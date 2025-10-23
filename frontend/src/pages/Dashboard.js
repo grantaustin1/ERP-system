@@ -1135,7 +1135,7 @@ export default function Dashboard() {
                     )}
 
                     {/* Access Log Detail View */}
-                    {selectedStat === "Today's Access" && (
+                    {selectedStat === "Today's Access" && !selectedDetailItem && (
                       <div className="space-y-2">
                         <div className="bg-slate-700/50 p-3 rounded-lg font-semibold grid grid-cols-4 gap-4">
                           <div>Member</div>
@@ -1144,7 +1144,23 @@ export default function Dashboard() {
                           <div>Location</div>
                         </div>
                         {statDetailData.map((access, idx) => (
-                          <div key={idx} className="bg-slate-700/30 p-3 rounded-lg grid grid-cols-4 gap-4 hover:bg-slate-700/50">
+                          <div 
+                            key={idx} 
+                            className="bg-slate-700/30 p-3 rounded-lg grid grid-cols-4 gap-4 hover:bg-slate-700/50 cursor-pointer transition-all hover:scale-[1.02]"
+                            onClick={async () => {
+                              // Fetch member details
+                              try {
+                                const response = await axios.get(`${API}/members`);
+                                const member = response.data.find(m => m.id === access.member_id);
+                                if (member) {
+                                  setSelectedDetailItem(member);
+                                  setDetailItemType('member');
+                                }
+                              } catch (error) {
+                                console.error('Failed to fetch member:', error);
+                              }
+                            }}
+                          >
                             <div>{access.member_name || 'Unknown'}</div>
                             <div className="text-sm text-slate-400">
                               {access.access_date ? new Date(access.access_date).toLocaleTimeString() : 'N/A'}
