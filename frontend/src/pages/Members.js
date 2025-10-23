@@ -236,6 +236,46 @@ export default function Members() {
     setQrDialogOpen(true);
   };
 
+  // Search and filter logic
+  const filteredMembers = members.filter((member) => {
+    // Search query filter (name, email, phone, ID)
+    const searchLower = searchQuery.toLowerCase();
+    const matchesSearch = 
+      searchQuery === '' ||
+      member.first_name?.toLowerCase().includes(searchLower) ||
+      member.last_name?.toLowerCase().includes(searchLower) ||
+      member.email?.toLowerCase().includes(searchLower) ||
+      member.phone?.toLowerCase().includes(searchLower) ||
+      member.id_number?.toLowerCase().includes(searchLower);
+
+    // Status filter
+    const matchesStatus = 
+      statusFilter === 'all' ||
+      member.membership_status === statusFilter;
+
+    // Membership type filter
+    const matchesType = 
+      typeFilter === 'all' ||
+      member.membership_type_id === typeFilter;
+
+    // Debtor filter
+    const matchesDebtor = 
+      debtorFilter === 'all' ||
+      (debtorFilter === 'yes' && member.is_debtor) ||
+      (debtorFilter === 'no' && !member.is_debtor);
+
+    return matchesSearch && matchesStatus && matchesType && matchesDebtor;
+  });
+
+  const clearFilters = () => {
+    setSearchQuery('');
+    setStatusFilter('all');
+    setTypeFilter('all');
+    setDebtorFilter('all');
+  };
+
+  const hasActiveFilters = searchQuery !== '' || statusFilter !== 'all' || typeFilter !== 'all' || debtorFilter !== 'all';
+
   return (
     <div className="flex min-h-screen">
       <Sidebar />
