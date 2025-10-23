@@ -3788,6 +3788,19 @@ async def create_booking(booking_data: BookingCreate, current_user: User = Depen
     if class_obj.membership_types_allowed and member_obj.membership_type_id not in class_obj.membership_types_allowed:
         raise HTTPException(status_code=403, detail="Your membership type is not allowed for this class")
     
+    # Check member's no-show count
+    no_show_count = await db.bookings.count_documents({
+        "member_id": booking_data.member_id,
+        "no_show": True
+    })
+    
+    no_show_threshold = class_obj.no_show_threshold
+    if no_show_count >= no_show_threshold:
+        raise HTTPException(
+            status_code=403, 
+            detail=f"Member has {no_show_count} no-shows. Booking blocked until attendance improves. Please contact staff."
+        )
+    
     # Check booking window
     booking_date = booking_data.booking_date
     # Make booking_date timezone-aware if it's naive
