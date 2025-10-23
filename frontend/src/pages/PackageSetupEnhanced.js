@@ -58,7 +58,12 @@ export default function PackageSetupEnhanced() {
     auto_renewal_price: '',
     description: '',
     is_default: false,
-    is_levy: false
+    // Levy configuration
+    levy_enabled: false,
+    levy_frequency_type: 'none',
+    levy_amount: '',
+    levy_custom_schedule: [],
+    levy_rollover_enabled: true
   });
 
   const variationTypes = [
