@@ -332,7 +332,7 @@ export default function SettingsNew() {
               </CardHeader>
 
               <CardContent className="p-6">
-                <Tabs defaultValue={categories[mainCategory]?.tabs[0]?.id} className="w-full">
+                <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
                   {/* Sub-tabs Navigation */}
                   <TabsList className="bg-slate-700/50 p-1 mb-6 grid grid-cols-auto gap-2 w-full" style={{
                     gridTemplateColumns: `repeat(${categories[mainCategory]?.tabs.length || 1}, 1fr)`
