@@ -492,19 +492,85 @@ function AutomationsGeneric() {
                     </Select>
                   </div>
 
-                  {/* Message Template */}
-                  <div>
-                    <Label htmlFor="message">Message Template *</Label>
-                    <Textarea
-                      id="message"
-                      value={formData.message}
-                      onChange={(e) => setFormData({ ...formData, message: e.target.value })}
-                      rows={4}
-                      required
-                    />
-                    <p className="text-xs text-gray-500 mt-1">
-                      Available variables: {'{member_name}'}, {'{member_id}'}, {'{amount}'}, {'{invoice_number}'}, {'{class_name}'}, {'{booking_date}'}
-                    </p>
+                  {/* Message Template Selection */}
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-4">
+                      <Label>Message Source</Label>
+                      <div className="flex items-center gap-2">
+                        <Switch
+                          checked={useTemplate}
+                          onCheckedChange={setUseTemplate}
+                        />
+                        <span className="text-sm text-gray-600">
+                          {useTemplate ? 'Use Template' : 'Write Inline'}
+                        </span>
+                      </div>
+                    </div>
+
+                    {useTemplate ? (
+                      <div>
+                        <Label htmlFor="template_select">Select Notification Template *</Label>
+                        <Select
+                          value={formData.template_id}
+                          onValueChange={(value) => {
+                            setFormData({ ...formData, template_id: value });
+                            // Find and show template preview
+                            const template = notificationTemplates.find(t => t.id === value);
+                            if (template) {
+                              setFormData({ ...formData, template_id: value, message: '' });
+                            }
+                          }}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Choose a template..." />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {notificationTemplates
+                              .filter(t => {
+                                // Filter templates by selected action type
+                                const channelMap = {
+                                  'send_whatsapp': 'whatsapp',
+                                  'send_sms': 'sms',
+                                  'send_email': 'email',
+                                  'send_push': 'push'
+                                };
+                                const requiredChannel = channelMap[formData.action_type];
+                                return t.channels.includes(requiredChannel);
+                              })
+                              .map(template => (
+                                <SelectItem key={template.id} value={template.id}>
+                                  {template.name} ({template.category.replace('_', ' ')})
+                                </SelectItem>
+                              ))}
+                          </SelectContent>
+                        </Select>
+                        {formData.template_id && (
+                          <div className="mt-2 p-3 bg-gray-50 rounded border text-sm">
+                            <p className="font-semibold">Preview:</p>
+                            <p className="text-gray-700 mt-1">
+                              {notificationTemplates.find(t => t.id === formData.template_id)?.message}
+                            </p>
+                          </div>
+                        )}
+                        <p className="text-xs text-gray-500 mt-1">
+                          Manage templates in Settings → Operations → Notification Templates
+                        </p>
+                      </div>
+                    ) : (
+                      <div>
+                        <Label htmlFor="message">Message Template *</Label>
+                        <Textarea
+                          id="message"
+                          value={formData.message}
+                          onChange={(e) => setFormData({ ...formData, message: e.target.value })}
+                          rows={4}
+                          required={!useTemplate}
+                        />
+                        <p className="text-xs text-gray-500 mt-1">
+                          Available variables: {'{member_name}'}, {'{member_id}'}, {'{amount}'}, {'{invoice_number}'}, {'{class_name}'}, {'{booking_date}'}
+                        </p>
+                      </div>
+                    )}
                   </div>
 
                   {/* Template Parameters */}
