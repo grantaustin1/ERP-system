@@ -263,7 +263,8 @@ export default function PackageSetupEnhanced() {
       auto_renewal_frequency: 'monthly',
       auto_renewal_price: '',
       description: '',
-      is_default: false
+      is_default: false,
+      is_levy: false
     });
   };
 
