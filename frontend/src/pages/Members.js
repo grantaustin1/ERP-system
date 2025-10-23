@@ -23,6 +23,11 @@ export default function Members() {
   const [selectedMember, setSelectedMember] = useState(null);
   const [avsVerifying, setAvsVerifying] = useState(false);
   const [avsResult, setAvsResult] = useState(null);
+  // Search and filter states
+  const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [typeFilter, setTypeFilter] = useState('all');
+  const [debtorFilter, setDebtorFilter] = useState('all');
   const [formData, setFormData] = useState({
     first_name: '',
     last_name: '',
