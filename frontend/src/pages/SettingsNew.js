@@ -983,6 +983,98 @@ export default function SettingsNew() {
           </div>
         </TabsContent>
 
+        {/* NOTIFICATION TEMPLATES */}
+        <TabsContent value="notification-templates">
+          <div className="space-y-6">
+            <div className="flex items-start gap-3 bg-purple-500/10 border border-purple-500/30 rounded-lg p-4">
+              <MessageSquare className="w-6 h-6 text-purple-400 flex-shrink-0 mt-1" />
+              <div className="flex-1">
+                <h3 className="text-xl font-bold text-purple-400 mb-2">Notification Templates</h3>
+                <p className="text-sm text-slate-300">
+                  Create and manage notification templates for member engagement alerts (Green, Amber, Red) and general communications.
+                </p>
+              </div>
+              <Button onClick={() => { setEditingTemplate(null); setTemplateDialogOpen(true); }} className="bg-purple-500 hover:bg-purple-600">
+                <Plus className="w-4 h-4 mr-2" />
+                New Template
+              </Button>
+            </div>
+
+            {/* Template List */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {templates.map((template) => (
+                <Card key={template.id} className="bg-slate-700/50 border-slate-600">
+                  <CardHeader>
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <CardTitle className="text-white text-lg">{template.name}</CardTitle>
+                        <CardDescription className="text-slate-400">
+                          <span className={`inline-block px-2 py-1 rounded text-xs font-semibold mt-1 ${
+                            template.category === 'green_alert' ? 'bg-green-500/20 text-green-400' :
+                            template.category === 'amber_alert' ? 'bg-amber-500/20 text-amber-400' :
+                            template.category === 'red_alert' ? 'bg-red-500/20 text-red-400' :
+                            'bg-blue-500/20 text-blue-400'
+                          }`}>
+                            {template.category.replace('_', ' ').toUpperCase()}
+                          </span>
+                        </CardDescription>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button size="sm" variant="ghost" onClick={() => handleEditTemplate(template)}>
+                          <Edit className="w-4 h-4" />
+                        </Button>
+                        <Button size="sm" variant="ghost" onClick={() => handleDeleteTemplate(template.id)}>
+                          <Trash2 className="w-4 h-4 text-red-400" />
+                        </Button>
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-2">
+                      <div>
+                        <Label className="text-slate-400 text-xs">Channels:</Label>
+                        <div className="flex gap-2 mt-1">
+                          {template.channels.map((channel) => (
+                            <span key={channel} className="inline-flex items-center gap-1 px-2 py-1 bg-slate-600 text-slate-200 rounded text-xs">
+                              {channel === 'email' && <Mail className="w-3 h-3" />}
+                              {channel === 'whatsapp' && <Send className="w-3 h-3" />}
+                              {channel === 'sms' && <Smartphone className="w-3 h-3" />}
+                              {channel === 'push' && <Bell className="w-3 h-3" />}
+                              {channel}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                      {template.subject && (
+                        <div>
+                          <Label className="text-slate-400 text-xs">Subject:</Label>
+                          <p className="text-white text-sm mt-1">{template.subject}</p>
+                        </div>
+                      )}
+                      <div>
+                        <Label className="text-slate-400 text-xs">Message Preview:</Label>
+                        <p className="text-slate-300 text-sm mt-1 line-clamp-3">{template.message}</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+
+            {templates.length === 0 && (
+              <div className="text-center py-12 bg-slate-700/30 rounded-lg">
+                <MessageSquare className="h-16 w-16 mx-auto text-slate-600 mb-4" />
+                <h3 className="text-xl font-semibold text-white mb-2">No Templates Yet</h3>
+                <p className="text-slate-400 mb-4">Create your first notification template to get started</p>
+                <Button onClick={() => { setEditingTemplate(null); setTemplateDialogOpen(true); }} className="bg-purple-500 hover:bg-purple-600">
+                  <Plus className="w-4 h-4 mr-2" />
+                  Create Template
+                </Button>
+              </div>
+            )}
+          </div>
+        </TabsContent>
+
         {/* AUTOMATION */}
         <TabsContent value="notifications">
           <div className="text-center py-12">
