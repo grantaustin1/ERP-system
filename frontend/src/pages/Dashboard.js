@@ -381,6 +381,19 @@ export default function Dashboard() {
                       </TabsContent>
 
                       <TabsContent value="red" className="mt-4">
+                        <div className="flex justify-between items-center mb-4">
+                          <p className="text-sm text-slate-400">
+                            {alertData?.red_members?.length || 0} at-risk members
+                          </p>
+                          <Button
+                            onClick={() => openNotificationDialog('red')}
+                            size="sm"
+                            className="bg-red-600 hover:bg-red-700"
+                          >
+                            <Send className="w-4 h-4 mr-2" />
+                            Send Notification
+                          </Button>
+                        </div>
                         <div className="space-y-2 max-h-96 overflow-y-auto">
                           {alertData?.red_members?.length > 0 ? (
                             alertData.red_members.map((member) => (
