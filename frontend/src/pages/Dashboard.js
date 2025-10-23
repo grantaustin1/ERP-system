@@ -967,7 +967,7 @@ export default function Dashboard() {
                     )}
 
                     {/* Invoices Detail View */}
-                    {(selectedStat === 'Pending Invoices' || selectedStat === 'Total Revenue') && (
+                    {(selectedStat === 'Pending Invoices' || selectedStat === 'Total Revenue') && !selectedDetailItem && (
                       <div className="space-y-2">
                         <div className="bg-slate-700/50 p-3 rounded-lg font-semibold grid grid-cols-5 gap-4">
                           <div>Invoice #</div>
@@ -977,7 +977,14 @@ export default function Dashboard() {
                           <div>Status</div>
                         </div>
                         {statDetailData.map(invoice => (
-                          <div key={invoice.id} className="bg-slate-700/30 p-3 rounded-lg grid grid-cols-5 gap-4 hover:bg-slate-700/50">
+                          <div 
+                            key={invoice.id} 
+                            className="bg-slate-700/30 p-3 rounded-lg grid grid-cols-5 gap-4 hover:bg-slate-700/50 cursor-pointer transition-all hover:scale-[1.02]"
+                            onClick={() => {
+                              setSelectedDetailItem(invoice);
+                              setDetailItemType('invoice');
+                            }}
+                          >
                             <div className="text-sm font-mono">{invoice.invoice_number}</div>
                             <div className="text-sm">{invoice.member_name}</div>
                             <div className="font-semibold">R {invoice.amount?.toFixed(2)}</div>
