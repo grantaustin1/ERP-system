@@ -235,7 +235,8 @@ export default function SettingsNew() {
       tabs: [
         { id: 'eft', label: 'EFT Settings', icon: FileText },
         { id: 'debicheck', label: 'DebiCheck', icon: Shield },
-        { id: 'avs', label: 'AVS (Account Verification)', icon: CheckSquare }
+        { id: 'avs', label: 'AVS (Account Verification)', icon: CheckSquare },
+        { id: 'ti', label: 'TI (Reconciliation & Tracking)', icon: Activity }
       ]
     },
     staff: {
