@@ -238,6 +238,21 @@ function AutomationsGeneric() {
     }
   };
 
+  const fetchNotificationTemplates = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`${BACKEND_URL}/api/notification-templates`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setNotificationTemplates(data.templates || []);
+      }
+    } catch (error) {
+      console.error('Failed to fetch notification templates:', error);
+    }
+  };
+
   const handleTemplateSelect = (templateId) => {
     const template = AUTOMATION_TEMPLATES.find(t => t.id === templateId);
     setSelectedTemplate(template);
