@@ -2279,7 +2279,11 @@ class MemberProfileDrillDownTester:
 if __name__ == "__main__":
     import sys
     
-    if len(sys.argv) > 1 and sys.argv[1] == "levy":
+    if len(sys.argv) > 1 and sys.argv[1] == "profile":
+        # Run member profile drill-down tests as requested
+        tester = MemberProfileDrillDownTester()
+        tester.run_member_profile_tests()
+    elif len(sys.argv) > 1 and sys.argv[1] == "levy":
         # Run payment option levy tests
         tester = PaymentOptionLevyTester()
         tester.run_levy_tests()
@@ -2288,6 +2292,6 @@ if __name__ == "__main__":
         tester = NotificationTemplateTester()
         tester.run_notification_template_tests()
     else:
-        # Run original member import tests
-        tester = MemberImportTester()
-        tester.run_all_tests()
+        # Run member profile drill-down tests by default (as requested in review)
+        tester = MemberProfileDrillDownTester()
+        tester.run_member_profile_tests()
