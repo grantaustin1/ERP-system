@@ -289,6 +289,28 @@ export default function PackageSetupEnhanced() {
     return (installment * installments).toFixed(2);
   };
 
+  const addCustomLevyDate = () => {
+    setPaymentForm({
+      ...paymentForm,
+      levy_custom_schedule: [
+        ...(paymentForm.levy_custom_schedule || []),
+        { month: 1, day: 1, amount: '' }
+      ]
+    });
+  };
+
+  const updateCustomLevyDate = (index, field, value) => {
+    const schedule = [...(paymentForm.levy_custom_schedule || [])];
+    schedule[index] = { ...schedule[index], [field]: value };
+    setPaymentForm({ ...paymentForm, levy_custom_schedule: schedule });
+  };
+
+  const removeCustomLevyDate = (index) => {
+    const schedule = [...(paymentForm.levy_custom_schedule || [])];
+    schedule.splice(index, 1);
+    setPaymentForm({ ...paymentForm, levy_custom_schedule: schedule });
+  };
+
   return (
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
