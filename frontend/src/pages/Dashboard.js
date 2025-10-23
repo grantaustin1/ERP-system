@@ -20,6 +20,7 @@ export default function Dashboard() {
 
   useEffect(() => {
     fetchStats();
+    fetchAlertData();
   }, []);
 
   const fetchStats = async () => {
@@ -30,6 +31,30 @@ export default function Dashboard() {
       toast.error('Failed to fetch dashboard stats');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchAlertData = async () => {
+    try {
+      const response = await axios.get(`${API}/member-access/stats`);
+      setAlertData(response.data);
+    } catch (error) {
+      console.error('Failed to fetch alert data:', error);
+    } finally {
+      setAlertsLoading(false);
+    }
+  };
+
+  const generateMockData = async () => {
+    setGeneratingMockData(true);
+    try {
+      await axios.post(`${API}/member-access/generate-mock-data`);
+      toast.success('Mock access data generated successfully');
+      await fetchAlertData();
+    } catch (error) {
+      toast.error('Failed to generate mock data');
+    } finally {
+      setGeneratingMockData(false);
     }
   };
 
