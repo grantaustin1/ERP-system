@@ -8457,7 +8457,7 @@ async def record_member_access(
     notes: Optional[str] = None,
     current_user: User = Depends(get_current_user)
 ):
-    """Record a member access/check-in"""
+    """Record a member access/check-in and auto-mark class attendance"""
     member = await db.members.find_one({"id": member_id})
     if not member:
         raise HTTPException(status_code=404, detail="Member not found")
@@ -8474,10 +8474,59 @@ async def record_member_access(
     
     await db.member_access.insert_one(access_dict)
     
+    # Check for class bookings within check-in window
+    now = datetime.now(timezone.utc)
+    checked_in_bookings = []
+    
+    # Get all confirmed bookings for this member
+    bookings = await db.bookings.find({
+        "member_id": member_id,
+        "status": "confirmed"
+    }).to_list(length=None)
+    
+    for booking in bookings:
+        # Get class details to check check-in window
+        class_obj = await db.classes.find_one({"id": booking["class_id"]})
+        if not class_obj:
+            continue
+        
+        check_in_window_minutes = class_obj.get("check_in_window_minutes", 15)
+        
+        # Parse booking date
+        booking_date = booking["booking_date"]
+        if isinstance(booking_date, str):
+            booking_date = datetime.fromisoformat(booking_date.replace('Z', '+00:00'))
+        if booking_date.tzinfo is None:
+            booking_date = booking_date.replace(tzinfo=timezone.utc)
+        
+        # Calculate time difference
+        time_diff_minutes = abs((now - booking_date).total_seconds() / 60)
+        
+        # Check if within window
+        if time_diff_minutes <= check_in_window_minutes:
+            # Mark as attended
+            await db.bookings.update_one(
+                {"id": booking["id"]},
+                {
+                    "$set": {
+                        "status": "attended",
+                        "checked_in_at": now.isoformat(),
+                        "no_show": False
+                    }
+                }
+            )
+            checked_in_bookings.append({
+                "booking_id": booking["id"],
+                "class_name": booking["class_name"],
+                "booking_date": booking["booking_date"]
+            })
+    
     return {
         "success": True,
         "message": "Access recorded",
-        "access_id": access_record.id
+        "access_id": access_record.id,
+        "auto_checked_in_bookings": checked_in_bookings,
+        "bookings_marked_attended": len(checked_in_bookings)
     }
 
 
