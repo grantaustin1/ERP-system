@@ -220,6 +220,16 @@ export default function SettingsNew() {
     }
   };
 
+  const handleSaveAlertConfig = async () => {
+    try {
+      await axios.post(`${API}/api/alerts/config`, alertConfig);
+      toast({ title: "Success", description: "Alert configuration saved!" });
+      fetchData();
+    } catch (error) {
+      toast({ title: "Error", description: error.response?.data?.detail || "Failed to save", variant: "destructive" });
+    }
+  };
+
   const handleUpdateFieldConfig = async (fieldId, updates) => {
     try {
       await axios.patch(`${API}/api/field-configurations/${fieldId}`, updates);
