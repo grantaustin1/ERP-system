@@ -24,7 +24,17 @@ import {
   Database,
   BarChart3,
   FileText,
-  Building2
+  Building2,
+  MessageSquare,
+  Edit,
+  Trash2,
+  Plus,
+  Mail,
+  Send,
+  Smartphone,
+  AlertTriangle,
+  CheckCircle,
+  AlertCircle
 } from 'lucide-react';
 
 const API = process.env.REACT_APP_BACKEND_URL || 'http://localhost:8001';
