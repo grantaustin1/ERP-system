@@ -4,12 +4,18 @@ import axios from 'axios';
 import { API } from '@/App';
 import Sidebar from '@/components/Sidebar';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Users, UserCheck, Ban, FileText, TrendingUp, Activity } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Users, UserCheck, Ban, FileText, TrendingUp, Activity, AlertCircle, AlertTriangle, CheckCircle, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function Dashboard() {
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [alertData, setAlertData] = useState(null);
+  const [alertsLoading, setAlertsLoading] = useState(true);
+  const [generatingMockData, setGeneratingMockData] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
