@@ -3409,21 +3409,54 @@ def check_automation_conditions(conditions: dict, trigger_data: dict) -> bool:
     return True
 
 async def execute_action(action: dict, trigger_data: dict):
-    """Execute a specific automation action"""
+    """Execute a specific automation action with support for notification templates"""
     action_type = action.get("type")
     
+    # Helper function to get message from template or inline
+    async def get_message_content(action: dict, trigger_data: dict):
+        """Get message content from template_id or inline message"""
+        template_id = action.get("template_id")
+        
+        if template_id:
+            # Fetch template from database
+            template = await db.notification_templates.find_one({"id": template_id, "is_active": True})
+            if not template:
+                logger.warning(f"Template {template_id} not found or inactive, falling back to inline message")
+                return {
+                    "message": action.get("message", "").format(**trigger_data),
+                    "subject": action.get("subject", "").format(**trigger_data) if action.get("subject") else None
+                }
+            
+            # Format template message with trigger_data
+            try:
+                message = template["message"].format(**trigger_data)
+                subject = template.get("subject", "").format(**trigger_data) if template.get("subject") else None
+                return {"message": message, "subject": subject}
+            except KeyError as e:
+                logger.warning(f"Missing placeholder {e} in trigger_data, using template as-is")
+                return {"message": template["message"], "subject": template.get("subject")}
+        else:
+            # Use inline message (backward compatibility)
+            return {
+                "message": action.get("message", "").format(**trigger_data),
+                "subject": action.get("subject", "").format(**trigger_data) if action.get("subject") else None
+            }
+    
     if action_type == "send_sms":
-        # SMS action - placeholder for now
+        # SMS action with template support
         phone = trigger_data.get("phone") or action.get("phone")
-        message = action.get("message", "").format(**trigger_data)
+        content = await get_message_content(action, trigger_data)
+        message = content["message"]
+        
         # TODO: Integrate SMS service (Twilio, etc.)
         logger.info(f"SMS Action (Mock): Sending to {phone}: {message}")
         return {"type": "sms", "status": "sent_mock", "phone": phone, "message": message}
     
     elif action_type == "send_whatsapp":
-        # WhatsApp action via respond.io
+        # WhatsApp action with template support
         phone = trigger_data.get("phone") or action.get("phone")
-        message = action.get("message", "").format(**trigger_data)
+        content = await get_message_content(action, trigger_data)
+        message = content["message"]
         
         # Get member details for contact creation
         first_name = trigger_data.get("member_name", "Member")
