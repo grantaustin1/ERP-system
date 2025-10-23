@@ -11,6 +11,7 @@ import MemberPortal from '@/pages/MemberPortalEnhanced';
 import Settings from '@/pages/Settings';
 import SettingsNew from '@/pages/SettingsNew';
 import DebitOrderManagement from '@/pages/DebitOrderManagement';
+import TransactionReconciliation from '@/pages/TransactionReconciliation';
 import Cancellations from '@/pages/Cancellations';
 import Levies from '@/pages/Levies';
 import Marketing from '@/pages/Marketing';
