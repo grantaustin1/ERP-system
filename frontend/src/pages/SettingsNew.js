@@ -478,6 +478,10 @@ export default function SettingsNew() {
           {renderDebiCheckSettings()}
         </TabsContent>
 
+        <TabsContent value="avs">
+          {renderAvsSettings()}
+        </TabsContent>
+
         {/* STAFF & SECURITY */}
         <TabsContent value="staff">
           <div className="text-center py-12">
