@@ -8653,6 +8653,54 @@ async def seed_default_templates(current_user: User = Depends(get_current_user))
     }
 
 
+@api_router.put("/notification-templates/{template_id}")
+async def update_notification_template(
+    template_id: str,
+    template: NotificationTemplate,
+    current_user: User = Depends(get_current_user)
+):
+    """Update an existing notification template"""
+    existing = await db.notification_templates.find_one({"id": template_id})
+    if not existing:
+        raise HTTPException(status_code=404, detail="Template not found")
+    
+    template_dict = template.dict()
+    template_dict["created_at"] = template_dict["created_at"].isoformat()
+    template_dict["id"] = template_id  # Preserve original ID
+    
+    await db.notification_templates.update_one(
+        {"id": template_id},
+        {"$set": template_dict}
+    )
+    
+    return {
+        "success": True,
+        "template": template_dict
+    }
+
+
+@api_router.delete("/notification-templates/{template_id}")
+async def delete_notification_template(
+    template_id: str,
+    current_user: User = Depends(get_current_user)
+):
+    """Delete a notification template (soft delete by setting is_active=False)"""
+    existing = await db.notification_templates.find_one({"id": template_id})
+    if not existing:
+        raise HTTPException(status_code=404, detail="Template not found")
+    
+    # Soft delete
+    await db.notification_templates.update_one(
+        {"id": template_id},
+        {"$set": {"is_active": False}}
+    )
+    
+    return {
+        "success": True,
+        "message": "Template deleted successfully"
+    }
+
+
 @api_router.post("/send-bulk-notification")
 async def send_bulk_notification(
     request: BulkNotificationRequest,
