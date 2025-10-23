@@ -251,6 +251,65 @@ export default function SettingsNew() {
     }
   };
 
+  // Template Management Functions
+  const fetchTemplates = async () => {
+    try {
+      const response = await axios.get(`${API}/api/notification-templates`);
+      setTemplates(response.data.templates || []);
+    } catch (error) {
+      console.error('Failed to fetch templates:', error);
+    }
+  };
+
+  const handleSaveTemplate = async () => {
+    try {
+      if (editingTemplate) {
+        // Update existing template
+        await axios.put(`${API}/api/notification-templates/${editingTemplate.id}`, templateForm);
+        toast({ title: "Success", description: "Template updated successfully!" });
+      } else {
+        // Create new template
+        await axios.post(`${API}/api/notification-templates`, templateForm);
+        toast({ title: "Success", description: "Template created successfully!" });
+      }
+      fetchTemplates();
+      setTemplateDialogOpen(false);
+      setEditingTemplate(null);
+      setTemplateForm({
+        name: '',
+        category: 'green_alert',
+        channels: [],
+        subject: '',
+        message: ''
+      });
+    } catch (error) {
+      toast({ title: "Error", description: error.response?.data?.detail || "Failed to save template", variant: "destructive" });
+    }
+  };
+
+  const handleEditTemplate = (template) => {
+    setEditingTemplate(template);
+    setTemplateForm({
+      name: template.name,
+      category: template.category,
+      channels: template.channels || [],
+      subject: template.subject || '',
+      message: template.message
+    });
+    setTemplateDialogOpen(true);
+  };
+
+  const handleDeleteTemplate = async (templateId) => {
+    if (!window.confirm('Are you sure you want to delete this template?')) return;
+    try {
+      await axios.delete(`${API}/api/notification-templates/${templateId}`);
+      toast({ title: "Success", description: "Template deleted successfully!" });
+      fetchTemplates();
+    } catch (error) {
+      toast({ title: "Error", description: "Failed to delete template", variant: "destructive" });
+    }
+  };
+
   const handleUpdateFieldConfig = async (fieldId, updates) => {
     try {
       await axios.patch(`${API}/api/field-configurations/${fieldId}`, updates);
