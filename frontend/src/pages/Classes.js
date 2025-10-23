@@ -388,10 +388,41 @@ function Classes() {
 
   const openBookingDialog = (classItem) => {
     setSelectedClass(classItem);
-    setBookingForm({
-      ...bookingForm,
-      class_id: classItem.id
-    });
+    
+    // Parse the class date/time and populate the date fields
+    if (classItem.class_date) {
+      const classDate = new Date(classItem.class_date);
+      
+      // Format with leading zeros
+      const year = classDate.getFullYear().toString();
+      const month = (classDate.getMonth() + 1).toString().padStart(2, '0');
+      const day = classDate.getDate().toString().padStart(2, '0');
+      const hour = classDate.getHours().toString().padStart(2, '0');
+      const minute = classDate.getMinutes().toString().padStart(2, '0');
+      
+      // Set the date fields
+      setDateFields({
+        year,
+        month,
+        day,
+        hour,
+        minute
+      });
+      
+      // Also set the combined booking_date
+      const dateTimeString = `${year}-${month}-${day}T${hour}:${minute}`;
+      setBookingForm({
+        ...bookingForm,
+        class_id: classItem.id,
+        booking_date: dateTimeString
+      });
+    } else {
+      setBookingForm({
+        ...bookingForm,
+        class_id: classItem.id
+      });
+    }
+    
     setShowBookingDialog(true);
   };
 
