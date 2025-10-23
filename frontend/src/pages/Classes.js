@@ -594,6 +594,29 @@ function Classes() {
                 </div>
               </div>
 
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="check_in_window_minutes">Check-in Window (minutes)</Label>
+                  <Input
+                    id="check_in_window_minutes"
+                    type="number"
+                    value={classForm.check_in_window_minutes}
+                    onChange={(e) => setClassForm({ ...classForm, check_in_window_minutes: parseInt(e.target.value) })}
+                  />
+                  <p className="text-xs text-gray-500 mt-1">Minutes before/after class start for auto check-in</p>
+                </div>
+                <div>
+                  <Label htmlFor="no_show_threshold">No-Show Threshold</Label>
+                  <Input
+                    id="no_show_threshold"
+                    type="number"
+                    value={classForm.no_show_threshold}
+                    onChange={(e) => setClassForm({ ...classForm, no_show_threshold: parseInt(e.target.value) })}
+                  />
+                  <p className="text-xs text-gray-500 mt-1">No-shows before blocking member from booking</p>
+                </div>
+              </div>
+
               <div className="flex items-center space-x-2">
                 <input
                   type="checkbox"
