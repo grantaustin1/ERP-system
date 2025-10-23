@@ -629,11 +629,130 @@ export default function Members() {
             </Dialog>
           </div>
 
+          {/* Search and Filter Section */}
+          <Card className="bg-slate-800/50 border-slate-700 backdrop-blur-lg mb-6">
+            <CardContent className="p-6">
+              <div className="space-y-4">
+                {/* Search Bar */}
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 w-5 h-5" />
+                  <Input
+                    type="text"
+                    placeholder="Search by name, email, phone, or ID number..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-10 bg-slate-700/50 border-slate-600 text-white placeholder-slate-400 h-12"
+                  />
+                  {searchQuery && (
+                    <button
+                      onClick={() => setSearchQuery('')}
+                      className="absolute right-3 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-white"
+                    >
+                      <X className="w-5 h-5" />
+                    </button>
+                  )}
+                </div>
+
+                {/* Filters */}
+                <div className="flex flex-wrap gap-3 items-center">
+                  <div className="flex items-center gap-2">
+                    <Filter className="w-4 h-4 text-slate-400" />
+                    <span className="text-sm text-slate-400">Filters:</span>
+                  </div>
+
+                  {/* Status Filter */}
+                  <Select value={statusFilter} onValueChange={setStatusFilter}>
+                    <SelectTrigger className="w-[160px] bg-slate-700/50 border-slate-600 text-white">
+                      <SelectValue placeholder="All Status" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-slate-800 border-slate-700">
+                      <SelectItem value="all" className="text-white">All Status</SelectItem>
+                      <SelectItem value="active" className="text-white">Active</SelectItem>
+                      <SelectItem value="inactive" className="text-white">Inactive</SelectItem>
+                      <SelectItem value="expired" className="text-white">Expired</SelectItem>
+                    </SelectContent>
+                  </Select>
+
+                  {/* Membership Type Filter */}
+                  <Select value={typeFilter} onValueChange={setTypeFilter}>
+                    <SelectTrigger className="w-[180px] bg-slate-700/50 border-slate-600 text-white">
+                      <SelectValue placeholder="All Types" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-slate-800 border-slate-700">
+                      <SelectItem value="all" className="text-white">All Types</SelectItem>
+                      {membershipTypes.map((type) => (
+                        <SelectItem key={type.id} value={type.id} className="text-white">
+                          {type.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+
+                  {/* Debtor Filter */}
+                  <Select value={debtorFilter} onValueChange={setDebtorFilter}>
+                    <SelectTrigger className="w-[160px] bg-slate-700/50 border-slate-600 text-white">
+                      <SelectValue placeholder="All Members" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-slate-800 border-slate-700">
+                      <SelectItem value="all" className="text-white">All Members</SelectItem>
+                      <SelectItem value="yes" className="text-white">Debtors Only</SelectItem>
+                      <SelectItem value="no" className="text-white">Non-Debtors</SelectItem>
+                    </SelectContent>
+                  </Select>
+
+                  {/* Clear Filters Button */}
+                  {hasActiveFilters && (
+                    <Button
+                      onClick={clearFilters}
+                      variant="outline"
+                      size="sm"
+                      className="ml-auto border-slate-600 text-slate-300 hover:bg-slate-700"
+                    >
+                      <X className="w-4 h-4 mr-2" />
+                      Clear Filters
+                    </Button>
+                  )}
+                </div>
+
+                {/* Results Count */}
+                <div className="flex items-center justify-between pt-2 border-t border-slate-700">
+                  <p className="text-sm text-slate-400">
+                    Showing <span className="text-white font-semibold">{filteredMembers.length}</span> of{' '}
+                    <span className="text-white font-semibold">{members.length}</span> members
+                  </p>
+                  {hasActiveFilters && (
+                    <Badge variant="outline" className="border-emerald-500/50 text-emerald-400">
+                      <Filter className="w-3 h-3 mr-1" />
+                      Filtered
+                    </Badge>
+                  )}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
           {loading ? (
             <div className="text-center text-slate-400 py-12">Loading members...</div>
+          ) : filteredMembers.length === 0 ? (
+            <Card className="bg-slate-800/50 border-slate-700">
+              <CardContent className="text-center py-12">
+                <Search className="w-16 h-16 mx-auto text-slate-600 mb-4" />
+                <h3 className="text-xl font-semibold text-white mb-2">No members found</h3>
+                <p className="text-slate-400 mb-4">
+                  {hasActiveFilters 
+                    ? 'Try adjusting your search or filters' 
+                    : 'Start by adding your first member'}
+                </p>
+                {hasActiveFilters && (
+                  <Button onClick={clearFilters} variant="outline" className="border-slate-600">
+                    Clear Filters
+                  </Button>
+                )}
+              </CardContent>
+            </Card>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {members.map((member) => (
+              {filteredMembers.map((member) => (
                 <Card key={member.id} className="bg-slate-800/50 border-slate-700 backdrop-blur-lg hover:bg-slate-800/70 transition-all" data-testid={`member-card-${member.id}`}>
                   <CardHeader>
                     <div className="flex items-start justify-between">
