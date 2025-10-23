@@ -1137,6 +1137,9 @@ class Class(BaseModel):
     cancel_window_hours: int = 2  # How many hours before class can members cancel
     check_in_window_minutes: int = 15  # Minutes before/after class start for check-in
     no_show_threshold: int = 3  # Number of no-shows before blocking bookings
+    reminder_minutes_before: int = 60  # Minutes before class to send reminder
+    send_booking_confirmation: bool = True  # Send WhatsApp confirmation on booking
+    send_class_reminder: bool = True  # Send WhatsApp reminder before class
     # Status
     status: str = "active"  # active, cancelled, completed
     # Membership restrictions
