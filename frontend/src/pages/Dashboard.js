@@ -425,6 +425,168 @@ export default function Dashboard() {
               </CardContent>
             </Card>
           </div>
+
+          {/* Notification Dialog */}
+          <Dialog open={notificationDialogOpen} onOpenChange={setNotificationDialogOpen}>
+            <DialogContent className="bg-slate-800 border-slate-700 text-white max-w-2xl">
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2">
+                  <Send className="w-5 h-5" />
+                  Send Bulk Notification - {selectedAlertLevel?.toUpperCase()} Alert
+                </DialogTitle>
+                <DialogDescription className="text-slate-400">
+                  Send notifications to all members in this alert category
+                </DialogDescription>
+              </DialogHeader>
+
+              <div className="space-y-4">
+                {/* Template Selection */}
+                <div>
+                  <Label className="text-white">Select Message Template</Label>
+                  <Select value={selectedTemplate} onValueChange={setSelectedTemplate}>
+                    <SelectTrigger className="bg-slate-700 border-slate-600 text-white mt-2">
+                      <SelectValue placeholder="Choose a template" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-slate-800 border-slate-700">
+                      {templates.map((template) => (
+                        <SelectItem key={template.id} value={template.id} className="text-white">
+                          {template.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Template Preview */}
+                {selectedTemplate && templates.find(t => t.id === selectedTemplate) && (
+                  <div className="bg-slate-700/50 border border-slate-600 rounded-lg p-4">
+                    <Label className="text-sm text-slate-400">Preview:</Label>
+                    <div className="mt-2 space-y-2">
+                      {templates.find(t => t.id === selectedTemplate).subject && (
+                        <div>
+                          <span className="text-xs text-slate-400">Subject:</span>
+                          <p className="text-sm text-white">{templates.find(t => t.id === selectedTemplate).subject}</p>
+                        </div>
+                      )}
+                      <div>
+                        <span className="text-xs text-slate-400">Message:</span>
+                        <p className="text-sm text-white whitespace-pre-wrap">
+                          {templates.find(t => t.id === selectedTemplate).message}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Channel Selection */}
+                <div>
+                  <Label className="text-white mb-2 block">Notification Channels</Label>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div
+                      onClick={() => toggleChannel('email')}
+                      className={`flex items-center gap-2 p-3 rounded-lg border cursor-pointer transition-colors ${
+                        selectedChannels.includes('email')
+                          ? 'bg-emerald-500/20 border-emerald-500'
+                          : 'bg-slate-700/50 border-slate-600 hover:border-slate-500'
+                      }`}
+                    >
+                      <Checkbox checked={selectedChannels.includes('email')} />
+                      <Mail className="w-4 h-4" />
+                      <span>Email</span>
+                    </div>
+
+                    <div
+                      onClick={() => toggleChannel('whatsapp')}
+                      className={`flex items-center gap-2 p-3 rounded-lg border cursor-pointer transition-colors ${
+                        selectedChannels.includes('whatsapp')
+                          ? 'bg-emerald-500/20 border-emerald-500'
+                          : 'bg-slate-700/50 border-slate-600 hover:border-slate-500'
+                      }`}
+                    >
+                      <Checkbox checked={selectedChannels.includes('whatsapp')} />
+                      <MessageSquare className="w-4 h-4" />
+                      <span>WhatsApp</span>
+                    </div>
+
+                    <div
+                      onClick={() => toggleChannel('sms')}
+                      className={`flex items-center gap-2 p-3 rounded-lg border cursor-pointer transition-colors ${
+                        selectedChannels.includes('sms')
+                          ? 'bg-emerald-500/20 border-emerald-500'
+                          : 'bg-slate-700/50 border-slate-600 hover:border-slate-500'
+                      }`}
+                    >
+                      <Checkbox checked={selectedChannels.includes('sms')} />
+                      <Smartphone className="w-4 h-4" />
+                      <span>SMS</span>
+                    </div>
+
+                    <div
+                      onClick={() => toggleChannel('push')}
+                      className={`flex items-center gap-2 p-3 rounded-lg border cursor-pointer transition-colors ${
+                        selectedChannels.includes('push')
+                          ? 'bg-emerald-500/20 border-emerald-500'
+                          : 'bg-slate-700/50 border-slate-600 hover:border-slate-500'
+                      }`}
+                    >
+                      <Checkbox checked={selectedChannels.includes('push')} />
+                      <Bell className="w-4 h-4" />
+                      <span>Push Notification</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Summary */}
+                <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-3">
+                  <p className="text-sm text-slate-300">
+                    <strong>Recipients:</strong> {
+                      selectedAlertLevel === 'green' ? alertData?.summary?.green_count :
+                      selectedAlertLevel === 'amber' ? alertData?.summary?.amber_count :
+                      alertData?.summary?.red_count
+                    } members
+                  </p>
+                  <p className="text-sm text-slate-300">
+                    <strong>Channels:</strong> {selectedChannels.length > 0 ? selectedChannels.join(', ') : 'None selected'}
+                  </p>
+                  <p className="text-xs text-slate-400 mt-2">
+                    Note: This is currently in mock mode. Integrate with actual services for production.
+                  </p>
+                </div>
+
+                {/* Actions */}
+                <div className="flex justify-end gap-2 pt-4">
+                  <Button
+                    onClick={() => setNotificationDialogOpen(false)}
+                    variant="outline"
+                    className="border-slate-600 text-slate-300"
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    onClick={sendBulkNotification}
+                    disabled={sending || !selectedTemplate || selectedChannels.length === 0}
+                    className="bg-emerald-600 hover:bg-emerald-700"
+                  >
+                    {sending ? (
+                      <>
+                        <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                        Sending...
+                      </>
+                    ) : (
+                      <>
+                        <Send className="w-4 h-4 mr-2" />
+                        Send to {
+                          selectedAlertLevel === 'green' ? alertData?.summary?.green_count :
+                          selectedAlertLevel === 'amber' ? alertData?.summary?.amber_count :
+                          alertData?.summary?.red_count
+                        } Members
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </div>
+            </DialogContent>
+          </Dialog>
         </div>
       </div>
     </div>
