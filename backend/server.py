@@ -8600,6 +8600,9 @@ async def create_notification_template(
     
     await db.notification_templates.insert_one(template_dict)
     
+    # Remove MongoDB _id for response
+    template_dict.pop("_id", None)
+    
     return {
         "success": True,
         "template": template_dict
