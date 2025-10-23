@@ -93,6 +93,13 @@ export default function SettingsNew() {
     notifications_enabled: false,
     auto_reconcile: true
   });
+  const [alertConfig, setAlertConfig] = useState({
+    days_period: 30,
+    green_threshold: 10,
+    amber_min_threshold: 1,
+    amber_max_threshold: 4,
+    red_threshold: 0
+  });
 
   useEffect(() => {
     fetchData();
