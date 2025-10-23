@@ -1221,6 +1221,7 @@ class Booking(BaseModel):
     cancelled_at: Optional[datetime] = None
     cancellation_reason: Optional[str] = None
     checked_in_at: Optional[datetime] = None
+    no_show: bool = False  # True if member didn't attend despite booking
     notes: Optional[str] = None
 
 class BookingCreate(BaseModel):
