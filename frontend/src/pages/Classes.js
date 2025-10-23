@@ -958,7 +958,6 @@ function Classes() {
                     onChange={(e) => handleDateFieldChange('year', e.target.value, 4, monthRef)}
                     maxLength={4}
                     className="text-center"
-                    required
                   />
                 </div>
                 <span className="text-gray-500">/</span>
@@ -971,7 +970,6 @@ function Classes() {
                     onChange={(e) => handleDateFieldChange('month', e.target.value, 2, dayRef)}
                     maxLength={2}
                     className="text-center"
-                    required
                   />
                 </div>
                 <span className="text-gray-500">/</span>
@@ -984,7 +982,6 @@ function Classes() {
                     onChange={(e) => handleDateFieldChange('day', e.target.value, 2, hourRef)}
                     maxLength={2}
                     className="text-center"
-                    required
                   />
                 </div>
                 <span className="text-gray-500 mx-2">at</span>
@@ -997,7 +994,6 @@ function Classes() {
                     onChange={(e) => handleDateFieldChange('hour', e.target.value, 2, minuteRef)}
                     maxLength={2}
                     className="text-center"
-                    required
                   />
                 </div>
                 <span className="text-gray-500">:</span>
@@ -1010,7 +1006,6 @@ function Classes() {
                     onChange={(e) => handleDateFieldChange('minute', e.target.value, 2, null)}
                     maxLength={2}
                     className="text-center"
-                    required
                   />
                 </div>
               </div>
