@@ -759,6 +759,95 @@ class DebiCheckCollection(BaseModel):
     processed_at: Optional[datetime] = None
 
 
+# AVS (Account Verification Service) Models
+class AVSConfig(BaseModel):
+    """AVS configuration settings for Nedbank account verification"""
+    model_config = ConfigDict(extra="ignore")
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    profile_number: str  # 10-digit Nedbank profile number
+    profile_user_number: str  # 8-digit profile user number
+    charge_account: str  # Account to charge for verifications
+    mock_mode: bool = True  # If true, use mock responses (for testing without credentials)
+    use_qa: bool = True  # If true, use QA environment; false for production
+    enable_auto_verify: bool = False  # Auto-verify during member onboarding
+    verify_on_update: bool = False  # Re-verify when banking details are updated
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: Optional[datetime] = None
+
+
+class AVSConfigUpdate(BaseModel):
+    """Update model for AVS configuration"""
+    profile_number: Optional[str] = None
+    profile_user_number: Optional[str] = None
+    charge_account: Optional[str] = None
+    mock_mode: Optional[bool] = None
+    use_qa: Optional[bool] = None
+    enable_auto_verify: Optional[bool] = None
+    verify_on_update: Optional[bool] = None
+
+
+class AVSVerificationRequest(BaseModel):
+    """Request model for account verification"""
+    bank_identifier: str  # FI Code (e.g., "21" for Nedbank, "18" for Standard Bank)
+    account_number: str
+    sort_code: str  # Branch code
+    identity_number: str
+    identity_type: str = "SID"  # SID/SPP/SBR/TRN
+    account_type: Optional[str] = None  # "01"=Current, "02"=Savings, "00"=Unknown
+    initials: Optional[str] = None
+    last_name: Optional[str] = None
+    email_id: Optional[str] = None
+    cell_number: Optional[str] = None
+    tax_reference: Optional[str] = None
+    customer_reference: Optional[str] = None
+    sub_billing_id: Optional[str] = None
+    customer_reference2: Optional[str] = None
+
+
+class AVSVerificationResult(BaseModel):
+    """Result model for account verification"""
+    model_config = ConfigDict(extra="ignore")
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    member_id: Optional[str] = None  # If verification was for a member
+    verification_type: str = "manual"  # manual, auto, onboarding, update
+    # Request data
+    bank_identifier: str
+    bank_name: str
+    account_number: str
+    sort_code: str
+    identity_number: str
+    identity_type: str
+    initials: Optional[str] = None
+    last_name: Optional[str] = None
+    # Result codes
+    result_code: str  # R00=Success, R01=Technical error, R02=Business error
+    result_code_acct: str  # Account-specific result code
+    # Verification results (Y=Yes, N=No, U=Unprocessed, F=Failed)
+    account_exists: str
+    identification_number_matched: str
+    initials_matched: str
+    last_name_matched: str
+    account_active: str
+    account_dormant: str
+    account_active_3months: str
+    can_debit_account: str
+    can_credit_account: str
+    tax_ref_match: str
+    account_type_match: str
+    email_id_matched: str
+    cell_number_matched: str
+    # Metadata
+    verification_summary: Optional[str] = None  # Human-readable summary
+    mock_mode: bool = False
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    created_by: Optional[str] = None  # User who triggered verification
+
+
+class AVSBatchVerificationRequest(BaseModel):
+    """Request model for batch account verification"""
+    verifications: List[AVSVerificationRequest]
+
+
 class Automation(BaseModel):
     model_config = ConfigDict(extra="ignore")
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
