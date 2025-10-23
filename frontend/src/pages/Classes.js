@@ -270,6 +270,8 @@ function Classes() {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
+        credentials: 'include',
+        mode: 'cors',
         body: JSON.stringify(bookingForm)
       });
 
