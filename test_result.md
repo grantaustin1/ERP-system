@@ -3622,3 +3622,140 @@ agent_communication:
       READY FOR TESTING: All 8 template management tasks implemented. Backend endpoints need testing via deep_testing_backend_v2. Frontend functionality verified via screenshots but can be tested further if needed.
       
       CONSOLIDATED COMMUNICATION TEMPLATES: All notification templates for member engagement (Green/Amber/Red alerts) and general communications are now centralized in this single Template Management interface under Settings > Operations.
+
+
+backend:
+  - task: "Member Model Freeze Status Fields"
+    implemented: true
+    working: "NA"
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Added freeze status fields to Member model: freeze_status (bool), freeze_start_date, freeze_end_date, freeze_reason. Also added no_show_count field to track member no-shows for package setup integration. Fields ready for backend testing."
+
+  - task: "MemberNote Model and CRUD API"
+    implemented: true
+    working: "NA"
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Created MemberNote model with note_id, member_id, content, created_by, created_by_name, created_at, updated_at fields. Implemented full CRUD API: POST /api/members/{member_id}/notes (create), GET /api/members/{member_id}/notes (list all), PUT /api/members/{member_id}/notes/{note_id} (update), DELETE /api/members/{member_id}/notes/{note_id} (delete). Notes stored in member_notes collection with automatic timestamp tracking."
+
+  - task: "Member Profile Consolidated Endpoint"
+    implemented: true
+    working: "NA"
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Created GET /api/members/{member_id}/profile endpoint that returns comprehensive member data including: member details, membership_type, payment_option, and stats (total_bookings, total_access_logs, unpaid_invoices, no_show_count, debt_amount, last_access). Single endpoint provides all data needed for member profile drill-down UI."
+
+  - task: "Member Data Paginated Endpoints"
+    implemented: true
+    working: "NA"
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Implemented paginated endpoints for member drill-down: GET /api/members/{member_id}/access-logs?limit=20 (returns last 20 access logs), GET /api/members/{member_id}/bookings?limit=20 (returns last 20 bookings), GET /api/members/{member_id}/invoices?limit=20 (returns last 20 invoices). All endpoints support pagination with default limit of 20 records."
+
+  - task: "Member Update Endpoint"
+    implemented: true
+    working: "NA"
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Created PUT /api/members/{member_id} endpoint for updating member information. Protects system fields (id, qr_code, normalized fields) from direct modification. Handles datetime field conversions automatically. Supports editing all member fields including new freeze status fields from the profile drill-down UI."
+
+frontend:
+  - task: "Members Tab Profile Drill-Down UI"
+    implemented: true
+    working: "NA"
+    file: "/app/frontend/src/pages/Members.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Implemented comprehensive member profile drill-down dialog with: (1) Header with member name, status badges (Active/Frozen/Cancelled), mini stat cards (Debt, Bookings, No-Shows, Last Access). (2) Edit mode toggle with Save/Cancel buttons and permission checking. (3) 5 tabs: Overview (personal info, membership details, freeze status with dates/reason), Access Logs (paginated table), Bookings (paginated table with no-show tracking), Invoices (paginated table with status badges), Notes (CRUD interface with timestamps and author tracking). (4) Full edit functionality for all member fields including freeze status management. (5) Note creation/deletion with real-time updates. Clicking any member card opens the profile dialog."
+
+metadata:
+  created_by: "main_agent"
+  version: "1.0"
+  test_sequence: 0
+  run_ui: false
+
+test_plan:
+  current_focus:
+    - "Member Model Freeze Status Fields"
+    - "MemberNote Model and CRUD API"
+    - "Member Profile Consolidated Endpoint"
+    - "Member Data Paginated Endpoints"
+    - "Member Update Endpoint"
+    - "Members Tab Profile Drill-Down UI"
+  stuck_tasks: []
+  test_all: false
+  test_priority: "high_first"
+
+agent_communication:
+  - agent: "main"
+    message: |
+      MEMBER PROFILE DRILL-DOWN IMPLEMENTATION COMPLETE
+      
+      ✅ BACKEND CHANGES:
+      1. Enhanced Member model with freeze status fields (freeze_status, freeze_start_date, freeze_end_date, freeze_reason) and no_show_count
+      2. Created MemberNote model with full CRUD API (create, read, update, delete)
+      3. Added GET /api/members/{member_id}/profile - consolidated endpoint with member data, membership type, payment option, and stats
+      4. Added paginated endpoints: /access-logs, /bookings, /invoices (limit=20)
+      5. Added PUT /api/members/{member_id} for member updates with protected fields
+      
+      ✅ FRONTEND CHANGES:
+      1. Comprehensive profile dialog with header, status badges, and 4 mini stat cards
+      2. 5-tab interface: Overview, Access Logs, Bookings, Invoices, Notes
+      3. Edit mode for member information with save/cancel functionality
+      4. Freeze status management with date pickers and reason textarea
+      5. Notes tab with create/delete functionality and author tracking
+      6. Member cards are clickable to open profile dialog
+      
+      ✅ FEATURES:
+      - Real-time data fetching on dialog open
+      - Status badges: Active (green), Frozen (amber), Cancelled (red)
+      - Permission-based edit button visibility
+      - Datetime field handling for freeze dates
+      - Paginated tables for logs, bookings, invoices (last 20 entries)
+      - Note timestamps with "edited" indicator
+      - Protected system fields (id, qr_code, normalized fields)
+      
+      🚀 READY FOR TESTING:
+      Backend endpoints need testing via deep_testing_backend_v2 to verify:
+      - Freeze status field storage and retrieval
+      - Notes CRUD operations
+      - Profile endpoint data aggregation
+      - Paginated endpoints with limit parameter
+      - Member update with datetime conversions
+      
+      Frontend needs verification:
+      - Profile dialog opens on member card click
+      - All tabs load data correctly
+      - Edit mode saves changes
+      - Notes create/delete functionality
+      - Freeze status UI updates
