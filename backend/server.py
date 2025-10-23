@@ -468,7 +468,12 @@ class PaymentOption(BaseModel):
     display_order: int = 0  # For sorting payment options
     is_default: bool = False  # Default selected option
     is_active: bool = True
-    is_levy: bool = False  # Indicates if this payment option is for a levy
+    # Levy configuration
+    levy_enabled: bool = False  # If true, this payment option includes levies
+    levy_frequency_type: str = "none"  # "anniversary_yearly", "anniversary_biannual", "fixed_dates_june_december", "custom", "none"
+    levy_amount: Optional[float] = None  # Standard levy amount (for non-custom types)
+    levy_custom_schedule: Optional[List[Dict]] = None  # For custom: [{"month": 6, "day": 1, "amount": 500}, ...]
+    levy_rollover_enabled: bool = True  # If true, levies roll over when membership auto-renews
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 class PaymentOptionCreate(BaseModel):
