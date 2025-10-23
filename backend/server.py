@@ -7859,6 +7859,394 @@ async def get_participating_banks(current_user: User = Depends(get_current_user)
     }
 
 
+# ============================================================================
+# TI (Transactional Information) Endpoints
+# ============================================================================
+
+from ti_utils import TIService
+
+@api_router.get("/ti/config")
+async def get_ti_config(current_user: User = Depends(get_current_user)):
+    """Get TI configuration settings"""
+    config = await db.ti_config.find_one({})
+    if not config:
+        # Return default config
+        return {
+            "id": "default",
+            "profile_number": "0000000000",
+            "account_number": "0000000000",
+            "mock_mode": True,
+            "use_qa": True,
+            "fti_enabled": True,
+            "fti_frequency": "daily",
+            "pti_enabled": False,
+            "notifications_enabled": False,
+            "auto_reconcile": True,
+            "is_configured": False
+        }
+    
+    config.pop("_id", None)
+    config["is_configured"] = True
+    return config
+
+
+@api_router.post("/ti/config")
+async def create_or_update_ti_config(
+    data: TIConfigUpdate,
+    current_user: User = Depends(get_current_user)
+):
+    """Create or update TI configuration"""
+    existing = await db.ti_config.find_one({})
+    
+    if existing:
+        # Update existing config
+        update_data = {k: v for k, v in data.dict(exclude_unset=True).items() if v is not None}
+        update_data["updated_at"] = datetime.now(timezone.utc).isoformat()
+        
+        await db.ti_config.update_one(
+            {"id": existing["id"]},
+            {"$set": update_data}
+        )
+        
+        updated = await db.ti_config.find_one({"id": existing["id"]})
+        updated.pop("_id", None)
+        return updated
+    else:
+        # Create new config
+        config = TIConfig(**data.dict(exclude_unset=True))
+        config_dict = config.dict()
+        config_dict["created_at"] = config_dict["created_at"].isoformat()
+        if config_dict.get("updated_at"):
+            config_dict["updated_at"] = config_dict["updated_at"].isoformat()
+        
+        await db.ti_config.insert_one(config_dict)
+        config_dict.pop("_id", None)
+        return config_dict
+
+
+@api_router.post("/ti/fti/fetch")
+async def fetch_fti_transactions(current_user: User = Depends(get_current_user)):
+    """
+    Fetch FTI (Final Transaction Information) from Nedbank
+    
+    Retrieves confirmed bank transactions for reconciliation
+    """
+    # Get TI config
+    config = await db.ti_config.find_one({})
+    if not config:
+        raise HTTPException(
+            status_code=400,
+            detail="TI not configured. Please configure TI settings first."
+        )
+    
+    # Initialize TI service
+    ti_config = {
+        "mock_mode": config.get("mock_mode", True),
+        "profile_number": config.get("profile_number", "0000000000"),
+        "account_number": config.get("account_number", "0000000000"),
+        "use_qa": config.get("use_qa", True),
+        "fti_frequency": config.get("fti_frequency", "daily"),
+        "pti_enabled": config.get("pti_enabled", False)
+    }
+    
+    ti_service = TIService(ti_config)
+    
+    try:
+        # Fetch FTI data
+        transactions = await ti_service.fetch_fti_data()
+        
+        # Store transactions in database
+        stored_count = 0
+        for trans in transactions:
+            fti_trans = FTITransaction(
+                statement_number=trans.get("statement_number", ""),
+                date=trans.get("date", ""),
+                time=trans.get("time", ""),
+                balance=trans.get("balance", 0.0),
+                transaction_type=trans.get("transaction_type", ""),
+                transaction_type_name=trans.get("transaction_type_name", ""),
+                channel=trans.get("channel", ""),
+                channel_name=trans.get("channel_name", ""),
+                amount=trans.get("amount", 0.0),
+                reference=trans.get("reference", ""),
+                description=trans.get("description", ""),
+                transaction_key=trans.get("transaction_key", ""),
+                process_key=trans.get("process_key"),
+                is_debit=trans.get("is_debit", False),
+                mock_mode=trans.get("mock_mode", False)
+            )
+            
+            # Check if transaction already exists
+            existing = await db.fti_transactions.find_one({"transaction_key": fti_trans.transaction_key})
+            if not existing:
+                trans_dict = fti_trans.dict()
+                trans_dict["imported_at"] = trans_dict["imported_at"].isoformat()
+                if trans_dict.get("reconciled_at"):
+                    trans_dict["reconciled_at"] = trans_dict["reconciled_at"].isoformat()
+                
+                await db.fti_transactions.insert_one(trans_dict)
+                stored_count += 1
+        
+        return {
+            "success": True,
+            "total_fetched": len(transactions),
+            "new_transactions": stored_count,
+            "message": f"Fetched {len(transactions)} transactions, {stored_count} new"
+        }
+        
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to fetch FTI data: {str(e)}"
+        )
+
+
+@api_router.get("/ti/fti/transactions")
+async def get_fti_transactions(
+    limit: int = 50,
+    unreconciled_only: bool = False,
+    current_user: User = Depends(get_current_user)
+):
+    """Get FTI transactions"""
+    query = {}
+    if unreconciled_only:
+        query["is_reconciled"] = False
+    
+    transactions = await db.fti_transactions.find(query).sort("imported_at", -1).limit(limit).to_list(length=None)
+    
+    for t in transactions:
+        t.pop("_id", None)
+    
+    return {
+        "success": True,
+        "count": len(transactions),
+        "transactions": transactions
+    }
+
+
+@api_router.post("/ti/fti/reconcile")
+async def reconcile_fti_transactions(current_user: User = Depends(get_current_user)):
+    """
+    Reconcile FTI transactions against outstanding invoices
+    
+    Automatically matches bank transactions to member invoices
+    """
+    # Get TI config
+    config = await db.ti_config.find_one({})
+    if not config:
+        raise HTTPException(
+            status_code=400,
+            detail="TI not configured"
+        )
+    
+    # Get unreconciled FTI transactions
+    fti_transactions = await db.fti_transactions.find({"is_reconciled": False}).to_list(length=None)
+    
+    if not fti_transactions:
+        return {
+            "success": True,
+            "message": "No unreconciled transactions found"
+        }
+    
+    # Get outstanding invoices
+    outstanding_invoices = await db.invoices.find({"status": {"$in": ["pending", "overdue"]}}).to_list(length=None)
+    
+    # Initialize TI service
+    ti_service = TIService(config)
+    
+    # Perform reconciliation
+    reconciliation_result = ti_service.reconcile_transactions(fti_transactions, outstanding_invoices)
+    
+    # Update matched transactions and invoices
+    updated_invoices = 0
+    updated_transactions = 0
+    
+    for match in reconciliation_result["matched"]:
+        transaction = match["transaction"]
+        invoice = match["invoice"]
+        
+        # Update FTI transaction
+        await db.fti_transactions.update_one(
+            {"id": transaction["id"]},
+            {"$set": {
+                "is_reconciled": True,
+                "matched_invoice_id": invoice["id"],
+                "matched_member_id": invoice.get("member_id"),
+                "match_confidence": match["match_confidence"],
+                "match_reason": match["match_reason"],
+                "reconciled_at": datetime.now(timezone.utc).isoformat(),
+                "reconciled_by": current_user.id
+            }}
+        )
+        updated_transactions += 1
+        
+        # Update invoice if auto_reconcile is enabled and high confidence
+        if config.get("auto_reconcile") and match["match_confidence"] == "high":
+            await db.invoices.update_one(
+                {"id": invoice["id"]},
+                {"$set": {
+                    "status": "paid",
+                    "paid_date": transaction["date"],
+                    "payment_method": "bank_transfer",
+                    "payment_reference": transaction["reference"]
+                }}
+            )
+            updated_invoices += 1
+    
+    # Store reconciliation result
+    recon_result = ReconciliationResult(
+        total_transactions=reconciliation_result["summary"]["total_transactions"],
+        matched_count=reconciliation_result["summary"]["matched_count"],
+        unmatched_count=reconciliation_result["summary"]["unmatched_count"],
+        match_rate=reconciliation_result["summary"]["match_rate"],
+        total_matched_amount=reconciliation_result["summary"]["total_matched_amount"],
+        total_unmatched_amount=reconciliation_result["summary"]["total_unmatched_amount"],
+        high_confidence_matches=reconciliation_result["summary"]["high_confidence_matches"],
+        medium_confidence_matches=reconciliation_result["summary"]["medium_confidence_matches"],
+        low_confidence_matches=reconciliation_result["summary"]["low_confidence_matches"],
+        matched_invoice_ids=[m["invoice"]["id"] for m in reconciliation_result["matched"]],
+        unmatched_transaction_ids=[t["id"] for t in reconciliation_result["unmatched"]],
+        report_text=TIService.format_reconciliation_report(reconciliation_result),
+        processed_by=current_user.id
+    )
+    
+    recon_dict = recon_result.dict()
+    recon_dict["reconciliation_date"] = recon_dict["reconciliation_date"].isoformat()
+    await db.reconciliation_results.insert_one(recon_dict)
+    
+    return {
+        "success": True,
+        "reconciliation": reconciliation_result["summary"],
+        "updated_transactions": updated_transactions,
+        "updated_invoices": updated_invoices,
+        "report_id": recon_result.id
+    }
+
+
+@api_router.get("/ti/reconciliation/history")
+async def get_reconciliation_history(
+    limit: int = 10,
+    current_user: User = Depends(get_current_user)
+):
+    """Get reconciliation history"""
+    results = await db.reconciliation_results.find({}).sort("reconciliation_date", -1).limit(limit).to_list(length=None)
+    
+    for r in results:
+        r.pop("_id", None)
+    
+    return {
+        "success": True,
+        "count": len(results),
+        "results": results
+    }
+
+
+@api_router.get("/ti/reconciliation/report/{report_id}")
+async def get_reconciliation_report(
+    report_id: str,
+    current_user: User = Depends(get_current_user)
+):
+    """Get detailed reconciliation report"""
+    result = await db.reconciliation_results.find_one({"id": report_id})
+    
+    if not result:
+        raise HTTPException(status_code=404, detail="Report not found")
+    
+    result.pop("_id", None)
+    
+    return {
+        "success": True,
+        "report": result
+    }
+
+
+@api_router.post("/ti/pti/fetch")
+async def fetch_pti_transactions(current_user: User = Depends(get_current_user)):
+    """
+    Fetch PTI (Provisional Transaction Information)
+    
+    Retrieves real-time provisional transactions
+    """
+    # Get TI config
+    config = await db.ti_config.find_one({})
+    if not config:
+        raise HTTPException(
+            status_code=400,
+            detail="TI not configured"
+        )
+    
+    if not config.get("pti_enabled"):
+        raise HTTPException(
+            status_code=400,
+            detail="PTI not enabled in configuration"
+        )
+    
+    # Initialize TI service
+    ti_service = TIService(config)
+    
+    try:
+        # Fetch PTI data
+        transactions = await ti_service.fetch_pti_data()
+        
+        # Store PTI transactions
+        stored_count = 0
+        for trans in transactions:
+            pti_trans = PTITransaction(
+                transaction_key=trans.get("transaction_key", ""),
+                date=trans.get("date", ""),
+                time=trans.get("time", ""),
+                transaction_type=trans.get("transaction_type", ""),
+                transaction_type_name=trans.get("transaction_type_name", ""),
+                channel=trans.get("channel", ""),
+                channel_name=trans.get("channel_name", ""),
+                amount=trans.get("amount", 0.0),
+                reference=trans.get("reference", ""),
+                description=trans.get("description", ""),
+                is_debit=trans.get("is_debit", False),
+                mock_mode=trans.get("mock_mode", False)
+            )
+            
+            # Check if already exists
+            existing = await db.pti_transactions.find_one({"transaction_key": pti_trans.transaction_key})
+            if not existing:
+                trans_dict = pti_trans.dict()
+                trans_dict["received_at"] = trans_dict["received_at"].isoformat()
+                
+                await db.pti_transactions.insert_one(trans_dict)
+                stored_count += 1
+        
+        return {
+            "success": True,
+            "total_fetched": len(transactions),
+            "new_transactions": stored_count,
+            "transactions": transactions
+        }
+        
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to fetch PTI data: {str(e)}"
+        )
+
+
+@api_router.get("/ti/pti/transactions")
+async def get_pti_transactions(
+    limit: int = 20,
+    current_user: User = Depends(get_current_user)
+):
+    """Get recent PTI transactions"""
+    transactions = await db.pti_transactions.find({}).sort("received_at", -1).limit(limit).to_list(length=None)
+    
+    for t in transactions:
+        t.pop("_id", None)
+    
+    return {
+        "success": True,
+        "count": len(transactions),
+        "transactions": transactions
+    }
+
+
 # Include the router in the main app (must be after all route definitions)
 app.include_router(api_router)
 
