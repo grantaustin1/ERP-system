@@ -55,7 +55,9 @@ function AccessControlEnhanced() {
     limit: 100
   });
 
-  const API_URL = process.env.REACT_APP_BACKEND_URL;
+  const API_URL = window.location.hostname === 'localhost' 
+    ? 'http://localhost:8001' 
+    : process.env.REACT_APP_BACKEND_URL;
 
   useEffect(() => {
     fetchMembers();
