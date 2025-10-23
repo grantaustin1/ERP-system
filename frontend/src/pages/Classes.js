@@ -7,7 +7,9 @@ import { Textarea } from '../components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '../components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
-import { Calendar, Clock, Users, Plus, Edit, Trash2, UserCheck } from 'lucide-react';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '../components/ui/command';
+import { Popover, PopoverContent, PopoverTrigger } from '../components/ui/popover';
+import { Calendar, Clock, Users, Plus, Edit, Trash2, UserCheck, Check, ChevronsUpDown } from 'lucide-react';
 
 const DAYS_OF_WEEK = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 const CLASS_TYPES = ['Yoga', 'Pilates', 'Spin', 'CrossFit', 'Boxing', 'HIIT', 'Zumba', 'Bootcamp', 'Strength Training', 'Cardio'];
