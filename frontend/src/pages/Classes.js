@@ -358,6 +358,8 @@ function Classes() {
       waitlist_capacity: 10,
       booking_window_days: 7,
       cancel_window_hours: 2,
+      check_in_window_minutes: 15,
+      no_show_threshold: 3,
       drop_in_price: 0,
       membership_types_allowed: []
     });
