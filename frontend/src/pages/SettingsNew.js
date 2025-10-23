@@ -464,6 +464,113 @@ export default function SettingsNew() {
           </div>
         </div>
       </div>
+
+      {/* Template Dialog */}
+      <Dialog open={templateDialogOpen} onOpenChange={setTemplateDialogOpen}>
+        <DialogContent className="bg-slate-800 text-white border-slate-700 max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="text-2xl">
+              {editingTemplate ? 'Edit Template' : 'Create New Template'}
+            </DialogTitle>
+            <DialogDescription className="text-slate-400">
+              Create notification templates with placeholders: {'{first_name}'}, {'{last_name}'}, {'{visit_count}'}, {'{days_since_last_visit}'}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            <div>
+              <Label htmlFor="template_name" className="text-white">Template Name</Label>
+              <Input
+                id="template_name"
+                placeholder="e.g., Green Alert - Thank You"
+                value={templateForm.name}
+                onChange={(e) => setTemplateForm({...templateForm, name: e.target.value})}
+                className="bg-slate-700 text-white border-slate-600 mt-2"
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="template_category" className="text-white">Category</Label>
+              <select
+                id="template_category"
+                value={templateForm.category}
+                onChange={(e) => setTemplateForm({...templateForm, category: e.target.value})}
+                className="w-full mt-2 bg-slate-700 text-white border-slate-600 rounded-md p-2"
+              >
+                <option value="green_alert">Green Alert (Active Members)</option>
+                <option value="amber_alert">Amber Alert (Moderate Engagement)</option>
+                <option value="red_alert">Red Alert (Inactive Members)</option>
+                <option value="general">General Communication</option>
+              </select>
+            </div>
+
+            <div>
+              <Label className="text-white">Notification Channels</Label>
+              <div className="grid grid-cols-2 gap-3 mt-2">
+                {['email', 'whatsapp', 'sms', 'push'].map((channel) => (
+                  <div key={channel} className="flex items-center gap-2 bg-slate-700 p-3 rounded-lg">
+                    <Checkbox
+                      id={`channel_${channel}`}
+                      checked={templateForm.channels.includes(channel)}
+                      onCheckedChange={(checked) => {
+                        if (checked) {
+                          setTemplateForm({...templateForm, channels: [...templateForm.channels, channel]});
+                        } else {
+                          setTemplateForm({...templateForm, channels: templateForm.channels.filter(c => c !== channel)});
+                        }
+                      }}
+                    />
+                    <Label htmlFor={`channel_${channel}`} className="text-white capitalize cursor-pointer">
+                      {channel === 'email' && <Mail className="w-4 h-4 inline mr-1" />}
+                      {channel === 'whatsapp' && <Send className="w-4 h-4 inline mr-1" />}
+                      {channel === 'sms' && <Smartphone className="w-4 h-4 inline mr-1" />}
+                      {channel === 'push' && <Bell className="w-4 h-4 inline mr-1" />}
+                      {channel}
+                    </Label>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <Label htmlFor="template_subject" className="text-white">
+                Subject Line (for Email)
+              </Label>
+              <Input
+                id="template_subject"
+                placeholder="e.g., Thank You for Being Active!"
+                value={templateForm.subject}
+                onChange={(e) => setTemplateForm({...templateForm, subject: e.target.value})}
+                className="bg-slate-700 text-white border-slate-600 mt-2"
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="template_message" className="text-white">Message</Label>
+              <Textarea
+                id="template_message"
+                placeholder="Hi {first_name}! We noticed you've visited {visit_count} times..."
+                value={templateForm.message}
+                onChange={(e) => setTemplateForm({...templateForm, message: e.target.value})}
+                rows={8}
+                className="bg-slate-700 text-white border-slate-600 mt-2"
+              />
+              <p className="text-xs text-slate-400 mt-1">
+                Available placeholders: {'{first_name}'}, {'{last_name}'}, {'{visit_count}'}, {'{days_since_last_visit}'}
+              </p>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setTemplateDialogOpen(false)} className="border-slate-600 text-white">
+              Cancel
+            </Button>
+            <Button onClick={handleSaveTemplate} className="bg-purple-500 hover:bg-purple-600">
+              {editingTemplate ? 'Update Template' : 'Create Template'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 
