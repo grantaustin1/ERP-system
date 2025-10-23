@@ -21,6 +21,12 @@ export default function Dashboard() {
   const [alertData, setAlertData] = useState(null);
   const [alertsLoading, setAlertsLoading] = useState(true);
   const [generatingMockData, setGeneratingMockData] = useState(false);
+  const [notificationDialogOpen, setNotificationDialogOpen] = useState(false);
+  const [selectedAlertLevel, setSelectedAlertLevel] = useState(null);
+  const [templates, setTemplates] = useState([]);
+  const [selectedTemplate, setSelectedTemplate] = useState('');
+  const [selectedChannels, setSelectedChannels] = useState([]);
+  const [sending, setSending] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
