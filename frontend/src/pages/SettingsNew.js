@@ -33,6 +33,7 @@ export default function SettingsNew() {
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [mainCategory, setMainCategory] = useState('business');
+  const [activeTab, setActiveTab] = useState('memberships');
   
   // Existing state variables
   const [membershipTypes, setMembershipTypes] = useState([]);
