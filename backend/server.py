@@ -489,7 +489,12 @@ class PaymentOptionCreate(BaseModel):
     description: Optional[str] = None
     display_order: int = 0
     is_default: bool = False
-    is_levy: bool = False
+    # Levy configuration
+    levy_enabled: bool = False
+    levy_frequency_type: str = "none"
+    levy_amount: Optional[float] = None
+    levy_custom_schedule: Optional[List[Dict]] = None
+    levy_rollover_enabled: bool = True
 
 class PaymentOptionUpdate(BaseModel):
     payment_name: Optional[str] = None
