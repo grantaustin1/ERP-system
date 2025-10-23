@@ -374,6 +374,7 @@ function AutomationsGeneric() {
       parameters: {}
     });
     setSelectedTemplate(null);
+    setUseTemplate(false);
     setEditingAutomation(null);
   };
 
