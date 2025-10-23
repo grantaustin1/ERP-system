@@ -8676,6 +8676,9 @@ async def update_notification_template(
         {"$set": template_dict}
     )
     
+    # Remove MongoDB _id for response
+    template_dict.pop("_id", None)
+    
     return {
         "success": True,
         "template": template_dict
