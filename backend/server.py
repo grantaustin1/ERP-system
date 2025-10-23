@@ -7732,6 +7732,10 @@ async def get_participating_banks(current_user: User = Depends(get_current_user)
     }
 
 
+# Include the router in the main app (must be after all route definitions)
+app.include_router(api_router)
+
+
 # Audit Logging Middleware
 @app.middleware("http")
 async def audit_logging_middleware(request, call_next):
