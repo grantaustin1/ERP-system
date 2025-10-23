@@ -721,6 +721,14 @@ export default function PackageSetupEnhanced() {
                             />
                             <Label>Set as Default Option</Label>
                           </div>
+
+                          <div className="flex items-center space-x-2">
+                            <Switch
+                              checked={paymentForm.is_levy}
+                              onCheckedChange={(checked) => setPaymentForm({ ...paymentForm, is_levy: checked })}
+                            />
+                            <Label>Is Levy</Label>
+                          </div>
                         </div>
                         <div className="flex justify-end space-x-2">
                           <Button variant="outline" onClick={() => setPaymentDialogOpen(false)}>Cancel</Button>
