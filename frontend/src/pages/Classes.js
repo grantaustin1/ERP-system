@@ -45,6 +45,9 @@ function Classes() {
     cancel_window_hours: 2,
     check_in_window_minutes: 15,
     no_show_threshold: 3,
+    reminder_minutes_before: 60,
+    send_booking_confirmation: true,
+    send_class_reminder: true,
     drop_in_price: 0,
     membership_types_allowed: []
   });
