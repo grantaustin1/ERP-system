@@ -1167,6 +1167,8 @@ class ClassCreate(BaseModel):
     waitlist_capacity: int = 10
     booking_window_days: int = 7
     cancel_window_hours: int = 2
+    check_in_window_minutes: int = 15
+    no_show_threshold: int = 3
     membership_types_allowed: List[str] = []
     drop_in_price: float = 0.0
 
