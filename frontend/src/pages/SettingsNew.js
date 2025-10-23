@@ -770,6 +770,135 @@ export default function SettingsNew() {
           </div>
         </TabsContent>
 
+        <TabsContent value="engagement-alerts">
+          <div className="space-y-6">
+            <div className="flex items-start gap-3 bg-blue-500/10 border border-blue-500/30 rounded-lg p-4">
+              <Activity className="w-6 h-6 text-blue-400 flex-shrink-0 mt-1" />
+              <div>
+                <h3 className="text-xl font-bold text-blue-400 mb-2">Member Engagement Alerts</h3>
+                <p className="text-sm text-slate-300">
+                  Configure thresholds for member engagement alerts based on gym access frequency.
+                </p>
+              </div>
+            </div>
+
+            <Card className="bg-slate-700/50 border-slate-600">
+              <CardHeader>
+                <CardTitle className="text-white">Alert Thresholds Configuration</CardTitle>
+                <CardDescription className="text-slate-400">
+                  Set the visit frequency thresholds for categorizing member engagement levels
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div>
+                  <Label htmlFor="days_period" className="text-white">Tracking Period (days)</Label>
+                  <Input
+                    id="days_period"
+                    type="number"
+                    min="1"
+                    max="365"
+                    value={alertConfig.days_period}
+                    onChange={(e) => setAlertConfig({...alertConfig, days_period: parseInt(e.target.value)})}
+                    className="bg-slate-700 text-white border-slate-600 mt-2"
+                  />
+                  <p className="text-xs text-slate-400 mt-1">Number of days to look back when counting visits</p>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {/* Green Alert */}
+                  <div className="bg-green-500/10 border border-green-500/30 rounded-lg p-4">
+                    <div className="flex items-center gap-2 mb-3">
+                      <CheckCircle className="w-5 h-5 text-green-400" />
+                      <span className="font-semibold text-green-400">Green Alert</span>
+                    </div>
+                    <Label htmlFor="green_threshold" className="text-white text-sm">Minimum Visits</Label>
+                    <Input
+                      id="green_threshold"
+                      type="number"
+                      min="1"
+                      value={alertConfig.green_threshold}
+                      onChange={(e) => setAlertConfig({...alertConfig, green_threshold: parseInt(e.target.value)})}
+                      className="bg-slate-700 text-white border-slate-600 mt-2"
+                    />
+                    <p className="text-xs text-slate-400 mt-2">
+                      Members with <strong>≥ {alertConfig.green_threshold}</strong> visits are highly engaged
+                    </p>
+                  </div>
+
+                  {/* Amber Alert */}
+                  <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-4">
+                    <div className="flex items-center gap-2 mb-3">
+                      <AlertTriangle className="w-5 h-5 text-amber-400" />
+                      <span className="font-semibold text-amber-400">Amber Alert</span>
+                    </div>
+                    <div className="space-y-2">
+                      <div>
+                        <Label htmlFor="amber_min" className="text-white text-sm">Minimum Visits</Label>
+                        <Input
+                          id="amber_min"
+                          type="number"
+                          min="0"
+                          value={alertConfig.amber_min_threshold}
+                          onChange={(e) => setAlertConfig({...alertConfig, amber_min_threshold: parseInt(e.target.value)})}
+                          className="bg-slate-700 text-white border-slate-600 mt-1"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="amber_max" className="text-white text-sm">Maximum Visits</Label>
+                        <Input
+                          id="amber_max"
+                          type="number"
+                          min="0"
+                          value={alertConfig.amber_max_threshold}
+                          onChange={(e) => setAlertConfig({...alertConfig, amber_max_threshold: parseInt(e.target.value)})}
+                          className="bg-slate-700 text-white border-slate-600 mt-1"
+                        />
+                      </div>
+                    </div>
+                    <p className="text-xs text-slate-400 mt-2">
+                      Members with <strong>{alertConfig.amber_min_threshold}-{alertConfig.amber_max_threshold}</strong> visits need attention
+                    </p>
+                  </div>
+
+                  {/* Red Alert */}
+                  <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4">
+                    <div className="flex items-center gap-2 mb-3">
+                      <AlertCircle className="w-5 h-5 text-red-400" />
+                      <span className="font-semibold text-red-400">Red Alert</span>
+                    </div>
+                    <div className="bg-red-500/20 rounded p-3 mb-2">
+                      <p className="text-sm text-white">
+                        <strong>0 visits</strong>
+                      </p>
+                      <p className="text-xs text-slate-300 mt-1">Fixed threshold</p>
+                    </div>
+                    <p className="text-xs text-slate-400">
+                      Members with <strong>no visits</strong> are at risk
+                    </p>
+                  </div>
+                </div>
+
+                <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-4">
+                  <h4 className="text-blue-400 font-semibold mb-2">ℹ️ How It Works</h4>
+                  <ul className="text-sm text-slate-300 space-y-1">
+                    <li>• <strong>Green Alert:</strong> Members visiting frequently - keep them engaged!</li>
+                    <li>• <strong>Amber Alert:</strong> Members visiting occasionally - encourage more visits</li>
+                    <li>• <strong>Red Alert:</strong> Members not visiting - reach out to prevent churn</li>
+                    <li>• Alerts are calculated based on check-ins within the specified tracking period</li>
+                    <li>• View detailed member lists by alert level on the Dashboard</li>
+                  </ul>
+                </div>
+
+                <div className="flex justify-end pt-4">
+                  <Button onClick={handleSaveAlertConfig} className="bg-emerald-500 hover:bg-emerald-600">
+                    Save Alert Configuration
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+
         {/* AUTOMATION */}
         <TabsContent value="notifications">
           <div className="text-center py-12">
