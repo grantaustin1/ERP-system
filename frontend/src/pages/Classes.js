@@ -54,6 +54,9 @@ function Classes() {
     notes: ''
   });
 
+  const [memberSearchOpen, setMemberSearchOpen] = useState(false);
+  const [memberSearchValue, setMemberSearchValue] = useState('');
+
   const API_URL = process.env.REACT_APP_BACKEND_URL;
 
   useEffect(() => {
