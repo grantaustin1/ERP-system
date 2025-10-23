@@ -53,6 +53,53 @@ export default function Dashboard() {
     }
   };
 
+  const fetchClassBookingStats = async () => {
+    try {
+      // Fetch all classes
+      const classesResponse = await axios.get(`${API}/classes`);
+      const classes = classesResponse.data;
+      
+      // Fetch all bookings
+      const bookingsResponse = await axios.get(`${API}/bookings`);
+      const bookings = bookingsResponse.data;
+      
+      // Calculate aggregate stats
+      let totalCapacity = 0;
+      let totalBooked = 0;
+      let totalAvailable = 0;
+      
+      const classStats = classes.map(cls => {
+        const classBookings = bookings.filter(b => b.class_id === cls.id);
+        const confirmedCount = classBookings.filter(b => b.status === 'confirmed' || b.status === 'attended').length;
+        const waitlistCount = classBookings.filter(b => b.status === 'waitlist').length;
+        const available = Math.max(0, cls.capacity - confirmedCount);
+        
+        totalCapacity += cls.capacity;
+        totalBooked += confirmedCount;
+        totalAvailable += available;
+        
+        return {
+          ...cls,
+          confirmedCount,
+          waitlistCount,
+          available,
+          bookings: classBookings
+        };
+      });
+      
+      setClassBookingStats({
+        totalCapacity,
+        totalBooked,
+        totalAvailable,
+        utilizationRate: totalCapacity > 0 ? ((totalBooked / totalCapacity) * 100).toFixed(1) : 0,
+        classes: classStats
+      });
+      
+    } catch (error) {
+      console.error('Failed to fetch class booking stats:', error);
+    }
+  };
+
   const fetchAlertData = async () => {
     try {
       const response = await axios.get(`${API}/member-access/stats`);
