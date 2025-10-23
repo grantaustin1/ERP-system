@@ -754,12 +754,132 @@ export default function PackageSetupEnhanced() {
                             <Label>Set as Default Option</Label>
                           </div>
 
-                          <div className="flex items-center space-x-2">
-                            <Switch
-                              checked={paymentForm.is_levy}
-                              onCheckedChange={(checked) => setPaymentForm({ ...paymentForm, is_levy: checked })}
-                            />
-                            <Label>Is Levy</Label>
+                          {/* Levy Configuration */}
+                          <div className="space-y-4 border-t pt-4 mt-4">
+                            <div className="flex items-center space-x-2">
+                              <Switch
+                                checked={paymentForm.levy_enabled}
+                                onCheckedChange={(checked) => setPaymentForm({ 
+                                  ...paymentForm, 
+                                  levy_enabled: checked,
+                                  levy_frequency_type: checked ? 'anniversary_yearly' : 'none'
+                                })}
+                              />
+                              <Label className="font-semibold">Enable Levies</Label>
+                            </div>
+
+                            {paymentForm.levy_enabled && (
+                              <div className="space-y-3 pl-6 border-l-2 border-blue-200">
+                                <div className="space-y-2">
+                                  <Label>Levy Frequency</Label>
+                                  <select
+                                    value={paymentForm.levy_frequency_type}
+                                    onChange={(e) => setPaymentForm({ 
+                                      ...paymentForm, 
+                                      levy_frequency_type: e.target.value,
+                                      levy_custom_schedule: e.target.value === 'custom' ? [{ month: 1, day: 1, amount: '' }] : []
+                                    })}
+                                    className="w-full border rounded p-2"
+                                  >
+                                    <option value="anniversary_yearly">Once per year on anniversary of joining</option>
+                                    <option value="anniversary_biannual">Twice per year (anniversary + 6 months)</option>
+                                    <option value="fixed_dates_june_december">Twice per year (1 June & 1 December)</option>
+                                    <option value="custom">Custom dates (flexible)</option>
+                                  </select>
+                                </div>
+
+                                {paymentForm.levy_frequency_type !== 'custom' && (
+                                  <div className="space-y-2">
+                                    <Label>Levy Amount</Label>
+                                    <Input
+                                      type="number"
+                                      value={paymentForm.levy_amount}
+                                      onChange={(e) => setPaymentForm({ ...paymentForm, levy_amount: e.target.value })}
+                                      placeholder="e.g., 500.00"
+                                    />
+                                  </div>
+                                )}
+
+                                {paymentForm.levy_frequency_type === 'custom' && (
+                                  <div className="space-y-3">
+                                    <div className="flex items-center justify-between">
+                                      <Label>Custom Levy Schedule</Label>
+                                      <Button
+                                        type="button"
+                                        size="sm"
+                                        onClick={addCustomLevyDate}
+                                        className="text-xs"
+                                      >
+                                        + Add Date
+                                      </Button>
+                                    </div>
+                                    
+                                    {(paymentForm.levy_custom_schedule || []).map((schedule, index) => (
+                                      <div key={index} className="flex gap-2 items-end">
+                                        <div className="flex-1 space-y-1">
+                                          <Label className="text-xs">Month</Label>
+                                          <select
+                                            value={schedule.month}
+                                            onChange={(e) => updateCustomLevyDate(index, 'month', parseInt(e.target.value))}
+                                            className="w-full border rounded p-2 text-sm"
+                                          >
+                                            <option value="1">January</option>
+                                            <option value="2">February</option>
+                                            <option value="3">March</option>
+                                            <option value="4">April</option>
+                                            <option value="5">May</option>
+                                            <option value="6">June</option>
+                                            <option value="7">July</option>
+                                            <option value="8">August</option>
+                                            <option value="9">September</option>
+                                            <option value="10">October</option>
+                                            <option value="11">November</option>
+                                            <option value="12">December</option>
+                                          </select>
+                                        </div>
+                                        <div className="flex-1 space-y-1">
+                                          <Label className="text-xs">Day</Label>
+                                          <Input
+                                            type="number"
+                                            min="1"
+                                            max="31"
+                                            value={schedule.day}
+                                            onChange={(e) => updateCustomLevyDate(index, 'day', parseInt(e.target.value))}
+                                            className="text-sm"
+                                          />
+                                        </div>
+                                        <div className="flex-1 space-y-1">
+                                          <Label className="text-xs">Amount</Label>
+                                          <Input
+                                            type="number"
+                                            value={schedule.amount}
+                                            onChange={(e) => updateCustomLevyDate(index, 'amount', e.target.value)}
+                                            placeholder="0.00"
+                                            className="text-sm"
+                                          />
+                                        </div>
+                                        <Button
+                                          type="button"
+                                          variant="destructive"
+                                          size="sm"
+                                          onClick={() => removeCustomLevyDate(index)}
+                                        >
+                                          ✕
+                                        </Button>
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
+
+                                <div className="flex items-center space-x-2 pt-2">
+                                  <Switch
+                                    checked={paymentForm.levy_rollover_enabled}
+                                    onCheckedChange={(checked) => setPaymentForm({ ...paymentForm, levy_rollover_enabled: checked })}
+                                  />
+                                  <Label className="text-sm">Levies roll over when membership auto-renews</Label>
+                                </div>
+                              </div>
+                            )}
                           </div>
                         </div>
                         <div className="flex justify-end space-x-2">
