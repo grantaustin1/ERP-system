@@ -351,6 +351,13 @@ function Classes() {
       booking_date: '',
       notes: ''
     });
+    setDateFields({
+      year: '',
+      month: '',
+      day: '',
+      hour: '',
+      minute: ''
+    });
     setMemberSearchOpen(false);
   };
 
