@@ -1221,6 +1221,564 @@ class PaymentOptionLevyTester:
         
         print("\n" + "=" * 80)
 
+class NotificationTemplateTester:
+    def __init__(self):
+        self.token = None
+        self.headers = {}
+        self.test_results = []
+        self.created_templates = []  # Track created templates for cleanup
+        
+    def log_result(self, test_name, success, message, details=None):
+        """Log test result"""
+        result = {
+            "test": test_name,
+            "success": success,
+            "message": message,
+            "timestamp": datetime.now().isoformat(),
+            "details": details or {}
+        }
+        self.test_results.append(result)
+        status = "✅ PASS" if success else "❌ FAIL"
+        print(f"{status}: {test_name} - {message}")
+        if details and not success:
+            print(f"   Details: {details}")
+    
+    def authenticate(self):
+        """Authenticate and get token"""
+        try:
+            response = requests.post(f"{API_BASE}/auth/login", json={
+                "email": TEST_EMAIL,
+                "password": TEST_PASSWORD
+            })
+            
+            if response.status_code == 200:
+                data = response.json()
+                self.token = data["access_token"]
+                self.headers = {"Authorization": f"Bearer {self.token}"}
+                self.log_result("Authentication", True, "Successfully authenticated")
+                return True
+            else:
+                self.log_result("Authentication", False, f"Failed to authenticate: {response.status_code}", 
+                              {"response": response.text})
+                return False
+        except Exception as e:
+            self.log_result("Authentication", False, f"Authentication error: {str(e)}")
+            return False
+    
+    def test_seed_default_templates(self):
+        """Test seeding default notification templates"""
+        print("\n=== Testing Seed Default Templates ===")
+        
+        try:
+            response = requests.post(f"{API_BASE}/notification-templates/seed-defaults", 
+                                   headers=self.headers)
+            
+            if response.status_code == 200:
+                result = response.json()
+                if result.get("success") and "3 default templates" in result.get("message", ""):
+                    self.log_result("Seed Default Templates", True, 
+                                  f"Successfully seeded default templates: {result.get('message')}")
+                    return True
+                else:
+                    self.log_result("Seed Default Templates", False, 
+                                  f"Unexpected seed response: {result}")
+                    return False
+            else:
+                self.log_result("Seed Default Templates", False, 
+                              f"Failed to seed templates: {response.status_code}",
+                              {"response": response.text})
+                return False
+                
+        except Exception as e:
+            self.log_result("Seed Default Templates", False, f"Error seeding templates: {str(e)}")
+            return False
+    
+    def test_get_all_templates(self):
+        """Test retrieving all notification templates"""
+        print("\n=== Testing Get All Templates ===")
+        
+        try:
+            response = requests.get(f"{API_BASE}/notification-templates", 
+                                  headers=self.headers)
+            
+            if response.status_code == 200:
+                result = response.json()
+                templates = result.get("templates", [])
+                
+                if len(templates) >= 3:  # Should have at least 3 default templates
+                    # Verify template structure
+                    required_fields = ["id", "name", "category", "channels", "subject", "message", "is_active", "created_at"]
+                    first_template = templates[0]
+                    
+                    has_all_fields = all(field in first_template for field in required_fields)
+                    
+                    if has_all_fields:
+                        self.log_result("Get All Templates", True, 
+                                      f"Retrieved {len(templates)} templates with correct structure")
+                        
+                        # Verify we have the expected categories
+                        categories = [t.get("category") for t in templates]
+                        expected_categories = ["green_alert", "amber_alert", "red_alert"]
+                        has_expected_categories = all(cat in categories for cat in expected_categories)
+                        
+                        if has_expected_categories:
+                            self.log_result("Template Categories", True, 
+                                          f"Found all expected categories: {expected_categories}")
+                        else:
+                            self.log_result("Template Categories", False, 
+                                          f"Missing categories. Found: {categories}, Expected: {expected_categories}")
+                        
+                        return templates
+                    else:
+                        missing_fields = [field for field in required_fields if field not in first_template]
+                        self.log_result("Get All Templates", False, 
+                                      f"Template missing required fields: {missing_fields}")
+                        return []
+                else:
+                    self.log_result("Get All Templates", False, 
+                                  f"Expected at least 3 templates, got {len(templates)}")
+                    return []
+            else:
+                self.log_result("Get All Templates", False, 
+                              f"Failed to get templates: {response.status_code}",
+                              {"response": response.text})
+                return []
+                
+        except Exception as e:
+            self.log_result("Get All Templates", False, f"Error getting templates: {str(e)}")
+            return []
+    
+    def test_filter_by_category(self):
+        """Test filtering templates by category"""
+        print("\n=== Testing Filter by Category ===")
+        
+        categories_to_test = ["green_alert", "amber_alert", "red_alert"]
+        
+        for category in categories_to_test:
+            try:
+                response = requests.get(f"{API_BASE}/notification-templates?category={category}", 
+                                      headers=self.headers)
+                
+                if response.status_code == 200:
+                    result = response.json()
+                    templates = result.get("templates", [])
+                    
+                    if len(templates) >= 1:
+                        # Verify all returned templates have the correct category
+                        all_correct_category = all(t.get("category") == category for t in templates)
+                        
+                        if all_correct_category:
+                            self.log_result(f"Filter by {category}", True, 
+                                          f"Found {len(templates)} templates for category {category}")
+                        else:
+                            wrong_categories = [t.get("category") for t in templates if t.get("category") != category]
+                            self.log_result(f"Filter by {category}", False, 
+                                          f"Some templates have wrong category: {wrong_categories}")
+                    else:
+                        self.log_result(f"Filter by {category}", False, 
+                                      f"No templates found for category {category}")
+                else:
+                    self.log_result(f"Filter by {category}", False, 
+                                  f"Failed to filter by {category}: {response.status_code}")
+                    
+            except Exception as e:
+                self.log_result(f"Filter by {category}", False, f"Error filtering by {category}: {str(e)}")
+    
+    def test_create_template(self):
+        """Test creating a new notification template"""
+        print("\n=== Testing Create Template ===")
+        
+        test_template = {
+            "name": "General - Welcome New Members",
+            "category": "general",
+            "channels": ["email", "push"],
+            "subject": "Welcome to Our Gym!",
+            "message": "Hi {first_name}! Welcome to our gym family!"
+        }
+        
+        try:
+            response = requests.post(f"{API_BASE}/notification-templates", 
+                                   json=test_template, headers=self.headers)
+            
+            if response.status_code == 200:
+                result = response.json()
+                template = result.get("template", {})
+                
+                if result.get("success") and template.get("id"):
+                    template_id = template.get("id")
+                    self.created_templates.append(template_id)
+                    
+                    # Verify all fields were saved correctly
+                    fields_correct = (
+                        template.get("name") == test_template["name"] and
+                        template.get("category") == test_template["category"] and
+                        template.get("channels") == test_template["channels"] and
+                        template.get("subject") == test_template["subject"] and
+                        template.get("message") == test_template["message"] and
+                        template.get("is_active") is True
+                    )
+                    
+                    if fields_correct:
+                        self.log_result("Create Template", True, 
+                                      f"Template created successfully with ID: {template_id}")
+                        return template_id
+                    else:
+                        self.log_result("Create Template", False, 
+                                      "Template created but fields don't match",
+                                      {"expected": test_template, "actual": template})
+                        return template_id
+                else:
+                    self.log_result("Create Template", False, 
+                                  f"Template creation failed: {result}")
+                    return None
+            else:
+                self.log_result("Create Template", False, 
+                              f"Failed to create template: {response.status_code}",
+                              {"response": response.text})
+                return None
+                
+        except Exception as e:
+            self.log_result("Create Template", False, f"Error creating template: {str(e)}")
+            return None
+    
+    def test_update_template(self, template_id):
+        """Test updating an existing template"""
+        print("\n=== Testing Update Template ===")
+        
+        if not template_id:
+            self.log_result("Update Template", False, "No template ID provided for update test")
+            return False
+        
+        updated_template = {
+            "name": "General - Welcome New Members (Updated)",
+            "category": "general",
+            "channels": ["email", "push", "sms"],  # Added SMS
+            "subject": "Welcome to Our Amazing Gym!",  # Updated subject
+            "message": "Hi {first_name}! Welcome to our gym family! We're excited to have you!"  # Updated message
+        }
+        
+        try:
+            response = requests.put(f"{API_BASE}/notification-templates/{template_id}", 
+                                  json=updated_template, headers=self.headers)
+            
+            if response.status_code == 200:
+                result = response.json()
+                template = result.get("template", {})
+                
+                if result.get("success"):
+                    # Verify updates were applied
+                    updates_correct = (
+                        template.get("name") == updated_template["name"] and
+                        template.get("subject") == updated_template["subject"] and
+                        template.get("message") == updated_template["message"] and
+                        len(template.get("channels", [])) == 3  # Should have 3 channels now
+                    )
+                    
+                    if updates_correct:
+                        self.log_result("Update Template", True, 
+                                      f"Template updated successfully: {template_id}")
+                        return True
+                    else:
+                        self.log_result("Update Template", False, 
+                                      "Template updated but changes not applied correctly",
+                                      {"expected": updated_template, "actual": template})
+                        return False
+                else:
+                    self.log_result("Update Template", False, 
+                                  f"Template update failed: {result}")
+                    return False
+            else:
+                self.log_result("Update Template", False, 
+                              f"Failed to update template: {response.status_code}",
+                              {"response": response.text})
+                return False
+                
+        except Exception as e:
+            self.log_result("Update Template", False, f"Error updating template: {str(e)}")
+            return False
+    
+    def test_delete_template(self, template_id):
+        """Test deleting a template (soft delete)"""
+        print("\n=== Testing Delete Template ===")
+        
+        if not template_id:
+            self.log_result("Delete Template", False, "No template ID provided for delete test")
+            return False
+        
+        try:
+            response = requests.delete(f"{API_BASE}/notification-templates/{template_id}", 
+                                     headers=self.headers)
+            
+            if response.status_code == 200:
+                result = response.json()
+                
+                if result.get("success"):
+                    self.log_result("Delete Template", True, 
+                                  f"Template deleted successfully: {template_id}")
+                    
+                    # Verify template no longer appears in active list
+                    get_response = requests.get(f"{API_BASE}/notification-templates", 
+                                              headers=self.headers)
+                    
+                    if get_response.status_code == 200:
+                        templates = get_response.json().get("templates", [])
+                        deleted_template = next((t for t in templates if t.get("id") == template_id), None)
+                        
+                        if not deleted_template:
+                            self.log_result("Soft Delete Verification", True, 
+                                          "Deleted template no longer appears in active list")
+                        else:
+                            self.log_result("Soft Delete Verification", False, 
+                                          "Deleted template still appears in active list")
+                    
+                    return True
+                else:
+                    self.log_result("Delete Template", False, 
+                                  f"Template deletion failed: {result}")
+                    return False
+            else:
+                self.log_result("Delete Template", False, 
+                              f"Failed to delete template: {response.status_code}",
+                              {"response": response.text})
+                return False
+                
+        except Exception as e:
+            self.log_result("Delete Template", False, f"Error deleting template: {str(e)}")
+            return False
+    
+    def test_validation_errors(self):
+        """Test validation for non-existent templates"""
+        print("\n=== Testing Validation Errors ===")
+        
+        fake_template_id = "non-existent-template-id"
+        
+        # Test update non-existent template
+        try:
+            response = requests.put(f"{API_BASE}/notification-templates/{fake_template_id}", 
+                                  json={"name": "Test"}, headers=self.headers)
+            
+            if response.status_code == 404:
+                self.log_result("Update Non-existent Template", True, 
+                              "Correctly returned 404 for non-existent template update")
+            else:
+                self.log_result("Update Non-existent Template", False, 
+                              f"Expected 404, got {response.status_code}")
+        except Exception as e:
+            self.log_result("Update Non-existent Template", False, f"Error: {str(e)}")
+        
+        # Test delete non-existent template
+        try:
+            response = requests.delete(f"{API_BASE}/notification-templates/{fake_template_id}", 
+                                     headers=self.headers)
+            
+            if response.status_code == 404:
+                self.log_result("Delete Non-existent Template", True, 
+                              "Correctly returned 404 for non-existent template deletion")
+            else:
+                self.log_result("Delete Non-existent Template", False, 
+                              f"Expected 404, got {response.status_code}")
+        except Exception as e:
+            self.log_result("Delete Non-existent Template", False, f"Error: {str(e)}")
+    
+    def test_edge_cases(self):
+        """Test edge cases for notification templates"""
+        print("\n=== Testing Edge Cases ===")
+        
+        # Test template with all 4 channels
+        all_channels_template = {
+            "name": "All Channels Template",
+            "category": "general",
+            "channels": ["email", "sms", "whatsapp", "push"],
+            "subject": "All Channels Test",
+            "message": "Testing all channels: {first_name}"
+        }
+        
+        try:
+            response = requests.post(f"{API_BASE}/notification-templates", 
+                                   json=all_channels_template, headers=self.headers)
+            
+            if response.status_code == 200:
+                result = response.json()
+                template = result.get("template", {})
+                
+                if len(template.get("channels", [])) == 4:
+                    self.log_result("All Channels Template", True, 
+                                  "Template with all 4 channels created successfully")
+                    self.created_templates.append(template.get("id"))
+                else:
+                    self.log_result("All Channels Template", False, 
+                                  f"Expected 4 channels, got {len(template.get('channels', []))}")
+            else:
+                self.log_result("All Channels Template", False, 
+                              f"Failed to create all channels template: {response.status_code}")
+        except Exception as e:
+            self.log_result("All Channels Template", False, f"Error: {str(e)}")
+        
+        # Test template with empty channels
+        empty_channels_template = {
+            "name": "Empty Channels Template",
+            "category": "general",
+            "channels": [],
+            "subject": "Empty Channels Test",
+            "message": "Testing empty channels: {first_name}"
+        }
+        
+        try:
+            response = requests.post(f"{API_BASE}/notification-templates", 
+                                   json=empty_channels_template, headers=self.headers)
+            
+            if response.status_code == 200:
+                result = response.json()
+                template = result.get("template", {})
+                
+                if len(template.get("channels", [])) == 0:
+                    self.log_result("Empty Channels Template", True, 
+                                  "Template with empty channels created successfully")
+                    self.created_templates.append(template.get("id"))
+                else:
+                    self.log_result("Empty Channels Template", False, 
+                                  f"Expected 0 channels, got {len(template.get('channels', []))}")
+            else:
+                self.log_result("Empty Channels Template", False, 
+                              f"Failed to create empty channels template: {response.status_code}")
+        except Exception as e:
+            self.log_result("Empty Channels Template", False, f"Error: {str(e)}")
+        
+        # Test template without subject (should be allowed)
+        no_subject_template = {
+            "name": "No Subject Template",
+            "category": "general",
+            "channels": ["sms", "push"],
+            "message": "Testing without subject: {first_name}"
+        }
+        
+        try:
+            response = requests.post(f"{API_BASE}/notification-templates", 
+                                   json=no_subject_template, headers=self.headers)
+            
+            if response.status_code == 200:
+                result = response.json()
+                template = result.get("template", {})
+                
+                self.log_result("No Subject Template", True, 
+                              "Template without subject created successfully")
+                self.created_templates.append(template.get("id"))
+            else:
+                self.log_result("No Subject Template", False, 
+                              f"Failed to create no subject template: {response.status_code}")
+        except Exception as e:
+            self.log_result("No Subject Template", False, f"Error: {str(e)}")
+        
+        # Test template with very long message
+        long_message_template = {
+            "name": "Long Message Template",
+            "category": "general",
+            "channels": ["email"],
+            "subject": "Long Message Test",
+            "message": "This is a very long message that contains many details and information about the gym membership and services. " * 10 + " Hello {first_name}!"
+        }
+        
+        try:
+            response = requests.post(f"{API_BASE}/notification-templates", 
+                                   json=long_message_template, headers=self.headers)
+            
+            if response.status_code == 200:
+                result = response.json()
+                template = result.get("template", {})
+                
+                if len(template.get("message", "")) > 500:  # Should preserve long message
+                    self.log_result("Long Message Template", True, 
+                                  "Template with long message created successfully")
+                    self.created_templates.append(template.get("id"))
+                else:
+                    self.log_result("Long Message Template", False, 
+                                  "Long message was truncated or not saved properly")
+            else:
+                self.log_result("Long Message Template", False, 
+                              f"Failed to create long message template: {response.status_code}")
+        except Exception as e:
+            self.log_result("Long Message Template", False, f"Error: {str(e)}")
+    
+    def cleanup_test_data(self):
+        """Clean up test data created during testing"""
+        print("\n=== Cleaning Up Test Data ===")
+        
+        # Clean up created templates
+        for template_id in self.created_templates:
+            try:
+                response = requests.delete(f"{API_BASE}/notification-templates/{template_id}", 
+                                         headers=self.headers)
+                if response.status_code == 200:
+                    self.log_result("Cleanup Template", True, f"Deleted template {template_id}")
+                else:
+                    self.log_result("Cleanup Template", False, f"Failed to delete template {template_id}")
+            except Exception as e:
+                self.log_result("Cleanup Template", False, f"Error cleaning up template {template_id}: {str(e)}")
+        
+        if self.created_templates:
+            self.log_result("Cleanup Test Data", True, f"Attempted cleanup of {len(self.created_templates)} test templates")
+    
+    def run_notification_template_tests(self):
+        """Run all notification template tests"""
+        print("🚀 Starting Notification Template Management System Tests")
+        print(f"Testing against: {API_BASE}")
+        print("=" * 80)
+        
+        # Authenticate first
+        if not self.authenticate():
+            print("❌ Authentication failed. Cannot proceed with tests.")
+            return
+        
+        print("\n📋 NOTIFICATION TEMPLATE CRUD TESTING")
+        print("Testing Requirements:")
+        print("- Authentication: admin@gym.com / admin123")
+        print("- Seed default templates (Green, Amber, Red Alert)")
+        print("- GET templates with filtering by category")
+        print("- POST create new template")
+        print("- PUT update existing template")
+        print("- DELETE template (soft delete)")
+        print("- Validation tests for non-existent templates")
+        print("- Edge cases (all channels, empty channels, long messages)")
+        
+        # Execute all test phases
+        self.test_seed_default_templates()
+        templates = self.test_get_all_templates()
+        self.test_filter_by_category()
+        template_id = self.test_create_template()
+        self.test_update_template(template_id)
+        self.test_delete_template(template_id)
+        self.test_validation_errors()
+        self.test_edge_cases()
+        
+        # Cleanup
+        self.cleanup_test_data()
+        
+        # Print summary
+        self.print_summary()
+    
+    def print_summary(self):
+        """Print test summary"""
+        print("\n" + "=" * 60)
+        print("🏁 NOTIFICATION TEMPLATE TEST SUMMARY")
+        print("=" * 60)
+        
+        total_tests = len(self.test_results)
+        passed_tests = len([r for r in self.test_results if r["success"]])
+        failed_tests = total_tests - passed_tests
+        
+        print(f"Total Tests: {total_tests}")
+        print(f"✅ Passed: {passed_tests}")
+        print(f"❌ Failed: {failed_tests}")
+        print(f"Success Rate: {(passed_tests/total_tests*100):.1f}%")
+        
+        if failed_tests > 0:
+            print("\n❌ FAILED TESTS:")
+            for result in self.test_results:
+                if not result["success"]:
+                    print(f"  - {result['test']}: {result['message']}")
+        
+        print("\n" + "=" * 80)
+
 if __name__ == "__main__":
     import sys
     
@@ -1228,6 +1786,10 @@ if __name__ == "__main__":
         # Run payment option levy tests
         tester = PaymentOptionLevyTester()
         tester.run_levy_tests()
+    elif len(sys.argv) > 1 and sys.argv[1] == "notification":
+        # Run notification template tests
+        tester = NotificationTemplateTester()
+        tester.run_notification_template_tests()
     else:
         # Run original member import tests
         tester = MemberImportTester()
