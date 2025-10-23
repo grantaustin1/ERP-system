@@ -7268,9 +7268,6 @@ async def generate_debicheck_due_collections(
     }
 
 
-# Include the router in the main app
-app.include_router(api_router)
-
 app.add_middleware(
     CORSMiddleware,
     allow_credentials=True,
