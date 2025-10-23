@@ -865,14 +865,74 @@ function Classes() {
             </div>
 
             <div>
-              <Label htmlFor="booking_date">Date & Time *</Label>
-              <Input
-                id="booking_date"
-                type="datetime-local"
-                value={bookingForm.booking_date}
-                onChange={(e) => setBookingForm({ ...bookingForm, booking_date: e.target.value })}
-                required
-              />
+              <Label>Date & Time *</Label>
+              <div className="flex gap-2 items-center">
+                <div className="flex-1">
+                  <Input
+                    ref={yearRef}
+                    type="text"
+                    placeholder="YYYY"
+                    value={dateFields.year}
+                    onChange={(e) => handleDateFieldChange('year', e.target.value, 4, monthRef)}
+                    maxLength={4}
+                    className="text-center"
+                    required
+                  />
+                </div>
+                <span className="text-gray-500">/</span>
+                <div className="flex-1">
+                  <Input
+                    ref={monthRef}
+                    type="text"
+                    placeholder="MM"
+                    value={dateFields.month}
+                    onChange={(e) => handleDateFieldChange('month', e.target.value, 2, dayRef)}
+                    maxLength={2}
+                    className="text-center"
+                    required
+                  />
+                </div>
+                <span className="text-gray-500">/</span>
+                <div className="flex-1">
+                  <Input
+                    ref={dayRef}
+                    type="text"
+                    placeholder="DD"
+                    value={dateFields.day}
+                    onChange={(e) => handleDateFieldChange('day', e.target.value, 2, hourRef)}
+                    maxLength={2}
+                    className="text-center"
+                    required
+                  />
+                </div>
+                <span className="text-gray-500 mx-2">at</span>
+                <div className="flex-1">
+                  <Input
+                    ref={hourRef}
+                    type="text"
+                    placeholder="HH"
+                    value={dateFields.hour}
+                    onChange={(e) => handleDateFieldChange('hour', e.target.value, 2, minuteRef)}
+                    maxLength={2}
+                    className="text-center"
+                    required
+                  />
+                </div>
+                <span className="text-gray-500">:</span>
+                <div className="flex-1">
+                  <Input
+                    ref={minuteRef}
+                    type="text"
+                    placeholder="MM"
+                    value={dateFields.minute}
+                    onChange={(e) => handleDateFieldChange('minute', e.target.value, 2, null)}
+                    maxLength={2}
+                    className="text-center"
+                    required
+                  />
+                </div>
+              </div>
+              <p className="text-xs text-gray-500 mt-1">Format: YYYY/MM/DD at HH:MM (24-hour)</p>
             </div>
 
             <div>
