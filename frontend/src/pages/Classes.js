@@ -312,6 +312,8 @@ function Classes() {
       booking_date: '',
       notes: ''
     });
+    setMemberSearchValue('');
+    setMemberSearchOpen(false);
   };
 
   const openEditDialog = (classItem) => {
