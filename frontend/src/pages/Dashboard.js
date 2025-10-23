@@ -481,6 +481,241 @@ export default function Dashboard() {
             </Card>
           </div>
 
+          {/* Class Booking Overview */}
+          <div className="mt-8">
+            <Card className="bg-slate-800/50 border-slate-700 backdrop-blur-lg">
+              <CardHeader>
+                <div className="flex justify-between items-center">
+                  <div>
+                    <CardTitle className="text-white">Class Booking Overview</CardTitle>
+                    <CardDescription className="text-slate-400">
+                      {drillDownLevel === 1 && 'Total capacity utilization across all classes'}
+                      {drillDownLevel === 2 && 'Booking details by class'}
+                      {drillDownLevel === 3 && `Members booked for ${selectedClassForDrillDown?.name}`}
+                    </CardDescription>
+                  </div>
+                  {drillDownLevel > 1 && (
+                    <Button
+                      onClick={() => {
+                        if (drillDownLevel === 3) {
+                          setDrillDownLevel(2);
+                          setSelectedClassForDrillDown(null);
+                        } else if (drillDownLevel === 2) {
+                          setDrillDownLevel(1);
+                        }
+                      }}
+                      variant="outline"
+                      className="border-slate-600 text-slate-300"
+                    >
+                      ← Back
+                    </Button>
+                  )}
+                </div>
+              </CardHeader>
+              <CardContent>
+                {!classBookingStats ? (
+                  <div className="text-center py-8 text-slate-400">Loading class booking data...</div>
+                ) : (
+                  <>
+                    {/* Level 1: Overview */}
+                    {drillDownLevel === 1 && (
+                      <div className="space-y-6">
+                        {/* Summary Stats */}
+                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                          <div className="bg-slate-700/50 p-4 rounded-lg">
+                            <p className="text-sm text-slate-400">Total Capacity</p>
+                            <p className="text-3xl font-bold text-white">{classBookingStats.totalCapacity}</p>
+                          </div>
+                          <div className="bg-green-500/10 p-4 rounded-lg border border-green-500/30">
+                            <p className="text-sm text-green-400">Booked Slots</p>
+                            <p className="text-3xl font-bold text-green-400">{classBookingStats.totalBooked}</p>
+                          </div>
+                          <div className="bg-blue-500/10 p-4 rounded-lg border border-blue-500/30">
+                            <p className="text-sm text-blue-400">Available Slots</p>
+                            <p className="text-3xl font-bold text-blue-400">{classBookingStats.totalAvailable}</p>
+                          </div>
+                          <div className="bg-purple-500/10 p-4 rounded-lg border border-purple-500/30">
+                            <p className="text-sm text-purple-400">Utilization Rate</p>
+                            <p className="text-3xl font-bold text-purple-400">{classBookingStats.utilizationRate}%</p>
+                          </div>
+                        </div>
+
+                        {/* Visual Progress Bar */}
+                        <div>
+                          <div className="flex justify-between text-sm mb-2">
+                            <span className="text-slate-400">Overall Capacity Utilization</span>
+                            <span className="text-white font-semibold">
+                              {classBookingStats.totalBooked} / {classBookingStats.totalCapacity}
+                            </span>
+                          </div>
+                          <div className="w-full bg-slate-700 rounded-full h-4">
+                            <div
+                              className="bg-gradient-to-r from-green-500 to-emerald-600 h-4 rounded-full transition-all"
+                              style={{ width: `${Math.min(classBookingStats.utilizationRate, 100)}%` }}
+                            ></div>
+                          </div>
+                        </div>
+
+                        {/* Drill Down Button */}
+                        <div className="text-center">
+                          <Button
+                            onClick={() => setDrillDownLevel(2)}
+                            className="bg-emerald-600 hover:bg-emerald-700"
+                          >
+                            View Class Details →
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Level 2: Class List */}
+                    {drillDownLevel === 2 && (
+                      <div className="space-y-4">
+                        {classBookingStats.classes
+                          .filter(cls => cls.confirmedCount > 0 || cls.waitlistCount > 0)
+                          .map(cls => (
+                            <div
+                              key={cls.id}
+                              className="bg-slate-700/50 p-4 rounded-lg hover:bg-slate-700 transition-colors cursor-pointer"
+                              onClick={() => {
+                                setSelectedClassForDrillDown(cls);
+                                setDrillDownLevel(3);
+                              }}
+                            >
+                              <div className="flex justify-between items-start">
+                                <div className="flex-1">
+                                  <h3 className="text-lg font-semibold text-white">{cls.name}</h3>
+                                  <p className="text-sm text-slate-400">
+                                    {cls.class_type} • {cls.duration_minutes} min
+                                    {cls.is_recurring && ` • ${cls.day_of_week} ${cls.start_time}`}
+                                  </p>
+                                </div>
+                                <div className="text-right">
+                                  <Badge className={cls.confirmedCount >= cls.capacity ? 'bg-red-500' : 'bg-green-500'}>
+                                    {cls.confirmedCount >= cls.capacity ? 'FULL' : 'Available'}
+                                  </Badge>
+                                </div>
+                              </div>
+
+                              <div className="mt-3">
+                                <div className="flex justify-between text-sm mb-1">
+                                  <span className="text-slate-400">Capacity</span>
+                                  <span className="text-white">{cls.confirmedCount} / {cls.capacity}</span>
+                                </div>
+                                <div className="w-full bg-slate-600 rounded-full h-2">
+                                  <div
+                                    className={`h-2 rounded-full ${
+                                      cls.confirmedCount >= cls.capacity
+                                        ? 'bg-red-500'
+                                        : cls.confirmedCount >= cls.capacity * 0.8
+                                        ? 'bg-yellow-500'
+                                        : 'bg-green-500'
+                                    }`}
+                                    style={{ width: `${Math.min((cls.confirmedCount / cls.capacity) * 100, 100)}%` }}
+                                  ></div>
+                                </div>
+                              </div>
+
+                              <div className="mt-3 grid grid-cols-3 gap-2 text-center">
+                                <div className="bg-green-500/10 p-2 rounded">
+                                  <p className="text-xs text-slate-400">Confirmed</p>
+                                  <p className="text-lg font-bold text-green-400">{cls.confirmedCount}</p>
+                                </div>
+                                <div className="bg-yellow-500/10 p-2 rounded">
+                                  <p className="text-xs text-slate-400">Waitlist</p>
+                                  <p className="text-lg font-bold text-yellow-400">{cls.waitlistCount}</p>
+                                </div>
+                                <div className="bg-blue-500/10 p-2 rounded">
+                                  <p className="text-xs text-slate-400">Available</p>
+                                  <p className="text-lg font-bold text-blue-400">{cls.available}</p>
+                                </div>
+                              </div>
+
+                              <div className="mt-3 text-right">
+                                <span className="text-sm text-emerald-400 hover:text-emerald-300">
+                                  Click to view members →
+                                </span>
+                              </div>
+                            </div>
+                          ))}
+
+                        {classBookingStats.classes.filter(cls => cls.confirmedCount > 0 || cls.waitlistCount > 0).length === 0 && (
+                          <div className="text-center py-12 text-slate-400">
+                            <Users className="w-16 h-16 mx-auto mb-4 opacity-50" />
+                            <p>No classes with bookings yet</p>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Level 3: Member List */}
+                    {drillDownLevel === 3 && selectedClassForDrillDown && (
+                      <div className="space-y-4">
+                        {/* Class Info Header */}
+                        <div className="bg-slate-700/50 p-4 rounded-lg">
+                          <h3 className="text-xl font-bold text-white">{selectedClassForDrillDown.name}</h3>
+                          <p className="text-slate-400">
+                            {selectedClassForDrillDown.class_type} • {selectedClassForDrillDown.duration_minutes} min
+                          </p>
+                          <div className="mt-2 flex gap-4 text-sm">
+                            <span className="text-slate-300">
+                              <strong>Capacity:</strong> {selectedClassForDrillDown.confirmedCount} / {selectedClassForDrillDown.capacity}
+                            </span>
+                            <span className="text-slate-300">
+                              <strong>Waitlist:</strong> {selectedClassForDrillDown.waitlistCount}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Member List */}
+                        <div className="space-y-2">
+                          {selectedClassForDrillDown.bookings
+                            .sort((a, b) => {
+                              const statusOrder = { confirmed: 1, attended: 2, waitlist: 3, cancelled: 4 };
+                              return statusOrder[a.status] - statusOrder[b.status];
+                            })
+                            .map(booking => (
+                              <div
+                                key={booking.id}
+                                className="flex justify-between items-center p-3 bg-slate-700/50 rounded-lg hover:bg-slate-700"
+                              >
+                                <div>
+                                  <p className="font-semibold text-white">{booking.member_name}</p>
+                                  <p className="text-sm text-slate-400">
+                                    Booked: {new Date(booking.booked_at).toLocaleDateString()}
+                                  </p>
+                                </div>
+                                <Badge
+                                  className={
+                                    booking.status === 'confirmed'
+                                      ? 'bg-green-500'
+                                      : booking.status === 'attended'
+                                      ? 'bg-blue-500'
+                                      : booking.status === 'waitlist'
+                                      ? 'bg-yellow-500'
+                                      : 'bg-gray-500'
+                                  }
+                                >
+                                  {booking.status}
+                                  {booking.is_waitlist && ` (#${booking.waitlist_position})`}
+                                </Badge>
+                              </div>
+                            ))}
+
+                          {selectedClassForDrillDown.bookings.length === 0 && (
+                            <div className="text-center py-8 text-slate-400">
+                              No bookings for this class
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+
           {/* Notification Dialog */}
           <Dialog open={notificationDialogOpen} onOpenChange={setNotificationDialogOpen}>
             <DialogContent className="bg-slate-800 border-slate-700 text-white max-w-2xl">
