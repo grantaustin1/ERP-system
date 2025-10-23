@@ -1925,7 +1925,7 @@ class MemberProfileDrillDownTester:
             response = requests.post(f"{API_BASE}/members/{self.test_member_id}/notes", 
                                    json=note_data, headers=self.headers)
             
-            if response.status_code == 201:
+            if response.status_code == 200:  # Backend returns 200, not 201
                 note = response.json()
                 self.test_note_id = note.get("note_id")
                 
