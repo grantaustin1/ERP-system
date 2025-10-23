@@ -69,6 +69,56 @@ export default function Dashboard() {
     }
   };
 
+  const openNotificationDialog = async (alertLevel) => {
+    setSelectedAlertLevel(alertLevel);
+    // Fetch templates
+    try {
+      const response = await axios.post(`${API}/notification-templates/seed-defaults`);
+      const templatesRes = await axios.get(`${API}/notification-templates?category=${alertLevel}_alert`);
+      setTemplates(templatesRes.data.templates || []);
+      setNotificationDialogOpen(true);
+    } catch (error) {
+      toast.error('Failed to load notification templates');
+    }
+  };
+
+  const sendBulkNotification = async () => {
+    if (!selectedTemplate) {
+      toast.error('Please select a template');
+      return;
+    }
+    if (selectedChannels.length === 0) {
+      toast.error('Please select at least one channel');
+      return;
+    }
+
+    setSending(true);
+    try {
+      const response = await axios.post(`${API}/send-bulk-notification`, {
+        template_id: selectedTemplate,
+        alert_level: selectedAlertLevel,
+        channels: selectedChannels
+      });
+
+      toast.success(response.data.message);
+      setNotificationDialogOpen(false);
+      setSelectedTemplate('');
+      setSelectedChannels([]);
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Failed to send notifications');
+    } finally {
+      setSending(false);
+    }
+  };
+
+  const toggleChannel = (channel) => {
+    setSelectedChannels(prev => 
+      prev.includes(channel) 
+        ? prev.filter(c => c !== channel)
+        : [...prev, channel]
+    );
+  };
+
   const statCards = [
     { title: 'Total Members', value: stats?.total_members || 0, icon: Users, color: 'from-blue-500 to-cyan-600' },
     { title: 'Active Members', value: stats?.active_members || 0, icon: UserCheck, color: 'from-emerald-500 to-teal-600' },
