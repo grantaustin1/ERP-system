@@ -253,7 +253,8 @@ export default function SettingsNew() {
       icon: Cog,
       label: 'Operations',
       tabs: [
-        { id: 'field-config', label: 'Field Configuration', icon: CheckSquare }
+        { id: 'field-config', label: 'Field Configuration', icon: CheckSquare },
+        { id: 'engagement-alerts', label: 'Member Engagement Alerts', icon: Activity }
       ]
     },
     automation: {
