@@ -110,9 +110,20 @@ export default function SettingsNew() {
     amber_max_threshold: 4,
     red_threshold: 0
   });
+  const [templates, setTemplates] = useState([]);
+  const [templateDialogOpen, setTemplateDialogOpen] = useState(false);
+  const [editingTemplate, setEditingTemplate] = useState(null);
+  const [templateForm, setTemplateForm] = useState({
+    name: '',
+    category: 'green_alert',
+    channels: [],
+    subject: '',
+    message: ''
+  });
 
   useEffect(() => {
     fetchData();
+    fetchTemplates();
   }, []);
 
   const fetchData = async () => {
