@@ -65,6 +65,13 @@ function Classes() {
     minute: ''
   });
 
+  // Refs for auto-advancing between fields
+  const yearRef = useRef(null);
+  const monthRef = useRef(null);
+  const dayRef = useRef(null);
+  const hourRef = useRef(null);
+  const minuteRef = useRef(null);
+
   const API_URL = process.env.REACT_APP_BACKEND_URL;
 
   useEffect(() => {
