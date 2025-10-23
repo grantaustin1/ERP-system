@@ -1015,6 +1015,125 @@ export default function Dashboard() {
                       </div>
                     )}
 
+                    {/* Invoice Detail (Second Level) */}
+                    {detailItemType === 'invoice' && selectedDetailItem && (
+                      <div className="space-y-4">
+                        <Button 
+                          onClick={() => {
+                            setSelectedDetailItem(null);
+                            setDetailItemType(null);
+                          }}
+                          variant="outline"
+                          className="border-slate-600 text-white mb-4"
+                        >
+                          ← Back to Invoice List
+                        </Button>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                          {/* Invoice Information */}
+                          <Card className="bg-slate-700/50 border-slate-600">
+                            <CardHeader>
+                              <CardTitle className="text-white">Invoice Details</CardTitle>
+                            </CardHeader>
+                            <CardContent className="space-y-3">
+                              <div>
+                                <p className="text-xs text-slate-400">Invoice Number</p>
+                                <p className="text-white font-mono text-lg">{selectedDetailItem.invoice_number}</p>
+                              </div>
+                              <div>
+                                <p className="text-xs text-slate-400">Status</p>
+                                <Badge className={
+                                  selectedDetailItem.status === 'paid' ? 'bg-green-500' :
+                                  selectedDetailItem.status === 'overdue' ? 'bg-red-500' :
+                                  'bg-yellow-500'
+                                }>
+                                  {selectedDetailItem.status}
+                                </Badge>
+                              </div>
+                              <div>
+                                <p className="text-xs text-slate-400">Amount</p>
+                                <p className="text-white font-bold text-2xl">R {selectedDetailItem.amount?.toFixed(2)}</p>
+                              </div>
+                              <div>
+                                <p className="text-xs text-slate-400">Invoice Date</p>
+                                <p className="text-white">
+                                  {selectedDetailItem.invoice_date 
+                                    ? new Date(selectedDetailItem.invoice_date).toLocaleDateString() 
+                                    : 'N/A'}
+                                </p>
+                              </div>
+                              <div>
+                                <p className="text-xs text-slate-400">Due Date</p>
+                                <p className="text-white">
+                                  {selectedDetailItem.due_date 
+                                    ? new Date(selectedDetailItem.due_date).toLocaleDateString() 
+                                    : 'N/A'}
+                                </p>
+                              </div>
+                            </CardContent>
+                          </Card>
+
+                          {/* Member Information */}
+                          <Card className="bg-slate-700/50 border-slate-600">
+                            <CardHeader>
+                              <CardTitle className="text-white">Member Information</CardTitle>
+                            </CardHeader>
+                            <CardContent className="space-y-3">
+                              <div>
+                                <p className="text-xs text-slate-400">Member Name</p>
+                                <p className="text-white font-semibold">{selectedDetailItem.member_name}</p>
+                              </div>
+                              <div>
+                                <p className="text-xs text-slate-400">Member ID</p>
+                                <p className="text-white font-mono text-sm">{selectedDetailItem.member_id}</p>
+                              </div>
+                              <div>
+                                <p className="text-xs text-slate-400">Description</p>
+                                <p className="text-white text-sm">{selectedDetailItem.description || 'Membership payment'}</p>
+                              </div>
+                            </CardContent>
+                          </Card>
+
+                          {/* Payment Information */}
+                          <Card className="bg-slate-700/50 border-slate-600 md:col-span-2">
+                            <CardHeader>
+                              <CardTitle className="text-white">Payment Details</CardTitle>
+                            </CardHeader>
+                            <CardContent className="space-y-3">
+                              <div className="grid grid-cols-3 gap-4">
+                                <div>
+                                  <p className="text-xs text-slate-400">Amount Paid</p>
+                                  <p className="text-green-400 font-semibold text-lg">
+                                    R {selectedDetailItem.amount_paid?.toFixed(2) || '0.00'}
+                                  </p>
+                                </div>
+                                <div>
+                                  <p className="text-xs text-slate-400">Outstanding</p>
+                                  <p className="text-red-400 font-semibold text-lg">
+                                    R {((selectedDetailItem.amount || 0) - (selectedDetailItem.amount_paid || 0)).toFixed(2)}
+                                  </p>
+                                </div>
+                                <div>
+                                  <p className="text-xs text-slate-400">Payment Date</p>
+                                  <p className="text-white">
+                                    {selectedDetailItem.paid_date 
+                                      ? new Date(selectedDetailItem.paid_date).toLocaleDateString() 
+                                      : 'Not paid'}
+                                  </p>
+                                </div>
+                              </div>
+                              {selectedDetailItem.notes && (
+                                <div className="mt-4">
+                                  <p className="text-xs text-slate-400">Notes</p>
+                                  <p className="text-white text-sm bg-slate-800/50 p-3 rounded">{selectedDetailItem.notes}</p>
+                                </div>
+                              )}
+                            </CardContent>
+                          </Card>
+                        </div>
+                      </div>
+                    )}
+
                     {/* Access Log Detail View */}
                     {selectedStat === "Today's Access" && (
                       <div className="space-y-2">
