@@ -1785,6 +1785,497 @@ class NotificationTemplateTester:
         
         print("\n" + "=" * 80)
 
+class MemberProfileDrillDownTester:
+    def __init__(self):
+        self.token = None
+        self.headers = {}
+        self.test_results = []
+        self.test_member_id = None
+        self.test_note_id = None
+        
+    def log_result(self, test_name, success, message, details=None):
+        """Log test result"""
+        result = {
+            "test": test_name,
+            "success": success,
+            "message": message,
+            "timestamp": datetime.now().isoformat(),
+            "details": details or {}
+        }
+        self.test_results.append(result)
+        status = "✅ PASS" if success else "❌ FAIL"
+        print(f"{status}: {test_name} - {message}")
+        if details and not success:
+            print(f"   Details: {details}")
+    
+    def authenticate(self):
+        """Authenticate and get token"""
+        try:
+            response = requests.post(f"{API_BASE}/auth/login", json={
+                "email": TEST_EMAIL,
+                "password": TEST_PASSWORD
+            })
+            
+            if response.status_code == 200:
+                data = response.json()
+                self.token = data["access_token"]
+                self.headers = {"Authorization": f"Bearer {self.token}"}
+                self.log_result("Authentication", True, "Successfully authenticated with admin credentials")
+                return True
+            else:
+                self.log_result("Authentication", False, f"Failed to authenticate: {response.status_code}", 
+                              {"response": response.text})
+                return False
+        except Exception as e:
+            self.log_result("Authentication", False, f"Authentication error: {str(e)}")
+            return False
+    
+    def get_test_member_id(self):
+        """Get a valid member ID for testing"""
+        try:
+            response = requests.get(f"{API_BASE}/members", headers=self.headers)
+            
+            if response.status_code == 200:
+                members = response.json()
+                if members and len(members) > 0:
+                    self.test_member_id = members[0]["id"]
+                    member_name = f"{members[0].get('first_name', '')} {members[0].get('last_name', '')}"
+                    self.log_result("Get Test Member", True, f"Found test member: {member_name} (ID: {self.test_member_id})")
+                    return True
+                else:
+                    self.log_result("Get Test Member", False, "No members found in system")
+                    return False
+            else:
+                self.log_result("Get Test Member", False, f"Failed to get members: {response.status_code}")
+                return False
+        except Exception as e:
+            self.log_result("Get Test Member", False, f"Error getting test member: {str(e)}")
+            return False
+    
+    def test_member_profile_endpoint(self):
+        """Test GET /api/members/{member_id}/profile endpoint"""
+        print("\n=== Testing Member Profile Endpoint ===")
+        
+        if not self.test_member_id:
+            self.log_result("Member Profile Endpoint", False, "No test member ID available")
+            return False
+        
+        try:
+            response = requests.get(f"{API_BASE}/members/{self.test_member_id}/profile", 
+                                  headers=self.headers)
+            
+            if response.status_code == 200:
+                profile = response.json()
+                
+                # Verify required fields are present
+                required_fields = ["member", "membership_type", "payment_option", "stats"]
+                missing_fields = [field for field in required_fields if field not in profile]
+                
+                if not missing_fields:
+                    # Verify member data structure
+                    member = profile.get("member", {})
+                    membership_type = profile.get("membership_type", {})
+                    payment_option = profile.get("payment_option", {})
+                    stats = profile.get("stats", {})
+                    
+                    # Check freeze fields in member data
+                    freeze_fields = ["freeze_status", "freeze_start_date", "freeze_end_date", "freeze_reason"]
+                    has_freeze_fields = all(field in member for field in freeze_fields)
+                    
+                    if has_freeze_fields:
+                        self.log_result("Member Profile Endpoint", True, 
+                                      "Profile endpoint returns all required data with freeze fields",
+                                      {"member_id": member.get("id"), 
+                                       "membership_type": membership_type.get("name"),
+                                       "freeze_status": member.get("freeze_status")})
+                        return True
+                    else:
+                        missing_freeze = [f for f in freeze_fields if f not in member]
+                        self.log_result("Member Profile Endpoint", False, 
+                                      f"Profile missing freeze fields: {missing_freeze}")
+                        return False
+                else:
+                    self.log_result("Member Profile Endpoint", False, 
+                                  f"Profile missing required fields: {missing_fields}")
+                    return False
+            else:
+                self.log_result("Member Profile Endpoint", False, 
+                              f"Profile endpoint failed: {response.status_code}",
+                              {"response": response.text})
+                return False
+                
+        except Exception as e:
+            self.log_result("Member Profile Endpoint", False, f"Error testing profile endpoint: {str(e)}")
+            return False
+    
+    def test_member_notes_crud(self):
+        """Test member notes CRUD operations"""
+        print("\n=== Testing Member Notes CRUD ===")
+        
+        if not self.test_member_id:
+            self.log_result("Member Notes CRUD", False, "No test member ID available")
+            return False
+        
+        # Test 1: Create a note
+        try:
+            note_data = {
+                "content": "Test note for member profile drill-down testing. This member has been very active recently."
+            }
+            
+            response = requests.post(f"{API_BASE}/members/{self.test_member_id}/notes", 
+                                   json=note_data, headers=self.headers)
+            
+            if response.status_code == 201:
+                note = response.json()
+                self.test_note_id = note.get("note_id")
+                
+                # Verify note structure
+                required_fields = ["note_id", "member_id", "content", "created_by", "created_at"]
+                has_all_fields = all(field in note for field in required_fields)
+                
+                if has_all_fields and note.get("content") == note_data["content"]:
+                    self.log_result("Create Member Note", True, 
+                                  f"Note created successfully: {self.test_note_id}")
+                else:
+                    self.log_result("Create Member Note", False, 
+                                  "Note created but missing required fields or incorrect content")
+                    return False
+            else:
+                self.log_result("Create Member Note", False, 
+                              f"Failed to create note: {response.status_code}",
+                              {"response": response.text})
+                return False
+        except Exception as e:
+            self.log_result("Create Member Note", False, f"Error creating note: {str(e)}")
+            return False
+        
+        # Test 2: Get all notes for member
+        try:
+            response = requests.get(f"{API_BASE}/members/{self.test_member_id}/notes", 
+                                  headers=self.headers)
+            
+            if response.status_code == 200:
+                notes = response.json()
+                
+                # Find our created note
+                created_note = next((n for n in notes if n.get("note_id") == self.test_note_id), None)
+                
+                if created_note:
+                    self.log_result("Get Member Notes", True, 
+                                  f"Retrieved {len(notes)} notes, including our test note")
+                else:
+                    self.log_result("Get Member Notes", False, 
+                                  "Created note not found in notes list")
+                    return False
+            else:
+                self.log_result("Get Member Notes", False, 
+                              f"Failed to get notes: {response.status_code}")
+                return False
+        except Exception as e:
+            self.log_result("Get Member Notes", False, f"Error getting notes: {str(e)}")
+            return False
+        
+        # Test 3: Delete the note
+        if self.test_note_id:
+            try:
+                response = requests.delete(f"{API_BASE}/members/{self.test_member_id}/notes/{self.test_note_id}", 
+                                         headers=self.headers)
+                
+                if response.status_code == 200:
+                    self.log_result("Delete Member Note", True, 
+                                  f"Note deleted successfully: {self.test_note_id}")
+                    
+                    # Verify note is actually deleted
+                    response = requests.get(f"{API_BASE}/members/{self.test_member_id}/notes", 
+                                          headers=self.headers)
+                    if response.status_code == 200:
+                        notes = response.json()
+                        deleted_note = next((n for n in notes if n.get("note_id") == self.test_note_id), None)
+                        
+                        if not deleted_note:
+                            self.log_result("Verify Note Deletion", True, "Note successfully removed from database")
+                        else:
+                            self.log_result("Verify Note Deletion", False, "Note still exists after deletion")
+                else:
+                    self.log_result("Delete Member Note", False, 
+                                  f"Failed to delete note: {response.status_code}")
+                    return False
+            except Exception as e:
+                self.log_result("Delete Member Note", False, f"Error deleting note: {str(e)}")
+                return False
+        
+        return True
+    
+    def test_paginated_endpoints(self):
+        """Test paginated endpoints for member drill-down"""
+        print("\n=== Testing Paginated Endpoints ===")
+        
+        if not self.test_member_id:
+            self.log_result("Paginated Endpoints", False, "No test member ID available")
+            return False
+        
+        # Test 1: Access logs with pagination
+        try:
+            response = requests.get(f"{API_BASE}/members/{self.test_member_id}/access-logs?limit=20", 
+                                  headers=self.headers)
+            
+            if response.status_code == 200:
+                access_logs = response.json()
+                
+                # Verify response structure
+                if isinstance(access_logs, list):
+                    self.log_result("Member Access Logs", True, 
+                                  f"Retrieved {len(access_logs)} access logs (limit=20)")
+                else:
+                    # Check if it's paginated response with data field
+                    if isinstance(access_logs, dict) and "data" in access_logs:
+                        logs_data = access_logs["data"]
+                        self.log_result("Member Access Logs", True, 
+                                      f"Retrieved {len(logs_data)} access logs with pagination info")
+                    else:
+                        self.log_result("Member Access Logs", False, 
+                                      f"Unexpected access logs response format: {type(access_logs)}")
+            else:
+                self.log_result("Member Access Logs", False, 
+                              f"Failed to get access logs: {response.status_code}")
+        except Exception as e:
+            self.log_result("Member Access Logs", False, f"Error getting access logs: {str(e)}")
+        
+        # Test 2: Bookings with pagination
+        try:
+            response = requests.get(f"{API_BASE}/members/{self.test_member_id}/bookings?limit=20", 
+                                  headers=self.headers)
+            
+            if response.status_code == 200:
+                bookings = response.json()
+                
+                if isinstance(bookings, list):
+                    self.log_result("Member Bookings", True, 
+                                  f"Retrieved {len(bookings)} bookings (limit=20)")
+                elif isinstance(bookings, dict) and "data" in bookings:
+                    bookings_data = bookings["data"]
+                    self.log_result("Member Bookings", True, 
+                                  f"Retrieved {len(bookings_data)} bookings with pagination info")
+                else:
+                    self.log_result("Member Bookings", False, 
+                                  f"Unexpected bookings response format: {type(bookings)}")
+            else:
+                self.log_result("Member Bookings", False, 
+                              f"Failed to get bookings: {response.status_code}")
+        except Exception as e:
+            self.log_result("Member Bookings", False, f"Error getting bookings: {str(e)}")
+        
+        # Test 3: Invoices with pagination
+        try:
+            response = requests.get(f"{API_BASE}/members/{self.test_member_id}/invoices?limit=20", 
+                                  headers=self.headers)
+            
+            if response.status_code == 200:
+                invoices = response.json()
+                
+                if isinstance(invoices, list):
+                    self.log_result("Member Invoices", True, 
+                                  f"Retrieved {len(invoices)} invoices (limit=20)")
+                elif isinstance(invoices, dict) and "data" in invoices:
+                    invoices_data = invoices["data"]
+                    self.log_result("Member Invoices", True, 
+                                  f"Retrieved {len(invoices_data)} invoices with pagination info")
+                else:
+                    self.log_result("Member Invoices", False, 
+                                  f"Unexpected invoices response format: {type(invoices)}")
+            else:
+                self.log_result("Member Invoices", False, 
+                              f"Failed to get invoices: {response.status_code}")
+        except Exception as e:
+            self.log_result("Member Invoices", False, f"Error getting invoices: {str(e)}")
+        
+        return True
+    
+    def test_member_update_freeze_status(self):
+        """Test updating member freeze status via PUT /api/members/{member_id}"""
+        print("\n=== Testing Member Freeze Status Update ===")
+        
+        if not self.test_member_id:
+            self.log_result("Member Freeze Update", False, "No test member ID available")
+            return False
+        
+        try:
+            # First, get current member data
+            response = requests.get(f"{API_BASE}/members/{self.test_member_id}", 
+                                  headers=self.headers)
+            
+            if response.status_code != 200:
+                self.log_result("Get Member for Update", False, f"Failed to get member: {response.status_code}")
+                return False
+            
+            current_member = response.json()
+            original_freeze_status = current_member.get("freeze_status", False)
+            
+            # Test freeze status update
+            freeze_update_data = {
+                "freeze_status": True,
+                "freeze_start_date": datetime.now().isoformat(),
+                "freeze_end_date": (datetime.now() + timedelta(days=30)).isoformat(),
+                "freeze_reason": "Medical leave - testing member profile drill-down"
+            }
+            
+            response = requests.put(f"{API_BASE}/members/{self.test_member_id}", 
+                                  json=freeze_update_data, headers=self.headers)
+            
+            if response.status_code == 200:
+                updated_member = response.json()
+                
+                # Verify freeze fields were updated
+                if (updated_member.get("freeze_status") == True and
+                    updated_member.get("freeze_reason") == freeze_update_data["freeze_reason"]):
+                    
+                    self.log_result("Update Member Freeze Status", True, 
+                                  "Member freeze status updated successfully",
+                                  {"freeze_status": True, 
+                                   "freeze_reason": freeze_update_data["freeze_reason"]})
+                    
+                    # Test unfreeze
+                    unfreeze_data = {
+                        "freeze_status": False,
+                        "freeze_start_date": None,
+                        "freeze_end_date": None,
+                        "freeze_reason": None
+                    }
+                    
+                    response = requests.put(f"{API_BASE}/members/{self.test_member_id}", 
+                                          json=unfreeze_data, headers=self.headers)
+                    
+                    if response.status_code == 200:
+                        unfrozen_member = response.json()
+                        if unfrozen_member.get("freeze_status") == False:
+                            self.log_result("Unfreeze Member", True, "Member successfully unfrozen")
+                        else:
+                            self.log_result("Unfreeze Member", False, "Member unfreeze failed")
+                    else:
+                        self.log_result("Unfreeze Member", False, f"Unfreeze request failed: {response.status_code}")
+                    
+                    return True
+                else:
+                    self.log_result("Update Member Freeze Status", False, 
+                                  "Freeze status update failed - fields not updated correctly")
+                    return False
+            else:
+                self.log_result("Update Member Freeze Status", False, 
+                              f"Failed to update member: {response.status_code}",
+                              {"response": response.text})
+                return False
+                
+        except Exception as e:
+            self.log_result("Update Member Freeze Status", False, f"Error updating member freeze status: {str(e)}")
+            return False
+    
+    def test_datetime_field_conversion(self):
+        """Test that datetime fields convert properly in responses"""
+        print("\n=== Testing Datetime Field Conversion ===")
+        
+        if not self.test_member_id:
+            self.log_result("Datetime Conversion", False, "No test member ID available")
+            return False
+        
+        try:
+            # Test profile endpoint datetime handling
+            response = requests.get(f"{API_BASE}/members/{self.test_member_id}/profile", 
+                                  headers=self.headers)
+            
+            if response.status_code == 200:
+                profile = response.json()
+                member = profile.get("member", {})
+                
+                # Check for datetime fields
+                datetime_fields = ["join_date", "created_at", "freeze_start_date", "freeze_end_date"]
+                datetime_issues = []
+                
+                for field in datetime_fields:
+                    if field in member and member[field] is not None:
+                        try:
+                            # Try to parse the datetime string
+                            if isinstance(member[field], str):
+                                datetime.fromisoformat(member[field].replace('Z', '+00:00'))
+                            # If it's already a datetime object, that's also fine
+                        except (ValueError, TypeError) as e:
+                            datetime_issues.append(f"{field}: {member[field]} - {str(e)}")
+                
+                if not datetime_issues:
+                    self.log_result("Datetime Field Conversion", True, 
+                                  "All datetime fields properly formatted in profile response")
+                else:
+                    self.log_result("Datetime Field Conversion", False, 
+                                  f"Datetime conversion issues: {datetime_issues}")
+                    return False
+            else:
+                self.log_result("Datetime Field Conversion", False, 
+                              f"Failed to get profile for datetime test: {response.status_code}")
+                return False
+                
+        except Exception as e:
+            self.log_result("Datetime Field Conversion", False, f"Error testing datetime conversion: {str(e)}")
+            return False
+        
+        return True
+    
+    def run_member_profile_tests(self):
+        """Run all member profile drill-down tests"""
+        print("🚀 Starting Member Profile Drill-Down Backend Tests")
+        print(f"Testing against: {API_BASE}")
+        print("=" * 80)
+        
+        # Authenticate first
+        if not self.authenticate():
+            print("❌ Authentication failed. Cannot proceed with tests.")
+            return
+        
+        # Get test member
+        if not self.get_test_member_id():
+            print("❌ No test member available. Cannot proceed with tests.")
+            return
+        
+        print("\n📋 MEMBER PROFILE DRILL-DOWN TESTING")
+        print("Testing Requirements:")
+        print("- Member Model Freeze Status fields")
+        print("- Member Profile Endpoint aggregation")
+        print("- Member Notes CRUD operations")
+        print("- Paginated endpoints (access-logs, bookings, invoices)")
+        print("- Member Update with freeze status")
+        print("- Datetime field conversion")
+        
+        # Execute all tests
+        self.test_member_profile_endpoint()
+        self.test_member_notes_crud()
+        self.test_paginated_endpoints()
+        self.test_member_update_freeze_status()
+        self.test_datetime_field_conversion()
+        
+        # Print summary
+        self.print_summary()
+    
+    def print_summary(self):
+        """Print test summary"""
+        print("\n" + "=" * 60)
+        print("🏁 MEMBER PROFILE DRILL-DOWN TEST SUMMARY")
+        print("=" * 60)
+        
+        total_tests = len(self.test_results)
+        passed_tests = len([r for r in self.test_results if r["success"]])
+        failed_tests = total_tests - passed_tests
+        
+        print(f"Total Tests: {total_tests}")
+        print(f"✅ Passed: {passed_tests}")
+        print(f"❌ Failed: {failed_tests}")
+        print(f"Success Rate: {(passed_tests/total_tests*100):.1f}%")
+        
+        if failed_tests > 0:
+            print("\n❌ FAILED TESTS:")
+            for result in self.test_results:
+                if not result["success"]:
+                    print(f"  - {result['test']}: {result['message']}")
+        
+        print("\n" + "=" * 80)
+
 if __name__ == "__main__":
     import sys
     
