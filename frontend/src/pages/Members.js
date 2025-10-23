@@ -21,6 +21,8 @@ export default function Members() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [qrDialogOpen, setQrDialogOpen] = useState(false);
   const [selectedMember, setSelectedMember] = useState(null);
+  const [avsVerifying, setAvsVerifying] = useState(false);
+  const [avsResult, setAvsResult] = useState(null);
   const [formData, setFormData] = useState({
     first_name: '',
     last_name: '',
