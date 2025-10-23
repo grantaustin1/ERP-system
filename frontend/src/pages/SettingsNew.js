@@ -517,18 +517,201 @@ export default function SettingsNew() {
 
         {/* STAFF & SECURITY */}
         <TabsContent value="staff">
-          <div className="text-center py-12">
-            <Users className="h-16 w-16 mx-auto text-slate-600 mb-4" />
-            <h3 className="text-xl font-semibold text-white mb-2">Staff Management</h3>
-            <p className="text-slate-400">Staff account management coming soon</p>
+          <div className="space-y-6">
+            <div className="flex items-start gap-3 bg-blue-500/10 border border-blue-500/30 rounded-lg p-4">
+              <Users className="w-6 h-6 text-blue-400 flex-shrink-0 mt-1" />
+              <div>
+                <h3 className="text-xl font-bold text-blue-400 mb-2">Staff & User Management</h3>
+                <p className="text-sm text-slate-300">
+                  Manage staff accounts, user roles, and access permissions for your organization.
+                </p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <Card className="bg-slate-700/50 border-slate-600 hover:border-emerald-500/50 transition-colors">
+                <CardHeader>
+                  <CardTitle className="text-white flex items-center gap-2">
+                    <Users className="w-5 h-5" />
+                    User & Role Management
+                  </CardTitle>
+                  <CardDescription className="text-slate-400">
+                    Create and manage user accounts with role-based access control
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <ul className="text-sm text-slate-300 space-y-2 mb-4">
+                    <li>• Create and edit user accounts</li>
+                    <li>• Assign roles (Admin, Manager, Staff, Receptionist)</li>
+                    <li>• Set custom permissions per user</li>
+                    <li>• Manage user status (active/inactive)</li>
+                  </ul>
+                  <Button 
+                    onClick={() => window.location.href = '/user-roles'}
+                    className="w-full bg-emerald-500 hover:bg-emerald-600"
+                  >
+                    Go to User Management
+                  </Button>
+                </CardContent>
+              </Card>
+
+              <Card className="bg-slate-700/50 border-slate-600 hover:border-emerald-500/50 transition-colors">
+                <CardHeader>
+                  <CardTitle className="text-white flex items-center gap-2">
+                    <Shield className="w-5 h-5" />
+                    Access Control
+                  </CardTitle>
+                  <CardDescription className="text-slate-400">
+                    Configure detailed permissions and access levels
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <ul className="text-sm text-slate-300 space-y-2 mb-4">
+                    <li>• View permission matrix</li>
+                    <li>• Configure role-based access</li>
+                    <li>• Set module-specific permissions</li>
+                    <li>• Manage security policies</li>
+                  </ul>
+                  <Button 
+                    onClick={() => window.location.href = '/access-control'}
+                    className="w-full bg-emerald-500 hover:bg-emerald-600"
+                  >
+                    Go to Access Control
+                  </Button>
+                </CardContent>
+              </Card>
+            </div>
+
+            <Card className="bg-amber-500/10 border-amber-500/30">
+              <CardHeader>
+                <CardTitle className="text-amber-400 flex items-center gap-2">
+                  <Lock className="w-5 h-5" />
+                  Security Best Practices
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ul className="text-sm text-slate-300 space-y-2">
+                  <li>• <strong>Regular Audits:</strong> Review user permissions quarterly</li>
+                  <li>• <strong>Principle of Least Privilege:</strong> Grant minimum required access</li>
+                  <li>• <strong>Strong Passwords:</strong> Enforce password complexity requirements</li>
+                  <li>• <strong>Active Monitoring:</strong> Track user activity and login attempts</li>
+                  <li>• <strong>Offboarding:</strong> Disable accounts immediately when staff leave</li>
+                </ul>
+              </CardContent>
+            </Card>
           </div>
         </TabsContent>
 
         <TabsContent value="permissions">
-          <div className="text-center py-12">
-            <Shield className="h-16 w-16 mx-auto text-slate-600 mb-4" />
-            <h3 className="text-xl font-semibold text-white mb-2">Roles & Permissions</h3>
-            <p className="text-slate-400">Visit Access Control page for detailed permission management</p>
+          <div className="space-y-6">
+            <div className="flex items-start gap-3 bg-purple-500/10 border border-purple-500/30 rounded-lg p-4">
+              <Shield className="w-6 h-6 text-purple-400 flex-shrink-0 mt-1" />
+              <div>
+                <h3 className="text-xl font-bold text-purple-400 mb-2">Roles & Permissions</h3>
+                <p className="text-sm text-slate-300">
+                  Configure granular permissions and role-based access control for your team.
+                </p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <Card className="bg-slate-700/50 border-slate-600">
+                <CardHeader>
+                  <CardTitle className="text-white text-lg">Permission Matrix</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm text-slate-300 mb-4">
+                    View comprehensive permission matrix showing what each role can access
+                  </p>
+                  <Button 
+                    onClick={() => window.location.href = '/permission-matrix'}
+                    className="w-full bg-purple-500 hover:bg-purple-600"
+                  >
+                    View Matrix
+                  </Button>
+                </CardContent>
+              </Card>
+
+              <Card className="bg-slate-700/50 border-slate-600">
+                <CardHeader>
+                  <CardTitle className="text-white text-lg">Role Management</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm text-slate-300 mb-4">
+                    Create custom roles and assign specific permissions to each role
+                  </p>
+                  <Button 
+                    onClick={() => window.location.href = '/user-roles'}
+                    className="w-full bg-purple-500 hover:bg-purple-600"
+                  >
+                    Manage Roles
+                  </Button>
+                </CardContent>
+              </Card>
+
+              <Card className="bg-slate-700/50 border-slate-600">
+                <CardHeader>
+                  <CardTitle className="text-white text-lg">Access Control</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm text-slate-300 mb-4">
+                    Advanced access control settings and security configurations
+                  </p>
+                  <Button 
+                    onClick={() => window.location.href = '/access-control'}
+                    className="w-full bg-purple-500 hover:bg-purple-600"
+                  >
+                    Configure Access
+                  </Button>
+                </CardContent>
+              </Card>
+            </div>
+
+            <Card className="bg-slate-700/50 border-slate-600">
+              <CardHeader>
+                <CardTitle className="text-white">Default Role Permissions</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                  <div className="space-y-2">
+                    <h4 className="font-semibold text-emerald-400">Admin</h4>
+                    <ul className="text-slate-300 space-y-1 pl-4">
+                      <li>• Full system access</li>
+                      <li>• User management</li>
+                      <li>• Settings configuration</li>
+                      <li>• Financial reports</li>
+                    </ul>
+                  </div>
+                  <div className="space-y-2">
+                    <h4 className="font-semibold text-blue-400">Manager</h4>
+                    <ul className="text-slate-300 space-y-1 pl-4">
+                      <li>• Member management</li>
+                      <li>• Billing operations</li>
+                      <li>• Reports viewing</li>
+                      <li>• Class scheduling</li>
+                    </ul>
+                  </div>
+                  <div className="space-y-2">
+                    <h4 className="font-semibold text-yellow-400">Staff</h4>
+                    <ul className="text-slate-300 space-y-1 pl-4">
+                      <li>• Member check-in</li>
+                      <li>• Basic member info</li>
+                      <li>• Class attendance</li>
+                      <li>• Limited reporting</li>
+                    </ul>
+                  </div>
+                  <div className="space-y-2">
+                    <h4 className="font-semibold text-slate-400">Receptionist</h4>
+                    <ul className="text-slate-300 space-y-1 pl-4">
+                      <li>• Member check-in</li>
+                      <li>• Guest registration</li>
+                      <li>• View schedules</li>
+                      <li>• Contact updates</li>
+                    </ul>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
           </div>
         </TabsContent>
 
