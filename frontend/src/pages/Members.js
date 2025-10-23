@@ -144,6 +144,68 @@ export default function Members() {
     }
   };
 
+  const handleAvsVerification = async () => {
+    // Validate required fields
+    if (!formData.bank_account_number || !formData.bank_branch_code || !formData.id_number) {
+      toast.error('Please fill in banking details and ID number before verification');
+      return;
+    }
+
+    setAvsVerifying(true);
+    setAvsResult(null);
+
+    try {
+      // Determine bank identifier from branch code (simplified)
+      const branchCode = formData.bank_branch_code;
+      let bankIdentifier = '21'; // Default to Nedbank
+      
+      if (branchCode) {
+        const branch = parseInt(branchCode);
+        if (branch >= 100000 && branch <= 199999) bankIdentifier = '21'; // Nedbank
+        else if (branch >= 200000 && branch <= 299999) bankIdentifier = '05'; // FNB
+        else if (branch >= 0 && branch <= 99999) bankIdentifier = '18'; // Standard Bank
+        else if ((branch >= 630000 && branch <= 659999) || (branch >= 300000 && branch <= 349999)) bankIdentifier = '16'; // Absa
+        else if (branch >= 470000 && branch <= 470999) bankIdentifier = '34'; // Capitec
+      }
+
+      const verificationRequest = {
+        bank_identifier: bankIdentifier,
+        account_number: formData.bank_account_number,
+        sort_code: formData.bank_branch_code,
+        identity_number: formData.id_number,
+        identity_type: formData.id_type === 'id' ? 'SID' : 'SPP',
+        initials: formData.first_name ? formData.first_name.charAt(0) : null,
+        last_name: formData.last_name,
+        email_id: formData.email,
+        cell_number: formData.phone,
+        customer_reference: `${formData.first_name} ${formData.last_name}`
+      };
+
+      const response = await axios.post(`${API}/avs/verify`, verificationRequest);
+      
+      if (response.data.success) {
+        setAvsResult(response.data.result);
+        
+        // Check if verification was successful
+        const result = response.data.result;
+        if (result.account_exists === 'Y' && result.identification_number_matched === 'Y') {
+          toast.success('Account verified successfully! ✓');
+        } else if (result.account_exists === 'N') {
+          toast.error('Account not found at the bank');
+        } else if (result.identification_number_matched === 'N') {
+          toast.error('ID number does not match bank records');
+        } else {
+          toast.warning('Verification completed with some unverified fields');
+        }
+      }
+    } catch (error) {
+      console.error('AVS verification error:', error);
+      toast.error(error.response?.data?.detail || 'Account verification failed');
+    } finally {
+      setAvsVerifying(false);
+    }
+  };
+
   const blockMember = async (memberId) => {
     try {
       await axios.put(`${API}/members/${memberId}/block`);
