@@ -786,41 +786,32 @@ function Classes() {
                   <Command>
                     <CommandInput 
                       placeholder="Search member by name..." 
-                      value={memberSearchValue}
-                      onValueChange={setMemberSearchValue}
                     />
                     <CommandList>
                       <CommandEmpty>No member found.</CommandEmpty>
                       <CommandGroup>
-                        {members
-                          .filter((member) => {
-                            const searchTerm = memberSearchValue.toLowerCase();
-                            const fullName = `${member.first_name} ${member.last_name}`.toLowerCase();
-                            return fullName.includes(searchTerm);
-                          })
-                          .map((member) => (
-                            <CommandItem
-                              key={member.id}
-                              value={member.id}
-                              onSelect={() => {
-                                setBookingForm({ ...bookingForm, member_id: member.id });
-                                setMemberSearchOpen(false);
-                                setMemberSearchValue('');
-                              }}
-                            >
-                              <Check
-                                className={`mr-2 h-4 w-4 ${
-                                  bookingForm.member_id === member.id ? "opacity-100" : "opacity-0"
-                                }`}
-                              />
-                              {member.first_name} {member.last_name}
-                              {member.membership_number && (
-                                <span className="ml-2 text-xs text-gray-500">
-                                  #{member.membership_number}
-                                </span>
-                              )}
-                            </CommandItem>
-                          ))}
+                        {members.map((member) => (
+                          <CommandItem
+                            key={member.id}
+                            value={`${member.first_name} ${member.last_name}`}
+                            onSelect={() => {
+                              setBookingForm({ ...bookingForm, member_id: member.id });
+                              setMemberSearchOpen(false);
+                            }}
+                          >
+                            <Check
+                              className={`mr-2 h-4 w-4 ${
+                                bookingForm.member_id === member.id ? "opacity-100" : "opacity-0"
+                              }`}
+                            />
+                            {member.first_name} {member.last_name}
+                            {member.membership_number && (
+                              <span className="ml-2 text-xs text-gray-500">
+                                #{member.membership_number}
+                              </span>
+                            )}
+                          </CommandItem>
+                        ))}
                       </CommandGroup>
                     </CommandList>
                   </Command>
