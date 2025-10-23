@@ -1468,7 +1468,15 @@ metadata:
   run_ui: false
 
 test_plan:
-  current_focus: []
+  current_focus:
+    - "Notification Templates API - GET Templates"
+    - "Notification Templates API - POST Create Template"
+    - "Notification Templates API - PUT Update Template"
+    - "Notification Templates API - DELETE Template"
+    - "Notification Templates API - Seed Defaults"
+    - "Template Management UI in Settings"
+    - "Template Create/Edit Dialog"
+    - "Template Delete Functionality"
   stuck_tasks: []
   test_all: false
   test_priority: "high_first"
