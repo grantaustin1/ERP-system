@@ -8708,6 +8708,110 @@ async def clear_member_no_shows(
     }
 
 
+@api_router.post("/bookings/send-class-reminders")
+async def send_class_reminders(current_user: User = Depends(get_current_user)):
+    """Send WhatsApp reminders to members with upcoming classes (called by cron/scheduler)"""
+    now = datetime.now(timezone.utc)
+    reminders_sent = 0
+    errors = []
+    
+    # Get all confirmed bookings
+    bookings = await db.bookings.find({
+        "status": "confirmed"
+    }).to_list(length=None)
+    
+    for booking in bookings:
+        try:
+            # Get class details
+            class_obj = await db.classes.find_one({"id": booking["class_id"]})
+            if not class_obj:
+                continue
+            
+            # Check if reminders are enabled for this class
+            if not class_obj.get("send_class_reminder", True):
+                continue
+            
+            reminder_minutes = class_obj.get("reminder_minutes_before", 60)
+            
+            # Parse booking date
+            booking_date = booking["booking_date"]
+            if isinstance(booking_date, str):
+                booking_date = datetime.fromisoformat(booking_date.replace('Z', '+00:00'))
+            if booking_date.tzinfo is None:
+                booking_date = booking_date.replace(tzinfo=timezone.utc)
+            
+            # Calculate time until class
+            time_until_class_minutes = (booking_date - now).total_seconds() / 60
+            
+            # Check if we should send reminder (within a 5-minute window)
+            if reminder_minutes - 5 <= time_until_class_minutes <= reminder_minutes + 5:
+                # Check if reminder already sent (add a flag to prevent duplicate sends)
+                if booking.get("reminder_sent"):
+                    continue
+                
+                # Get member details
+                member = await db.members.find_one({"id": booking["member_id"]})
+                if not member:
+                    continue
+                
+                member_phone = member.get('phone') or member.get('phone_number')
+                if not member_phone:
+                    continue
+                
+                # Format times
+                formatted_date = booking_date.strftime("%A, %B %d, %Y")
+                formatted_time = booking_date.strftime("%I:%M %p")
+                
+                # Create reminder message
+                reminder_message = f"""⏰ *Class Reminder*
+
+Hi {member.get('first_name', 'Member')}!
+
+Your class starts in {reminder_minutes} minutes:
+
+📋 *Class:* {class_obj['name']}
+📅 *Date:* {formatted_date}
+⏰ *Time:* {formatted_time}
+📍 *Location:* {class_obj.get('room', 'Main Studio')}
+👤 *Instructor:* {class_obj.get('instructor_name', 'TBA')}
+
+🏃 Get ready and we'll see you soon!
+
+💡 Remember to check-in at reception when you arrive.
+
+Need to cancel? Please do so at least {class_obj.get('cancel_window_hours', 2)} hours before class to avoid a no-show."""
+
+                # Send reminder
+                await send_whatsapp_message(
+                    phone=member_phone,
+                    message=reminder_message,
+                    first_name=member.get('first_name', 'Member'),
+                    last_name=member.get('last_name', ''),
+                    email=member.get('email', '')
+                )
+                
+                # Mark reminder as sent
+                await db.bookings.update_one(
+                    {"id": booking["id"]},
+                    {"$set": {"reminder_sent": True}}
+                )
+                
+                reminders_sent += 1
+                logger.info(f"Reminder sent to {member_phone} for booking {booking['id']}")
+                
+        except Exception as e:
+            error_msg = f"Failed to send reminder for booking {booking.get('id')}: {str(e)}"
+            logger.error(error_msg)
+            errors.append(error_msg)
+    
+    return {
+        "success": True,
+        "reminders_sent": reminders_sent,
+        "errors": errors,
+        "message": f"Sent {reminders_sent} reminders"
+    }
+
+
 @api_router.get("/member-access/stats")
 async def get_member_access_stats(current_user: User = Depends(get_current_user)):
     """
