@@ -993,6 +993,40 @@ class ReconciliationResult(BaseModel):
     processed_by: Optional[str] = None
 
 
+# Member Engagement Alert Models
+class AlertConfiguration(BaseModel):
+    """Configuration for member engagement alerts"""
+    model_config = ConfigDict(extra="ignore")
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    days_period: int = 30  # Number of days to look back
+    green_threshold: int = 10  # Visits >= this number = green alert
+    amber_min_threshold: int = 1  # Visits >= this = amber alert
+    amber_max_threshold: int = 4  # Visits <= this (and >= min) = amber alert
+    red_threshold: int = 0  # Visits = this number = red alert
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: Optional[datetime] = None
+
+
+class AlertConfigurationUpdate(BaseModel):
+    """Update model for alert configuration"""
+    days_period: Optional[int] = None
+    green_threshold: Optional[int] = None
+    amber_min_threshold: Optional[int] = None
+    amber_max_threshold: Optional[int] = None
+    red_threshold: Optional[int] = None
+
+
+class MemberAccess(BaseModel):
+    """Member check-in/access record"""
+    model_config = ConfigDict(extra="ignore")
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    member_id: str
+    access_date: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    access_type: str = "check-in"  # check-in, class, service
+    location: Optional[str] = None
+    notes: Optional[str] = None
+
+
 class Automation(BaseModel):
     model_config = ConfigDict(extra="ignore")
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
