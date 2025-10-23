@@ -28,6 +28,15 @@ export default function Members() {
   // Profile drill-down state
   const [profileDialogOpen, setProfileDialogOpen] = useState(false);
   const [selectedMemberForProfile, setSelectedMemberForProfile] = useState(null);
+  const [profileData, setProfileData] = useState(null);
+  const [profileLoading, setProfileLoading] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editedMember, setEditedMember] = useState({});
+  const [accessLogs, setAccessLogs] = useState([]);
+  const [bookings, setBookings] = useState([]);
+  const [invoices, setInvoices] = useState([]);
+  const [notes, setNotes] = useState([]);
+  const [newNoteContent, setNewNoteContent] = useState('');
   // Search and filter states
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
