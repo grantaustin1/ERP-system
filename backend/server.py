@@ -3533,6 +3533,17 @@ async def execute_action(action: dict, trigger_data: dict):
         logger.info(f"Email Action (Mock): Sending to {email}: {subject}")
         return {"type": "email", "status": "sent_mock", "email": email, "subject": subject, "body": body}
     
+    elif action_type == "send_push":
+        # Push notification action with template support
+        member_id = trigger_data.get("member_id")
+        content = await get_message_content(action, trigger_data)
+        title = content["subject"] or "Notification"
+        body = content["message"]
+        
+        # TODO: Integrate push notification service (Firebase, OneSignal, etc.)
+        logger.info(f"Push Notification Action (Mock): Sending to member {member_id}: {title}")
+        return {"type": "push", "status": "sent_mock", "member_id": member_id, "title": title, "body": body}
+    
     elif action_type == "update_member_status":
         # Update member status
         member_id = trigger_data.get("member_id")
