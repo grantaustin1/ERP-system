@@ -622,6 +622,49 @@ function Classes() {
                 </div>
               </div>
 
+              <div className="space-y-4 border-t pt-4">
+                <h3 className="font-semibold text-gray-700">WhatsApp Notifications</h3>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="checkbox"
+                      id="send_booking_confirmation"
+                      checked={classForm.send_booking_confirmation}
+                      onChange={(e) => setClassForm({ ...classForm, send_booking_confirmation: e.target.checked })}
+                      className="rounded"
+                    />
+                    <Label htmlFor="send_booking_confirmation" className="cursor-pointer">
+                      Send booking confirmation
+                    </Label>
+                  </div>
+                  
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="checkbox"
+                      id="send_class_reminder"
+                      checked={classForm.send_class_reminder}
+                      onChange={(e) => setClassForm({ ...classForm, send_class_reminder: e.target.checked })}
+                      className="rounded"
+                    />
+                    <Label htmlFor="send_class_reminder" className="cursor-pointer">
+                      Send class reminders
+                    </Label>
+                  </div>
+                </div>
+
+                <div>
+                  <Label htmlFor="reminder_minutes_before">Reminder Time (minutes before class)</Label>
+                  <Input
+                    id="reminder_minutes_before"
+                    type="number"
+                    value={classForm.reminder_minutes_before}
+                    onChange={(e) => setClassForm({ ...classForm, reminder_minutes_before: parseInt(e.target.value) })}
+                  />
+                  <p className="text-xs text-gray-500 mt-1">When to send WhatsApp reminder (default: 60 minutes)</p>
+                </div>
+              </div>
+
               <div className="flex items-center space-x-2">
                 <input
                   type="checkbox"
