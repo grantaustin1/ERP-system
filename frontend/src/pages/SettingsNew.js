@@ -71,6 +71,15 @@ export default function SettingsNew() {
     default_adjustment_category: '0',
     enable_mandate_notifications: false
   });
+  const [avsSettings, setAvsSettings] = useState({
+    profile_number: '',
+    profile_user_number: '',
+    charge_account: '',
+    mock_mode: true,
+    use_qa: true,
+    enable_auto_verify: false,
+    verify_on_update: false
+  });
 
   useEffect(() => {
     fetchData();
