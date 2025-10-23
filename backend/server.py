@@ -1191,6 +1191,8 @@ class ClassUpdate(BaseModel):
     waitlist_capacity: Optional[int] = None
     booking_window_days: Optional[int] = None
     cancel_window_hours: Optional[int] = None
+    check_in_window_minutes: Optional[int] = None
+    no_show_threshold: Optional[int] = None
     membership_types_allowed: Optional[List[str]] = None
     drop_in_price: Optional[float] = None
     status: Optional[str] = None
