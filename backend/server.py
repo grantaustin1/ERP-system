@@ -2273,6 +2273,217 @@ async def unblock_member(member_id: str, current_user: User = Depends(get_curren
         raise HTTPException(status_code=404, detail="Member not found")
     return {"message": "Member unblocked successfully"}
 
+@api_router.put("/members/{member_id}")
+async def update_member(member_id: str, updates: dict, current_user: User = Depends(get_current_user)):
+    """Update member information"""
+    member = await db.members.find_one({"id": member_id}, {"_id": 0})
+    if not member:
+        raise HTTPException(status_code=404, detail="Member not found")
+    
+    # Remove fields that shouldn't be updated directly
+    protected_fields = ["id", "qr_code", "norm_email", "norm_phone", "norm_first_name", "norm_last_name"]
+    for field in protected_fields:
+        updates.pop(field, None)
+    
+    # Convert datetime strings to datetime objects if needed
+    datetime_fields = ["freeze_start_date", "freeze_end_date", "expiry_date", "contract_start_date", "contract_end_date"]
+    for field in datetime_fields:
+        if field in updates and updates[field] and isinstance(updates[field], str):
+            try:
+                updates[field] = datetime.fromisoformat(updates[field].replace('Z', '+00:00'))
+            except:
+                pass
+    
+    result = await db.members.update_one(
+        {"id": member_id},
+        {"$set": updates}
+    )
+    
+    if result.modified_count == 0:
+        return {"message": "No changes made", "member_id": member_id}
+    
+    return {"message": "Member updated successfully", "member_id": member_id}
+
+@api_router.get("/members/{member_id}/profile")
+async def get_member_profile(member_id: str, current_user: User = Depends(get_current_user)):
+    """Get comprehensive member profile with stats"""
+    member = await db.members.find_one({"id": member_id}, {"_id": 0})
+    if not member:
+        raise HTTPException(status_code=404, detail="Member not found")
+    
+    # Get membership type details
+    membership_type = None
+    if member.get("membership_type_id"):
+        membership_type = await db.membership_types.find_one(
+            {"id": member["membership_type_id"]}, 
+            {"_id": 0}
+        )
+    
+    # Get payment option details
+    payment_option = None
+    if member.get("selected_payment_option_id"):
+        payment_option = await db.payment_options.find_one(
+            {"option_id": member["selected_payment_option_id"]},
+            {"_id": 0}
+        )
+    
+    # Get stats
+    total_bookings = await db.bookings.count_documents({"member_id": member_id})
+    total_access_logs = await db.access_logs.count_documents({"member_id": member_id})
+    
+    # Get last access
+    last_access = await db.access_logs.find_one(
+        {"member_id": member_id},
+        {"_id": 0},
+        sort=[("timestamp", -1)]
+    )
+    
+    # Get debt/invoice info
+    unpaid_invoices = await db.invoices.count_documents({
+        "member_id": member_id,
+        "status": {"$in": ["pending", "overdue"]}
+    })
+    
+    return {
+        "member": member,
+        "membership_type": membership_type,
+        "payment_option": payment_option,
+        "stats": {
+            "total_bookings": total_bookings,
+            "total_access_logs": total_access_logs,
+            "unpaid_invoices": unpaid_invoices,
+            "no_show_count": member.get("no_show_count", 0),
+            "debt_amount": member.get("debt_amount", 0.0),
+            "last_access": last_access["timestamp"] if last_access else None
+        }
+    }
+
+@api_router.get("/members/{member_id}/access-logs")
+async def get_member_access_logs(
+    member_id: str,
+    limit: int = 20,
+    current_user: User = Depends(get_current_user)
+):
+    """Get member access logs with pagination"""
+    access_logs = await db.access_logs.find(
+        {"member_id": member_id},
+        {"_id": 0}
+    ).sort("timestamp", -1).limit(limit).to_list(length=limit)
+    
+    return access_logs
+
+@api_router.get("/members/{member_id}/bookings")
+async def get_member_bookings(
+    member_id: str,
+    limit: int = 20,
+    current_user: User = Depends(get_current_user)
+):
+    """Get member bookings with pagination"""
+    bookings = await db.bookings.find(
+        {"member_id": member_id},
+        {"_id": 0}
+    ).sort("booking_date", -1).limit(limit).to_list(length=limit)
+    
+    return bookings
+
+@api_router.get("/members/{member_id}/invoices")
+async def get_member_invoices(
+    member_id: str,
+    limit: int = 20,
+    current_user: User = Depends(get_current_user)
+):
+    """Get member invoices with pagination"""
+    invoices = await db.invoices.find(
+        {"member_id": member_id},
+        {"_id": 0}
+    ).sort("created_at", -1).limit(limit).to_list(length=limit)
+    
+    return invoices
+
+# Member Notes Routes
+@api_router.post("/members/{member_id}/notes", response_model=MemberNote)
+async def create_member_note(
+    member_id: str,
+    note_data: MemberNoteCreate,
+    current_user: User = Depends(get_current_user)
+):
+    """Create a new note for a member"""
+    member = await db.members.find_one({"id": member_id}, {"_id": 0})
+    if not member:
+        raise HTTPException(status_code=404, detail="Member not found")
+    
+    note = MemberNote(
+        member_id=member_id,
+        content=note_data.content,
+        created_by=current_user.id,
+        created_by_name=current_user.full_name
+    )
+    
+    await db.member_notes.insert_one(note.model_dump())
+    return note
+
+@api_router.get("/members/{member_id}/notes", response_model=List[MemberNote])
+async def get_member_notes(
+    member_id: str,
+    current_user: User = Depends(get_current_user)
+):
+    """Get all notes for a member"""
+    notes = await db.member_notes.find(
+        {"member_id": member_id},
+        {"_id": 0}
+    ).sort("created_at", -1).to_list(length=None)
+    
+    return notes
+
+@api_router.put("/members/{member_id}/notes/{note_id}", response_model=MemberNote)
+async def update_member_note(
+    member_id: str,
+    note_id: str,
+    note_data: MemberNoteUpdate,
+    current_user: User = Depends(get_current_user)
+):
+    """Update a member note"""
+    note = await db.member_notes.find_one(
+        {"note_id": note_id, "member_id": member_id},
+        {"_id": 0}
+    )
+    if not note:
+        raise HTTPException(status_code=404, detail="Note not found")
+    
+    result = await db.member_notes.update_one(
+        {"note_id": note_id, "member_id": member_id},
+        {"$set": {
+            "content": note_data.content,
+            "updated_at": datetime.now(timezone.utc)
+        }}
+    )
+    
+    if result.modified_count == 0:
+        raise HTTPException(status_code=400, detail="Failed to update note")
+    
+    updated_note = await db.member_notes.find_one(
+        {"note_id": note_id, "member_id": member_id},
+        {"_id": 0}
+    )
+    return updated_note
+
+@api_router.delete("/members/{member_id}/notes/{note_id}")
+async def delete_member_note(
+    member_id: str,
+    note_id: str,
+    current_user: User = Depends(get_current_user)
+):
+    """Delete a member note"""
+    result = await db.member_notes.delete_one({
+        "note_id": note_id,
+        "member_id": member_id
+    })
+    
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Note not found")
+    
+    return {"message": "Note deleted successfully"}
+
 # Access Control Routes
 @api_router.post("/access/validate")
 async def validate_access(data: AccessLogCreate):
