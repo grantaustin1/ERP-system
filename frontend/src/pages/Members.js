@@ -960,6 +960,435 @@ export default function Members() {
               )}
             </DialogContent>
           </Dialog>
+
+          {/* Member Profile Dialog */}
+          <Dialog open={profileDialogOpen} onOpenChange={(open) => {
+            setProfileDialogOpen(open);
+            if (!open) {
+              setIsEditing(false);
+              setSelectedMemberForProfile(null);
+              setProfileData(null);
+            }
+          }}>
+            <DialogContent className="bg-slate-800 border-slate-700 text-white max-w-6xl max-h-[90vh] overflow-y-auto">
+              {profileLoading ? (
+                <div className="flex items-center justify-center p-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-500"></div>
+                </div>
+              ) : profileData ? (
+                <>
+                  {/* Header */}
+                  <DialogHeader className="space-y-4">
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <DialogTitle className="text-2xl">
+                          {profileData.member.first_name} {profileData.member.last_name}
+                        </DialogTitle>
+                        <DialogDescription className="text-slate-400 mt-1">
+                          Member ID: {profileData.member.id}
+                        </DialogDescription>
+                      </div>
+                      <div className="flex gap-2">
+                        <Badge variant={
+                          profileData.member.membership_status === 'active' ? 'default' :
+                          profileData.member.freeze_status ? 'secondary' : 'destructive'
+                        }>
+                          {profileData.member.freeze_status ? 'Frozen' : 
+                           profileData.member.membership_status}
+                        </Badge>
+                        {!isEditing && (
+                          <Button size="sm" variant="outline" onClick={handleEditMember}>
+                            <Edit2 className="w-4 h-4 mr-1" />
+                            Edit
+                          </Button>
+                        )}
+                        {isEditing && (
+                          <>
+                            <Button size="sm" variant="default" onClick={handleSaveEdit}>
+                              <Save className="w-4 h-4 mr-1" />
+                              Save
+                            </Button>
+                            <Button size="sm" variant="outline" onClick={handleCancelEdit}>
+                              <XCircle className="w-4 h-4 mr-1" />
+                              Cancel
+                            </Button>
+                          </>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Mini Stats */}
+                    <div className="grid grid-cols-4 gap-4">
+                      <Card className="bg-slate-700/50 border-slate-600">
+                        <CardContent className="p-4">
+                          <div className="text-2xl font-bold text-emerald-400">
+                            R{profileData.stats.debt_amount.toFixed(2)}
+                          </div>
+                          <div className="text-xs text-slate-400">Total Debt</div>
+                        </CardContent>
+                      </Card>
+                      <Card className="bg-slate-700/50 border-slate-600">
+                        <CardContent className="p-4">
+                          <div className="text-2xl font-bold text-blue-400">
+                            {profileData.stats.total_bookings}
+                          </div>
+                          <div className="text-xs text-slate-400">Total Bookings</div>
+                        </CardContent>
+                      </Card>
+                      <Card className="bg-slate-700/50 border-slate-600">
+                        <CardContent className="p-4">
+                          <div className="text-2xl font-bold text-yellow-400">
+                            {profileData.stats.no_show_count}
+                          </div>
+                          <div className="text-xs text-slate-400">No-Shows</div>
+                        </CardContent>
+                      </Card>
+                      <Card className="bg-slate-700/50 border-slate-600">
+                        <CardContent className="p-4">
+                          <div className="text-2xl font-bold text-purple-400">
+                            {profileData.stats.last_access ? 
+                              new Date(profileData.stats.last_access).toLocaleDateString() : 
+                              'Never'}
+                          </div>
+                          <div className="text-xs text-slate-400">Last Access</div>
+                        </CardContent>
+                      </Card>
+                    </div>
+                  </DialogHeader>
+
+                  {/* Tabs */}
+                  <Tabs defaultValue="overview" className="mt-6">
+                    <TabsList className="grid w-full grid-cols-5 bg-slate-700">
+                      <TabsTrigger value="overview">Overview</TabsTrigger>
+                      <TabsTrigger value="access">Access Logs</TabsTrigger>
+                      <TabsTrigger value="bookings">Bookings</TabsTrigger>
+                      <TabsTrigger value="invoices">Invoices</TabsTrigger>
+                      <TabsTrigger value="notes">Notes</TabsTrigger>
+                    </TabsList>
+
+                    {/* Overview Tab */}
+                    <TabsContent value="overview" className="space-y-4">
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label>First Name</Label>
+                          {isEditing ? (
+                            <Input
+                              value={editedMember.first_name}
+                              onChange={(e) => setEditedMember({...editedMember, first_name: e.target.value})}
+                              className="bg-slate-700 border-slate-600"
+                            />
+                          ) : (
+                            <div className="text-white">{profileData.member.first_name}</div>
+                          )}
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Last Name</Label>
+                          {isEditing ? (
+                            <Input
+                              value={editedMember.last_name}
+                              onChange={(e) => setEditedMember({...editedMember, last_name: e.target.value})}
+                              className="bg-slate-700 border-slate-600"
+                            />
+                          ) : (
+                            <div className="text-white">{profileData.member.last_name}</div>
+                          )}
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Email</Label>
+                          {isEditing ? (
+                            <Input
+                              value={editedMember.email}
+                              onChange={(e) => setEditedMember({...editedMember, email: e.target.value})}
+                              className="bg-slate-700 border-slate-600"
+                            />
+                          ) : (
+                            <div className="text-white">{profileData.member.email}</div>
+                          )}
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Phone</Label>
+                          {isEditing ? (
+                            <Input
+                              value={editedMember.phone}
+                              onChange={(e) => setEditedMember({...editedMember, phone: e.target.value})}
+                              className="bg-slate-700 border-slate-600"
+                            />
+                          ) : (
+                            <div className="text-white">{profileData.member.phone}</div>
+                          )}
+                        </div>
+                        <div className="space-y-2 col-span-2">
+                          <Label>Membership Type</Label>
+                          <div className="text-white">
+                            {profileData.membership_type?.name || 'N/A'}
+                          </div>
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Membership Status</Label>
+                          {isEditing ? (
+                            <Select
+                              value={editedMember.membership_status}
+                              onValueChange={(value) => setEditedMember({...editedMember, membership_status: value})}
+                            >
+                              <SelectTrigger className="bg-slate-700 border-slate-600">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="active">Active</SelectItem>
+                                <SelectItem value="suspended">Suspended</SelectItem>
+                                <SelectItem value="cancelled">Cancelled</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          ) : (
+                            <div className="text-white capitalize">{profileData.member.membership_status}</div>
+                          )}
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Freeze Status</Label>
+                          {isEditing ? (
+                            <Select
+                              value={editedMember.freeze_status ? 'true' : 'false'}
+                              onValueChange={(value) => setEditedMember({...editedMember, freeze_status: value === 'true'})}
+                            >
+                              <SelectTrigger className="bg-slate-700 border-slate-600">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="false">Not Frozen</SelectItem>
+                                <SelectItem value="true">Frozen</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          ) : (
+                            <div className="text-white">{profileData.member.freeze_status ? 'Frozen' : 'Not Frozen'}</div>
+                          )}
+                        </div>
+                        {(isEditing && editedMember.freeze_status) || profileData.member.freeze_status ? (
+                          <>
+                            <div className="space-y-2">
+                              <Label>Freeze Start Date</Label>
+                              {isEditing ? (
+                                <Input
+                                  type="date"
+                                  value={editedMember.freeze_start_date ? new Date(editedMember.freeze_start_date).toISOString().split('T')[0] : ''}
+                                  onChange={(e) => setEditedMember({...editedMember, freeze_start_date: e.target.value})}
+                                  className="bg-slate-700 border-slate-600"
+                                />
+                              ) : (
+                                <div className="text-white">
+                                  {profileData.member.freeze_start_date ? 
+                                    new Date(profileData.member.freeze_start_date).toLocaleDateString() : 'N/A'}
+                                </div>
+                              )}
+                            </div>
+                            <div className="space-y-2">
+                              <Label>Freeze End Date</Label>
+                              {isEditing ? (
+                                <Input
+                                  type="date"
+                                  value={editedMember.freeze_end_date ? new Date(editedMember.freeze_end_date).toISOString().split('T')[0] : ''}
+                                  onChange={(e) => setEditedMember({...editedMember, freeze_end_date: e.target.value})}
+                                  className="bg-slate-700 border-slate-600"
+                                />
+                              ) : (
+                                <div className="text-white">
+                                  {profileData.member.freeze_end_date ? 
+                                    new Date(profileData.member.freeze_end_date).toLocaleDateString() : 'N/A'}
+                                </div>
+                              )}
+                            </div>
+                            <div className="space-y-2 col-span-2">
+                              <Label>Freeze Reason</Label>
+                              {isEditing ? (
+                                <Textarea
+                                  value={editedMember.freeze_reason || ''}
+                                  onChange={(e) => setEditedMember({...editedMember, freeze_reason: e.target.value})}
+                                  className="bg-slate-700 border-slate-600"
+                                />
+                              ) : (
+                                <div className="text-white">{profileData.member.freeze_reason || 'N/A'}</div>
+                              )}
+                            </div>
+                          </>
+                        ) : null}
+                        <div className="space-y-2 col-span-2">
+                          <Label>Address</Label>
+                          {isEditing ? (
+                            <Textarea
+                              value={editedMember.address || ''}
+                              onChange={(e) => setEditedMember({...editedMember, address: e.target.value})}
+                              className="bg-slate-700 border-slate-600"
+                            />
+                          ) : (
+                            <div className="text-white">{profileData.member.address || 'N/A'}</div>
+                          )}
+                        </div>
+                      </div>
+                    </TabsContent>
+
+                    {/* Access Logs Tab */}
+                    <TabsContent value="access" className="space-y-4">
+                      <div className="rounded-md border border-slate-700">
+                        <table className="w-full">
+                          <thead className="bg-slate-700/50">
+                            <tr>
+                              <th className="p-3 text-left">Date/Time</th>
+                              <th className="p-3 text-left">Method</th>
+                              <th className="p-3 text-left">Status</th>
+                              <th className="p-3 text-left">Location</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {accessLogs.length > 0 ? (
+                              accessLogs.map((log, idx) => (
+                                <tr key={idx} className="border-t border-slate-700">
+                                  <td className="p-3">{new Date(log.timestamp).toLocaleString()}</td>
+                                  <td className="p-3 capitalize">{log.access_method?.replace('_', ' ')}</td>
+                                  <td className="p-3">
+                                    <Badge variant={log.status === 'granted' ? 'default' : 'destructive'}>
+                                      {log.status}
+                                    </Badge>
+                                  </td>
+                                  <td className="p-3">{log.location || 'N/A'}</td>
+                                </tr>
+                              ))
+                            ) : (
+                              <tr><td colSpan="4" className="p-6 text-center text-slate-400">No access logs found</td></tr>
+                            )}
+                          </tbody>
+                        </table>
+                      </div>
+                    </TabsContent>
+
+                    {/* Bookings Tab */}
+                    <TabsContent value="bookings" className="space-y-4">
+                      <div className="rounded-md border border-slate-700">
+                        <table className="w-full">
+                          <thead className="bg-slate-700/50">
+                            <tr>
+                              <th className="p-3 text-left">Class</th>
+                              <th className="p-3 text-left">Date/Time</th>
+                              <th className="p-3 text-left">Status</th>
+                              <th className="p-3 text-left">No-Show</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {bookings.length > 0 ? (
+                              bookings.map((booking, idx) => (
+                                <tr key={idx} className="border-t border-slate-700">
+                                  <td className="p-3">{booking.class_name}</td>
+                                  <td className="p-3">{new Date(booking.booking_date).toLocaleString()}</td>
+                                  <td className="p-3">
+                                    <Badge variant={
+                                      booking.status === 'attended' ? 'default' :
+                                      booking.status === 'cancelled' ? 'destructive' : 'secondary'
+                                    }>
+                                      {booking.status}
+                                    </Badge>
+                                  </td>
+                                  <td className="p-3">{booking.no_show ? 'Yes' : 'No'}</td>
+                                </tr>
+                              ))
+                            ) : (
+                              <tr><td colSpan="4" className="p-6 text-center text-slate-400">No bookings found</td></tr>
+                            )}
+                          </tbody>
+                        </table>
+                      </div>
+                    </TabsContent>
+
+                    {/* Invoices Tab */}
+                    <TabsContent value="invoices" className="space-y-4">
+                      <div className="rounded-md border border-slate-700">
+                        <table className="w-full">
+                          <thead className="bg-slate-700/50">
+                            <tr>
+                              <th className="p-3 text-left">Invoice #</th>
+                              <th className="p-3 text-left">Amount</th>
+                              <th className="p-3 text-left">Due Date</th>
+                              <th className="p-3 text-left">Status</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {invoices.length > 0 ? (
+                              invoices.map((invoice, idx) => (
+                                <tr key={idx} className="border-t border-slate-700">
+                                  <td className="p-3">{invoice.invoice_number}</td>
+                                  <td className="p-3">R{invoice.amount.toFixed(2)}</td>
+                                  <td className="p-3">{new Date(invoice.due_date).toLocaleDateString()}</td>
+                                  <td className="p-3">
+                                    <Badge variant={
+                                      invoice.status === 'paid' ? 'default' :
+                                      invoice.status === 'overdue' ? 'destructive' : 'secondary'
+                                    }>
+                                      {invoice.status}
+                                    </Badge>
+                                  </td>
+                                </tr>
+                              ))
+                            ) : (
+                              <tr><td colSpan="4" className="p-6 text-center text-slate-400">No invoices found</td></tr>
+                            )}
+                          </tbody>
+                        </table>
+                      </div>
+                    </TabsContent>
+
+                    {/* Notes Tab */}
+                    <TabsContent value="notes" className="space-y-4">
+                      <Card className="bg-slate-700/50 border-slate-600">
+                        <CardContent className="p-4">
+                          <div className="space-y-2">
+                            <Label>Add New Note</Label>
+                            <Textarea
+                              value={newNoteContent}
+                              onChange={(e) => setNewNoteContent(e.target.value)}
+                              placeholder="Enter note..."
+                              className="bg-slate-700 border-slate-600"
+                              rows={3}
+                            />
+                            <Button onClick={handleAddNote} size="sm">
+                              <MessageSquare className="w-4 h-4 mr-1" />
+                              Add Note
+                            </Button>
+                          </div>
+                        </CardContent>
+                      </Card>
+
+                      <div className="space-y-3">
+                        {notes.length > 0 ? (
+                          notes.map((note) => (
+                            <Card key={note.note_id} className="bg-slate-700/50 border-slate-600">
+                              <CardContent className="p-4">
+                                <div className="flex justify-between items-start">
+                                  <div className="flex-1">
+                                    <div className="text-sm text-slate-400 mb-2">
+                                      {note.created_by_name || note.created_by} • {new Date(note.created_at).toLocaleString()}
+                                      {note.updated_at && ' (edited)'}
+                                    </div>
+                                    <div className="text-white whitespace-pre-wrap">{note.content}</div>
+                                  </div>
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    onClick={() => handleDeleteNote(note.note_id)}
+                                    className="text-red-400 hover:text-red-300"
+                                  >
+                                    <X className="w-4 h-4" />
+                                  </Button>
+                                </div>
+                              </CardContent>
+                            </Card>
+                          ))
+                        ) : (
+                          <div className="text-center text-slate-400 py-8">No notes yet</div>
+                        )}
+                      </div>
+                    </TabsContent>
+                  </Tabs>
+                </>
+              ) : null}
+            </DialogContent>
+          </Dialog>
         </div>
       </div>
     </div>
