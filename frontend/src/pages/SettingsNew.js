@@ -13,6 +13,7 @@ import {
   Users,
   Shield,
   CheckSquare,
+  Activity,
   Settings as SettingsIcon,
   Briefcase,
   DollarSign,
