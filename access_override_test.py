@@ -563,13 +563,19 @@ class AccessOverrideTester:
             response = requests.post(f"{API_BASE}/access/override", 
                                    json=override_data, headers=self.headers)
             
-            if response.status_code == 400 or response.status_code == 429:
-                self.log_result("Daily Override Limit", True, 
-                              f"4th override correctly rejected due to daily limit (status: {response.status_code})")
-                return True
+            if response.status_code in [400, 403, 429]:
+                response_text = response.text
+                if "Daily override limit" in response_text or "limit reached" in response_text:
+                    self.log_result("Daily Override Limit", True, 
+                                  f"4th override correctly rejected due to daily limit (status: {response.status_code})")
+                    return True
+                else:
+                    self.log_result("Daily Override Limit", False, 
+                                  f"4th override rejected but not for daily limit: {response_text}")
+                    return False
             elif response.status_code == 200:
                 result = response.json()
-                if result.get("access_granted") is False:
+                if result.get("success") is False:
                     self.log_result("Daily Override Limit", True, 
                                   "4th override correctly rejected due to daily limit")
                     return True
