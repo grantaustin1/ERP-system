@@ -7747,6 +7747,709 @@ async def get_engagement_overview(current_user: User = Depends(get_current_user)
 
 
 
+# ==================== SALES MANAGEMENT MODULE - PHASE 1 (MVP) ====================
+
+# Pydantic Models for Sales Module
+class Lead(BaseModel):
+    id: str
+    first_name: str
+    last_name: str
+    email: Optional[str] = None
+    phone: Optional[str] = None
+    company: Optional[str] = None
+    source: str  # referral, website, walk-in, social_media, other
+    status: str  # new, contacted, qualified, unqualified, converted
+    lead_score: int = 0  # 0-100
+    assigned_to: Optional[str] = None
+    created_at: str
+    updated_at: str
+    last_contacted: Optional[str] = None
+    notes: Optional[str] = None
+    tags: List[str] = []
+
+class Opportunity(BaseModel):
+    id: str
+    title: str
+    contact_id: str  # references Lead
+    value: float
+    currency: str = "ZAR"
+    stage: str  # new_lead, contacted, qualified, proposal, negotiation, closed_won, closed_lost
+    probability: int  # 0-100
+    expected_close_date: Optional[str] = None
+    assigned_to: Optional[str] = None
+    created_at: str
+    updated_at: str
+    notes: Optional[str] = None
+
+class SalesTask(BaseModel):
+    id: str
+    title: str
+    description: Optional[str] = None
+    task_type: str  # call, email, meeting, follow_up, other
+    related_to_type: str  # lead, opportunity
+    related_to_id: str
+    assigned_to: str
+    due_date: str
+    priority: str  # low, medium, high
+    status: str  # pending, completed, cancelled
+    created_at: str
+    completed_at: Optional[str] = None
+
+
+# ==================== LEADS/CONTACTS ENDPOINTS ====================
+
+@api_router.get("/sales/leads")
+async def get_leads(
+    status: Optional[str] = None,
+    assigned_to: Optional[str] = None,
+    source: Optional[str] = None,
+    current_user: User = Depends(get_current_user)
+):
+    """Get all leads with optional filters"""
+    query = {}
+    if status:
+        query["status"] = status
+    if assigned_to:
+        query["assigned_to"] = assigned_to
+    if source:
+        query["source"] = source
+    
+    leads = await db.leads.find(query, {"_id": 0}).sort("created_at", -1).to_list(None)
+    return {"leads": leads, "total": len(leads)}
+
+
+@api_router.post("/sales/leads")
+async def create_lead(
+    first_name: str,
+    last_name: str,
+    email: Optional[str] = None,
+    phone: Optional[str] = None,
+    company: Optional[str] = None,
+    source: str = "other",
+    assigned_to: Optional[str] = None,
+    notes: Optional[str] = None,
+    current_user: User = Depends(get_current_user)
+):
+    """Create a new lead"""
+    import uuid
+    from datetime import datetime
+    
+    lead_id = str(uuid.uuid4())
+    lead = {
+        "id": lead_id,
+        "first_name": first_name,
+        "last_name": last_name,
+        "email": email,
+        "phone": phone,
+        "company": company,
+        "source": source,
+        "status": "new",
+        "lead_score": 0,
+        "assigned_to": assigned_to or current_user.id,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "updated_at": datetime.now(timezone.utc).isoformat(),
+        "last_contacted": None,
+        "notes": notes,
+        "tags": []
+    }
+    
+    await db.leads.insert_one(lead.copy())
+    
+    # Log activity
+    activity = {
+        "id": str(uuid.uuid4()),
+        "related_to_type": "lead",
+        "related_to_id": lead_id,
+        "activity_type": "created",
+        "description": f"Lead created by {current_user.email}",
+        "created_by": current_user.id,
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    await db.sales_activities.insert_one(activity)
+    
+    return {"success": True, "lead": lead}
+
+
+@api_router.get("/sales/leads/{lead_id}")
+async def get_lead(lead_id: str, current_user: User = Depends(get_current_user)):
+    """Get a specific lead by ID"""
+    lead = await db.leads.find_one({"id": lead_id}, {"_id": 0})
+    
+    if not lead:
+        raise HTTPException(status_code=404, detail="Lead not found")
+    
+    # Get related opportunities
+    opportunities = await db.opportunities.find(
+        {"contact_id": lead_id},
+        {"_id": 0}
+    ).to_list(None)
+    
+    # Get related tasks
+    tasks = await db.sales_tasks.find(
+        {"related_to_type": "lead", "related_to_id": lead_id},
+        {"_id": 0}
+    ).to_list(None)
+    
+    # Get activity history
+    activities = await db.sales_activities.find(
+        {"related_to_id": lead_id},
+        {"_id": 0}
+    ).sort("created_at", -1).to_list(None)
+    
+    return {
+        "lead": lead,
+        "opportunities": opportunities,
+        "tasks": tasks,
+        "activities": activities
+    }
+
+
+@api_router.put("/sales/leads/{lead_id}")
+async def update_lead(
+    lead_id: str,
+    first_name: Optional[str] = None,
+    last_name: Optional[str] = None,
+    email: Optional[str] = None,
+    phone: Optional[str] = None,
+    company: Optional[str] = None,
+    status: Optional[str] = None,
+    lead_score: Optional[int] = None,
+    assigned_to: Optional[str] = None,
+    notes: Optional[str] = None,
+    current_user: User = Depends(get_current_user)
+):
+    """Update a lead"""
+    from datetime import datetime
+    
+    lead = await db.leads.find_one({"id": lead_id}, {"_id": 0})
+    if not lead:
+        raise HTTPException(status_code=404, detail="Lead not found")
+    
+    update_data = {"updated_at": datetime.now(timezone.utc).isoformat()}
+    
+    if first_name is not None:
+        update_data["first_name"] = first_name
+    if last_name is not None:
+        update_data["last_name"] = last_name
+    if email is not None:
+        update_data["email"] = email
+    if phone is not None:
+        update_data["phone"] = phone
+    if company is not None:
+        update_data["company"] = company
+    if status is not None:
+        update_data["status"] = status
+    if lead_score is not None:
+        update_data["lead_score"] = min(max(lead_score, 0), 100)  # Clamp 0-100
+    if assigned_to is not None:
+        update_data["assigned_to"] = assigned_to
+    if notes is not None:
+        update_data["notes"] = notes
+    
+    await db.leads.update_one({"id": lead_id}, {"$set": update_data})
+    
+    # Log activity
+    import uuid
+    activity = {
+        "id": str(uuid.uuid4()),
+        "related_to_type": "lead",
+        "related_to_id": lead_id,
+        "activity_type": "updated",
+        "description": f"Lead updated by {current_user.email}",
+        "created_by": current_user.id,
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    await db.sales_activities.insert_one(activity)
+    
+    updated_lead = await db.leads.find_one({"id": lead_id}, {"_id": 0})
+    return {"success": True, "lead": updated_lead}
+
+
+@api_router.delete("/sales/leads/{lead_id}")
+async def delete_lead(lead_id: str, current_user: User = Depends(get_current_user)):
+    """Delete a lead"""
+    result = await db.leads.delete_one({"id": lead_id})
+    
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Lead not found")
+    
+    # Also delete related opportunities, tasks, activities
+    await db.opportunities.delete_many({"contact_id": lead_id})
+    await db.sales_tasks.delete_many({"related_to_type": "lead", "related_to_id": lead_id})
+    await db.sales_activities.delete_many({"related_to_id": lead_id})
+    
+    return {"success": True, "message": "Lead deleted"}
+
+
+# ==================== OPPORTUNITIES/PIPELINE ENDPOINTS ====================
+
+@api_router.get("/sales/opportunities")
+async def get_opportunities(
+    stage: Optional[str] = None,
+    assigned_to: Optional[str] = None,
+    current_user: User = Depends(get_current_user)
+):
+    """Get all opportunities with optional filters"""
+    query = {}
+    if stage:
+        query["stage"] = stage
+    if assigned_to:
+        query["assigned_to"] = assigned_to
+    
+    opportunities = await db.opportunities.find(query, {"_id": 0}).sort("created_at", -1).to_list(None)
+    
+    # Enrich with lead/contact info
+    enriched_opportunities = []
+    for opp in opportunities:
+        lead = await db.leads.find_one(
+            {"id": opp.get("contact_id")},
+            {"_id": 0, "first_name": 1, "last_name": 1, "email": 1, "company": 1}
+        )
+        
+        opp_with_contact = opp.copy()
+        if lead:
+            opp_with_contact["contact_name"] = f"{lead.get('first_name', '')} {lead.get('last_name', '')}".strip()
+            opp_with_contact["contact_email"] = lead.get("email")
+            opp_with_contact["contact_company"] = lead.get("company")
+        
+        enriched_opportunities.append(opp_with_contact)
+    
+    return {"opportunities": enriched_opportunities, "total": len(enriched_opportunities)}
+
+
+@api_router.get("/sales/pipeline")
+async def get_sales_pipeline(current_user: User = Depends(get_current_user)):
+    """Get sales pipeline organized by stage for kanban view"""
+    stages = ["new_lead", "contacted", "qualified", "proposal", "negotiation", "closed_won", "closed_lost"]
+    
+    pipeline = {}
+    total_value = 0
+    total_opportunities = 0
+    
+    for stage in stages:
+        opportunities = await db.opportunities.find({"stage": stage}, {"_id": 0}).to_list(None)
+        
+        # Enrich with lead info
+        enriched_opps = []
+        stage_value = 0
+        
+        for opp in opportunities:
+            lead = await db.leads.find_one(
+                {"id": opp.get("contact_id")},
+                {"_id": 0, "first_name": 1, "last_name": 1, "email": 1, "company": 1}
+            )
+            
+            opp_with_contact = opp.copy()
+            if lead:
+                opp_with_contact["contact_name"] = f"{lead.get('first_name', '')} {lead.get('last_name', '')}".strip()
+                opp_with_contact["contact_email"] = lead.get("email")
+                opp_with_contact["contact_company"] = lead.get("company")
+            
+            enriched_opps.append(opp_with_contact)
+            
+            # Calculate stage value (weighted by probability for open stages)
+            if stage not in ["closed_won", "closed_lost"]:
+                stage_value += opp.get("value", 0) * (opp.get("probability", 0) / 100)
+            elif stage == "closed_won":
+                stage_value += opp.get("value", 0)
+        
+        pipeline[stage] = {
+            "opportunities": enriched_opps,
+            "count": len(enriched_opps),
+            "total_value": round(stage_value, 2)
+        }
+        
+        if stage not in ["closed_lost"]:
+            total_value += stage_value
+        total_opportunities += len(enriched_opps)
+    
+    return {
+        "pipeline": pipeline,
+        "summary": {
+            "total_opportunities": total_opportunities,
+            "total_pipeline_value": round(total_value, 2)
+        }
+    }
+
+
+@api_router.post("/sales/opportunities")
+async def create_opportunity(
+    title: str,
+    contact_id: str,
+    value: float,
+    stage: str = "new_lead",
+    probability: int = 10,
+    expected_close_date: Optional[str] = None,
+    assigned_to: Optional[str] = None,
+    notes: Optional[str] = None,
+    current_user: User = Depends(get_current_user)
+):
+    """Create a new opportunity"""
+    import uuid
+    from datetime import datetime
+    
+    # Verify lead exists
+    lead = await db.leads.find_one({"id": contact_id}, {"_id": 0})
+    if not lead:
+        raise HTTPException(status_code=404, detail="Lead/Contact not found")
+    
+    opp_id = str(uuid.uuid4())
+    opportunity = {
+        "id": opp_id,
+        "title": title,
+        "contact_id": contact_id,
+        "value": value,
+        "currency": "ZAR",
+        "stage": stage,
+        "probability": min(max(probability, 0), 100),
+        "expected_close_date": expected_close_date,
+        "assigned_to": assigned_to or current_user.id,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "updated_at": datetime.now(timezone.utc).isoformat(),
+        "notes": notes
+    }
+    
+    await db.opportunities.insert_one(opportunity.copy())
+    
+    # Log activity
+    activity = {
+        "id": str(uuid.uuid4()),
+        "related_to_type": "opportunity",
+        "related_to_id": opp_id,
+        "activity_type": "created",
+        "description": f"Opportunity created by {current_user.email}",
+        "created_by": current_user.id,
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    await db.sales_activities.insert_one(activity)
+    
+    return {"success": True, "opportunity": opportunity}
+
+
+@api_router.put("/sales/opportunities/{opp_id}")
+async def update_opportunity(
+    opp_id: str,
+    title: Optional[str] = None,
+    value: Optional[float] = None,
+    stage: Optional[str] = None,
+    probability: Optional[int] = None,
+    expected_close_date: Optional[str] = None,
+    assigned_to: Optional[str] = None,
+    notes: Optional[str] = None,
+    current_user: User = Depends(get_current_user)
+):
+    """Update an opportunity"""
+    from datetime import datetime
+    
+    opp = await db.opportunities.find_one({"id": opp_id}, {"_id": 0})
+    if not opp:
+        raise HTTPException(status_code=404, detail="Opportunity not found")
+    
+    update_data = {"updated_at": datetime.now(timezone.utc).isoformat()}
+    
+    if title is not None:
+        update_data["title"] = title
+    if value is not None:
+        update_data["value"] = value
+    if stage is not None:
+        update_data["stage"] = stage
+    if probability is not None:
+        update_data["probability"] = min(max(probability, 0), 100)
+    if expected_close_date is not None:
+        update_data["expected_close_date"] = expected_close_date
+    if assigned_to is not None:
+        update_data["assigned_to"] = assigned_to
+    if notes is not None:
+        update_data["notes"] = notes
+    
+    await db.opportunities.update_one({"id": opp_id}, {"$set": update_data})
+    
+    # Log activity
+    import uuid
+    activity = {
+        "id": str(uuid.uuid4()),
+        "related_to_type": "opportunity",
+        "related_to_id": opp_id,
+        "activity_type": "updated",
+        "description": f"Opportunity updated by {current_user.email}. Stage: {stage if stage else 'unchanged'}",
+        "created_by": current_user.id,
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    await db.sales_activities.insert_one(activity)
+    
+    updated_opp = await db.opportunities.find_one({"id": opp_id}, {"_id": 0})
+    return {"success": True, "opportunity": updated_opp}
+
+
+# ==================== TASKS ENDPOINTS ====================
+
+@api_router.get("/sales/tasks")
+async def get_sales_tasks(
+    status: Optional[str] = None,
+    assigned_to: Optional[str] = None,
+    task_type: Optional[str] = None,
+    current_user: User = Depends(get_current_user)
+):
+    """Get all sales tasks with optional filters"""
+    query = {}
+    if status:
+        query["status"] = status
+    if assigned_to:
+        query["assigned_to"] = assigned_to
+    if task_type:
+        query["task_type"] = task_type
+    
+    tasks = await db.sales_tasks.find(query, {"_id": 0}).sort("due_date", 1).to_list(None)
+    
+    # Enrich with related lead/opportunity info
+    enriched_tasks = []
+    for task in tasks:
+        task_copy = task.copy()
+        
+        if task.get("related_to_type") == "lead":
+            lead = await db.leads.find_one(
+                {"id": task.get("related_to_id")},
+                {"_id": 0, "first_name": 1, "last_name": 1, "email": 1}
+            )
+            if lead:
+                task_copy["related_to_name"] = f"{lead.get('first_name', '')} {lead.get('last_name', '')}".strip()
+                
+        elif task.get("related_to_type") == "opportunity":
+            opp = await db.opportunities.find_one(
+                {"id": task.get("related_to_id")},
+                {"_id": 0, "title": 1}
+            )
+            if opp:
+                task_copy["related_to_name"] = opp.get("title")
+        
+        enriched_tasks.append(task_copy)
+    
+    return {"tasks": enriched_tasks, "total": len(enriched_tasks)}
+
+
+@api_router.post("/sales/tasks")
+async def create_sales_task(
+    title: str,
+    task_type: str,
+    related_to_type: str,
+    related_to_id: str,
+    due_date: str,
+    priority: str = "medium",
+    description: Optional[str] = None,
+    assigned_to: Optional[str] = None,
+    current_user: User = Depends(get_current_user)
+):
+    """Create a new sales task"""
+    import uuid
+    from datetime import datetime
+    
+    task_id = str(uuid.uuid4())
+    task = {
+        "id": task_id,
+        "title": title,
+        "description": description,
+        "task_type": task_type,
+        "related_to_type": related_to_type,
+        "related_to_id": related_to_id,
+        "assigned_to": assigned_to or current_user.id,
+        "due_date": due_date,
+        "priority": priority,
+        "status": "pending",
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "completed_at": None
+    }
+    
+    await db.sales_tasks.insert_one(task.copy())
+    
+    # Log activity
+    activity = {
+        "id": str(uuid.uuid4()),
+        "related_to_type": related_to_type,
+        "related_to_id": related_to_id,
+        "activity_type": "task_created",
+        "description": f"Task '{title}' created by {current_user.email}",
+        "created_by": current_user.id,
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    await db.sales_activities.insert_one(activity)
+    
+    return {"success": True, "task": task}
+
+
+@api_router.put("/sales/tasks/{task_id}")
+async def update_sales_task(
+    task_id: str,
+    title: Optional[str] = None,
+    description: Optional[str] = None,
+    status: Optional[str] = None,
+    priority: Optional[str] = None,
+    due_date: Optional[str] = None,
+    current_user: User = Depends(get_current_user)
+):
+    """Update a sales task"""
+    from datetime import datetime
+    
+    task = await db.sales_tasks.find_one({"id": task_id}, {"_id": 0})
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+    
+    update_data = {}
+    
+    if title is not None:
+        update_data["title"] = title
+    if description is not None:
+        update_data["description"] = description
+    if priority is not None:
+        update_data["priority"] = priority
+    if due_date is not None:
+        update_data["due_date"] = due_date
+    if status is not None:
+        update_data["status"] = status
+        if status == "completed":
+            update_data["completed_at"] = datetime.now(timezone.utc).isoformat()
+    
+    await db.sales_tasks.update_one({"id": task_id}, {"$set": update_data})
+    
+    # Log activity
+    import uuid
+    activity = {
+        "id": str(uuid.uuid4()),
+        "related_to_type": task.get("related_to_type"),
+        "related_to_id": task.get("related_to_id"),
+        "activity_type": "task_updated",
+        "description": f"Task updated by {current_user.email}. Status: {status if status else 'unchanged'}",
+        "created_by": current_user.id,
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    await db.sales_activities.insert_one(activity)
+    
+    updated_task = await db.sales_tasks.find_one({"id": task_id}, {"_id": 0})
+    return {"success": True, "task": updated_task}
+
+
+@api_router.delete("/sales/tasks/{task_id}")
+async def delete_sales_task(task_id: str, current_user: User = Depends(get_current_user)):
+    """Delete a sales task"""
+    result = await db.sales_tasks.delete_one({"id": task_id})
+    
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Task not found")
+    
+    return {"success": True, "message": "Task deleted"}
+
+
+# ==================== REPORTING ENDPOINTS ====================
+
+@api_router.get("/sales/reports/overview")
+async def get_sales_overview(current_user: User = Depends(get_current_user)):
+    """Get sales overview metrics for dashboard"""
+    from datetime import datetime, timedelta
+    
+    # Total leads
+    total_leads = await db.leads.count_documents({})
+    
+    # Leads by status
+    new_leads = await db.leads.count_documents({"status": "new"})
+    contacted_leads = await db.leads.count_documents({"status": "contacted"})
+    qualified_leads = await db.leads.count_documents({"status": "qualified"})
+    converted_leads = await db.leads.count_documents({"status": "converted"})
+    
+    # Total opportunities
+    total_opportunities = await db.opportunities.count_documents({})
+    
+    # Opportunities by stage
+    opportunities_by_stage = {}
+    stages = ["new_lead", "contacted", "qualified", "proposal", "negotiation", "closed_won", "closed_lost"]
+    for stage in stages:
+        count = await db.opportunities.count_documents({"stage": stage})
+        opportunities_by_stage[stage] = count
+    
+    # Total pipeline value (excluding closed_lost)
+    all_opps = await db.opportunities.find(
+        {"stage": {"$ne": "closed_lost"}},
+        {"_id": 0, "value": 1, "probability": 1, "stage": 1}
+    ).to_list(None)
+    
+    total_pipeline_value = 0
+    for opp in all_opps:
+        if opp.get("stage") == "closed_won":
+            total_pipeline_value += opp.get("value", 0)
+        else:
+            # Weighted by probability
+            total_pipeline_value += opp.get("value", 0) * (opp.get("probability", 0) / 100)
+    
+    # Win rate
+    closed_won_count = opportunities_by_stage.get("closed_won", 0)
+    closed_lost_count = opportunities_by_stage.get("closed_lost", 0)
+    total_closed = closed_won_count + closed_lost_count
+    win_rate = (closed_won_count / total_closed * 100) if total_closed > 0 else 0
+    
+    # Tasks summary
+    total_tasks = await db.sales_tasks.count_documents({})
+    pending_tasks = await db.sales_tasks.count_documents({"status": "pending"})
+    overdue_tasks = await db.sales_tasks.count_documents({
+        "status": "pending",
+        "due_date": {"$lt": datetime.now(timezone.utc).isoformat()}
+    })
+    
+    # Lead conversion rate
+    conversion_rate = (converted_leads / total_leads * 100) if total_leads > 0 else 0
+    
+    # Recent activity (last 30 days)
+    thirty_days_ago = datetime.now(timezone.utc) - timedelta(days=30)
+    recent_leads = await db.leads.count_documents({
+        "created_at": {"$gte": thirty_days_ago.isoformat()}
+    })
+    
+    recent_opportunities = await db.opportunities.count_documents({
+        "created_at": {"$gte": thirty_days_ago.isoformat()}
+    })
+    
+    return {
+        "leads": {
+            "total": total_leads,
+            "new": new_leads,
+            "contacted": contacted_leads,
+            "qualified": qualified_leads,
+            "converted": converted_leads,
+            "conversion_rate": round(conversion_rate, 1)
+        },
+        "opportunities": {
+            "total": total_opportunities,
+            "by_stage": opportunities_by_stage,
+            "total_pipeline_value": round(total_pipeline_value, 2),
+            "win_rate": round(win_rate, 1)
+        },
+        "tasks": {
+            "total": total_tasks,
+            "pending": pending_tasks,
+            "overdue": overdue_tasks
+        },
+        "recent_activity": {
+            "leads_last_30_days": recent_leads,
+            "opportunities_last_30_days": recent_opportunities
+        }
+    }
+
+
+@api_router.get("/sales/reports/conversion-funnel")
+async def get_conversion_funnel(current_user: User = Depends(get_current_user)):
+    """Get conversion funnel data"""
+    stages = ["new", "contacted", "qualified", "converted"]
+    funnel_data = []
+    
+    for stage in stages:
+        count = await db.leads.count_documents({"status": stage})
+        funnel_data.append({
+            "stage": stage,
+            "count": count
+        })
+    
+    return {"funnel": funnel_data}
+
+
+
+
 
 # Levy Routes
 @api_router.get("/levies", response_model=List[Levy])
