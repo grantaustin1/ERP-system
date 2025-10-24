@@ -5418,15 +5418,18 @@ backend:
 
   - task: "Phase 2D - Churn Prediction API"
     implemented: true
-    working: "NA"
+    working: true
     file: "/app/backend/server.py"
     stuck_count: 0
     priority: "high"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
       - working: "NA"
         agent: "main"
         comment: "Phase 2D Advanced Analytics - Implemented GET /api/analytics/churn-prediction endpoint. Sophisticated risk scoring system analyzing: last visit date (0-30 points), payment issues (0-25 points), frozen status (0-20 points), missing contact info (0-5 points), attendance decline (0-15 points). Classifies members as Critical (50+), High (30-49), Medium (15-29) risk. Returns at-risk members list with detailed risk reasons and common risk factors analysis. Ready for backend testing."
+      - working: true
+        agent: "testing"
+        comment: "✅ Churn Prediction Analytics API working perfectly: GET /api/analytics/churn-prediction returns 200 OK with comprehensive risk analysis. Summary contains total_members_analyzed, at_risk_count, risk_percentage, and by_risk_level breakdown (critical, high, medium) with correct data types. at_risk_members array contains member_id, member_name, email, phone, membership_type, risk_score, risk_level, risk_reasons, last_visit fields. Risk level logic working correctly: Critical ≥50, High 30-49, Medium 15-29. risk_reasons array provides detailed explanations for each member's risk factors. common_risk_factors array shows factor and count fields. All risk scoring calculations accurate and properly classified."
 
 frontend:
   - task: "Phase 2D - Advanced Analytics Page"
