@@ -368,69 +368,154 @@ class ReportLibraryTestRunner:
             self.log_result("Birthday Report API", False, f"Error testing birthday report API: {str(e)}")
             return False
     
-    def test_sleeping_members_api(self):
-        """Test Sleeping Members API - GET /api/retention/sleeping-members"""
-        print("\n=== Testing Sleeping Members API ===")
+    def test_anniversary_report_api(self):
+        """Test Anniversary Report API - GET /api/reports/anniversaries"""
+        print("\n=== Testing Anniversary Report API ===")
         
         try:
-            response = requests.get(f"{API_BASE}/retention/sleeping-members", headers=self.headers)
+            # Test different day periods
+            test_periods = [7, 14, 30, 60, 90]
             
+            for days in test_periods:
+                response = requests.get(f"{API_BASE}/reports/anniversaries?days_ahead={days}", headers=self.headers)
+                
+                if response.status_code == 200:
+                    data = response.json()
+                    
+                    # Verify required structure
+                    required_fields = ["summary", "anniversaries"]
+                    missing_fields = [field for field in required_fields if field not in data]
+                    
+                    if missing_fields:
+                        self.log_result(f"Anniversary Report {days}d Structure", False, 
+                                      f"Missing fields: {missing_fields}")
+                        return False
+                    
+                    # Verify summary structure
+                    summary = data["summary"]
+                    summary_fields = ["total_upcoming", "date_range", "by_milestone"]
+                    missing_summary_fields = [field for field in summary_fields if field not in summary]
+                    
+                    if missing_summary_fields:
+                        self.log_result(f"Anniversary Report {days}d Summary Structure", False, 
+                                      f"Missing summary fields: {missing_summary_fields}")
+                        return False
+                    
+                    # Verify date_range structure
+                    date_range = summary["date_range"]
+                    date_range_fields = ["from", "to", "days"]
+                    missing_date_fields = [field for field in date_range_fields if field not in date_range]
+                    
+                    if missing_date_fields:
+                        self.log_result(f"Anniversary Report {days}d Date Range Structure", False, 
+                                      f"Missing date range fields: {missing_date_fields}")
+                        return False
+                    
+                    # Verify days parameter matches
+                    if date_range["days"] != days:
+                        self.log_result(f"Anniversary Report {days}d Days Parameter", False, 
+                                      f"Days parameter mismatch: expected {days}, got {date_range['days']}")
+                        return False
+                    
+                    # Verify by_milestone structure
+                    by_milestone = summary["by_milestone"]
+                    milestone_fields = ["1_year", "5_years", "10_plus_years"]
+                    missing_milestone_fields = [field for field in milestone_fields if field not in by_milestone]
+                    
+                    if missing_milestone_fields:
+                        self.log_result(f"Anniversary Report {days}d Milestone Structure", False, 
+                                      f"Missing milestone fields: {missing_milestone_fields}")
+                        return False
+                    
+                    # Verify anniversaries structure
+                    anniversaries = data["anniversaries"]
+                    anniversary_fields = ["by_milestone", "all"]
+                    missing_anniversary_fields = [field for field in anniversary_fields if field not in anniversaries]
+                    
+                    if missing_anniversary_fields:
+                        self.log_result(f"Anniversary Report {days}d Anniversaries Structure", False, 
+                                      f"Missing anniversary fields: {missing_anniversary_fields}")
+                        return False
+                    
+                    # Verify by_milestone breakdown
+                    milestone_breakdown = anniversaries["by_milestone"]
+                    milestone_breakdown_fields = ["1_year", "5_years", "10_plus_years"]
+                    missing_breakdown_fields = [field for field in milestone_breakdown_fields if field not in milestone_breakdown]
+                    
+                    if missing_breakdown_fields:
+                        self.log_result(f"Anniversary Report {days}d Milestone Breakdown", False, 
+                                      f"Missing milestone breakdown fields: {missing_breakdown_fields}")
+                        return False
+                    
+                    # Verify member structure if anniversaries exist
+                    if anniversaries["all"]:
+                        member = anniversaries["all"][0]
+                        member_fields = [
+                            "id", "first_name", "last_name", "full_name", "email", "phone",
+                            "join_date", "anniversary_date", "years_completing", "days_until"
+                        ]
+                        missing_member_fields = [field for field in member_fields if field not in member]
+                        
+                        if missing_member_fields:
+                            self.log_result(f"Anniversary Report {days}d Member Structure", False, 
+                                          f"Missing member fields: {missing_member_fields}")
+                            return False
+                        
+                        # Verify only 1+ year members are included
+                        years_completing = member["years_completing"]
+                        if years_completing < 1:
+                            self.log_result(f"Anniversary Report {days}d Years Filter", False, 
+                                          f"Only members with 1+ years should be included, found {years_completing}")
+                            return False
+                        
+                        # Verify milestone grouping logic
+                        if years_completing == 1 and member not in milestone_breakdown["1_year"]:
+                            self.log_result(f"Anniversary Report {days}d Milestone Grouping", False, 
+                                          f"1-year member should be in 1_year group")
+                            return False
+                        elif years_completing == 5 and member not in milestone_breakdown["5_years"]:
+                            self.log_result(f"Anniversary Report {days}d Milestone Grouping", False, 
+                                          f"5-year member should be in 5_years group")
+                            return False
+                        elif years_completing >= 10 and member not in milestone_breakdown["10_plus_years"]:
+                            self.log_result(f"Anniversary Report {days}d Milestone Grouping", False, 
+                                          f"10+ year member should be in 10_plus_years group")
+                            return False
+                    
+                    # Verify totals match
+                    calculated_total = by_milestone["1_year"] + by_milestone["5_years"] + by_milestone["10_plus_years"]
+                    if summary["total_upcoming"] != calculated_total:
+                        self.log_result(f"Anniversary Report {days}d Total Calculation", False, 
+                                      f"Total mismatch: {summary['total_upcoming']} != {calculated_total}")
+                        return False
+                    
+                    self.log_result(f"Anniversary Report {days}d API", True, 
+                                  f"Retrieved {summary['total_upcoming']} upcoming anniversaries "
+                                  f"(1yr: {by_milestone['1_year']}, 5yr: {by_milestone['5_years']}, 10+yr: {by_milestone['10_plus_years']})")
+                else:
+                    self.log_result(f"Anniversary Report {days}d API", False, 
+                                  f"Failed to get anniversary report: {response.status_code}",
+                                  {"response": response.text})
+                    return False
+            
+            # Test default parameter (30 days)
+            response = requests.get(f"{API_BASE}/reports/anniversaries", headers=self.headers)
             if response.status_code == 200:
                 data = response.json()
-                
-                # Verify required structure
-                required_fields = ["total", "members"]
-                missing_fields = [field for field in required_fields if field not in data]
-                
-                if missing_fields:
-                    self.log_result("Sleeping Members Structure", False, 
-                                  f"Missing fields: {missing_fields}")
+                if data["summary"]["date_range"]["days"] != 30:
+                    self.log_result("Anniversary Report Default Parameter", False, 
+                                  f"Default days_ahead should be 30, got {data['summary']['date_range']['days']}")
                     return False
-                
-                # Verify data types
-                if not isinstance(data["total"], int):
-                    self.log_result("Sleeping Members Total Type", False, 
-                                  "Total should be an integer")
-                    return False
-                
-                if not isinstance(data["members"], list):
-                    self.log_result("Sleeping Members Members Type", False, 
-                                  "Members should be a list")
-                    return False
-                
-                # Verify member structure if members exist
-                if data["members"]:
-                    member = data["members"][0]
-                    member_fields = [
-                        "id", "first_name", "last_name", "full_name", "email", 
-                        "last_visit_date", "days_sleeping", "join_date", "is_debtor"
-                    ]
-                    missing_member_fields = [field for field in member_fields if field not in member]
-                    
-                    if missing_member_fields:
-                        self.log_result("Sleeping Members Member Structure", False, 
-                                      f"Missing member fields: {missing_member_fields}")
-                        return False
-                    
-                    # Verify days_sleeping calculation
-                    days_sleeping = member["days_sleeping"]
-                    if days_sleeping != "Never visited" and not isinstance(days_sleeping, int):
-                        self.log_result("Sleeping Members Days Sleeping Type", False, 
-                                      "Days sleeping should be integer or 'Never visited'")
-                        return False
-                
-                self.log_result("Sleeping Members API", True, 
-                              f"Retrieved {data['total']} sleeping members (no attendance in 30+ days)")
-                return True
-                
+                self.log_result("Anniversary Report Default Parameter", True, "Default days_ahead=30 working correctly")
             else:
-                self.log_result("Sleeping Members API", False, 
-                              f"Failed to get sleeping members: {response.status_code}",
-                              {"response": response.text})
+                self.log_result("Anniversary Report Default Parameter", False, 
+                              f"Failed to test default parameter: {response.status_code}")
                 return False
+            
+            return True
                 
         except Exception as e:
-            self.log_result("Sleeping Members API", False, f"Error testing sleeping members API: {str(e)}")
+            self.log_result("Anniversary Report API", False, f"Error testing anniversary report API: {str(e)}")
             return False
     
     def test_expiring_memberships_api(self):
