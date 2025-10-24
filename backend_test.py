@@ -863,14 +863,14 @@ class AdvancedAnalyticsTestRunner:
 
 def main():
     """Main execution function"""
-    tester = ReportLibraryTestRunner()
-    success = tester.run_report_library_tests()
+    tester = AdvancedAnalyticsTestRunner()
+    success = tester.run_advanced_analytics_tests()
     
     if success:
-        print("\n🎉 ALL REPORT LIBRARY TESTS PASSED!")
+        print("\n🎉 ALL ADVANCED ANALYTICS TESTS PASSED!")
         exit(0)
     else:
-        print("\n💥 SOME REPORT LIBRARY TESTS FAILED!")
+        print("\n💥 SOME ADVANCED ANALYTICS TESTS FAILED!")
         exit(1)
 
 if __name__ == "__main__":
