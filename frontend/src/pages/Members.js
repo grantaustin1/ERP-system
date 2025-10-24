@@ -262,12 +262,13 @@ export default function Members() {
   const fetchMemberProfile = async (memberId) => {
     setProfileLoading(true);
     try {
-      const [profileRes, accessLogsRes, bookingsRes, invoicesRes, notesRes] = await Promise.all([
+      const [profileRes, accessLogsRes, bookingsRes, invoicesRes, notesRes, journalRes] = await Promise.all([
         axios.get(`${API}/members/${memberId}/profile`),
         axios.get(`${API}/members/${memberId}/access-logs?limit=20`),
         axios.get(`${API}/members/${memberId}/bookings?limit=20`),
         axios.get(`${API}/members/${memberId}/invoices?limit=20`),
-        axios.get(`${API}/members/${memberId}/notes`)
+        axios.get(`${API}/members/${memberId}/notes`),
+        axios.get(`${API}/members/${memberId}/journal?limit=100`)
       ]);
       
       setProfileData(profileRes.data);
@@ -275,6 +276,7 @@ export default function Members() {
       setBookings(bookingsRes.data);
       setInvoices(invoicesRes.data);
       setNotes(notesRes.data);
+      setJournal(journalRes.data);
       setEditedMember(profileRes.data.member);
     } catch (error) {
       console.error('Error fetching profile:', error);
