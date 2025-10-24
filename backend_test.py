@@ -127,119 +127,118 @@ class AdvancedAnalyticsTestRunner:
             self.log_result("Setup Test Members", False, f"Error creating test members: {str(e)}")
             return False
     
-    def test_incomplete_data_report_api(self):
-        """Test Incomplete Data Report API - GET /api/reports/incomplete-data"""
-        print("\n=== Testing Incomplete Data Report API ===")
+    def test_revenue_breakdown_analytics_api(self):
+        """Test Revenue Breakdown Analytics API - GET /api/analytics/revenue-breakdown"""
+        print("\n=== Testing Revenue Breakdown Analytics API ===")
         
         try:
-            response = requests.get(f"{API_BASE}/reports/incomplete-data", headers=self.headers)
+            # Test with default period (12 months)
+            response = requests.get(f"{API_BASE}/analytics/revenue-breakdown", headers=self.headers)
             
             if response.status_code == 200:
                 data = response.json()
                 
                 # Verify required structure
-                required_fields = ["summary", "members"]
+                required_fields = ["summary", "by_membership_type", "by_payment_method", "monthly_trend"]
                 missing_fields = [field for field in required_fields if field not in data]
                 
                 if missing_fields:
-                    self.log_result("Incomplete Data Report Structure", False, 
+                    self.log_result("Revenue Breakdown Structure", False, 
                                   f"Missing fields: {missing_fields}")
                     return False
                 
                 # Verify summary structure
                 summary = data["summary"]
-                summary_fields = [
-                    "total_members", "members_with_incomplete_data", "completion_rate", 
-                    "by_priority", "most_common_missing"
-                ]
+                summary_fields = ["total_revenue", "mrr", "arpu", "active_members"]
                 missing_summary_fields = [field for field in summary_fields if field not in summary]
                 
                 if missing_summary_fields:
-                    self.log_result("Incomplete Data Summary Structure", False, 
+                    self.log_result("Revenue Breakdown Summary Structure", False, 
                                   f"Missing summary fields: {missing_summary_fields}")
                     return False
                 
-                # Verify priority distribution
-                priority_dist = summary["by_priority"]
-                priority_fields = ["critical", "high", "medium", "low"]
-                missing_priority_fields = [field for field in priority_fields if field not in priority_dist]
-                
-                if missing_priority_fields:
-                    self.log_result("Incomplete Data Priority Structure", False, 
-                                  f"Missing priority fields: {missing_priority_fields}")
-                    return False
-                
                 # Verify data types
-                if not isinstance(summary["total_members"], int):
-                    self.log_result("Incomplete Data Total Members Type", False, 
-                                  "Total members should be integer")
+                if not isinstance(summary["total_revenue"], (int, float)):
+                    self.log_result("Revenue Breakdown Total Revenue Type", False, 
+                                  "Total revenue should be number")
                     return False
                 
-                if not isinstance(summary["members_with_incomplete_data"], int):
-                    self.log_result("Incomplete Data Incomplete Count Type", False, 
-                                  "Incomplete count should be integer")
+                if not isinstance(summary["mrr"], (int, float)):
+                    self.log_result("Revenue Breakdown MRR Type", False, 
+                                  "MRR should be number")
                     return False
                 
-                if not isinstance(summary["completion_rate"], (int, float)):
-                    self.log_result("Incomplete Data Completion Rate Type", False, 
-                                  "Completion rate should be number")
+                if not isinstance(summary["arpu"], (int, float)):
+                    self.log_result("Revenue Breakdown ARPU Type", False, 
+                                  "ARPU should be number")
                     return False
                 
-                # Verify members structure if members exist
-                if data["members"]:
-                    member = data["members"][0]
-                    member_fields = [
-                        "id", "first_name", "last_name", "full_name", "email", "phone",
-                        "membership_status", "missing_fields", "priority", "priority_score"
-                    ]
-                    missing_member_fields = [field for field in member_fields if field not in member]
+                if not isinstance(summary["active_members"], int):
+                    self.log_result("Revenue Breakdown Active Members Type", False, 
+                                  "Active members should be integer")
+                    return False
+                
+                # Verify by_membership_type structure
+                if data["by_membership_type"]:
+                    membership_type = data["by_membership_type"][0]
+                    membership_fields = ["membership_type", "revenue", "percentage", "member_count"]
+                    missing_membership_fields = [field for field in membership_fields if field not in membership_type]
                     
-                    if missing_member_fields:
-                        self.log_result("Incomplete Data Member Structure", False, 
-                                      f"Missing member fields: {missing_member_fields}")
-                        return False
-                    
-                    # Verify priority calculation logic
-                    priority = member["priority"]
-                    score = member["priority_score"]
-                    
-                    if priority == "Critical" and score < 20:
-                        self.log_result("Incomplete Data Priority Logic", False, 
-                                      f"Critical priority should have score ≥20, got {score}")
-                        return False
-                    elif priority == "High" and (score < 10 or score >= 20):
-                        self.log_result("Incomplete Data Priority Logic", False, 
-                                      f"High priority should have score 10-19, got {score}")
-                        return False
-                    elif priority == "Medium" and (score < 5 or score >= 10):
-                        self.log_result("Incomplete Data Priority Logic", False, 
-                                      f"Medium priority should have score 5-9, got {score}")
-                        return False
-                    elif priority == "Low" and score >= 5:
-                        self.log_result("Incomplete Data Priority Logic", False, 
-                                      f"Low priority should have score <5, got {score}")
-                        return False
-                    
-                    # Verify missing_fields is a list
-                    if not isinstance(member["missing_fields"], list):
-                        self.log_result("Incomplete Data Missing Fields Type", False, 
-                                      "Missing fields should be a list")
+                    if missing_membership_fields:
+                        self.log_result("Revenue Breakdown Membership Type Structure", False, 
+                                      f"Missing membership type fields: {missing_membership_fields}")
                         return False
                 
-                self.log_result("Incomplete Data Report API", True, 
-                              f"Retrieved report: {summary['total_members']} total members, "
-                              f"{summary['members_with_incomplete_data']} with incomplete data "
-                              f"({summary['completion_rate']}% completion rate)")
+                # Verify by_payment_method structure
+                if data["by_payment_method"]:
+                    payment_method = data["by_payment_method"][0]
+                    payment_fields = ["payment_method", "revenue", "percentage", "transaction_count"]
+                    missing_payment_fields = [field for field in payment_fields if field not in payment_method]
+                    
+                    if missing_payment_fields:
+                        self.log_result("Revenue Breakdown Payment Method Structure", False, 
+                                      f"Missing payment method fields: {missing_payment_fields}")
+                        return False
+                
+                # Verify monthly_trend structure
+                if data["monthly_trend"]:
+                    trend = data["monthly_trend"][0]
+                    trend_fields = ["month", "revenue", "member_count"]
+                    missing_trend_fields = [field for field in trend_fields if field not in trend]
+                    
+                    if missing_trend_fields:
+                        self.log_result("Revenue Breakdown Monthly Trend Structure", False, 
+                                      f"Missing monthly trend fields: {missing_trend_fields}")
+                        return False
+                
+                self.log_result("Revenue Breakdown Analytics API (Default)", True, 
+                              f"Retrieved revenue breakdown: Total Revenue R{summary['total_revenue']:.2f}, "
+                              f"MRR R{summary['mrr']:.2f}, ARPU R{summary['arpu']:.2f}, "
+                              f"Active Members {summary['active_members']}")
+                
+                # Test with different periods
+                test_periods = [3, 6, 24]
+                for period in test_periods:
+                    response = requests.get(f"{API_BASE}/analytics/revenue-breakdown?period_months={period}", headers=self.headers)
+                    if response.status_code == 200:
+                        period_data = response.json()
+                        self.log_result(f"Revenue Breakdown Analytics API ({period}m)", True, 
+                                      f"Retrieved {period}-month revenue breakdown successfully")
+                    else:
+                        self.log_result(f"Revenue Breakdown Analytics API ({period}m)", False, 
+                                      f"Failed to get {period}-month revenue breakdown: {response.status_code}")
+                        return False
+                
                 return True
                 
             else:
-                self.log_result("Incomplete Data Report API", False, 
-                              f"Failed to get incomplete data report: {response.status_code}",
+                self.log_result("Revenue Breakdown Analytics API", False, 
+                              f"Failed to get revenue breakdown: {response.status_code}",
                               {"response": response.text})
                 return False
                 
         except Exception as e:
-            self.log_result("Incomplete Data Report API", False, f"Error testing incomplete data report API: {str(e)}")
+            self.log_result("Revenue Breakdown Analytics API", False, f"Error testing revenue breakdown API: {str(e)}")
             return False
     
     def test_birthday_report_api(self):
