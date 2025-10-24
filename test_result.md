@@ -3709,10 +3709,6 @@ metadata:
 
 test_plan:
   current_focus:
-    - "Task Types Model and CRUD API"
-    - "Task Model and CRUD API"
-    - "Task Comments System"
-    - "Task Journal Integration"
     - "Tasks Page with Tabs"
   stuck_tasks: []
   test_all: false
