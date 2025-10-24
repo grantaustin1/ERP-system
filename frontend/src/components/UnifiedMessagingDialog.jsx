@@ -86,6 +86,11 @@ const UnifiedMessagingDialog = ({ open, onOpenChange, selectedMembers = [], onSu
 
   const handleTemplateSelect = (templateId) => {
     setSelectedTemplate(templateId);
+    if (templateId === 'none' || !templateId) {
+      setSubject('');
+      setMessageBody('');
+      return;
+    }
     const template = templates.find(t => t.value === templateId);
     if (template) {
       setSubject(template.subject || '');
