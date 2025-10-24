@@ -1858,6 +1858,135 @@ export default function Members() {
             }}
           />
 
+          {/* Phase 1 - Freeze Membership Dialog */}
+          <Dialog open={freezeDialogOpen} onOpenChange={setFreezeDialogOpen}>
+            <DialogContent className="bg-slate-800 border-slate-700 text-white">
+              <DialogHeader>
+                <DialogTitle>Freeze Membership</DialogTitle>
+                <DialogDescription className="text-slate-400">
+                  {selectedMemberForAction && `Freeze membership for ${selectedMemberForAction.first_name} ${selectedMemberForAction.last_name}`}
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="freeze-reason">Reason for Freeze</Label>
+                  <Input
+                    id="freeze-reason"
+                    value={actionReason}
+                    onChange={(e) => setActionReason(e.target.value)}
+                    placeholder="e.g., Medical leave, vacation, injury"
+                    className="bg-slate-700/50 border-slate-600"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="freeze-end-date">Freeze Until (Optional)</Label>
+                  <Input
+                    id="freeze-end-date"
+                    type="date"
+                    value={freezeEndDate}
+                    onChange={(e) => setFreezeEndDate(e.target.value)}
+                    className="bg-slate-700/50 border-slate-600"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="freeze-notes">Additional Notes</Label>
+                  <Textarea
+                    id="freeze-notes"
+                    value={actionNotes}
+                    onChange={(e) => setActionNotes(e.target.value)}
+                    placeholder="Any additional information..."
+                    rows={3}
+                    className="bg-slate-700/50 border-slate-600"
+                  />
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    onClick={handleFreezeMembership}
+                    disabled={actionLoading}
+                    className="flex-1 bg-yellow-600 hover:bg-yellow-700"
+                  >
+                    {actionLoading ? 'Freezing...' : 'Freeze Membership'}
+                  </Button>
+                  <Button
+                    onClick={() => {
+                      setFreezeDialogOpen(false);
+                      setActionReason('');
+                      setActionNotes('');
+                      setFreezeEndDate('');
+                      setSelectedMemberForAction(null);
+                    }}
+                    variant="outline"
+                    className="border-slate-600"
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              </div>
+            </DialogContent>
+          </Dialog>
+
+          {/* Phase 1 - Cancel Membership Dialog */}
+          <Dialog open={cancelDialogOpen} onOpenChange={setCancelDialogOpen}>
+            <DialogContent className="bg-slate-800 border-slate-700 text-white">
+              <DialogHeader>
+                <DialogTitle>Cancel Membership</DialogTitle>
+                <DialogDescription className="text-slate-400">
+                  {selectedMemberForAction && `Cancel membership for ${selectedMemberForAction.first_name} ${selectedMemberForAction.last_name}`}
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4">
+                <div className="p-4 bg-red-500/10 border border-red-500/50 rounded-md">
+                  <p className="text-sm text-red-400">
+                    ⚠️ Warning: Cancelling a membership is permanent. The member will lose access to all gym facilities.
+                  </p>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="cancel-reason">Reason for Cancellation *</Label>
+                  <Input
+                    id="cancel-reason"
+                    value={actionReason}
+                    onChange={(e) => setActionReason(e.target.value)}
+                    placeholder="e.g., Relocation, financial reasons, dissatisfaction"
+                    className="bg-slate-700/50 border-slate-600"
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="cancel-notes">Additional Notes</Label>
+                  <Textarea
+                    id="cancel-notes"
+                    value={actionNotes}
+                    onChange={(e) => setActionNotes(e.target.value)}
+                    placeholder="Any additional information..."
+                    rows={3}
+                    className="bg-slate-700/50 border-slate-600"
+                  />
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    onClick={handleCancelMembership}
+                    disabled={actionLoading || !actionReason}
+                    className="flex-1 bg-red-600 hover:bg-red-700"
+                  >
+                    {actionLoading ? 'Cancelling...' : 'Cancel Membership'}
+                  </Button>
+                  <Button
+                    onClick={() => {
+                      setCancelDialogOpen(false);
+                      setActionReason('');
+                      setActionNotes('');
+                      setSelectedMemberForAction(null);
+                    }}
+                    variant="outline"
+                    className="border-slate-600"
+                  >
+                    Go Back
+                  </Button>
+                </div>
+              </div>
+            </DialogContent>
+          </Dialog>
+
         </div>
       </div>
     </div>
