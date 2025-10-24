@@ -5350,6 +5350,196 @@ async def get_birthdays_today(current_user: User = Depends(get_current_user)):
     return birthday_members
 
 
+# ===================== Phase 2A - Dashboard Enhancements Routes =====================
+
+@api_router.get("/dashboard/snapshot")
+async def get_dashboard_snapshot(current_user: User = Depends(get_current_user)):
+    """Get Today vs Yesterday vs Growth metrics for dashboard snapshot cards"""
+    from datetime import datetime, timedelta
+    
+    now = datetime.now(timezone.utc)
+    today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    yesterday_start = today_start - timedelta(days=1)
+    last_30_days_start = now - timedelta(days=30)
+    last_year_30_days_start = now - timedelta(days=395)  # 365 + 30 days ago
+    last_year_30_days_end = now - timedelta(days=365)
+    
+    # TODAY STATS
+    # People registered today (members created today)
+    today_registered = await db.members.count_documents({
+        "created_at": {"$gte": today_start.isoformat()}
+    })
+    
+    # Memberships commenced today (join_date is today)
+    today_commenced = await db.members.count_documents({
+        "join_date": {"$gte": today_start.isoformat()}
+    })
+    
+    # Attendance today (access logs)
+    today_attendance = await db.access_logs.count_documents({
+        "timestamp": {"$gte": today_start.isoformat()},
+        "status": "granted"
+    })
+    
+    # YESTERDAY STATS
+    yesterday_registered = await db.members.count_documents({
+        "created_at": {
+            "$gte": yesterday_start.isoformat(),
+            "$lt": today_start.isoformat()
+        }
+    })
+    
+    yesterday_commenced = await db.members.count_documents({
+        "join_date": {
+            "$gte": yesterday_start.isoformat(),
+            "$lt": today_start.isoformat()
+        }
+    })
+    
+    yesterday_attendance = await db.access_logs.count_documents({
+        "timestamp": {
+            "$gte": yesterday_start.isoformat(),
+            "$lt": today_start.isoformat()
+        },
+        "status": "granted"
+    })
+    
+    # GROWTH METRICS (Last 30 Days vs Same Period Last Year)
+    # Memberships sold last 30 days
+    memberships_sold_30d = await db.members.count_documents({
+        "join_date": {"$gte": last_30_days_start.isoformat()}
+    })
+    
+    # Memberships sold same period last year
+    memberships_sold_last_year = await db.members.count_documents({
+        "join_date": {
+            "$gte": last_year_30_days_start.isoformat(),
+            "$lt": last_year_30_days_end.isoformat()
+        }
+    })
+    
+    # Memberships expired last 30 days
+    memberships_expired_30d = await db.members.count_documents({
+        "expiry_date": {
+            "$gte": last_30_days_start.isoformat(),
+            "$lt": now.isoformat()
+        },
+        "membership_status": {"$in": ["expired", "cancelled"]}
+    })
+    
+    # Memberships expired same period last year
+    memberships_expired_last_year = await db.members.count_documents({
+        "expiry_date": {
+            "$gte": last_year_30_days_start.isoformat(),
+            "$lt": last_year_30_days_end.isoformat()
+        },
+        "membership_status": {"$in": ["expired", "cancelled"]}
+    })
+    
+    # Attendance last 30 days
+    attendance_30d = await db.access_logs.count_documents({
+        "timestamp": {"$gte": last_30_days_start.isoformat()},
+        "status": "granted"
+    })
+    
+    # Attendance same period last year
+    attendance_last_year = await db.access_logs.count_documents({
+        "timestamp": {
+            "$gte": last_year_30_days_start.isoformat(),
+            "$lt": last_year_30_days_end.isoformat()
+        },
+        "status": "granted"
+    })
+    
+    # Calculate growth percentages
+    def calculate_growth(current, previous):
+        if previous == 0:
+            return 100 if current > 0 else 0
+        return round(((current - previous) / previous) * 100, 1)
+    
+    memberships_growth = calculate_growth(memberships_sold_30d, memberships_sold_last_year)
+    expired_growth = calculate_growth(memberships_expired_30d, memberships_expired_last_year)
+    attendance_growth = calculate_growth(attendance_30d, attendance_last_year)
+    
+    net_gain_30d = memberships_sold_30d - memberships_expired_30d
+    net_gain_last_year = memberships_sold_last_year - memberships_expired_last_year
+    net_gain_growth = calculate_growth(net_gain_30d, net_gain_last_year)
+    
+    return {
+        "today": {
+            "registered": today_registered,
+            "commenced": today_commenced,
+            "attendance": today_attendance
+        },
+        "yesterday": {
+            "registered": yesterday_registered,
+            "commenced": yesterday_commenced,
+            "attendance": yesterday_attendance
+        },
+        "growth": {
+            "memberships_sold_30d": memberships_sold_30d,
+            "memberships_sold_last_year": memberships_sold_last_year,
+            "memberships_growth": memberships_growth,
+            "memberships_expired_30d": memberships_expired_30d,
+            "memberships_expired_last_year": memberships_expired_last_year,
+            "expired_growth": expired_growth,
+            "net_gain_30d": net_gain_30d,
+            "net_gain_last_year": net_gain_last_year,
+            "net_gain_growth": net_gain_growth,
+            "attendance_30d": attendance_30d,
+            "attendance_last_year": attendance_last_year,
+            "attendance_growth": attendance_growth
+        }
+    }
+
+
+@api_router.get("/dashboard/recent-members")
+async def get_recent_members(period: str = "today", current_user: User = Depends(get_current_user)):
+    """Get members added today or yesterday with profile links"""
+    from datetime import datetime, timedelta
+    
+    now = datetime.now(timezone.utc)
+    today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    
+    if period == "today":
+        start_date = today_start
+        end_date = now
+    elif period == "yesterday":
+        start_date = today_start - timedelta(days=1)
+        end_date = today_start
+    else:
+        start_date = today_start
+        end_date = now
+    
+    # Get members created in the specified period
+    members = await db.members.find(
+        {
+            "created_at": {
+                "$gte": start_date.isoformat(),
+                "$lt": end_date.isoformat()
+            }
+        },
+        {"_id": 0}
+    ).sort("created_at", -1).to_list(100)
+    
+    # Format member data
+    recent_members = []
+    for member in members:
+        recent_members.append({
+            "id": member.get("id"),
+            "first_name": member.get("first_name", ""),
+            "last_name": member.get("last_name", ""),
+            "full_name": f"{member.get('first_name', '')} {member.get('last_name', '')}".strip(),
+            "email": member.get("email", ""),
+            "phone": member.get("phone", ""),
+            "membership_status": member.get("membership_status", ""),
+            "join_date": member.get("join_date"),
+            "created_at": member.get("created_at")
+        })
+    
+    return recent_members
+
+
 # Levy Routes
 @api_router.get("/levies", response_model=List[Levy])
 async def get_levies(status: Optional[str] = None, current_user: User = Depends(get_current_user)):
