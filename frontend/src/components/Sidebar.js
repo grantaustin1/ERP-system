@@ -18,6 +18,7 @@ export default function Sidebar() {
     { path: '/classes', icon: Calendar, label: 'Classes', testId: 'nav-classes' },
     { path: '/pos', icon: ShoppingCart, label: 'Point of Sale', testId: 'nav-pos' },
     { path: '/billing', icon: FileText, label: 'Billing', testId: 'nav-billing' },
+    { path: '/invoices', icon: Receipt, label: 'Invoices', testId: 'nav-invoices' },
     { path: '/debit-orders', icon: CreditCard, label: 'Debit Orders', testId: 'nav-debit-orders' },
     { path: '/reconciliation', icon: Activity, label: 'Reconciliation', testId: 'nav-reconciliation' },
     { path: '/analytics', icon: BarChart3, label: 'Analytics', testId: 'nav-analytics' },
