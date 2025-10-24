@@ -2488,6 +2488,20 @@ async def create_member_note(
     )
     
     await db.member_notes.insert_one(note.model_dump())
+    
+    # Log to journal
+    await add_journal_entry(
+        member_id=member_id,
+        action_type="note_added",
+        description=f"Note added: {note_data.content[:100]}..." if len(note_data.content) > 100 else f"Note added: {note_data.content}",
+        metadata={
+            "note_id": note.note_id,
+            "full_content": note_data.content
+        },
+        created_by=current_user.id,
+        created_by_name=current_user.full_name
+    )
+    
     return note
 
 @api_router.get("/members/{member_id}/notes", response_model=List[MemberNote])
