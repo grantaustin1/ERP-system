@@ -1030,6 +1030,13 @@ export default function Members() {
                         <DialogDescription className="text-slate-400 mt-1">
                           Member ID: {profileData.member.id}
                         </DialogDescription>
+                        
+                        {/* Retention Indicator */}
+                        {profileData.retention && (
+                          <div className="mt-3">
+                            <RetentionIndicator retention={profileData.retention} />
+                          </div>
+                        )}
                       </div>
                       <div className="flex gap-2">
                         <Badge variant={
@@ -1059,6 +1066,19 @@ export default function Members() {
                         )}
                       </div>
                     </div>
+                    
+                    {/* Payment Progress Bar */}
+                    {profileData.payment_progress && (
+                      <div className="space-y-2">
+                        <Label className="text-sm text-slate-400">Payment History</Label>
+                        <PaymentProgressBar paymentProgress={profileData.payment_progress} />
+                      </div>
+                    )}
+                    
+                    {/* Missing Data Warnings */}
+                    {profileData.missing_data && profileData.missing_data.length > 0 && (
+                      <MissingDataWarnings missingData={profileData.missing_data} />
+                    )}
 
                     {/* Mini Stats */}
                     <div className="grid grid-cols-4 gap-4">
