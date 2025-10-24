@@ -241,130 +241,107 @@ class AdvancedAnalyticsTestRunner:
             self.log_result("Revenue Breakdown Analytics API", False, f"Error testing revenue breakdown API: {str(e)}")
             return False
     
-    def test_birthday_report_api(self):
-        """Test Birthday Report API - GET /api/reports/birthdays"""
-        print("\n=== Testing Birthday Report API ===")
+    def test_geographic_distribution_analytics_api(self):
+        """Test Geographic Distribution Analytics API - GET /api/analytics/geographic-distribution"""
+        print("\n=== Testing Geographic Distribution Analytics API ===")
         
         try:
-            # Test different day periods
-            test_periods = [7, 14, 30, 60, 90]
+            response = requests.get(f"{API_BASE}/analytics/geographic-distribution", headers=self.headers)
             
-            for days in test_periods:
-                response = requests.get(f"{API_BASE}/reports/birthdays?days_ahead={days}", headers=self.headers)
-                
-                if response.status_code == 200:
-                    data = response.json()
-                    
-                    # Verify required structure
-                    required_fields = ["summary", "birthdays"]
-                    missing_fields = [field for field in required_fields if field not in data]
-                    
-                    if missing_fields:
-                        self.log_result(f"Birthday Report {days}d Structure", False, 
-                                      f"Missing fields: {missing_fields}")
-                        return False
-                    
-                    # Verify summary structure
-                    summary = data["summary"]
-                    summary_fields = ["total_upcoming", "date_range", "by_period"]
-                    missing_summary_fields = [field for field in summary_fields if field not in summary]
-                    
-                    if missing_summary_fields:
-                        self.log_result(f"Birthday Report {days}d Summary Structure", False, 
-                                      f"Missing summary fields: {missing_summary_fields}")
-                        return False
-                    
-                    # Verify date_range structure
-                    date_range = summary["date_range"]
-                    date_range_fields = ["from", "to", "days"]
-                    missing_date_fields = [field for field in date_range_fields if field not in date_range]
-                    
-                    if missing_date_fields:
-                        self.log_result(f"Birthday Report {days}d Date Range Structure", False, 
-                                      f"Missing date range fields: {missing_date_fields}")
-                        return False
-                    
-                    # Verify days parameter matches
-                    if date_range["days"] != days:
-                        self.log_result(f"Birthday Report {days}d Days Parameter", False, 
-                                      f"Days parameter mismatch: expected {days}, got {date_range['days']}")
-                        return False
-                    
-                    # Verify by_period structure
-                    by_period = summary["by_period"]
-                    period_fields = ["this_week", "next_week", "later"]
-                    missing_period_fields = [field for field in period_fields if field not in by_period]
-                    
-                    if missing_period_fields:
-                        self.log_result(f"Birthday Report {days}d Period Structure", False, 
-                                      f"Missing period fields: {missing_period_fields}")
-                        return False
-                    
-                    # Verify birthdays structure
-                    birthdays = data["birthdays"]
-                    birthday_fields = ["this_week", "next_week", "later", "all"]
-                    missing_birthday_fields = [field for field in birthday_fields if field not in birthdays]
-                    
-                    if missing_birthday_fields:
-                        self.log_result(f"Birthday Report {days}d Birthdays Structure", False, 
-                                      f"Missing birthday fields: {missing_birthday_fields}")
-                        return False
-                    
-                    # Verify member structure if birthdays exist
-                    if birthdays["all"]:
-                        member = birthdays["all"][0]
-                        member_fields = [
-                            "id", "first_name", "last_name", "full_name", "email", "phone",
-                            "date_of_birth", "birthday_date", "age_turning", "days_until"
-                        ]
-                        missing_member_fields = [field for field in member_fields if field not in member]
-                        
-                        if missing_member_fields:
-                            self.log_result(f"Birthday Report {days}d Member Structure", False, 
-                                          f"Missing member fields: {missing_member_fields}")
-                            return False
-                        
-                        # Verify grouping logic
-                        days_until = member["days_until"]
-                        if days_until <= 7 and member not in birthdays["this_week"]:
-                            self.log_result(f"Birthday Report {days}d Grouping Logic", False, 
-                                          f"Member with {days_until} days should be in this_week")
-                            return False
-                    
-                    # Verify totals match
-                    calculated_total = by_period["this_week"] + by_period["next_week"] + by_period["later"]
-                    if summary["total_upcoming"] != calculated_total:
-                        self.log_result(f"Birthday Report {days}d Total Calculation", False, 
-                                      f"Total mismatch: {summary['total_upcoming']} != {calculated_total}")
-                        return False
-                    
-                    self.log_result(f"Birthday Report {days}d API", True, 
-                                  f"Retrieved {summary['total_upcoming']} upcoming birthdays "
-                                  f"(This week: {by_period['this_week']}, Next week: {by_period['next_week']}, Later: {by_period['later']})")
-                else:
-                    self.log_result(f"Birthday Report {days}d API", False, 
-                                  f"Failed to get birthday report: {response.status_code}",
-                                  {"response": response.text})
-                    return False
-            
-            # Test default parameter (30 days)
-            response = requests.get(f"{API_BASE}/reports/birthdays", headers=self.headers)
             if response.status_code == 200:
                 data = response.json()
-                if data["summary"]["date_range"]["days"] != 30:
-                    self.log_result("Birthday Report Default Parameter", False, 
-                                  f"Default days_ahead should be 30, got {data['summary']['date_range']['days']}")
+                
+                # Verify required structure
+                required_fields = ["summary", "by_postcode", "by_city", "by_state"]
+                missing_fields = [field for field in required_fields if field not in data]
+                
+                if missing_fields:
+                    self.log_result("Geographic Distribution Structure", False, 
+                                  f"Missing fields: {missing_fields}")
                     return False
-                self.log_result("Birthday Report Default Parameter", True, "Default days_ahead=30 working correctly")
+                
+                # Verify summary structure
+                summary = data["summary"]
+                summary_fields = ["total_members", "members_with_postcode", "members_with_city", 
+                                "members_with_state", "postcode_coverage", "city_coverage", "state_coverage"]
+                missing_summary_fields = [field for field in summary_fields if field not in summary]
+                
+                if missing_summary_fields:
+                    self.log_result("Geographic Distribution Summary Structure", False, 
+                                  f"Missing summary fields: {missing_summary_fields}")
+                    return False
+                
+                # Verify data types
+                if not isinstance(summary["total_members"], int):
+                    self.log_result("Geographic Distribution Total Members Type", False, 
+                                  "Total members should be integer")
+                    return False
+                
+                if not isinstance(summary["postcode_coverage"], (int, float)):
+                    self.log_result("Geographic Distribution Postcode Coverage Type", False, 
+                                  "Postcode coverage should be number")
+                    return False
+                
+                # Verify by_postcode structure (top 20)
+                if data["by_postcode"]:
+                    postcode = data["by_postcode"][0]
+                    postcode_fields = ["postcode", "member_count", "percentage"]
+                    missing_postcode_fields = [field for field in postcode_fields if field not in postcode]
+                    
+                    if missing_postcode_fields:
+                        self.log_result("Geographic Distribution Postcode Structure", False, 
+                                      f"Missing postcode fields: {missing_postcode_fields}")
+                        return False
+                    
+                    # Verify top 20 limit
+                    if len(data["by_postcode"]) > 20:
+                        self.log_result("Geographic Distribution Postcode Limit", False, 
+                                      f"Should return top 20 postcodes, got {len(data['by_postcode'])}")
+                        return False
+                
+                # Verify by_city structure (top 10)
+                if data["by_city"]:
+                    city = data["by_city"][0]
+                    city_fields = ["city", "member_count", "percentage"]
+                    missing_city_fields = [field for field in city_fields if field not in city]
+                    
+                    if missing_city_fields:
+                        self.log_result("Geographic Distribution City Structure", False, 
+                                      f"Missing city fields: {missing_city_fields}")
+                        return False
+                    
+                    # Verify top 10 limit
+                    if len(data["by_city"]) > 10:
+                        self.log_result("Geographic Distribution City Limit", False, 
+                                      f"Should return top 10 cities, got {len(data['by_city'])}")
+                        return False
+                
+                # Verify by_state structure
+                if data["by_state"]:
+                    state = data["by_state"][0]
+                    state_fields = ["state", "member_count", "percentage"]
+                    missing_state_fields = [field for field in state_fields if field not in state]
+                    
+                    if missing_state_fields:
+                        self.log_result("Geographic Distribution State Structure", False, 
+                                      f"Missing state fields: {missing_state_fields}")
+                        return False
+                
+                self.log_result("Geographic Distribution Analytics API", True, 
+                              f"Retrieved geographic distribution: {summary['total_members']} total members, "
+                              f"Postcode coverage: {summary['postcode_coverage']:.1f}%, "
+                              f"City coverage: {summary['city_coverage']:.1f}%, "
+                              f"State coverage: {summary['state_coverage']:.1f}%")
+                return True
+                
             else:
-                self.log_result("Birthday Report Default Parameter", False, 
-                              f"Failed to test default parameter: {response.status_code}")
+                self.log_result("Geographic Distribution Analytics API", False, 
+                              f"Failed to get geographic distribution: {response.status_code}",
+                              {"response": response.text})
                 return False
-            
-            return True
                 
         except Exception as e:
-            self.log_result("Birthday Report API", False, f"Error testing birthday report API: {str(e)}")
+            self.log_result("Geographic Distribution Analytics API", False, f"Error testing geographic distribution API: {str(e)}")
             return False
     
     def test_anniversary_report_api(self):
