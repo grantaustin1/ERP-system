@@ -104,9 +104,27 @@
 
 
 user_problem_statement: |
-  ERP360 gym management application - ClubManager Analysis and Enhancement Implementation (CURRENT PHASE).
+  ERP360 gym management application - Billing Automation & Invoice Generation System (CURRENT PHASE).
   
-  CURRENT TESTING FOCUS - CLUBMANAGER ANALYSIS ENHANCEMENTS:
+  CURRENT TESTING FOCUS - BILLING AUTOMATION:
+  Complete invoice generation process with itemized billing, PDF generation, and auto-email configuration.
+  
+  NEW FEATURES IMPLEMENTED:
+  - Enhanced Invoice model with line items support (itemized billing)
+  - Invoice line item structure with quantity, unit price, discount, tax
+  - Automatic invoice calculations (subtotals, tax, discounts, totals)
+  - Sequential invoice numbering with configurable format
+  - Professional PDF invoice generation using ReportLab
+  - Invoice CRUD operations (create, read, update, void/delete)
+  - Billing settings management with auto-email configuration
+  - Tax configuration (default rate, tax number, enable/disable)
+  - Company information for invoices (name, address, phone, email)
+  - Payment terms configuration
+  - Invoice management UI with create/edit/view/download functionality
+  - Settings dialog for billing configuration
+  - Member journal logging for invoice actions
+  
+  PREVIOUS PHASE - CLUBMANAGER ANALYSIS ENHANCEMENTS (COMPLETED):
   Analyzed ClubManager "Today" screen and implemented three phases of improvements:
   
   PHASE 1 - Enhanced Attendance Cards with Retention Indicators:
