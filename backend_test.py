@@ -3090,7 +3090,6 @@ class TaskingSystemTester:
                         "description": "Member requesting cancellation",
                         "task_type_id": task_type_id,
                         "priority": "high",
-                        "assigned_to_user_id": user_id,
                         "related_member_id": member_id,
                         "due_date": "2025-12-31T23:59:59Z"
                     }
