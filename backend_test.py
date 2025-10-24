@@ -20,7 +20,7 @@ API_BASE = f"{BASE_URL}/api"
 TEST_EMAIL = "admin@gym.com"
 TEST_PASSWORD = "admin123"
 
-class AccessOverrideTester:
+class BillingInvoiceTester:
     def __init__(self):
         self.token = None
         self.headers = {}
