@@ -524,530 +524,125 @@ class PriorityTestRunner:
             self.log_result("Freeze/Unfreeze Membership", False, f"Error testing freeze/unfreeze: {str(e)}")
             return False
     
-    def test_access_validate_last_visit_update(self):
-        """Test POST /api/access/validate - Grant access and verify last_visit_date is updated"""
-        print("\n=== Testing Access Validate Last Visit Update ===")
+    
+    def cleanup_test_data(self):
+        """Clean up test data created during testing"""
+        print("\n=== Cleaning Up Test Data ===")
         
-        if not self.test_member_id_2:
-            self.log_result("Access Validate Last Visit Update", False, "No test member available")
-            return False
-        
-        try:
-            # Get current last_visit_date before access grant
-            profile_response = requests.get(f"{API_BASE}/members/{self.test_member_id_2}/profile", headers=self.headers)
-            if profile_response.status_code != 200:
-                self.log_result("Get Profile Before Access", False, "Failed to get member profile")
-                return False
-            
-            before_profile = profile_response.json()
-            before_last_visit = before_profile.get("last_visit_date")
-            
-            # Grant access
-            access_data = {
-                "member_id": self.test_member_id_2,
-                "access_method": "qr_code",
-                "location": "Main Entrance"
-            }
-            
-            response = requests.post(f"{API_BASE}/access/validate", 
-                                   json=access_data, headers=self.headers)
-            
-            if response.status_code == 200:
-                access_result = response.json()
-                
-                # Verify access was granted
-                if access_result.get("status") == "granted" or access_result.get("access_granted"):
-                    self.log_result("Access Granted", True, 
-                                  f"Access granted successfully: {access_result.get('message', '')}")
-                    
-                    # Wait a moment for database update
-                    time.sleep(1)
-                    
-                    # Get updated profile to check last_visit_date
-                    updated_profile_response = requests.get(f"{API_BASE}/members/{self.test_member_id_2}/profile", headers=self.headers)
-                    if updated_profile_response.status_code == 200:
-                        after_profile = updated_profile_response.json()
-                        after_last_visit = after_profile.get("last_visit_date")
-                        
-                        # Verify last_visit_date was updated
-                        if after_last_visit and after_last_visit != before_last_visit:
-                            self.log_result("Last Visit Date Updated", True, 
-                                          f"last_visit_date updated from {before_last_visit} to {after_last_visit}")
-                            
-                            # Verify the date is recent (within last 5 minutes)
-                            if after_last_visit:
-                                try:
-                                    visit_time = datetime.fromisoformat(after_last_visit.replace('Z', '+00:00'))
-                                    now = datetime.now(timezone.utc)
-                                    time_diff = (now - visit_time).total_seconds()
-                                    
-                                    if time_diff < 300:  # Within 5 minutes
-                                        self.log_result("Last Visit Date Recent", True, 
-                                                      f"last_visit_date is recent ({time_diff:.1f} seconds ago)")
-                                    else:
-                                        self.log_result("Last Visit Date Recent", False, 
-                                                      f"last_visit_date is not recent ({time_diff:.1f} seconds ago)")
-                                except Exception as date_e:
-                                    self.log_result("Last Visit Date Parse", False, f"Error parsing date: {date_e}")
-                        else:
-                            self.log_result("Last Visit Date Updated", False, 
-                                          f"last_visit_date not updated: before={before_last_visit}, after={after_last_visit}")
-                    else:
-                        self.log_result("Get Profile After Access", False, "Failed to get updated member profile")
-                    
-                    return True
+        # Clean up created members
+        for member_id in self.created_members:
+            try:
+                response = requests.delete(f"{API_BASE}/members/{member_id}", headers=self.headers)
+                if response.status_code == 200:
+                    self.log_result(f"Cleanup Member {member_id[:8]}", True, "Member deleted")
                 else:
-                    self.log_result("Access Granted", False, 
-                                  f"Access not granted: {access_result}")
-                    return False
-            else:
-                self.log_result("Access Validate", False, 
-                              f"Failed to validate access: {response.status_code}",
-                              {"response": response.text})
-                return False
-                
-        except Exception as e:
-            self.log_result("Access Validate Last Visit Update", False, f"Error testing access validation: {str(e)}")
-            return False
-    
-    def test_delete_tag_removes_from_members(self):
-        """Test DELETE /api/tags/{tag_id} - Delete tag and verify removal from members"""
-        print("\n=== Testing Delete Tag Removes from Members ===")
+                    self.log_result(f"Cleanup Member {member_id[:8]}", False, f"Failed to delete: {response.status_code}")
+            except Exception as e:
+                self.log_result(f"Cleanup Member {member_id[:8]}", False, f"Error: {str(e)}")
         
-        if not self.created_tags:
-            self.log_result("Delete Tag Removes from Members", False, "No created tags available")
-            return False
-        
-        # Use the first created tag for deletion test
-        tag_to_delete = self.created_tags[0]
-        
-        try:
-            # First, get the tag name for verification
-            tags_response = requests.get(f"{API_BASE}/tags", headers=self.headers)
-            if tags_response.status_code != 200:
-                self.log_result("Get Tags Before Delete", False, "Failed to get tags")
-                return False
-            
-            all_tags = tags_response.json()
-            tag_obj = next((t for t in all_tags if t.get("id") == tag_to_delete), None)
-            if not tag_obj:
-                self.log_result("Find Tag to Delete", False, f"Tag {tag_to_delete} not found")
-                return False
-            
-            tag_name = tag_obj.get("name")
-            
-            # Delete the tag
-            response = requests.delete(f"{API_BASE}/tags/{tag_to_delete}", headers=self.headers)
-            
-            if response.status_code == 200:
-                result = response.json()
-                
-                # Verify response indicates success
-                if "deleted" in result.get("message", "").lower() or result.get("success"):
-                    self.log_result("Delete Tag", True, 
-                                  f"Tag '{tag_name}' deleted successfully")
-                    
-                    # Verify tag is no longer in tags list
-                    updated_tags_response = requests.get(f"{API_BASE}/tags", headers=self.headers)
-                    if updated_tags_response.status_code == 200:
-                        updated_tags = updated_tags_response.json()
-                        tag_still_exists = any(t.get("id") == tag_to_delete for t in updated_tags)
-                        
-                        if not tag_still_exists:
-                            self.log_result("Verify Tag Deleted from List", True, 
-                                          f"Tag '{tag_name}' no longer in tags list")
-                        else:
-                            self.log_result("Verify Tag Deleted from List", False, 
-                                          f"Tag '{tag_name}' still exists in tags list")
-                    
-                    # Verify tag was removed from any members who had it
-                    if self.test_member_id_2:
-                        member_response = requests.get(f"{API_BASE}/members/{self.test_member_id_2}", headers=self.headers)
-                        if member_response.status_code == 200:
-                            member = member_response.json()
-                            member_tags = member.get("tags", [])
-                            
-                            if tag_name not in member_tags:
-                                self.log_result("Verify Tag Removed from Members", True, 
-                                              f"Tag '{tag_name}' removed from member profiles")
-                            else:
-                                self.log_result("Verify Tag Removed from Members", False, 
-                                              f"Tag '{tag_name}' still in member profile")
-                    
-                    # Remove from our tracking list
-                    self.created_tags.remove(tag_to_delete)
-                    
-                    return True
+        # Clean up created tags
+        for tag_id in self.created_tags:
+            try:
+                response = requests.delete(f"{API_BASE}/tags/{tag_id}", headers=self.headers)
+                if response.status_code == 200:
+                    self.log_result(f"Cleanup Tag {tag_id[:8]}", True, "Tag deleted")
                 else:
-                    self.log_result("Delete Tag", False, 
-                                  f"Unexpected delete response: {result}")
-                    return False
-            else:
-                self.log_result("Delete Tag", False, 
-                              f"Failed to delete tag: {response.status_code}",
-                              {"response": response.text})
-                return False
-                
-        except Exception as e:
-            self.log_result("Delete Tag Removes from Members", False, f"Error deleting tag: {str(e)}")
-            return False
+                    self.log_result(f"Cleanup Tag {tag_id[:8]}", False, f"Failed to delete: {response.status_code}")
+            except Exception as e:
+                self.log_result(f"Cleanup Tag {tag_id[:8]}", False, f"Error: {str(e)}")
     
-    def test_get_invoices_list(self):
-        """Test journal entries are created for all tag and membership actions"""
-        print("\n=== Testing Journal Entries Creation ===")
+    def run_priority_tests(self):
+        """Run the priority tests focusing on previously failed items"""
+        print("=" * 80)
+        print("BACKEND TESTING - RE-TEST PHASE 1 QUICK WINS - PRIORITY FAILED TESTS")
+        print("=" * 80)
         
-        if not self.test_member_id_2:
-            self.log_result("Journal Entries Creation", False, "No test member available")
+        # Step 1: Authenticate
+        if not self.authenticate():
+            print("❌ Authentication failed. Cannot proceed with tests.")
             return False
         
-        try:
-            # Get member journal entries
-            response = requests.get(f"{API_BASE}/members/{self.test_member_id_2}/journal", headers=self.headers)
-            
-            if response.status_code == 200:
-                journal_entries = response.json()
-                
-                if isinstance(journal_entries, list) and len(journal_entries) > 0:
-                    # Look for entries related to our test actions
-                    action_types_found = set()
-                    
-                    for entry in journal_entries:
-                        action_type = entry.get("action_type", "")
-                        description = entry.get("description", "").lower()
-                        
-                        # Check for freeze/unfreeze actions
-                        if "freeze" in description or action_type == "membership_frozen":
-                            action_types_found.add("freeze")
-                        if "unfreeze" in description or action_type == "membership_unfrozen":
-                            action_types_found.add("unfreeze")
-                        if "access" in description or action_type == "access_granted":
-                            action_types_found.add("access")
-                        if "tag" in description or "tag" in action_type:
-                            action_types_found.add("tag")
-                    
-                    if len(action_types_found) >= 2:  # At least some actions logged
-                        self.log_result("Journal Entries Creation", True, 
-                                      f"Found journal entries for actions: {', '.join(action_types_found)}")
-                        return True
-                    else:
-                        self.log_result("Journal Entries Creation", False, 
-                                      f"Limited journal entries found: {action_types_found}")
-                        return False
-                else:
-                    self.log_result("Journal Entries Creation", False, 
-                                  f"No journal entries found for member")
-                    return False
-            else:
-                self.log_result("Journal Entries Creation", False, 
-                              f"Failed to get journal entries: {response.status_code}",
-                              {"response": response.text})
-                return False
-                
-        except Exception as e:
-            self.log_result("Journal Entries Creation", False, f"Error getting journal entries: {str(e)}")
+        # Step 2: Setup test members
+        if not self.setup_test_members():
+            print("❌ Failed to setup test members. Cannot proceed with tests.")
             return False
+        
+        # Step 3: Run PRIORITY TESTS (Previously Failed)
+        print("\n" + "=" * 60)
+        print("PRIORITY TESTS - PREVIOUSLY FAILED")
+        print("=" * 60)
+        
+        priority_results = []
+        
+        # 1. Member Cancel API - MUST TEST
+        print("\n🔥 PRIORITY TEST 1: Member Cancel API")
+        priority_results.append(self.test_member_cancel_api_priority())
+        priority_results.append(self.test_member_cancel_existing_notes())
+        
+        # 2. Enhanced Profile Endpoint - MUST VERIFY
+        print("\n🔥 PRIORITY TEST 2: Enhanced Profile Endpoint")
+        priority_results.append(self.test_enhanced_profile_endpoint_priority())
+        
+        # Step 4: Run QUICK VERIFICATION TESTS
+        print("\n" + "=" * 60)
+        print("QUICK VERIFICATION TESTS")
+        print("=" * 60)
+        
+        quick_results = []
+        
+        # Create custom tag
+        tag_id = self.test_create_custom_tag_quick()
+        if tag_id:
+            quick_results.append(True)
+            # Add tag to member
+            quick_results.append(self.test_add_tag_to_member_quick())
+        else:
+            quick_results.append(False)
+            quick_results.append(False)
+        
+        # Freeze/Unfreeze tests
+        quick_results.append(self.test_freeze_unfreeze_quick())
+        
+        # Step 5: Generate Summary
+        print("\n" + "=" * 80)
+        print("TEST RESULTS SUMMARY")
+        print("=" * 80)
+        
+        priority_passed = sum(priority_results)
+        priority_total = len(priority_results)
+        quick_passed = sum(quick_results)
+        quick_total = len(quick_results)
+        
+        print(f"\n🔥 PRIORITY TESTS: {priority_passed}/{priority_total} PASSED")
+        print(f"⚡ QUICK TESTS: {quick_passed}/{quick_total} PASSED")
+        print(f"📊 OVERALL: {priority_passed + quick_passed}/{priority_total + quick_total} PASSED")
+        
+        # Detailed results
+        print(f"\n📋 DETAILED RESULTS:")
+        for result in self.test_results:
+            status = "✅" if result["success"] else "❌"
+            print(f"{status} {result['test']}: {result['message']}")
+        
+        # Step 6: Cleanup
+        self.cleanup_test_data()
+        
+        # Return success if all priority tests passed
+        return priority_passed == priority_total
+
+def main():
+    """Main execution function"""
+    tester = PriorityTestRunner()
+    success = tester.run_priority_tests()
     
-    def test_get_invoice_details(self, invoice_id):
-        """Test GET /api/invoices/{invoice_id} - Get invoice details with line items"""
-        print("\n=== Testing Get Invoice Details ===")
-        
-        if not invoice_id:
-            self.log_result("Get Invoice Details", False, "No invoice ID provided")
-            return False
-        
-        try:
-            response = requests.get(f"{API_BASE}/invoices/{invoice_id}", headers=self.headers)
-            
-            if response.status_code == 200:
-                invoice = response.json()
-                
-                # Verify detailed invoice structure
-                required_fields = [
-                    "id", "invoice_number", "member_id", "description", "due_date",
-                    "line_items", "subtotal", "tax_total", "discount_total", "amount", 
-                    "status", "created_at"
-                ]
-                
-                has_all_fields = all(field in invoice for field in required_fields)
-                
-                # Verify line items structure
-                line_items = invoice.get("line_items", [])
-                line_items_valid = all(
-                    all(field in item for field in ["description", "quantity", "unit_price", "total"])
-                    for item in line_items
-                )
-                
-                if has_all_fields and line_items_valid and len(line_items) > 0:
-                    self.log_result("Get Invoice Details", True, 
-                                  f"Retrieved invoice details with {len(line_items)} line items")
-                    return True
-                else:
-                    issues = []
-                    if not has_all_fields:
-                        issues.append("missing required fields")
-                    if not line_items_valid:
-                        issues.append("invalid line items structure")
-                    if len(line_items) == 0:
-                        issues.append("no line items found")
-                    
-                    self.log_result("Get Invoice Details", False, 
-                                  f"Invoice details issues: {', '.join(issues)}")
-                    return False
-            else:
-                self.log_result("Get Invoice Details", False, 
-                              f"Failed to get invoice details: {response.status_code}",
-                              {"response": response.text})
-                return False
-                
-        except Exception as e:
-            self.log_result("Get Invoice Details", False, f"Error getting invoice details: {str(e)}")
-            return False
-    
-    def test_update_invoice(self, invoice_id):
-        """Test PUT /api/invoices/{invoice_id} - Update invoice"""
-        print("\n=== Testing Update Invoice ===")
-        
-        if not invoice_id:
-            self.log_result("Update Invoice", False, "No invoice ID provided")
-            return False
-        
-        try:
-            # Update invoice data
-            update_data = {
-                "description": "UPDATED: Monthly Membership and Personal Training",
-                "due_date": (datetime.now(timezone.utc) + timedelta(days=45)).isoformat(),
-                "notes": "Updated invoice notes",
-                "line_items": [
-                    {
-                        "description": "Monthly Gym Membership (Updated)",
-                        "quantity": 1.0,
-                        "unit_price": 550.00,  # Increased price
-                        "discount_percent": 15.0,  # Increased discount
-                        "tax_percent": 15.0
-                    },
-                    {
-                        "description": "Personal Training Sessions (6x)",  # Increased quantity
-                        "quantity": 6.0,
-                        "unit_price": 200.00,
-                        "discount_percent": 10.0,  # Increased discount
-                        "tax_percent": 15.0
-                    }
-                ]
-            }
-            
-            response = requests.put(f"{API_BASE}/invoices/{invoice_id}", 
-                                  json=update_data, headers=self.headers)
-            
-            if response.status_code == 200:
-                updated_invoice = response.json()
-                
-                # Verify updates were applied
-                description_updated = "UPDATED:" in updated_invoice.get("description", "")
-                line_items_updated = len(updated_invoice.get("line_items", [])) == 2
-                
-                # Verify recalculated totals
-                has_recalculated_totals = (
-                    updated_invoice.get("subtotal", 0) > 0 and
-                    updated_invoice.get("tax_total", 0) > 0 and
-                    updated_invoice.get("amount", 0) > 0
-                )
-                
-                if description_updated and line_items_updated and has_recalculated_totals:
-                    self.log_result("Update Invoice", True, 
-                                  f"Invoice updated successfully, new total: R{updated_invoice.get('amount', 0):.2f}")
-                    return True
-                else:
-                    self.log_result("Update Invoice", False, 
-                                  "Invoice update did not apply all changes correctly")
-                    return False
-            else:
-                self.log_result("Update Invoice", False, 
-                              f"Failed to update invoice: {response.status_code}",
-                              {"response": response.text})
-                return False
-                
-        except Exception as e:
-            self.log_result("Update Invoice", False, f"Error updating invoice: {str(e)}")
-            return False
-    
-    def test_invoice_pdf_generation(self, invoice_id):
-        """Test GET /api/invoices/{invoice_id}/pdf - Generate PDF"""
-        print("\n=== Testing Invoice PDF Generation ===")
-        
-        if not invoice_id:
-            self.log_result("Invoice PDF Generation", False, "No invoice ID provided")
-            return False
-        
-        try:
-            response = requests.get(f"{API_BASE}/invoices/{invoice_id}/pdf", headers=self.headers)
-            
-            if response.status_code == 200:
-                # Verify PDF response
-                content_type = response.headers.get("content-type", "")
-                content_length = len(response.content)
-                
-                is_pdf = "application/pdf" in content_type or content_length > 1000
-                
-                if is_pdf:
-                    self.log_result("Invoice PDF Generation", True, 
-                                  f"PDF generated successfully, size: {content_length} bytes")
-                    return True
-                else:
-                    self.log_result("Invoice PDF Generation", False, 
-                                  f"Response does not appear to be a valid PDF: {content_type}")
-                    return False
-            else:
-                self.log_result("Invoice PDF Generation", False, 
-                              f"Failed to generate PDF: {response.status_code}",
-                              {"response": response.text})
-                return False
-                
-        except Exception as e:
-            self.log_result("Invoice PDF Generation", False, f"Error generating PDF: {str(e)}")
-            return False
-    
-    def test_void_invoice(self, invoice_id):
-        """Test DELETE /api/invoices/{invoice_id} - Void invoice"""
-        print("\n=== Testing Void Invoice ===")
-        
-        if not invoice_id:
-            self.log_result("Void Invoice", False, "No invoice ID provided")
-            return False
-        
-        try:
-            # First, verify invoice is not paid (create a test scenario)
-            response = requests.delete(f"{API_BASE}/invoices/{invoice_id}?reason=Testing void functionality", 
-                                     headers=self.headers)
-            
-            if response.status_code == 200:
-                result = response.json()
-                
-                if "voided successfully" in result.get("message", "").lower():
-                    self.log_result("Void Invoice", True, "Invoice voided successfully")
-                    
-                    # Verify invoice status changed to void
-                    check_response = requests.get(f"{API_BASE}/invoices/{invoice_id}", headers=self.headers)
-                    if check_response.status_code == 200:
-                        invoice = check_response.json()
-                        if invoice.get("status") == "void":
-                            self.log_result("Void Invoice Status Check", True, "Invoice status updated to 'void'")
-                        else:
-                            self.log_result("Void Invoice Status Check", False, 
-                                          f"Invoice status not updated correctly: {invoice.get('status')}")
-                    
-                    return True
-                else:
-                    self.log_result("Void Invoice", False, 
-                                  f"Unexpected void response: {result}")
-                    return False
-            else:
-                self.log_result("Void Invoice", False, 
-                              f"Failed to void invoice: {response.status_code}",
-                              {"response": response.text})
-                return False
-                
-        except Exception as e:
-            self.log_result("Void Invoice", False, f"Error voiding invoice: {str(e)}")
-            return False
-    
-    def test_validation_scenarios(self):
-        """Test various validation scenarios"""
-        print("\n=== Testing Validation Scenarios ===")
-        
-        # Test 1: Create invoice without member_id
-        try:
-            invalid_data = {
-                "description": "Test invoice without member",
-                "due_date": (datetime.now(timezone.utc) + timedelta(days=30)).isoformat(),
-                "line_items": [
-                    {
-                        "description": "Test item",
-                        "quantity": 1.0,
-                        "unit_price": 100.00,
-                        "discount_percent": 0.0,
-                        "tax_percent": 15.0
-                    }
-                ]
-            }
-            
-            response = requests.post(f"{API_BASE}/invoices", 
-                                   json=invalid_data, headers=self.headers)
-            
-            if response.status_code in [400, 422]:  # Should fail validation
-                self.log_result("Validation - No Member ID", True, 
-                              "Correctly rejected invoice without member_id")
-            else:
-                self.log_result("Validation - No Member ID", False, 
-                              f"Should have rejected invoice without member_id: {response.status_code}")
-        except Exception as e:
-            self.log_result("Validation - No Member ID", False, f"Error testing validation: {str(e)}")
-        
-        # Test 2: Create invoice without line_items
-        try:
-            invalid_data = {
-                "member_id": self.test_member_id,
-                "description": "Test invoice without line items",
-                "due_date": (datetime.now(timezone.utc) + timedelta(days=30)).isoformat(),
-                "line_items": []
-            }
-            
-            response = requests.post(f"{API_BASE}/invoices", 
-                                   json=invalid_data, headers=self.headers)
-            
-            if response.status_code in [400, 422]:  # Should fail validation
-                self.log_result("Validation - No Line Items", True, 
-                              "Correctly rejected invoice without line items")
-            else:
-                self.log_result("Validation - No Line Items", False, 
-                              f"Should have rejected invoice without line items: {response.status_code}")
-        except Exception as e:
-            self.log_result("Validation - No Line Items", False, f"Error testing validation: {str(e)}")
-        
-        # Test 3: Create invoice with invalid member_id
-        try:
-            invalid_data = {
-                "member_id": "invalid-member-id-12345",
-                "description": "Test invoice with invalid member",
-                "due_date": (datetime.now(timezone.utc) + timedelta(days=30)).isoformat(),
-                "line_items": [
-                    {
-                        "description": "Test item",
-                        "quantity": 1.0,
-                        "unit_price": 100.00,
-                        "discount_percent": 0.0,
-                        "tax_percent": 15.0
-                    }
-                ]
-            }
-            
-            response = requests.post(f"{API_BASE}/invoices", 
-                                   json=invalid_data, headers=self.headers)
-            
-            if response.status_code == 404:  # Should return member not found
-                self.log_result("Validation - Invalid Member ID", True, 
-                              "Correctly rejected invoice with invalid member_id")
-            else:
-                self.log_result("Validation - Invalid Member ID", False, 
-                              f"Should have rejected invalid member_id: {response.status_code}")
-        except Exception as e:
-            self.log_result("Validation - Invalid Member ID", False, f"Error testing validation: {str(e)}")
-    
-    def create_test_csv(self, filename, data):
-        """Create a test CSV file with given data"""
-        try:
-            if not data:  # Handle empty data
-                with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.csv', newline='') as f:
-                    f.write("")  # Empty file
-                    return f.name
-            
-            with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.csv', newline='') as f:
-                writer = csv.DictWriter(f, fieldnames=data[0].keys())
-                writer.writeheader()
-                writer.writerows(data)
-                return f.name
-        except Exception as e:
-            self.log_result("Create Test CSV", False, f"Failed to create CSV: {str(e)}")
-            return None
+    if success:
+        print("\n🎉 ALL PRIORITY TESTS PASSED!")
+        exit(0)
+    else:
+        print("\n💥 SOME PRIORITY TESTS FAILED!")
+        exit(1)
+
+if __name__ == "__main__":
+    main()
     
     def test_phase1_csv_parsing(self):
         """PHASE 1: Test CSV parsing endpoint"""
