@@ -4398,8 +4398,14 @@ async def get_sales_comparison(current_user: User = Depends(get_current_user)):
         ]).to_list(1)
         prev_month_sales = prev_sales[0]["total"] if prev_sales else 0
         
-        # Last year sales (same day)
-        last_year_date = last_year_month_start.replace(day=day)
+        # Last year sales (same day, handle leap year issues)
+        try:
+            last_year_date = last_year_month_start.replace(day=day)
+        except ValueError:
+            # Handle case where last year month has fewer days (e.g., Feb 29 in non-leap year)
+            import calendar
+            last_day_last_year = calendar.monthrange(last_year_month_start.year, last_year_month_start.month)[1]
+            last_year_date = last_year_month_start.replace(day=min(day, last_day_last_year))
         last_year_sales_result = await db.invoices.aggregate([
             {
                 "$match": {
