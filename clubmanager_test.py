@@ -197,8 +197,8 @@ class ClubManagerTester:
             if response.status_code == 200:
                 data = response.json()
                 
-                # Check for daily data array
-                daily_data = data.get("daily_data")
+                # Check for daily data array (API returns "data" not "daily_data")
+                daily_data = data.get("data")
                 if daily_data and isinstance(daily_data, list):
                     if len(daily_data) > 0:
                         # Verify structure of daily data
