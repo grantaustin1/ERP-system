@@ -2521,7 +2521,88 @@ async def delete_member_note(
     if result.deleted_count == 0:
         raise HTTPException(status_code=404, detail="Note not found")
     
+    # Log to journal
+    await add_journal_entry(
+        member_id=member_id,
+        action_type="note_deleted",
+        description="Note deleted",
+        metadata={"note_id": note_id},
+        created_by=current_user.id,
+        created_by_name=current_user.full_name
+    )
+    
     return {"message": "Note deleted successfully"}
+
+# Member Journal Routes
+@api_router.get("/members/{member_id}/journal")
+async def get_member_journal(
+    member_id: str,
+    action_type: Optional[str] = None,
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+    search: Optional[str] = None,
+    limit: int = 100,
+    current_user: User = Depends(get_current_user)
+):
+    """Get member journal entries with optional filters"""
+    # Build query
+    query = {"member_id": member_id}
+    
+    # Filter by action type
+    if action_type and action_type != "all":
+        query["action_type"] = action_type
+    
+    # Filter by date range
+    if start_date or end_date:
+        date_filter = {}
+        if start_date:
+            try:
+                start = datetime.fromisoformat(start_date.replace('Z', '+00:00'))
+                date_filter["$gte"] = start
+            except:
+                pass
+        if end_date:
+            try:
+                end = datetime.fromisoformat(end_date.replace('Z', '+00:00'))
+                date_filter["$lte"] = end
+            except:
+                pass
+        if date_filter:
+            query["created_at"] = date_filter
+    
+    # Search in description
+    if search:
+        query["description"] = {"$regex": search, "$options": "i"}
+    
+    # Get journal entries
+    journal_entries = await db.member_journal.find(
+        query,
+        {"_id": 0}
+    ).sort("created_at", -1).limit(limit).to_list(length=limit)
+    
+    return journal_entries
+
+@api_router.post("/members/{member_id}/journal", response_model=MemberJournal)
+async def create_journal_entry(
+    member_id: str,
+    journal_data: MemberJournalCreate,
+    current_user: User = Depends(get_current_user)
+):
+    """Create a manual journal entry for a member"""
+    member = await db.members.find_one({"id": member_id}, {"_id": 0})
+    if not member:
+        raise HTTPException(status_code=404, detail="Member not found")
+    
+    journal_entry = await add_journal_entry(
+        member_id=member_id,
+        action_type=journal_data.action_type,
+        description=journal_data.description,
+        metadata=journal_data.metadata,
+        created_by=current_user.id,
+        created_by_name=current_user.full_name
+    )
+    
+    return journal_entry
 
 # Access Control Routes
 @api_router.post("/access/validate")
