@@ -76,6 +76,11 @@ export default function Members() {
     notes: ''
   });
 
+  // Phase 3 - Unified Messaging
+  const [messagingDialogOpen, setMessagingDialogOpen] = useState(false);
+  const [selectedMembersForMessaging, setSelectedMembersForMessaging] = useState([]);
+
+
   useEffect(() => {
     fetchMembers();
     fetchMembershipTypes();
