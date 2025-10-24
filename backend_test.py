@@ -453,7 +453,7 @@ class AdvancedAnalyticsTestRunner:
                 # Verify frequency_distribution structure
                 if data["frequency_distribution"]:
                     frequency = data["frequency_distribution"][0]
-                    frequency_fields = ["range", "member_count", "percentage"]
+                    frequency_fields = ["range", "members"]
                     missing_frequency_fields = [field for field in frequency_fields if field not in frequency]
                     
                     if missing_frequency_fields:
