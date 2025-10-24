@@ -287,7 +287,7 @@ class AdvancedAnalyticsTestRunner:
                                   "Total members should be integer")
                     return False
                 
-                if not isinstance(summary["postcode_coverage"], (int, float)):
+                if not isinstance(summary["coverage"]["postcode"], (int, float)):
                     self.log_result("Geographic Distribution Postcode Coverage Type", False, 
                                   "Postcode coverage should be number")
                     return False
