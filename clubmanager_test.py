@@ -330,9 +330,9 @@ class ClubManagerTester:
             if response.status_code == 200:
                 data = response.json()
                 
-                # Check for birthdays array
-                birthdays = data.get("birthdays")
-                if birthdays is not None and isinstance(birthdays, list):
+                # Check for birthdays array (API returns array directly, not wrapped in object)
+                if isinstance(data, list):
+                    birthdays = data
                     self.log_result("Birthdays Today Structure", True, 
                                   f"Birthdays array present with {len(birthdays)} members")
                     
