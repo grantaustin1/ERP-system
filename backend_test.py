@@ -697,10 +697,10 @@ class DashboardTestRunner:
             except Exception as e:
                 self.log_result(f"Cleanup Access Log {access_log_id[:8]}", False, f"Error: {str(e)}")
     
-    def run_priority_tests(self):
-        """Run the priority tests focusing on previously failed items"""
+    def run_dashboard_tests(self):
+        """Run the dashboard enhancement tests"""
         print("=" * 80)
-        print("BACKEND TESTING - RE-TEST PHASE 1 QUICK WINS - PRIORITY FAILED TESTS")
+        print("BACKEND TESTING - PHASE 2A DASHBOARD ENHANCEMENTS")
         print("=" * 80)
         
         # Step 1: Authenticate
@@ -713,55 +713,34 @@ class DashboardTestRunner:
             print("❌ Failed to setup test members. Cannot proceed with tests.")
             return False
         
-        # Step 3: Run PRIORITY TESTS (Previously Failed)
+        # Step 3: Create test access logs for dashboard data
+        self.create_test_access_logs()
+        
+        # Step 4: Run DASHBOARD API TESTS
         print("\n" + "=" * 60)
-        print("PRIORITY TESTS - PREVIOUSLY FAILED")
+        print("DASHBOARD API TESTS")
         print("=" * 60)
         
-        priority_results = []
+        dashboard_results = []
         
-        # 1. Member Cancel API - MUST TEST
-        print("\n🔥 PRIORITY TEST 1: Member Cancel API")
-        priority_results.append(self.test_member_cancel_api_priority())
-        priority_results.append(self.test_member_cancel_existing_notes())
+        # 1. Dashboard Snapshot API
+        print("\n📊 TEST 1: Dashboard Snapshot API")
+        dashboard_results.append(self.test_dashboard_snapshot_api())
         
-        # 2. Enhanced Profile Endpoint - MUST VERIFY
-        print("\n🔥 PRIORITY TEST 2: Enhanced Profile Endpoint")
-        priority_results.append(self.test_enhanced_profile_endpoint_priority())
-        
-        # Step 4: Run QUICK VERIFICATION TESTS
-        print("\n" + "=" * 60)
-        print("QUICK VERIFICATION TESTS")
-        print("=" * 60)
-        
-        quick_results = []
-        
-        # Create custom tag
-        tag_id = self.test_create_custom_tag_quick()
-        if tag_id:
-            quick_results.append(True)
-            # Add tag to member
-            quick_results.append(self.test_add_tag_to_member_quick())
-        else:
-            quick_results.append(False)
-            quick_results.append(False)
-        
-        # Freeze/Unfreeze tests
-        quick_results.append(self.test_freeze_unfreeze_quick())
+        # 2. Recent Members API
+        print("\n👥 TEST 2: Recent Members API")
+        dashboard_results.append(self.test_recent_members_api())
         
         # Step 5: Generate Summary
         print("\n" + "=" * 80)
         print("TEST RESULTS SUMMARY")
         print("=" * 80)
         
-        priority_passed = sum(priority_results)
-        priority_total = len(priority_results)
-        quick_passed = sum(quick_results)
-        quick_total = len(quick_results)
+        dashboard_passed = sum(dashboard_results)
+        dashboard_total = len(dashboard_results)
         
-        print(f"\n🔥 PRIORITY TESTS: {priority_passed}/{priority_total} PASSED")
-        print(f"⚡ QUICK TESTS: {quick_passed}/{quick_total} PASSED")
-        print(f"📊 OVERALL: {priority_passed + quick_passed}/{priority_total + quick_total} PASSED")
+        print(f"\n📊 DASHBOARD TESTS: {dashboard_passed}/{dashboard_total} PASSED")
+        print(f"📈 SUCCESS RATE: {(dashboard_passed/dashboard_total)*100:.1f}%")
         
         # Detailed results
         print(f"\n📋 DETAILED RESULTS:")
@@ -772,8 +751,8 @@ class DashboardTestRunner:
         # Step 6: Cleanup
         self.cleanup_test_data()
         
-        # Return success if all priority tests passed
-        return priority_passed == priority_total
+        # Return success if all dashboard tests passed
+        return dashboard_passed == dashboard_total
 
 def main():
     """Main execution function"""
