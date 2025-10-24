@@ -442,7 +442,7 @@ class AdvancedAnalyticsTestRunner:
                 
                 if data["daily_distribution"]:
                     daily = data["daily_distribution"][0]
-                    daily_fields = ["day", "visit_count", "percentage"]
+                    daily_fields = ["day", "count"]
                     missing_daily_fields = [field for field in daily_fields if field not in daily]
                     
                     if missing_daily_fields:
