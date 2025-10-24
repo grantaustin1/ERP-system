@@ -3768,6 +3768,30 @@ backend:
         agent: "main"
         comment: "Created PUT /api/members/{member_id} endpoint for updating member information. Protects system fields (id, qr_code, normalized fields) from direct modification. Handles datetime field conversions automatically. Supports editing all member fields including new freeze status fields from the profile drill-down UI."
 
+  - task: "Member Journal CRUD API"
+    implemented: true
+    working: true
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "testing"
+        comment: "✅ MEMBER JOURNAL FUNCTIONALITY FULLY OPERATIONAL - Comprehensive testing completed with 100% success rate (14/14 tests passed). **MANUAL JOURNAL ENTRY CREATION**: POST /api/members/{member_id}/journal successfully creates journal entries with proper structure including journal_id, member_id, action_type, description, metadata, created_by, created_by_name, created_at fields. Test data: action_type='email_sent', description='Test email sent to member', metadata with email/subject/full_body correctly stored and retrieved. **JOURNAL RETRIEVAL WITH FILTERS**: GET /api/members/{member_id}/journal works perfectly with no filters (returns all entries), action_type filter (returns only email_sent entries), and search filter (returns entries containing 'test' in description). All filtering mechanisms operational. **AUTOMATIC PROFILE UPDATE LOGGING**: PUT /api/members/{member_id} automatically triggers profile_updated journal entries with changed fields captured in metadata. Tested with first_name update from 'Journal' to 'UpdatedJournal' - change properly logged with metadata containing field changes. **AUTOMATIC NOTE CREATION/DELETION LOGGING**: POST /api/members/{member_id}/notes automatically creates note_added journal entries. DELETE /api/members/{member_id}/notes/{note_id} automatically creates note_deleted journal entries. Both automatic logging mechanisms working correctly. **JOURNAL METADATA VERIFICATION**: All journal entries contain required fields with proper data types - journal_id (string), member_id (matches), action_type (string), metadata (dict), created_at (datetime string format). All datetime fields properly formatted and all metadata structures correct. **COMPREHENSIVE FUNCTIONALITY**: Manual journal entry creation, automatic logging on profile updates, automatic logging on note changes, filtering by action_type and search terms, proper metadata storage and retrieval all working as designed."
+
+  - task: "Member Journal Automatic Logging Integration"
+    implemented: true
+    working: true
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "testing"
+        comment: "✅ AUTOMATIC JOURNAL LOGGING INTEGRATION WORKING PERFECTLY - All automatic logging triggers operational. **PROFILE UPDATE INTEGRATION**: Member profile updates via PUT /api/members/{member_id} automatically trigger journal entries with action_type='profile_updated' and metadata containing changed fields. Tested with first_name change - properly logged with field changes in metadata. **NOTE CREATION INTEGRATION**: Note creation via POST /api/members/{member_id}/notes automatically triggers journal entries with action_type='note_added'. **NOTE DELETION INTEGRATION**: Note deletion via DELETE /api/members/{member_id}/notes/{note_id} automatically triggers journal entries with action_type='note_deleted'. **HELPER FUNCTION**: add_journal_entry() helper function working correctly - accepts member_id, action_type, description, metadata, created_by, created_by_name parameters and creates properly structured journal entries in member_journal collection. All automatic logging integrations tested and confirmed working."
+
 frontend:
   - task: "Members Tab Profile Drill-Down UI"
     implemented: true
