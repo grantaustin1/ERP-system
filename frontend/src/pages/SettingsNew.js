@@ -397,6 +397,12 @@ export default function SettingsNew() {
     }
   };
 
+  const handleSaveSystemSettings = () => {
+    // For now, save to localStorage (can be extended to save to backend)
+    localStorage.setItem('systemSettings', JSON.stringify(systemSettings));
+    toast({ title: "Success", description: "System settings saved successfully!" });
+  };
+
   const handleUpdateFieldConfig = async (fieldId, updates) => {
     try {
       await axios.patch(`${API}/api/field-configurations/${fieldId}`, updates);
