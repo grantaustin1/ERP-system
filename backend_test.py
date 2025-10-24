@@ -598,6 +598,233 @@ class EnhancedMemberManagementTester:
             self.log_result("Member Cancel Actions", False, f"Error cancelling membership: {str(e)}")
             return False
     
+    def test_enhanced_profile_endpoint(self):
+        """Test GET /api/members/{member_id}/profile - Verify returns Phase 1 fields"""
+        print("\n=== Testing Enhanced Profile Endpoint ===")
+        
+        if not self.test_member_id_2:
+            self.log_result("Enhanced Profile Endpoint", False, "No test member available")
+            return False
+        
+        try:
+            response = requests.get(f"{API_BASE}/members/{self.test_member_id_2}/profile", headers=self.headers)
+            
+            if response.status_code == 200:
+                profile = response.json()
+                
+                # Verify Phase 1 enhanced fields are present
+                phase1_fields = [
+                    "sessions_remaining",
+                    "last_visit_date", 
+                    "next_billing_date",
+                    "tags"
+                ]
+                
+                # Check if all Phase 1 fields are present (can be null but should exist)
+                has_phase1_fields = all(field in profile for field in phase1_fields)
+                
+                # Verify basic profile structure
+                basic_fields = ["id", "first_name", "last_name", "email", "phone", "membership_status"]
+                has_basic_fields = all(field in profile for field in basic_fields)
+                
+                if has_phase1_fields and has_basic_fields:
+                    self.log_result("Enhanced Profile Endpoint", True, 
+                                  f"Profile includes all Phase 1 fields: {', '.join(phase1_fields)}")
+                    
+                    # Log current values for verification
+                    field_values = {field: profile.get(field) for field in phase1_fields}
+                    self.log_result("Profile Field Values", True, 
+                                  f"Phase 1 field values: {field_values}")
+                    
+                    return True
+                else:
+                    missing_fields = []
+                    if not has_phase1_fields:
+                        missing_fields.extend([f for f in phase1_fields if f not in profile])
+                    if not has_basic_fields:
+                        missing_fields.extend([f for f in basic_fields if f not in profile])
+                    
+                    self.log_result("Enhanced Profile Endpoint", False, 
+                                  f"Missing profile fields: {missing_fields}")
+                    return False
+            else:
+                self.log_result("Enhanced Profile Endpoint", False, 
+                              f"Failed to get member profile: {response.status_code}",
+                              {"response": response.text})
+                return False
+                
+        except Exception as e:
+            self.log_result("Enhanced Profile Endpoint", False, f"Error getting member profile: {str(e)}")
+            return False
+    
+    def test_access_validate_last_visit_update(self):
+        """Test POST /api/access/validate - Grant access and verify last_visit_date is updated"""
+        print("\n=== Testing Access Validate Last Visit Update ===")
+        
+        if not self.test_member_id_2:
+            self.log_result("Access Validate Last Visit Update", False, "No test member available")
+            return False
+        
+        try:
+            # Get current last_visit_date before access grant
+            profile_response = requests.get(f"{API_BASE}/members/{self.test_member_id_2}/profile", headers=self.headers)
+            if profile_response.status_code != 200:
+                self.log_result("Get Profile Before Access", False, "Failed to get member profile")
+                return False
+            
+            before_profile = profile_response.json()
+            before_last_visit = before_profile.get("last_visit_date")
+            
+            # Grant access
+            access_data = {
+                "member_id": self.test_member_id_2,
+                "access_method": "qr_code",
+                "location": "Main Entrance"
+            }
+            
+            response = requests.post(f"{API_BASE}/access/validate", 
+                                   json=access_data, headers=self.headers)
+            
+            if response.status_code == 200:
+                access_result = response.json()
+                
+                # Verify access was granted
+                if access_result.get("status") == "granted" or access_result.get("access_granted"):
+                    self.log_result("Access Granted", True, 
+                                  f"Access granted successfully: {access_result.get('message', '')}")
+                    
+                    # Wait a moment for database update
+                    time.sleep(1)
+                    
+                    # Get updated profile to check last_visit_date
+                    updated_profile_response = requests.get(f"{API_BASE}/members/{self.test_member_id_2}/profile", headers=self.headers)
+                    if updated_profile_response.status_code == 200:
+                        after_profile = updated_profile_response.json()
+                        after_last_visit = after_profile.get("last_visit_date")
+                        
+                        # Verify last_visit_date was updated
+                        if after_last_visit and after_last_visit != before_last_visit:
+                            self.log_result("Last Visit Date Updated", True, 
+                                          f"last_visit_date updated from {before_last_visit} to {after_last_visit}")
+                            
+                            # Verify the date is recent (within last 5 minutes)
+                            if after_last_visit:
+                                try:
+                                    visit_time = datetime.fromisoformat(after_last_visit.replace('Z', '+00:00'))
+                                    now = datetime.now(timezone.utc)
+                                    time_diff = (now - visit_time).total_seconds()
+                                    
+                                    if time_diff < 300:  # Within 5 minutes
+                                        self.log_result("Last Visit Date Recent", True, 
+                                                      f"last_visit_date is recent ({time_diff:.1f} seconds ago)")
+                                    else:
+                                        self.log_result("Last Visit Date Recent", False, 
+                                                      f"last_visit_date is not recent ({time_diff:.1f} seconds ago)")
+                                except Exception as date_e:
+                                    self.log_result("Last Visit Date Parse", False, f"Error parsing date: {date_e}")
+                        else:
+                            self.log_result("Last Visit Date Updated", False, 
+                                          f"last_visit_date not updated: before={before_last_visit}, after={after_last_visit}")
+                    else:
+                        self.log_result("Get Profile After Access", False, "Failed to get updated member profile")
+                    
+                    return True
+                else:
+                    self.log_result("Access Granted", False, 
+                                  f"Access not granted: {access_result}")
+                    return False
+            else:
+                self.log_result("Access Validate", False, 
+                              f"Failed to validate access: {response.status_code}",
+                              {"response": response.text})
+                return False
+                
+        except Exception as e:
+            self.log_result("Access Validate Last Visit Update", False, f"Error testing access validation: {str(e)}")
+            return False
+    
+    def test_delete_tag_removes_from_members(self):
+        """Test DELETE /api/tags/{tag_id} - Delete tag and verify removal from members"""
+        print("\n=== Testing Delete Tag Removes from Members ===")
+        
+        if not self.created_tags:
+            self.log_result("Delete Tag Removes from Members", False, "No created tags available")
+            return False
+        
+        # Use the first created tag for deletion test
+        tag_to_delete = self.created_tags[0]
+        
+        try:
+            # First, get the tag name for verification
+            tags_response = requests.get(f"{API_BASE}/tags", headers=self.headers)
+            if tags_response.status_code != 200:
+                self.log_result("Get Tags Before Delete", False, "Failed to get tags")
+                return False
+            
+            all_tags = tags_response.json()
+            tag_obj = next((t for t in all_tags if t.get("id") == tag_to_delete), None)
+            if not tag_obj:
+                self.log_result("Find Tag to Delete", False, f"Tag {tag_to_delete} not found")
+                return False
+            
+            tag_name = tag_obj.get("name")
+            
+            # Delete the tag
+            response = requests.delete(f"{API_BASE}/tags/{tag_to_delete}", headers=self.headers)
+            
+            if response.status_code == 200:
+                result = response.json()
+                
+                # Verify response indicates success
+                if "deleted" in result.get("message", "").lower() or result.get("success"):
+                    self.log_result("Delete Tag", True, 
+                                  f"Tag '{tag_name}' deleted successfully")
+                    
+                    # Verify tag is no longer in tags list
+                    updated_tags_response = requests.get(f"{API_BASE}/tags", headers=self.headers)
+                    if updated_tags_response.status_code == 200:
+                        updated_tags = updated_tags_response.json()
+                        tag_still_exists = any(t.get("id") == tag_to_delete for t in updated_tags)
+                        
+                        if not tag_still_exists:
+                            self.log_result("Verify Tag Deleted from List", True, 
+                                          f"Tag '{tag_name}' no longer in tags list")
+                        else:
+                            self.log_result("Verify Tag Deleted from List", False, 
+                                          f"Tag '{tag_name}' still exists in tags list")
+                    
+                    # Verify tag was removed from any members who had it
+                    if self.test_member_id_2:
+                        member_response = requests.get(f"{API_BASE}/members/{self.test_member_id_2}", headers=self.headers)
+                        if member_response.status_code == 200:
+                            member = member_response.json()
+                            member_tags = member.get("tags", [])
+                            
+                            if tag_name not in member_tags:
+                                self.log_result("Verify Tag Removed from Members", True, 
+                                              f"Tag '{tag_name}' removed from member profiles")
+                            else:
+                                self.log_result("Verify Tag Removed from Members", False, 
+                                              f"Tag '{tag_name}' still in member profile")
+                    
+                    # Remove from our tracking list
+                    self.created_tags.remove(tag_to_delete)
+                    
+                    return True
+                else:
+                    self.log_result("Delete Tag", False, 
+                                  f"Unexpected delete response: {result}")
+                    return False
+            else:
+                self.log_result("Delete Tag", False, 
+                              f"Failed to delete tag: {response.status_code}",
+                              {"response": response.text})
+                return False
+                
+        except Exception as e:
+            self.log_result("Delete Tag Removes from Members", False, f"Error deleting tag: {str(e)}")
+            return False
+    
     def test_get_invoices_list(self):
         """Test GET /api/invoices - List all invoices"""
         print("\n=== Testing Get Invoices List ===")
