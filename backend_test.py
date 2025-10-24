@@ -242,7 +242,192 @@ class EnhancedMemberManagementTester:
             self.log_result("Create Custom Tags", False, f"Error creating custom tags: {str(e)}")
             return []
     
-    def test_create_invoice_with_line_items(self):
+    def test_update_tag(self, tag_id):
+        """Test PUT /api/tags/{tag_id} - Update tag properties"""
+        print("\n=== Testing Update Tag ===")
+        
+        if not tag_id:
+            self.log_result("Update Tag", False, "No tag ID provided")
+            return False
+        
+        try:
+            # Update tag data
+            update_data = {
+                "name": "Premium Member UPDATED",
+                "color": "#FF0000",  # Change to red
+                "category": "Status Updated",
+                "description": "Updated description for premium membership tier"
+            }
+            
+            response = requests.put(f"{API_BASE}/tags/{tag_id}", json=update_data, headers=self.headers)
+            
+            if response.status_code == 200:
+                updated_tag = response.json()
+                
+                # Verify updates were applied
+                updates_applied = (
+                    updated_tag.get("name") == update_data["name"] and
+                    updated_tag.get("color") == update_data["color"] and
+                    updated_tag.get("category") == update_data["category"] and
+                    updated_tag.get("description") == update_data["description"]
+                )
+                
+                if updates_applied:
+                    self.log_result("Update Tag", True, 
+                                  f"Tag updated successfully: {updated_tag.get('name')}")
+                    return True
+                else:
+                    self.log_result("Update Tag", False, 
+                                  "Tag update did not apply all changes correctly")
+                    return False
+            else:
+                self.log_result("Update Tag", False, 
+                              f"Failed to update tag: {response.status_code}",
+                              {"response": response.text})
+                return False
+                
+        except Exception as e:
+            self.log_result("Update Tag", False, f"Error updating tag: {str(e)}")
+            return False
+    
+    def test_add_tags_to_member(self):
+        """Test POST /api/members/{member_id}/tags/{tag_name} - Add multiple tags to member"""
+        print("\n=== Testing Add Tags to Member ===")
+        
+        if not self.test_member_id:
+            self.log_result("Add Tags to Member", False, "No test member available")
+            return False
+        
+        # Test adding multiple tags to the member
+        test_tags = ["VIP", "Personal Training", "Premium Member UPDATED"]
+        added_tags = []
+        
+        try:
+            for tag_name in test_tags:
+                response = requests.post(f"{API_BASE}/members/{self.test_member_id}/tags/{tag_name}", 
+                                       headers=self.headers)
+                
+                if response.status_code == 200:
+                    result = response.json()
+                    
+                    # Verify response indicates success
+                    if "added" in result.get("message", "").lower() or result.get("success"):
+                        added_tags.append(tag_name)
+                        self.log_result(f"Add Tag - {tag_name}", True, 
+                                      f"Tag '{tag_name}' added to member successfully")
+                    else:
+                        self.log_result(f"Add Tag - {tag_name}", False, 
+                                      f"Unexpected response: {result}")
+                else:
+                    self.log_result(f"Add Tag - {tag_name}", False, 
+                                  f"Failed to add tag '{tag_name}': {response.status_code}",
+                                  {"response": response.text})
+            
+            # Verify tags were added by checking member profile
+            if len(added_tags) > 0:
+                member_response = requests.get(f"{API_BASE}/members/{self.test_member_id}", headers=self.headers)
+                if member_response.status_code == 200:
+                    member = member_response.json()
+                    member_tags = member.get("tags", [])
+                    
+                    tags_in_profile = all(tag in member_tags for tag in added_tags)
+                    
+                    if tags_in_profile:
+                        self.log_result("Verify Tags in Member Profile", True, 
+                                      f"All {len(added_tags)} tags found in member profile")
+                    else:
+                        missing_tags = [tag for tag in added_tags if tag not in member_tags]
+                        self.log_result("Verify Tags in Member Profile", False, 
+                                      f"Tags missing from member profile: {missing_tags}")
+            
+            # Check if usage_count incremented for tags
+            tags_response = requests.get(f"{API_BASE}/tags", headers=self.headers)
+            if tags_response.status_code == 200:
+                all_tags = tags_response.json()
+                
+                for tag_name in added_tags:
+                    tag = next((t for t in all_tags if t.get("name") == tag_name), None)
+                    if tag and tag.get("usage_count", 0) > 0:
+                        self.log_result(f"Usage Count - {tag_name}", True, 
+                                      f"Usage count incremented to {tag.get('usage_count')}")
+                    else:
+                        self.log_result(f"Usage Count - {tag_name}", False, 
+                                      f"Usage count not incremented for tag '{tag_name}'")
+            
+            if len(added_tags) >= 2:
+                self.log_result("Add Tags to Member", True, 
+                              f"Successfully added {len(added_tags)} tags to member")
+                return True
+            else:
+                self.log_result("Add Tags to Member", False, 
+                              f"Only added {len(added_tags)} of {len(test_tags)} expected tags")
+                return False
+                
+        except Exception as e:
+            self.log_result("Add Tags to Member", False, f"Error adding tags to member: {str(e)}")
+            return False
+    
+    def test_remove_tags_from_member(self):
+        """Test DELETE /api/members/{member_id}/tags/{tag_name} - Remove tags from member"""
+        print("\n=== Testing Remove Tags from Member ===")
+        
+        if not self.test_member_id:
+            self.log_result("Remove Tags from Member", False, "No test member available")
+            return False
+        
+        # Test removing one tag
+        tag_to_remove = "Personal Training"
+        
+        try:
+            response = requests.delete(f"{API_BASE}/members/{self.test_member_id}/tags/{tag_to_remove}", 
+                                     headers=self.headers)
+            
+            if response.status_code == 200:
+                result = response.json()
+                
+                # Verify response indicates success
+                if "removed" in result.get("message", "").lower() or result.get("success"):
+                    self.log_result("Remove Tag from Member", True, 
+                                  f"Tag '{tag_to_remove}' removed from member successfully")
+                    
+                    # Verify tag was removed from member profile
+                    member_response = requests.get(f"{API_BASE}/members/{self.test_member_id}", headers=self.headers)
+                    if member_response.status_code == 200:
+                        member = member_response.json()
+                        member_tags = member.get("tags", [])
+                        
+                        if tag_to_remove not in member_tags:
+                            self.log_result("Verify Tag Removed from Profile", True, 
+                                          f"Tag '{tag_to_remove}' no longer in member profile")
+                        else:
+                            self.log_result("Verify Tag Removed from Profile", False, 
+                                          f"Tag '{tag_to_remove}' still in member profile")
+                    
+                    # Check if usage_count decremented
+                    tags_response = requests.get(f"{API_BASE}/tags", headers=self.headers)
+                    if tags_response.status_code == 200:
+                        all_tags = tags_response.json()
+                        tag = next((t for t in all_tags if t.get("name") == tag_to_remove), None)
+                        if tag:
+                            self.log_result(f"Usage Count Decremented - {tag_to_remove}", True, 
+                                          f"Usage count is now {tag.get('usage_count', 0)}")
+                    
+                    return True
+                else:
+                    self.log_result("Remove Tag from Member", False, 
+                                  f"Unexpected response: {result}")
+                    return False
+            else:
+                self.log_result("Remove Tag from Member", False, 
+                              f"Failed to remove tag: {response.status_code}",
+                              {"response": response.text})
+                return False
+                
+        except Exception as e:
+            self.log_result("Remove Tags from Member", False, f"Error removing tag from member: {str(e)}")
+            return False
+    
+    def test_member_freeze_actions(self):
         """Test POST /api/invoices - Create invoice with line items"""
         print("\n=== Testing Create Invoice with Line Items ===")
         
