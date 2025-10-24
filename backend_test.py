@@ -520,10 +520,10 @@ class RetentionTestRunner:
             except Exception as e:
                 self.log_result(f"Cleanup Access Log {access_log_id[:8]}", False, f"Error: {str(e)}")
     
-    def run_dashboard_tests(self):
-        """Run the dashboard enhancement tests"""
+    def run_retention_tests(self):
+        """Run the retention intelligence API tests"""
         print("=" * 80)
-        print("BACKEND TESTING - PHASE 2A DASHBOARD ENHANCEMENTS")
+        print("BACKEND TESTING - PHASE 2B RETENTION INTELLIGENCE APIs")
         print("=" * 80)
         
         # Step 1: Authenticate
@@ -531,39 +531,48 @@ class RetentionTestRunner:
             print("❌ Authentication failed. Cannot proceed with tests.")
             return False
         
-        # Step 2: Setup test members
+        # Step 2: Setup test members (for context, though retention APIs work with existing data)
         if not self.setup_test_members():
             print("❌ Failed to setup test members. Cannot proceed with tests.")
             return False
         
-        # Step 3: Create test access logs for dashboard data
-        self.create_test_access_logs()
-        
-        # Step 4: Run DASHBOARD API TESTS
+        # Step 3: Run RETENTION API TESTS
         print("\n" + "=" * 60)
-        print("DASHBOARD API TESTS")
+        print("RETENTION INTELLIGENCE API TESTS")
         print("=" * 60)
         
-        dashboard_results = []
+        retention_results = []
         
-        # 1. Dashboard Snapshot API
-        print("\n📊 TEST 1: Dashboard Snapshot API")
-        dashboard_results.append(self.test_dashboard_snapshot_api())
+        # 1. At-Risk Members API
+        print("\n🚨 TEST 1: At-Risk Members API")
+        retention_results.append(self.test_at_risk_members_api())
         
-        # 2. Recent Members API
-        print("\n👥 TEST 2: Recent Members API")
-        dashboard_results.append(self.test_recent_members_api())
+        # 2. Retention Alerts API (7, 14, 28 days)
+        print("\n⚠️ TEST 2: Retention Alerts API")
+        retention_results.append(self.test_retention_alerts_api())
         
-        # Step 5: Generate Summary
+        # 3. Sleeping Members API
+        print("\n😴 TEST 3: Sleeping Members API")
+        retention_results.append(self.test_sleeping_members_api())
+        
+        # 4. Expiring Memberships API (30, 60, 90 days)
+        print("\n⏰ TEST 4: Expiring Memberships API")
+        retention_results.append(self.test_expiring_memberships_api())
+        
+        # 5. Dropoff Analytics API
+        print("\n📉 TEST 5: Dropoff Analytics API")
+        retention_results.append(self.test_dropoff_analytics_api())
+        
+        # Step 4: Generate Summary
         print("\n" + "=" * 80)
         print("TEST RESULTS SUMMARY")
         print("=" * 80)
         
-        dashboard_passed = sum(dashboard_results)
-        dashboard_total = len(dashboard_results)
+        retention_passed = sum(retention_results)
+        retention_total = len(retention_results)
         
-        print(f"\n📊 DASHBOARD TESTS: {dashboard_passed}/{dashboard_total} PASSED")
-        print(f"📈 SUCCESS RATE: {(dashboard_passed/dashboard_total)*100:.1f}%")
+        print(f"\n🎯 RETENTION TESTS: {retention_passed}/{retention_total} PASSED")
+        print(f"📈 SUCCESS RATE: {(retention_passed/retention_total)*100:.1f}%")
         
         # Detailed results
         print(f"\n📋 DETAILED RESULTS:")
@@ -571,11 +580,11 @@ class RetentionTestRunner:
             status = "✅" if result["success"] else "❌"
             print(f"{status} {result['test']}: {result['message']}")
         
-        # Step 6: Cleanup
+        # Step 5: Cleanup
         self.cleanup_test_data()
         
-        # Return success if all dashboard tests passed
-        return dashboard_passed == dashboard_total
+        # Return success if all retention tests passed
+        return retention_passed == retention_total
 
 def main():
     """Main execution function"""
