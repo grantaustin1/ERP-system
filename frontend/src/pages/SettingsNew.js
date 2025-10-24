@@ -1252,6 +1252,144 @@ export default function SettingsNew() {
           </div>
         </TabsContent>
 
+        {/* TASK TYPES */}
+        <TabsContent value="task-types">
+          <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-lg p-6">
+            <div className="flex justify-between items-center mb-6">
+              <div>
+                <h3 className="text-xl font-bold text-purple-400 mb-2">Task Types</h3>
+                <p className="text-slate-400">
+                  Create and manage custom task types for your team
+                </p>
+              </div>
+              <Button 
+                onClick={() => {
+                  setEditingTaskType(null);
+                  setTaskTypeForm({ name: '', description: '', color: '#3b82f6', icon: 'clipboard' });
+                  setTaskTypeDialogOpen(true);
+                }}
+                className="bg-purple-600 hover:bg-purple-700"
+              >
+                <Plus className="mr-2 h-4 w-4" /> New Task Type
+              </Button>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {taskTypes.map((taskType) => (
+                <Card key={taskType.type_id} className="bg-slate-700/50 border-slate-600">
+                  <CardHeader>
+                    <div className="flex justify-between items-start">
+                      <div className="flex items-center gap-2">
+                        <div 
+                          className="w-3 h-3 rounded-full" 
+                          style={{ backgroundColor: taskType.color }}
+                        />
+                        <CardTitle className="text-white">{taskType.name}</CardTitle>
+                      </div>
+                      <div className="flex gap-1">
+                        <Button 
+                          size="sm" 
+                          variant="ghost"
+                          onClick={() => handleEditTaskType(taskType)}
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button 
+                          size="sm" 
+                          variant="ghost"
+                          onClick={() => handleDeleteTaskType(taskType.type_id)}
+                        >
+                          <Trash2 className="h-4 w-4 text-red-400" />
+                        </Button>
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-sm text-slate-400">{taskType.description || 'No description'}</p>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+
+            {taskTypes.length === 0 && (
+              <div className="text-center py-12">
+                <CheckSquare className="h-16 w-16 mx-auto text-slate-600 mb-4" />
+                <p className="text-slate-400">No task types created yet</p>
+              </div>
+            )}
+          </div>
+
+          {/* Task Type Dialog */}
+          <Dialog open={taskTypeDialogOpen} onOpenChange={setTaskTypeDialogOpen}>
+            <DialogContent className="bg-slate-800 border-slate-700 text-white">
+              <DialogHeader>
+                <DialogTitle>{editingTaskType ? 'Edit Task Type' : 'Create New Task Type'}</DialogTitle>
+                <DialogDescription className="text-slate-400">
+                  Define a new task type for organizing team work
+                </DialogDescription>
+              </DialogHeader>
+
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label>Name *</Label>
+                  <Input
+                    value={taskTypeForm.name}
+                    onChange={(e) => setTaskTypeForm({...taskTypeForm, name: e.target.value})}
+                    placeholder="e.g., Equipment Repair"
+                    className="bg-slate-700 border-slate-600"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Description</Label>
+                  <Textarea
+                    value={taskTypeForm.description}
+                    onChange={(e) => setTaskTypeForm({...taskTypeForm, description: e.target.value})}
+                    placeholder="Brief description of this task type"
+                    className="bg-slate-700 border-slate-600"
+                    rows={3}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Color</Label>
+                  <div className="flex gap-2 items-center">
+                    <Input
+                      type="color"
+                      value={taskTypeForm.color}
+                      onChange={(e) => setTaskTypeForm({...taskTypeForm, color: e.target.value})}
+                      className="w-20 h-10 bg-slate-700 border-slate-600"
+                    />
+                    <span className="text-sm text-slate-400">{taskTypeForm.color}</span>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Icon Name</Label>
+                  <Input
+                    value={taskTypeForm.icon}
+                    onChange={(e) => setTaskTypeForm({...taskTypeForm, icon: e.target.value})}
+                    placeholder="e.g., clipboard, wrench, phone"
+                    className="bg-slate-700 border-slate-600"
+                  />
+                </div>
+              </div>
+
+              <DialogFooter className="mt-6">
+                <Button variant="outline" onClick={() => setTaskTypeDialogOpen(false)}>
+                  Cancel
+                </Button>
+                <Button 
+                  onClick={handleSaveTaskType}
+                  className="bg-purple-600 hover:bg-purple-700"
+                >
+                  {editingTaskType ? 'Update' : 'Create'} Task Type
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        </TabsContent>
+
         {/* AUTOMATION */}
         <TabsContent value="notifications">
           <div className="text-center py-12">
