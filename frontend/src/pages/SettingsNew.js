@@ -357,7 +357,8 @@ export default function SettingsNew() {
       tabs: [
         { id: 'field-config', label: 'Field Configuration', icon: CheckSquare },
         { id: 'engagement-alerts', label: 'Member Engagement Alerts', icon: Activity },
-        { id: 'notification-templates', label: 'Notification Templates', icon: MessageSquare }
+        { id: 'notification-templates', label: 'Notification Templates', icon: MessageSquare },
+        { id: 'task-types', label: 'Task Types', icon: CheckSquare }
       ]
     },
     automation: {
