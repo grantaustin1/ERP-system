@@ -2804,6 +2804,21 @@ async def get_member_profile(member_id: str, current_user: User = Depends(get_cu
     if not member.get("bank_account_number"):
         missing_data.append("bank_details")
     
+    # Phase 1 - Enhanced fields: Calculate sessions remaining, last visit, next billing
+    sessions_remaining = member.get("sessions_remaining")
+    last_visit_date = None
+    if last_access:
+        last_visit_date = last_access.get("timestamp")
+    
+    # Calculate next billing date (simplified - based on membership type duration)
+    next_billing_date = member.get("next_billing_date")
+    if not next_billing_date and membership_type:
+        # If not explicitly set, calculate from join date + duration
+        duration_months = membership_type.get("duration_months", 1)
+        if member.get("join_date"):
+            join_date_dt = datetime.fromisoformat(member["join_date"]) if isinstance(member["join_date"], str) else member["join_date"]
+            next_billing_date = (join_date_dt + timedelta(days=duration_months * 30)).isoformat()
+    
     return {
         "member": member,
         "membership_type": membership_type,
@@ -2823,7 +2838,12 @@ async def get_member_profile(member_id: str, current_user: User = Depends(get_cu
             "status": retention_status
         },
         "payment_progress": payment_progress,
-        "missing_data": missing_data
+        "missing_data": missing_data,
+        # Phase 1 - Enhanced fields
+        "sessions_remaining": sessions_remaining,
+        "last_visit_date": last_visit_date,
+        "next_billing_date": next_billing_date,
+        "tags": member.get("tags", [])
     }
 
 @api_router.get("/members/{member_id}/access-logs")
