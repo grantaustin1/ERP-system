@@ -3855,6 +3855,48 @@ async def validate_access(data: AccessLogCreate):
         {"$set": {"last_visit_date": datetime.now(timezone.utc).isoformat()}}
     )
     
+    # AUTO-AWARD POINTS: Check-in reward (5 points per visit)
+    import uuid
+    try:
+        # Get current balance
+        balance = await db.points_balances.find_one({"member_id": member_obj.id}, {"_id": 0})
+        
+        if not balance:
+            balance = {"member_id": member_obj.id, "total_points": 0, "lifetime_points": 0}
+        
+        # Award 5 points for check-in
+        points_to_award = 5
+        new_total = balance.get("total_points", 0) + points_to_award
+        new_lifetime = balance.get("lifetime_points", 0) + points_to_award
+        
+        await db.points_balances.update_one(
+            {"member_id": member_obj.id},
+            {
+                "$set": {
+                    "total_points": new_total,
+                    "lifetime_points": new_lifetime,
+                    "last_updated": datetime.now(timezone.utc).isoformat()
+                }
+            },
+            upsert=True
+        )
+        
+        # Record transaction
+        transaction = {
+            "id": str(uuid.uuid4()),
+            "member_id": member_obj.id,
+            "points": points_to_award,
+            "transaction_type": "earned",
+            "reason": "Check-in reward",
+            "reference_id": log_doc.get("id"),
+            "created_at": datetime.now(timezone.utc).isoformat()
+        }
+        
+        await db.points_transactions.insert_one(transaction.copy())
+    except Exception as e:
+        # Don't fail the check-in if points award fails
+        print(f"Failed to award points: {e}")
+    
     # Log to journal
     class_info = f" for {access_log_data.get('class_name')}" if access_log_data.get('class_name') else ""
     await add_journal_entry(
