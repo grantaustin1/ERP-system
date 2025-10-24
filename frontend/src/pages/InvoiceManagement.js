@@ -568,6 +568,7 @@ export default function InvoiceManagement() {
                   </div>
                 </DialogContent>
               </Dialog>
+              </PermissionGuard>
             </div>
           </div>
 
