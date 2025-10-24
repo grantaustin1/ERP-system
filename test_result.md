@@ -3825,6 +3825,9 @@ test_plan:
 
 agent_communication:
   - agent: "testing"
+    message: "✅ MEMBER JOURNAL FUNCTIONALITY TESTING COMPLETED - 100% SUCCESS RATE (14/14 tests passed). All Member Journal functionality is working perfectly. **MANUAL JOURNAL ENTRY CREATION**: POST /api/members/{member_id}/journal endpoint working correctly - creates journal entries with proper structure (journal_id, member_id, action_type, description, metadata, created_by, created_by_name, created_at). **JOURNAL RETRIEVAL WITH FILTERS**: GET /api/members/{member_id}/journal supports all filtering - no filters (all entries), action_type filter (email_sent entries), search filter (entries containing 'test'). **AUTOMATIC LOGGING INTEGRATION**: Profile updates automatically create profile_updated entries with changed fields in metadata. Note creation/deletion automatically creates note_added/note_deleted entries. **METADATA VERIFICATION**: All journal entries have proper field types and datetime formatting. **COMPREHENSIVE TESTING**: Tested manual creation, automatic triggers, filtering, metadata structure - all working as designed. Member Journal system is production-ready."
+
+  - agent: "testing"
     message: "✅ MEMBER PROFILE DRILL-DOWN TESTING COMPLETED SUCCESSFULLY - All major functionality working correctly. Tested: member card clicks, profile dialog opening, status badges, mini stat cards (debt/bookings/no-shows/last access), all 5 tabs (Overview/Access Logs/Bookings/Invoices/Notes), edit functionality with save/cancel, freeze status management, notes CRUD operations. Found 88 member cards, dialog opens with proper member data, all tabs load correctly. Only minor console warnings about DialogContent accessibility - non-critical. Feature is production-ready and fully functional."
       
       ✅ FEATURES:
