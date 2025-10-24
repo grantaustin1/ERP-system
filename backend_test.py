@@ -82,12 +82,12 @@ class PriorityTestRunner:
             membership_type_id = membership_types[0]["id"]
             
             # Create first test member
-            timestamp = int(time.time())
+            timestamp = int(time.time() * 1000)  # Use milliseconds for more uniqueness
             member_data_1 = {
                 "first_name": "Alice",
-                "last_name": "TestMember",
+                "last_name": f"TestMember{timestamp}",
                 "email": f"alice.testmember.{timestamp}@example.com",
-                "phone": f"082111{timestamp % 10000:04d}",
+                "phone": f"082111{timestamp % 100000:05d}",
                 "membership_type_id": membership_type_id
             }
             
