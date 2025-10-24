@@ -11891,6 +11891,33 @@ async def send_bulk_notification(
 app.include_router(api_router)
 
 
+# Startup event to seed default tags
+@app.on_event("startup")
+async def startup_event():
+    """Initialize default tags if they don't exist"""
+    default_tags = [
+        {"name": "VIP", "color": "#fbbf24", "category": "Status", "description": "VIP member"},
+        {"name": "New Member", "color": "#3b82f6", "category": "Status", "description": "Recently joined"},
+        {"name": "Late Payer", "color": "#ef4444", "category": "Payment", "description": "History of late payments"},
+        {"name": "Personal Training", "color": "#8b5cf6", "category": "Program", "description": "Enrolled in personal training"},
+        {"name": "Group Classes", "color": "#10b981", "category": "Program", "description": "Regular group class attendee"},
+        {"name": "High Risk", "color": "#dc2626", "category": "Status", "description": "At risk of cancellation"},
+        {"name": "Loyal", "color": "#059669", "category": "Status", "description": "Long-term loyal member"},
+    ]
+    
+    for tag_data in default_tags:
+        existing = await db.tags.find_one({"name": tag_data["name"]})
+        if not existing:
+            tag = Tag(
+                name=tag_data["name"],
+                color=tag_data["color"],
+                category=tag_data.get("category"),
+                description=tag_data.get("description"),
+                usage_count=0
+            )
+            await db.tags.insert_one(tag.model_dump())
+
+
 # Audit Logging Middleware
 @app.middleware("http")
 async def audit_logging_middleware(request, call_next):
