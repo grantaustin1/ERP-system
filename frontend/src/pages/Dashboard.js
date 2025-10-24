@@ -149,6 +149,41 @@ export default function Dashboard() {
     // TODO: Update charts with new date range when we implement chart selector
   };
 
+  // Phase 2B - Fetch retention intelligence data
+  const fetchPhase2BData = async () => {
+    try {
+      setLoadingRetention(true);
+      
+      // Fetch at-risk members
+      const atRiskResponse = await axios.get(`${API}/retention/at-risk-members`);
+      setAtRiskMembers(atRiskResponse.data);
+      
+      // Fetch retention alerts for different periods
+      const alerts7Response = await axios.get(`${API}/retention/retention-alerts?days=7`);
+      setAlerts7Days(alerts7Response.data);
+      
+      const alerts14Response = await axios.get(`${API}/retention/retention-alerts?days=14`);
+      setAlerts14Days(alerts14Response.data);
+      
+      const alerts28Response = await axios.get(`${API}/retention/retention-alerts?days=28`);
+      setAlerts28Days(alerts28Response.data);
+      
+      // Fetch expiring memberships
+      const expiringResponse = await axios.get(`${API}/retention/expiring-memberships?days=30`);
+      setExpiringMemberships(expiringResponse.data);
+      
+      // Fetch dropoff analytics
+      const dropoffResponse = await axios.get(`${API}/retention/dropoff-analytics`);
+      setDropoffAnalytics(dropoffResponse.data);
+      
+    } catch (error) {
+      console.error('Failed to fetch Phase 2B retention data:', error);
+      toast.error('Failed to load retention intelligence');
+    } finally {
+      setLoadingRetention(false);
+    }
+  };
+
   const fetchStatDetails = async (statType) => {
     try {
       setSelectedStat(statType);
