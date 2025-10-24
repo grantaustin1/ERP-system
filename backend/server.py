@@ -3321,12 +3321,17 @@ async def create_access_override(
         if not override_data.first_name or not override_data.last_name:
             raise HTTPException(status_code=400, detail="First name and last name required for new prospects")
         
+        # Get a default membership type for prospects
+        default_membership = await db.membership_types.find_one({"status": "active"}, {"_id": 0})
+        if not default_membership:
+            raise HTTPException(status_code=500, detail="No membership types available for prospect creation")
+        
         new_member = Member(
             first_name=override_data.first_name,
             last_name=override_data.last_name,
             phone=override_data.phone or "N/A",
             email=override_data.email or f"{uuid.uuid4()}@prospect.temp",
-            membership_type_id="prospect",
+            membership_type_id=default_membership["id"],
             membership_status="prospect",
             is_prospect=True,
             prospect_source=sub_reason.get("name") if sub_reason else reason.get("name"),
