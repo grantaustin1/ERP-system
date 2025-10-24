@@ -3236,6 +3236,10 @@ async def search_members(
         {"_id": 0, "first_name": 1, "last_name": 1, "email": 1, "phone": 1, "id": 1, "membership_status": 1, "expiry_date": 1, "access_pin": 1, "is_prospect": 1}
     ).limit(10).to_list(length=10)
     
+    # If no members found, return empty array instead of 404
+    if not members:
+        return []
+    
     # Enhance with status info
     for member in members:
         if member.get("is_prospect"):
