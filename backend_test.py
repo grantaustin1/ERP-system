@@ -65,8 +65,8 @@ class EnhancedMemberManagementTester:
             self.log_result("Authentication", False, f"Authentication error: {str(e)}")
             return False
     
-    def setup_test_member(self):
-        """Create a test member for invoice testing"""
+    def setup_test_members(self):
+        """Create test members for enhanced member management testing"""
         try:
             # Get membership types
             response = requests.get(f"{API_BASE}/membership-types", headers=self.headers)
@@ -81,29 +81,48 @@ class EnhancedMemberManagementTester:
             
             membership_type_id = membership_types[0]["id"]
             
-            # Create test member
+            # Create first test member
             timestamp = int(time.time())
-            member_data = {
-                "first_name": "John",
-                "last_name": "TestBilling",
-                "email": f"john.testbilling.{timestamp}@example.com",
-                "phone": f"082555{timestamp % 10000:04d}",
+            member_data_1 = {
+                "first_name": "Alice",
+                "last_name": "TestMember",
+                "email": f"alice.testmember.{timestamp}@example.com",
+                "phone": f"082111{timestamp % 10000:04d}",
                 "membership_type_id": membership_type_id
             }
             
-            response = requests.post(f"{API_BASE}/members", json=member_data, headers=self.headers)
+            response = requests.post(f"{API_BASE}/members", json=member_data_1, headers=self.headers)
             if response.status_code == 200:
                 member = response.json()
                 self.test_member_id = member["id"]
                 self.created_members.append(member["id"])
-                self.log_result("Setup Test Member", True, f"Created test member: {self.test_member_id}")
+                self.log_result("Setup Test Member 1", True, f"Created test member 1: {self.test_member_id}")
+            else:
+                self.log_result("Setup Test Member 1", False, f"Failed to create test member 1: {response.status_code}")
+                return False
+            
+            # Create second test member
+            member_data_2 = {
+                "first_name": "Bob",
+                "last_name": "TestMember",
+                "email": f"bob.testmember.{timestamp}@example.com",
+                "phone": f"082222{timestamp % 10000:04d}",
+                "membership_type_id": membership_type_id
+            }
+            
+            response = requests.post(f"{API_BASE}/members", json=member_data_2, headers=self.headers)
+            if response.status_code == 200:
+                member = response.json()
+                self.test_member_id_2 = member["id"]
+                self.created_members.append(member["id"])
+                self.log_result("Setup Test Member 2", True, f"Created test member 2: {self.test_member_id_2}")
                 return True
             else:
-                self.log_result("Setup Test Member", False, f"Failed to create test member: {response.status_code}")
+                self.log_result("Setup Test Member 2", False, f"Failed to create test member 2: {response.status_code}")
                 return False
                 
         except Exception as e:
-            self.log_result("Setup Test Member", False, f"Error creating test member: {str(e)}")
+            self.log_result("Setup Test Members", False, f"Error creating test members: {str(e)}")
             return False
     
     def test_billing_settings_get_default(self):
