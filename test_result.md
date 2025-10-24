@@ -1669,15 +1669,18 @@ frontend:
 
   - task: "ClubManager Enhancement - UnifiedMessagingDialog Component"
     implemented: true
-    working: false
+    working: true
     file: "/app/frontend/src/components/UnifiedMessagingDialog.jsx"
-    stuck_count: 1
+    stuck_count: 0
     priority: "high"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
       - working: false
         agent: "testing"
         comment: "❌ UnifiedMessagingDialog component has critical issues: Dialog opens when 'Send Message' button is clicked, but SelectItem component error prevents proper rendering of message type buttons (SMS, Email, WhatsApp, Push). Template selector, message body textarea, and Send button are not visible due to component errors. Error: 'A <Select.Item /> must have a value prop that is not an empty string'. Dialog accessibility warnings also present (missing DialogTitle and Description). Component needs SelectItem value prop fixes to function properly."
+      - working: true
+        agent: "testing"
+        comment: "✅ UnifiedMessagingDialog component now working correctly: Dialog opens successfully when 'Send Message' button is clicked. All message type buttons (SMS, Email, WhatsApp, Push) are visible and functional. Template selector dropdown working with 'Choose a template' placeholder. Message textarea present with character counter (1500 chars / 0 SMS). SMS credits display showing 2500 available credits. Checkboxes for 'This is a marketing message' and 'Save as new template' working. Send SMS button functional. Button interactions successful - SMS button click works properly. All core messaging functionality operational. Minor: Dialog accessibility warnings still present (missing DialogTitle and Description) but do not affect functionality."
 
   - task: "POS System - Frontend Remove Mock Data"
     implemented: true
