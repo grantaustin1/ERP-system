@@ -2075,7 +2075,13 @@ class EnhancedMemberManagementTester:
         
         print("\n" + "=" * 80)
 
-class PaymentOptionLevyTester:
+
+if __name__ == "__main__":
+    print("🎯 Enhanced Member Management System - Phase 1 Quick Wins Testing")
+    print("=" * 80)
+    
+    tester = EnhancedMemberManagementTester()
+    tester.run_all_tests()
     def __init__(self):
         self.token = None
         self.headers = {}
