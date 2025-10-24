@@ -18,7 +18,7 @@ API_BASE = f"{BASE_URL}/api"
 TEST_EMAIL = "admin@gym.com"
 TEST_PASSWORD = "admin123"
 
-class MemberImportTester:
+class AccessOverrideTester:
     def __init__(self):
         self.token = None
         self.headers = {}
