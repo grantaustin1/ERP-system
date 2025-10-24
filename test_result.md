@@ -5284,3 +5284,60 @@ agent_communication:
     message: "Chart Selector component fixes applied - restarted frontend service to resolve Chart.js module resolution issue"
   - agent: "testing"
     message: "🎉 CHART SELECTOR TESTING COMPLETE - FULLY FUNCTIONAL: ✅ Component working perfectly after fixes. All 5 dropdown options visible and selectable (Age Distribution Analysis, Average Membership Duration, Attendance by Day of Week, Top Referring Members, Member Acquisition Sources). ✅ Dropdown opens correctly showing all options. ✅ Chart area renders properly with canvas elements. ✅ Chart.js module resolution issue resolved after frontend service restart. ✅ No console errors related to Chart.js. ✅ Component ready for production use. The previous dropdown issue was resolved by restarting the frontend service, which cleared the Chart.js module resolution problems. Chart Selector component is now fully functional and meets all requirements."
+
+# ==================== PHASE 2C - REPORT LIBRARY ====================
+
+backend:
+  - task: "Phase 2C - Incomplete Data Report API"
+    implemented: true
+    working: "NA"
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Phase 2C Report Library - Implemented GET /api/reports/incomplete-data endpoint. Analyzes members with missing critical information (phone, email, emergency contact, address, DOB, bank details). Calculates priority scores (Critical/High/Medium/Low) based on missing field importance. Returns summary statistics (total members, completion rate, priority distribution) and detailed member list with missing fields. Provides most common missing fields analysis. Ready for backend testing."
+
+  - task: "Phase 2C - Birthday Report API"
+    implemented: true
+    working: "NA"
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Phase 2C Report Library - Implemented GET /api/reports/birthdays endpoint with days_ahead parameter (default 30). Calculates upcoming birthdays for active/frozen members. Groups birthdays by period (this week, next week, later). Returns member details with birthday date, age turning, and days until birthday. Includes summary statistics by period. Ready for backend testing."
+
+  - task: "Phase 2C - Anniversary Report API"
+    implemented: true
+    working: "NA"
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Phase 2C Report Library - Implemented GET /api/reports/anniversaries endpoint with days_ahead parameter (default 30). Calculates membership anniversaries for active/frozen members. Groups by milestone (1 year, 5 years, 10+ years). Returns member details with anniversary date, years completing, and days until. Includes summary statistics by milestone. Only includes members with 1+ years of membership. Ready for backend testing."
+
+frontend:
+  - task: "Phase 2C - Reports Page Component"
+    implemented: true
+    working: "NA"
+    file: "/app/frontend/src/pages/Reports.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Phase 2C Report Library - Created comprehensive Reports page with 3 tabs: Incomplete Data, Birthdays, Anniversaries. Integrated all Phase 2C report APIs. Features include: summary cards with key metrics, filterable data tables, date range selectors, priority filtering, export buttons (PDF/Excel placeholders), responsive design with dark theme. Incomplete Data tab shows members with missing information, priority badges, and edit profile links. Birthdays tab displays upcoming celebrations grouped by period. Anniversaries tab shows milestone achievements (1/5/10+ years). Navigation integrated into sidebar and routing. Ready for frontend testing."
+
+agent_communication:
+  - agent: "main"
+    message: "✅ PHASE 2C - REPORT LIBRARY IMPLEMENTED: Created comprehensive report system with 3 backend APIs (incomplete data, birthdays, anniversaries) and integrated frontend Reports page. **BACKEND**: Implemented GET /api/reports/incomplete-data analyzing members missing critical information with priority scoring (Critical/High/Medium/Low) based on field importance. Implemented GET /api/reports/birthdays with configurable days_ahead parameter, grouping by period (this week/next week/later). Implemented GET /api/reports/anniversaries tracking membership milestones (1/5/10+ years). All APIs include summary statistics and detailed member lists. **FRONTEND**: Created Reports.js page with 3-tab interface (Incomplete Data, Birthdays, Anniversaries). Each tab features summary cards, filterable tables, date range selectors, and export buttons. Incomplete Data tab shows priority-based filtering with color-coded badges. Birthday/Anniversary tabs allow customizable date ranges (7/14/30/60/90 days). Export functionality placeholders added for PDF/Excel. Navigation added to sidebar (/reports route). Dark theme consistent throughout. Ready for comprehensive testing."
+
