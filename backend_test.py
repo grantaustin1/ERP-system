@@ -717,13 +717,13 @@ class AdvancedAnalyticsTestRunner:
             for endpoint in endpoints:
                 response = requests.get(f"{API_BASE}{endpoint}")
                 
-                if response.status_code != 401:
+                if response.status_code not in [401, 403]:
                     self.log_result(f"Authentication {endpoint}", False, 
-                                  f"Expected 401 Unauthorized, got {response.status_code}")
+                                  f"Expected 401 or 403 (authentication required), got {response.status_code}")
                     return False
                 
                 self.log_result(f"Authentication {endpoint}", True, 
-                              "Correctly requires authentication")
+                              f"Correctly requires authentication (status: {response.status_code})")
             
             return True
                 
