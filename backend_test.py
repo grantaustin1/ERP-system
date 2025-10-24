@@ -165,61 +165,82 @@ class EnhancedMemberManagementTester:
             self.log_result("Get Default Tags", False, f"Error getting tags: {str(e)}")
             return None
     
-    def test_billing_settings_create_update(self):
-        """Test POST /api/billing/settings - Create/update billing settings with all fields"""
-        print("\n=== Testing Billing Settings POST (Create/Update) ===")
+    def test_create_custom_tags(self):
+        """Test POST /api/tags - Create new tags with different colors and categories"""
+        print("\n=== Testing Create Custom Tags ===")
+        
+        # Test creating 3 custom tags with different properties
+        custom_tags = [
+            {
+                "name": "Premium Member",
+                "color": "#FFD700",  # Gold
+                "category": "Status",
+                "description": "Premium membership tier with exclusive benefits"
+            },
+            {
+                "name": "Fitness Challenge",
+                "color": "#FF6B35",  # Orange
+                "category": "Program",
+                "description": "Members participating in fitness challenges"
+            },
+            {
+                "name": "Corporate Client",
+                "color": "#4ECDC4",  # Teal
+                "category": "Type",
+                "description": "Corporate membership clients"
+            }
+        ]
+        
+        created_tags = []
         
         try:
-            # Test data with all billing settings fields
-            settings_data = {
-                "auto_email_invoices": True,
-                "email_on_invoice_created": True,
-                "email_on_invoice_overdue": True,
-                "email_reminder_days_before_due": [7, 3, 1],
-                "default_tax_rate": 15.0,
-                "tax_enabled": True,
-                "tax_number": "VAT123456789",
-                "invoice_prefix": "INV",
-                "invoice_number_format": "{prefix}-{year}-{sequence}",
-                "next_invoice_number": 1,
-                "company_name": "Test Gym Ltd",
-                "company_address": "123 Fitness Street, Cape Town, 8001",
-                "company_phone": "+27 21 123 4567",
-                "company_email": "billing@testgym.com",
-                "default_payment_terms_days": 30,
-                "auto_generate_membership_invoices": False,
-                "days_before_renewal_to_invoice": 5
-            }
-            
-            response = requests.post(f"{API_BASE}/billing/settings", 
-                                   json=settings_data, headers=self.headers)
-            
-            if response.status_code == 200:
-                updated_settings = response.json()
+            for tag_data in custom_tags:
+                response = requests.post(f"{API_BASE}/tags", json=tag_data, headers=self.headers)
                 
-                # Verify all fields were saved correctly
-                fields_correct = all(
-                    updated_settings.get(key) == value 
-                    for key, value in settings_data.items()
-                )
-                
-                if fields_correct:
-                    self.log_result("Billing Settings POST", True, 
-                                  "Successfully created/updated billing settings with all fields")
-                    return True
+                if response.status_code == 200:
+                    tag = response.json()
+                    tag_id = tag.get("id")
+                    
+                    if tag_id:
+                        created_tags.append(tag_id)
+                        self.created_tags.append(tag_id)
+                    
+                    # Verify tag structure and data
+                    required_fields = ["id", "name", "color", "category", "description", "usage_count"]
+                    has_all_fields = all(field in tag for field in required_fields)
+                    
+                    # Verify data matches what we sent
+                    data_matches = (
+                        tag.get("name") == tag_data["name"] and
+                        tag.get("color") == tag_data["color"] and
+                        tag.get("category") == tag_data["category"] and
+                        tag.get("description") == tag_data["description"] and
+                        tag.get("usage_count") == 0  # Should start at 0
+                    )
+                    
+                    if has_all_fields and data_matches:
+                        self.log_result(f"Create Tag - {tag_data['name']}", True, 
+                                      f"Tag created successfully with correct properties")
+                    else:
+                        self.log_result(f"Create Tag - {tag_data['name']}", False, 
+                                      f"Tag creation issues: fields_complete={has_all_fields}, data_correct={data_matches}")
                 else:
-                    self.log_result("Billing Settings POST", False, 
-                                  "Some billing settings fields not saved correctly")
-                    return False
+                    self.log_result(f"Create Tag - {tag_data['name']}", False, 
+                                  f"Failed to create tag: {response.status_code}",
+                                  {"response": response.text})
+            
+            if len(created_tags) == 3:
+                self.log_result("Create Custom Tags", True, 
+                              f"Successfully created {len(created_tags)} custom tags")
+                return created_tags
             else:
-                self.log_result("Billing Settings POST", False, 
-                              f"Failed to create/update billing settings: {response.status_code}",
-                              {"response": response.text})
-                return False
+                self.log_result("Create Custom Tags", False, 
+                              f"Only created {len(created_tags)} of 3 expected tags")
+                return created_tags
                 
         except Exception as e:
-            self.log_result("Billing Settings POST", False, f"Error creating/updating billing settings: {str(e)}")
-            return False
+            self.log_result("Create Custom Tags", False, f"Error creating custom tags: {str(e)}")
+            return []
     
     def test_create_invoice_with_line_items(self):
         """Test POST /api/invoices - Create invoice with line items"""
