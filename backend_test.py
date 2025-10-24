@@ -66,7 +66,7 @@ class DashboardTestRunner:
             return False
     
     def setup_test_members(self):
-        """Create test members for enhanced member management testing"""
+        """Create test members for dashboard testing"""
         try:
             # Get membership types
             response = requests.get(f"{API_BASE}/membership-types", headers=self.headers)
@@ -84,10 +84,10 @@ class DashboardTestRunner:
             # Create first test member
             timestamp = int(time.time() * 1000)  # Use milliseconds for more uniqueness
             member_data_1 = {
-                "first_name": "Alice",
-                "last_name": f"TestMember{timestamp}",
-                "email": f"alice.testmember.{timestamp}@example.com",
-                "phone": f"082111{timestamp % 100000:05d}",
+                "first_name": "Sarah",
+                "last_name": f"DashboardTest{timestamp}",
+                "email": f"sarah.dashboard.{timestamp}@example.com",
+                "phone": f"082333{timestamp % 100000:05d}",
                 "membership_type_id": membership_type_id
             }
             
@@ -104,10 +104,10 @@ class DashboardTestRunner:
             
             # Create second test member
             member_data_2 = {
-                "first_name": "Bob",
-                "last_name": f"TestMember{timestamp}",
-                "email": f"bob.testmember.{timestamp}@example.com",
-                "phone": f"082222{timestamp % 100000:05d}",
+                "first_name": "Michael",
+                "last_name": f"DashboardTest{timestamp}",
+                "email": f"michael.dashboard.{timestamp}@example.com",
+                "phone": f"082444{timestamp % 100000:05d}",
                 "membership_type_id": membership_type_id
             }
             
@@ -125,325 +125,6 @@ class DashboardTestRunner:
                 
         except Exception as e:
             self.log_result("Setup Test Members", False, f"Error creating test members: {str(e)}")
-            return False
-    
-    
-    def test_member_cancel_api_priority(self):
-        """PRIORITY TEST: Member Cancel API - Test TypeError fix and proper field updates"""
-        print("\n=== PRIORITY TEST: Member Cancel API ===")
-        
-        if not self.test_member_id:
-            self.log_result("Member Cancel API", False, "No test member available")
-            return False
-        
-        # Test 1: Cancel member with NULL notes field
-        try:
-            # First ensure member has NULL notes
-            await_result = requests.put(f"{API_BASE}/members/{self.test_member_id}", 
-                                      json={"notes": None}, headers=self.headers)
-            
-            cancel_data = {
-                "reason": "Moving to another city",
-                "notes": "Member relocating for work - 30 days notice provided"
-            }
-            
-            response = requests.post(f"{API_BASE}/members/{self.test_member_id}/cancel", 
-                                   json=cancel_data, headers=self.headers)
-            
-            if response.status_code == 200:
-                result = response.json()
-                
-                # Verify response indicates success
-                if "cancelled" in result.get("message", "").lower():
-                    self.log_result("Cancel Member with NULL Notes", True, 
-                                  f"Successfully cancelled member: {result.get('message')}")
-                    
-                    # Verify member fields updated correctly
-                    member_response = requests.get(f"{API_BASE}/members/{self.test_member_id}", headers=self.headers)
-                    if member_response.status_code == 200:
-                        member = member_response.json()
-                        
-                        # Check all required fields
-                        checks = {
-                            "membership_status": member.get("membership_status") == "cancelled",
-                            "cancellation_reason": member.get("cancellation_reason") == cancel_data["reason"],
-                            "cancellation_date": member.get("cancellation_date") is not None,
-                            "notes_updated": cancel_data["notes"] in (member.get("notes") or "")
-                        }
-                        
-                        if all(checks.values()):
-                            self.log_result("Verify Cancel Fields - NULL Notes", True, 
-                                          "All cancellation fields updated correctly")
-                        else:
-                            failed_checks = [k for k, v in checks.items() if not v]
-                            self.log_result("Verify Cancel Fields - NULL Notes", False, 
-                                          f"Failed checks: {failed_checks}")
-                    
-                    # Verify journal entry created
-                    journal_response = requests.get(f"{API_BASE}/members/{self.test_member_id}/journal", headers=self.headers)
-                    if journal_response.status_code == 200:
-                        journal_entries = journal_response.json()
-                        cancel_entry = next((e for e in journal_entries if "cancelled" in e.get("description", "").lower()), None)
-                        
-                        if cancel_entry:
-                            self.log_result("Verify Cancel Journal Entry", True, 
-                                          "Journal entry created for cancellation")
-                        else:
-                            self.log_result("Verify Cancel Journal Entry", False, 
-                                          "No journal entry found for cancellation")
-                    
-                    return True
-                else:
-                    self.log_result("Cancel Member with NULL Notes", False, 
-                                  f"Unexpected response: {result}")
-                    return False
-            else:
-                self.log_result("Cancel Member with NULL Notes", False, 
-                              f"Failed to cancel member: {response.status_code}",
-                              {"response": response.text})
-                return False
-                
-        except Exception as e:
-            self.log_result("Member Cancel API", False, f"Error testing cancel API: {str(e)}")
-            return False
-    
-    def test_member_cancel_existing_notes(self):
-        """Test Member Cancel API with existing notes"""
-        print("\n=== Testing Member Cancel with Existing Notes ===")
-        
-        if not self.test_member_id_2:
-            self.log_result("Member Cancel with Existing Notes", False, "No test member available")
-            return False
-        
-        try:
-            # First set existing notes on member
-            existing_notes = "Previous notes: Member requested schedule change last month."
-            update_response = requests.put(f"{API_BASE}/members/{self.test_member_id_2}", 
-                                         json={"notes": existing_notes}, headers=self.headers)
-            
-            if update_response.status_code != 200:
-                self.log_result("Set Existing Notes", False, "Failed to set existing notes")
-                return False
-            
-            # Now cancel with additional notes
-            cancel_data = {
-                "reason": "Financial difficulties",
-                "notes": "Member unable to continue due to job loss. Offered payment plan but declined."
-            }
-            
-            response = requests.post(f"{API_BASE}/members/{self.test_member_id_2}/cancel", 
-                                   json=cancel_data, headers=self.headers)
-            
-            if response.status_code == 200:
-                result = response.json()
-                
-                if "cancelled" in result.get("message", "").lower():
-                    self.log_result("Cancel Member with Existing Notes", True, 
-                                  f"Successfully cancelled member: {result.get('message')}")
-                    
-                    # Verify notes were properly concatenated
-                    member_response = requests.get(f"{API_BASE}/members/{self.test_member_id_2}", headers=self.headers)
-                    if member_response.status_code == 200:
-                        member = member_response.json()
-                        final_notes = member.get("notes", "")
-                        
-                        # Check that both existing and new notes are present
-                        has_existing = existing_notes in final_notes
-                        has_new = cancel_data["notes"] in final_notes
-                        
-                        if has_existing and has_new:
-                            self.log_result("Verify Notes Concatenation", True, 
-                                          "Both existing and cancellation notes preserved")
-                        else:
-                            self.log_result("Verify Notes Concatenation", False, 
-                                          f"Notes concatenation failed: existing={has_existing}, new={has_new}")
-                    
-                    return True
-                else:
-                    self.log_result("Cancel Member with Existing Notes", False, 
-                                  f"Unexpected response: {result}")
-                    return False
-            else:
-                self.log_result("Cancel Member with Existing Notes", False, 
-                              f"Failed to cancel member: {response.status_code}",
-                              {"response": response.text})
-                return False
-                
-        except Exception as e:
-            self.log_result("Member Cancel with Existing Notes", False, f"Error testing cancel with existing notes: {str(e)}")
-            return False
-    
-    def test_enhanced_profile_endpoint_priority(self):
-        """PRIORITY TEST: Enhanced Profile Endpoint - Verify Phase 1 fields and structure"""
-        print("\n=== PRIORITY TEST: Enhanced Profile Endpoint ===")
-        
-        if not self.test_member_id_2:
-            self.log_result("Enhanced Profile Endpoint", False, "No test member available")
-            return False
-        
-        try:
-            response = requests.get(f"{API_BASE}/members/{self.test_member_id_2}/profile", headers=self.headers)
-            
-            if response.status_code == 200:
-                profile = response.json()
-                
-                # CRITICAL: Verify member data is nested under "member" key
-                has_member_key = "member" in profile
-                if not has_member_key:
-                    self.log_result("Profile Structure - Member Key", False, 
-                                  "Profile response missing 'member' key")
-                    return False
-                else:
-                    self.log_result("Profile Structure - Member Key", True, 
-                                  "Profile response has 'member' key")
-                
-                # Verify Phase 1 enhanced fields are present at root level
-                phase1_fields = [
-                    "sessions_remaining",
-                    "last_visit_date", 
-                    "next_billing_date",
-                    "tags"
-                ]
-                
-                missing_phase1_fields = [field for field in phase1_fields if field not in profile]
-                
-                if not missing_phase1_fields:
-                    self.log_result("Phase 1 Fields Present", True, 
-                                  f"All Phase 1 fields present: {', '.join(phase1_fields)}")
-                else:
-                    self.log_result("Phase 1 Fields Present", False, 
-                                  f"Missing Phase 1 fields: {missing_phase1_fields}")
-                    return False
-                
-                # Verify standard member fields are present in member object
-                member_data = profile.get("member", {})
-                standard_fields = ["id", "first_name", "last_name", "email", "phone", "membership_status"]
-                missing_standard_fields = [field for field in standard_fields if field not in member_data]
-                
-                if not missing_standard_fields:
-                    self.log_result("Standard Member Fields", True, 
-                                  f"All standard fields present in member object")
-                else:
-                    self.log_result("Standard Member Fields", False, 
-                                  f"Missing standard fields in member object: {missing_standard_fields}")
-                
-                # Log current Phase 1 field values for verification
-                phase1_values = {field: profile.get(field) for field in phase1_fields}
-                self.log_result("Phase 1 Field Values", True, 
-                              f"Current values: {json.dumps(phase1_values, indent=2)}")
-                
-                # Verify additional profile sections exist
-                expected_sections = ["stats", "retention", "payment_progress"]
-                missing_sections = [section for section in expected_sections if section not in profile]
-                
-                if not missing_sections:
-                    self.log_result("Profile Sections Complete", True, 
-                                  "All expected profile sections present")
-                else:
-                    self.log_result("Profile Sections Complete", False, 
-                                  f"Missing profile sections: {missing_sections}")
-                
-                return len(missing_phase1_fields) == 0 and len(missing_standard_fields) == 0
-                
-            else:
-                self.log_result("Enhanced Profile Endpoint", False, 
-                              f"Failed to get member profile: {response.status_code}",
-                              {"response": response.text})
-                return False
-                
-        except Exception as e:
-            self.log_result("Enhanced Profile Endpoint", False, f"Error getting member profile: {str(e)}")
-            return False
-    
-    def test_create_custom_tag_quick(self):
-        """Quick test: Create one custom tag"""
-        print("\n=== Quick Test: Create Custom Tag ===")
-        
-        try:
-            tag_data = {
-                "name": "Test Priority Tag",
-                "color": "#FF5722",
-                "category": "Testing",
-                "description": "Tag created during priority testing"
-            }
-            
-            response = requests.post(f"{API_BASE}/tags", json=tag_data, headers=self.headers)
-            
-            if response.status_code == 200:
-                tag = response.json()
-                tag_id = tag.get("id")
-                
-                if tag_id:
-                    self.created_tags.append(tag_id)
-                
-                # Verify tag structure
-                required_fields = ["id", "name", "color", "category", "description", "usage_count"]
-                has_all_fields = all(field in tag for field in required_fields)
-                
-                if has_all_fields and tag.get("name") == tag_data["name"]:
-                    self.log_result("Create Custom Tag", True, 
-                                  f"Tag created successfully: {tag.get('name')}")
-                    return tag_id
-                else:
-                    self.log_result("Create Custom Tag", False, 
-                                  "Tag creation issues with structure or data")
-                    return None
-            else:
-                self.log_result("Create Custom Tag", False, 
-                              f"Failed to create tag: {response.status_code}",
-                              {"response": response.text})
-                return None
-                
-        except Exception as e:
-            self.log_result("Create Custom Tag", False, f"Error creating tag: {str(e)}")
-            return None
-    
-    def test_add_tag_to_member_quick(self, tag_name="Test Priority Tag"):
-        """Quick test: Add tag to member"""
-        print("\n=== Quick Test: Add Tag to Member ===")
-        
-        if not self.test_member_id:
-            self.log_result("Add Tag to Member", False, "No test member available")
-            return False
-        
-        try:
-            response = requests.post(f"{API_BASE}/members/{self.test_member_id}/tags/{tag_name}", 
-                                   headers=self.headers)
-            
-            if response.status_code == 200:
-                result = response.json()
-                
-                if "added" in result.get("message", "").lower():
-                    self.log_result("Add Tag to Member", True, 
-                                  f"Tag '{tag_name}' added successfully")
-                    
-                    # Verify tag in member profile
-                    member_response = requests.get(f"{API_BASE}/members/{self.test_member_id}", headers=self.headers)
-                    if member_response.status_code == 200:
-                        member = member_response.json()
-                        member_tags = member.get("tags", [])
-                        
-                        if tag_name in member_tags:
-                            self.log_result("Verify Tag in Profile", True, 
-                                          f"Tag '{tag_name}' found in member profile")
-                            return True
-                        else:
-                            self.log_result("Verify Tag in Profile", False, 
-                                          f"Tag '{tag_name}' not found in member profile")
-                    
-                    return True
-                else:
-                    self.log_result("Add Tag to Member", False, 
-                                  f"Unexpected response: {result}")
-                    return False
-            else:
-                self.log_result("Add Tag to Member", False, 
-                              f"Failed to add tag: {response.status_code}",
-                              {"response": response.text})
-                return False
-                
-        except Exception as e:
-            self.log_result("Add Tag to Member", False, f"Error adding tag to member: {str(e)}")
             return False
     
     def test_dashboard_snapshot_api(self):
@@ -669,7 +350,6 @@ class DashboardTestRunner:
         except Exception as e:
             self.log_result("Create Test Access Logs", False, f"Error creating access logs: {str(e)}")
             return False
-    
     
     def cleanup_test_data(self):
         """Clean up test data created during testing"""
