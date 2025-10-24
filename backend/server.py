@@ -2796,6 +2796,20 @@ async def validate_access(data: AccessLogCreate):
     log_doc["timestamp"] = log_doc["timestamp"].isoformat()
     await db.access_logs.insert_one(log_doc)
     
+    # Log to journal
+    class_info = f" for {access_log_data.get('class_name')}" if access_log_data.get('class_name') else ""
+    await add_journal_entry(
+        member_id=member_obj.id,
+        action_type="access_granted",
+        description=f"Access granted{class_info} at {data.location or 'main entrance'}",
+        metadata={
+            "location": data.location,
+            "access_method": data.access_method,
+            "class_name": access_log_data.get('class_name'),
+            "class_booking_id": data.class_booking_id
+        }
+    )
+    
     return {"access": "granted", "member": member_obj, "access_log": access_log}
 
 @api_router.get("/access/logs", response_model=List[AccessLog])
