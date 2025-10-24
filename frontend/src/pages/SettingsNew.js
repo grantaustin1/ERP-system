@@ -325,6 +325,63 @@ export default function SettingsNew() {
     }
   };
 
+  // Task Types functions
+  const fetchTaskTypes = async () => {
+    try {
+      const response = await axios.get(`${API}/api/task-types`);
+      setTaskTypes(response.data || []);
+    } catch (error) {
+      console.error('Failed to fetch task types:', error);
+    }
+  };
+
+  const handleSaveTaskType = async () => {
+    try {
+      if (editingTaskType) {
+        // Update existing task type
+        await axios.put(`${API}/api/task-types/${editingTaskType.type_id}`, taskTypeForm);
+        toast({ title: "Success", description: "Task type updated successfully!" });
+      } else {
+        // Create new task type
+        await axios.post(`${API}/api/task-types`, taskTypeForm);
+        toast({ title: "Success", description: "Task type created successfully!" });
+      }
+      fetchTaskTypes();
+      setTaskTypeDialogOpen(false);
+      setEditingTaskType(null);
+      setTaskTypeForm({
+        name: '',
+        description: '',
+        color: '#3b82f6',
+        icon: 'clipboard'
+      });
+    } catch (error) {
+      toast({ title: "Error", description: error.response?.data?.detail || "Failed to save task type", variant: "destructive" });
+    }
+  };
+
+  const handleEditTaskType = (taskType) => {
+    setEditingTaskType(taskType);
+    setTaskTypeForm({
+      name: taskType.name,
+      description: taskType.description || '',
+      color: taskType.color || '#3b82f6',
+      icon: taskType.icon || 'clipboard'
+    });
+    setTaskTypeDialogOpen(true);
+  };
+
+  const handleDeleteTaskType = async (typeId) => {
+    if (!window.confirm('Are you sure you want to delete this task type?')) return;
+    try {
+      await axios.delete(`${API}/api/task-types/${typeId}`);
+      toast({ title: "Success", description: "Task type deleted successfully!" });
+      fetchTaskTypes();
+    } catch (error) {
+      toast({ title: "Error", description: "Failed to delete task type", variant: "destructive" });
+    }
+  };
+
   const handleUpdateFieldConfig = async (fieldId, updates) => {
     try {
       await axios.patch(`${API}/api/field-configurations/${fieldId}`, updates);
