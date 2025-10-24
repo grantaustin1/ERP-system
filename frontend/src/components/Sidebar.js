@@ -63,25 +63,29 @@ export default function Sidebar() {
 
       {/* Navigation */}
       <nav className="flex-1 space-y-2">
-        {menuItems.map((item) => {
-          const Icon = item.icon;
-          const isActive = location.pathname === item.path;
-          return (
-            <button
-              key={item.path}
-              data-testid={item.testId}
-              onClick={() => navigate(item.path)}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all ${
-                isActive
-                  ? 'bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-lg'
-                  : 'text-slate-400 hover:bg-slate-800/50 hover:text-white'
-              }`}
-            >
-              <Icon className="w-5 h-5" />
-              <span className="font-medium">{item.label}</span>
-            </button>
-          );
-        })}
+        {loading ? (
+          <div className="text-slate-400 text-sm text-center py-4">Loading...</div>
+        ) : (
+          visibleMenuItems.map((item) => {
+            const Icon = item.icon;
+            const isActive = location.pathname === item.path;
+            return (
+              <button
+                key={item.path}
+                data-testid={item.testId}
+                onClick={() => navigate(item.path)}
+                className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all ${
+                  isActive
+                    ? 'bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-lg'
+                    : 'text-slate-400 hover:bg-slate-800/50 hover:text-white'
+                }`}
+              >
+                <Icon className="w-5 h-5" />
+                <span className="font-medium">{item.label}</span>
+              </button>
+            );
+          })
+        )}
       </nav>
 
       {/* Logout Button */}
