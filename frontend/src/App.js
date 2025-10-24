@@ -30,6 +30,10 @@ import Reports from '@/pages/Reports';
 import AdvancedAnalytics from '@/pages/AdvancedAnalytics';
 import PointsRewards from '@/pages/PointsRewards';
 import EngagementDashboard from '@/pages/EngagementDashboard';
+import SalesDashboard from '@/pages/SalesDashboard';
+import LeadsContacts from '@/pages/LeadsContacts';
+import SalesPipeline from '@/pages/SalesPipeline';
+import SalesTasks from '@/pages/SalesTasks';
 import { Toaster } from '@/components/ui/sonner';
 import { PermissionProvider } from '@/contexts/PermissionContext';
 
