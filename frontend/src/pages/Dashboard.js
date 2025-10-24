@@ -73,6 +73,31 @@ export default function Dashboard() {
     } finally {
       setLoading(false);
     }
+
+  const fetchPhase2Data = async () => {
+    try {
+      setLoadingPhase2(true);
+      
+      // Fetch sales comparison data
+      const salesResponse = await axios.get(`${API}/dashboard/sales-comparison`);
+      setSalesComparisonData(salesResponse.data);
+      
+      // Fetch KPI trends
+      const kpiResponse = await axios.get(`${API}/dashboard/kpi-trends`);
+      setKpiTrendsData(kpiResponse.data);
+      
+      // Fetch birthdays today
+      const birthdaysResponse = await axios.get(`${API}/dashboard/birthdays-today`);
+      setBirthdaysToday(birthdaysResponse.data);
+      
+    } catch (error) {
+      console.error('Failed to fetch Phase 2 data:', error);
+      toast.error('Failed to load enhanced dashboard data');
+    } finally {
+      setLoadingPhase2(false);
+    }
+  };
+
   };
 
   const fetchStatDetails = async (statType) => {
