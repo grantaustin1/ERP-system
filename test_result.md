@@ -3793,17 +3793,32 @@ backend:
         comment: "✅ AUTOMATIC JOURNAL LOGGING INTEGRATION WORKING PERFECTLY - All automatic logging triggers operational. **PROFILE UPDATE INTEGRATION**: Member profile updates via PUT /api/members/{member_id} automatically trigger journal entries with action_type='profile_updated' and metadata containing changed fields. Tested with first_name change - properly logged with field changes in metadata. **NOTE CREATION INTEGRATION**: Note creation via POST /api/members/{member_id}/notes automatically triggers journal entries with action_type='note_added'. **NOTE DELETION INTEGRATION**: Note deletion via DELETE /api/members/{member_id}/notes/{note_id} automatically triggers journal entries with action_type='note_deleted'. **HELPER FUNCTION**: add_journal_entry() helper function working correctly - accepts member_id, action_type, description, metadata, created_by, created_by_name parameters and creates properly structured journal entries in member_journal collection. All automatic logging integrations tested and confirmed working."
 
 frontend:
-  - task: "Members Tab Profile Drill-Down UI"
+  - task: "Member Journal Tab Functionality"
     implemented: true
-    working: "NA"
+    working: true
     file: "/app/frontend/src/pages/Members.js"
     stuck_count: 0
     priority: "high"
-    needs_retesting: true
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "testing"
+        comment: "✅ MEMBER JOURNAL TAB FULLY FUNCTIONAL - Comprehensive testing completed successfully. **TAB STRUCTURE**: All 6 tabs present and working (Overview, Access Logs, Bookings, Invoices, Notes, Journal). Journal tab appears as 6th tab and loads correctly. **FILTER UI**: Complete filter interface with 4 inputs - Action Type dropdown (with options like All Actions, Email Sent, etc.), Start Date picker, End Date picker, Search text input, and Apply Filters button. **JOURNAL ENTRIES DISPLAY**: Journal entries display in proper timeline format with action type badges (NOTE DELETED, NOTE ADDED, PROFILE UPDATED), timestamps, creator names, and descriptions. **EXPANDABLE DETAILS**: View Details functionality working perfectly - expands to show metadata including JSON data, collapses correctly on second click. **FILTERING FUNCTIONALITY**: Action Type filter working with dropdown options, Search filter working with text input, Date range filtering functional. **BADGE SYSTEM**: Action type badges display with appropriate colors and text formatting. **INTEGRATION**: Journal integrates with other actions - note creation/deletion creates corresponding journal entries. **MEMBER SWITCHING**: Data properly resets when switching between different members. **NO CRITICAL ISSUES**: No console errors affecting functionality, all core features operational. Minor: Some accessibility warnings for DialogContent but functionality unaffected. Journal tab is production-ready and meets all requirements."
+
+  - task: "Members Tab Profile Drill-Down UI"
+    implemented: true
+    working: true
+    file: "/app/frontend/src/pages/Members.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
     status_history:
       - working: "NA"
         agent: "main"
         comment: "Implemented comprehensive member profile drill-down dialog with: (1) Header with member name, status badges (Active/Frozen/Cancelled), mini stat cards (Debt, Bookings, No-Shows, Last Access). (2) Edit mode toggle with Save/Cancel buttons and permission checking. (3) 5 tabs: Overview (personal info, membership details, freeze status with dates/reason), Access Logs (paginated table), Bookings (paginated table with no-show tracking), Invoices (paginated table with status badges), Notes (CRUD interface with timestamps and author tracking). (4) Full edit functionality for all member fields including freeze status management. (5) Note creation/deletion with real-time updates. Clicking any member card opens the profile dialog."
+      - working: true
+        agent: "testing"
+        comment: "✅ Updated to 6 tabs including new Journal tab. All profile dialog functionality working correctly including the new Journal tab integration."
 
 metadata:
   created_by: "main_agent"
