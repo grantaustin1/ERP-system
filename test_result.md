@@ -5450,3 +5450,168 @@ agent_communication:
   - agent: "testing"
     message: "✅ PHASE 2D ADVANCED ANALYTICS BACKEND TESTING COMPLETE - ALL 5 APIS WORKING PERFECTLY: Conducted comprehensive testing of all Phase 2D Advanced Analytics APIs with 100% success rate (7/7 tests passed). **REVENUE BREAKDOWN API**: GET /api/analytics/revenue-breakdown tested with default (12m) and custom periods (3,6,24m), verified MRR/ARPU calculations, revenue breakdown by membership type and payment method, monthly trends. **GEOGRAPHIC DISTRIBUTION API**: GET /api/analytics/geographic-distribution verified member distribution analysis, coverage percentages, top 20 postcodes, top 10 cities, state breakdown. **ATTENDANCE DEEP DIVE API**: GET /api/analytics/attendance-deep-dive tested with multiple periods (30,60,90,180d), verified peak hours (top 5), 24-hour distribution, 7-day distribution, frequency ranges, weekly trends. **MEMBER LIFETIME VALUE API**: GET /api/analytics/member-lifetime-value verified LTV calculations, breakdown by membership type, top 10 members list. **CHURN PREDICTION API**: GET /api/analytics/churn-prediction verified sophisticated risk scoring (Critical≥50, High≥30, Medium≥15), at-risk member analysis, common risk factors. All APIs return 200 OK, proper authentication (403), correct JSON structures, accurate calculations, handle parameters gracefully. Ready for production use."
 
+
+# ==================== PHASE 2E - ENGAGEMENT FEATURES ====================
+
+backend:
+  - task: "Phase 2E - Points Balance API"
+    implemented: true
+    working: "NA"
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Phase 2E Engagement Features - Implemented GET /api/engagement/points/balance/{member_id} endpoint. Returns or initializes points balance for members (total_points, lifetime_points, last_updated). Creates balance record if doesn't exist. Ready for backend testing."
+
+  - task: "Phase 2E - Award Points API"
+    implemented: true
+    working: "NA"
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Phase 2E Engagement Features - Implemented POST /api/engagement/points/award endpoint. Awards points to members with reason and optional reference_id. Updates balance (total_points, lifetime_points), records transaction with type 'earned', returns new balance and transaction_id. Ready for backend testing."
+
+  - task: "Phase 2E - Points Transactions API"
+    implemented: true
+    working: "NA"
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Phase 2E Engagement Features - Implemented GET /api/engagement/points/transactions/{member_id} endpoint with limit parameter (default 50). Returns transaction history sorted by created_at descending. Each transaction includes id, member_id, points, transaction_type, reason, reference_id, created_at. Ready for backend testing."
+
+  - task: "Phase 2E - Points Leaderboard API"
+    implemented: true
+    working: "NA"
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Phase 2E Engagement Features - Implemented GET /api/engagement/points/leaderboard endpoint with limit (default 10) and period parameters. Returns top members by total_points with member details (name, email, membership_type, total_points, lifetime_points). Sorted descending by total_points. Ready for backend testing."
+
+  - task: "Phase 2E - Global Search API"
+    implemented: true
+    working: "NA"
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Phase 2E Engagement Features - Implemented GET /api/engagement/search endpoint with query parameter. Searches across members (name, email, phone, id), classes (name, instructor), invoices (invoice_number, member_id). Returns top 10 results per category with formatted data. Requires minimum 2 characters. Already tested with curl - working correctly. Ready for comprehensive backend testing."
+
+  - task: "Phase 2E - Activity Feed API"
+    implemented: true
+    working: "NA"
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Phase 2E Engagement Features - Implemented GET /api/engagement/activity-feed/{member_id} endpoint with limit parameter (default 50). Aggregates activities from multiple sources: access logs (check-ins), invoices (payments), class bookings, points transactions. Each activity has type, timestamp, description, icon, color. Sorted by timestamp descending. Ready for backend testing."
+
+  - task: "Phase 2E - Engagement Score API"
+    implemented: true
+    working: "NA"
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Phase 2E Engagement Features - Implemented GET /api/engagement/score/{member_id} endpoint. Calculates comprehensive engagement score (0-100) using 5 factors: Recent Attendance (0-30), Payment History (0-20), Class Participation (0-25), Membership Loyalty (0-15), Rewards Engagement (0-10). Classifies into 5 levels: Highly Engaged (80+), Engaged (60-79), Moderately Engaged (40-59), Low Engagement (20-39), At Risk (<20). Returns score, percentage, level, color, and detailed factor breakdown. Ready for backend testing."
+
+  - task: "Phase 2E - Engagement Overview API"
+    implemented: true
+    working: "NA"
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Phase 2E Engagement Features - Implemented GET /api/engagement/overview endpoint. Analyzes first 100 active/frozen members for performance. Calculates simplified engagement score based on recent visits. Groups members by 5 engagement levels with counts. Returns summary (total_members, members_analyzed, avg_engagement_score), engagement distribution by level, and top 10 engaged members with scores. Ready for backend testing."
+
+  - task: "Phase 2E - Auto-Award Points on Check-in"
+    implemented: true
+    working: "NA"
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Phase 2E Auto-Award System - Enhanced /api/access/validate endpoint to automatically award 5 points on successful check-in. Updates points balance (total_points, lifetime_points), creates transaction record with type 'earned' and reason 'Check-in reward'. Non-blocking implementation with try-catch to prevent check-in failures if points award fails. Ready for backend testing."
+
+  - task: "Phase 2E - Auto-Award Points on Payment"
+    implemented: true
+    working: "NA"
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Phase 2E Auto-Award System - Enhanced PUT /api/invoices/{invoice_id} endpoint to automatically award 10 points when invoice status changes to 'paid'. Updates points balance, creates transaction record with reference to invoice_id. Non-blocking implementation to prevent payment failures if points award fails. Ready for backend testing."
+
+frontend:
+  - task: "Phase 2E - Global Search Component"
+    implemented: true
+    working: "NA"
+    file: "/app/frontend/src/components/GlobalSearch.jsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Phase 2E Engagement Features - Created GlobalSearch component integrated into Sidebar. Features: Real-time search with 300ms debounce, searches members/classes/invoices, dropdown results with categorization, status badges, click-outside to close, quick navigation to relevant pages. Minimum 2 characters required. Shows loading state and empty state. Dark theme with proper styling. Ready for frontend testing."
+
+  - task: "Phase 2E - Points & Rewards Page"
+    implemented: true
+    working: "NA"
+    file: "/app/frontend/src/pages/PointsRewards.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Phase 2E Engagement Features - Created PointsRewards page at /rewards route. Features: Member points lookup by ID, 3 gradient cards showing current balance/lifetime points/redeemed points, transaction history with color-coded types (earned=green, redeemed=red), leaderboard with top 20 members and medal icons (gold/silver/bronze), points earning guide showing check-in (5pts) and payment (10pts) rewards. Integrated into sidebar with Award icon. Ready for frontend testing."
+
+  - task: "Phase 2E - Engagement Dashboard Page"
+    implemented: true
+    working: "NA"
+    file: "/app/frontend/src/pages/EngagementDashboard.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Phase 2E Engagement Features - Created EngagementDashboard page at /engagement route. Features: Organization-wide overview with 3 summary cards (total members, analyzed, avg score), engagement distribution pie chart with 5 levels, top 5 engaged members list, individual member score calculator with member ID lookup, detailed score breakdown showing 5 factors with progress bars (Recent Attendance 30pts, Payment History 20pts, Class Participation 25pts, Loyalty 15pts, Rewards 10pts), overall engagement score with level badge and percentage bar, engagement levels guide explaining score ranges. Integrated into sidebar with Target icon. Ready for frontend testing."
+
+agent_communication:
+  - agent: "main"
+    message: "✅ PHASE 2E - ENGAGEMENT FEATURES FULLY IMPLEMENTED (BACKEND + FRONTEND): Created comprehensive engagement system with 8 backend APIs, auto-award points system, and 4 frontend components. **BACKEND**: (1) Points system with balance tracking, award mechanism, transaction history, leaderboard. (2) Global search across members/classes/invoices with regex matching. (3) Activity feed aggregating check-ins, payments, class bookings, points transactions. (4) Engagement scoring with 5-factor analysis (Recent Attendance 30pts, Payment History 20pts, Class Participation 25pts, Loyalty 15pts, Rewards 10pts) and 5 classification levels (Highly Engaged 80%+, Engaged 60-79%, Moderate 40-59%, Low 20-39%, At Risk <20%). (5) Organization-wide engagement overview. (6) Auto-award: 5 points on check-in, 10 points on payment completion (non-blocking). **FRONTEND**: (1) GlobalSearch component in Sidebar with real-time search, debounce, categorized results. (2) PointsRewards page with member lookup, balance cards, transaction history, leaderboard with medals. (3) EngagementDashboard page with overview stats, pie chart distribution, top members, individual score calculator with factor breakdown. (4) Navigation integrated with Award and Target icons. All components use dark theme, responsive design, Recharts for visualization. Ready for comprehensive backend and frontend testing."
+
