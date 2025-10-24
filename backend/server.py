@@ -9957,6 +9957,30 @@ async def seed_default_templates(current_user: User = Depends(get_current_user))
         "message": f"Seeded {len(default_templates)} default templates"
     }
 
+@api_router.post("/task-types/seed-defaults")
+async def seed_default_task_types(current_user: User = Depends(get_current_user)):
+    """Seed default task types"""
+    default_task_types = [
+        {"name": "Cancellation Request", "description": "Member cancellation request", "color": "#ef4444", "icon": "x-circle"},
+        {"name": "Follow-up Required", "description": "Follow-up action needed", "color": "#f59e0b", "icon": "bell"},
+        {"name": "Payment Issue", "description": "Payment or debt collection issue", "color": "#dc2626", "icon": "credit-card"},
+        {"name": "Member Complaint", "description": "Member complaint or concern", "color": "#f97316", "icon": "alert-triangle"},
+        {"name": "Equipment Maintenance", "description": "Equipment repair or maintenance", "color": "#8b5cf6", "icon": "tool"},
+        {"name": "General Task", "description": "General administrative task", "color": "#3b82f6", "icon": "clipboard"}
+    ]
+    
+    for task_type_data in default_task_types:
+        # Check if exists
+        existing = await db.task_types.find_one({"name": task_type_data["name"]}, {"_id": 0})
+        if not existing:
+            task_type = TaskType(**task_type_data)
+            await db.task_types.insert_one(task_type.model_dump())
+    
+    return {
+        "success": True,
+        "message": f"Seeded {len(default_task_types)} default task types"
+    }
+
 
 @api_router.get("/notification-templates/by-channel/{channel}")
 async def get_templates_by_channel(
