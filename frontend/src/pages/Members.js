@@ -13,6 +13,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 import { UserPlus, Ban, CheckCircle, QrCode, Shield, AlertCircle, Search, Filter, X, Edit2, Save, XCircle, Calendar, CreditCard, Activity, FileText, MessageSquare } from 'lucide-react';
 import { toast } from 'sonner';
+import RetentionIndicator from '@/components/RetentionIndicator';
+import PaymentProgressBar from '@/components/PaymentProgressBar';
+import MissingDataWarnings from '@/components/MissingDataWarnings';
 
 export default function Members() {
   const [members, setMembers] = useState([]);
