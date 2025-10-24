@@ -920,8 +920,8 @@ class EngagementFeaturesTestRunner:
                 access_data = response.json()
                 
                 # Verify check-in succeeded
-                if not access_data.get("access_granted"):
-                    self.log_result("Auto-Award Check-in - Access Granted", False, "Check-in was not granted")
+                if access_data.get("access") != "granted":
+                    self.log_result("Auto-Award Check-in - Access Granted", False, f"Check-in was not granted: {access_data}")
                     return False
                 
                 # Wait a moment for points to be awarded
