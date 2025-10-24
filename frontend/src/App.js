@@ -57,6 +57,7 @@ function App() {
           <Route path="/access" element={<PrivateRoute><AccessControl /></PrivateRoute>} />
           <Route path="/classes" element={<PrivateRoute><Classes /></PrivateRoute>} />
           <Route path="/billing" element={<PrivateRoute><BillingEnhanced /></PrivateRoute>} />
+          <Route path="/invoices" element={<PrivateRoute><InvoiceManagement /></PrivateRoute>} />
           <Route path="/cancellations" element={<PrivateRoute><Cancellations /></PrivateRoute>} />
           <Route path="/levies" element={<PrivateRoute><Levies /></PrivateRoute>} />
           <Route path="/marketing" element={<PrivateRoute><Marketing /></PrivateRoute>} />
