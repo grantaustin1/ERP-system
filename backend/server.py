@@ -922,6 +922,60 @@ class EFTSettingsUpdate(BaseModel):
     enable_auto_generation: Optional[bool] = None
 
 
+class BillingSettings(BaseModel):
+    """Billing and invoice configuration settings"""
+    model_config = ConfigDict(extra="ignore")
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    # Invoice auto-email settings
+    auto_email_invoices: bool = False
+    email_on_invoice_created: bool = False
+    email_on_invoice_overdue: bool = False
+    email_reminder_days_before_due: List[int] = [7, 3, 1]  # Days before due date to send reminder
+    # Tax settings
+    default_tax_rate: float = 15.0  # Default VAT/tax rate percentage
+    tax_enabled: bool = True
+    tax_number: Optional[str] = None  # Company tax/VAT registration number
+    # Invoice numbering
+    invoice_prefix: str = "INV"
+    invoice_number_format: str = "{prefix}-{year}-{sequence}"  # e.g., INV-2025-0001
+    next_invoice_number: int = 1
+    # Company details for invoice
+    company_name: Optional[str] = None
+    company_address: Optional[str] = None
+    company_phone: Optional[str] = None
+    company_email: Optional[str] = None
+    company_logo_url: Optional[str] = None
+    # Payment terms
+    default_payment_terms_days: int = 30
+    # Auto-generation for memberships
+    auto_generate_membership_invoices: bool = False
+    days_before_renewal_to_invoice: int = 5
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: Optional[datetime] = None
+
+
+class BillingSettingsUpdate(BaseModel):
+    auto_email_invoices: Optional[bool] = None
+    email_on_invoice_created: Optional[bool] = None
+    email_on_invoice_overdue: Optional[bool] = None
+    email_reminder_days_before_due: Optional[List[int]] = None
+    default_tax_rate: Optional[float] = None
+    tax_enabled: Optional[bool] = None
+    tax_number: Optional[str] = None
+    invoice_prefix: Optional[str] = None
+    invoice_number_format: Optional[str] = None
+    next_invoice_number: Optional[int] = None
+    company_name: Optional[str] = None
+    company_address: Optional[str] = None
+    company_phone: Optional[str] = None
+    company_email: Optional[str] = None
+    company_logo_url: Optional[str] = None
+    default_payment_terms_days: Optional[int] = None
+    auto_generate_membership_invoices: Optional[bool] = None
+    days_before_renewal_to_invoice: Optional[int] = None
+
+
+
 class EFTTransaction(BaseModel):
     """EFT transaction record for tracking generated files and responses"""
     model_config = ConfigDict(extra="ignore")
