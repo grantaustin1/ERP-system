@@ -98,7 +98,8 @@ class PriorityTestRunner:
                 self.created_members.append(member["id"])
                 self.log_result("Setup Test Member 1", True, f"Created test member 1: {self.test_member_id}")
             else:
-                self.log_result("Setup Test Member 1", False, f"Failed to create test member 1: {response.status_code}")
+                self.log_result("Setup Test Member 1", False, f"Failed to create test member 1: {response.status_code}",
+                              {"response": response.text})
                 return False
             
             # Create second test member
