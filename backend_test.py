@@ -457,117 +457,131 @@ class EngagementFeaturesTestRunner:
             self.log_result("Points Leaderboard API", False, f"Error testing points leaderboard API: {str(e)}")
             return False
     
-    def test_churn_prediction_analytics_api(self):
-        """Test Churn Prediction Analytics API - GET /api/analytics/churn-prediction"""
-        print("\n=== Testing Churn Prediction Analytics API ===")
+    def test_global_search_api(self):
+        """Test Global Search API - GET /api/engagement/search"""
+        print("\n=== Testing Global Search API ===")
         
         try:
-            response = requests.get(f"{API_BASE}/analytics/churn-prediction", headers=self.headers)
+            # Test with query length < 2 (should return empty)
+            response = requests.get(f"{API_BASE}/engagement/search?query=a", headers=self.headers)
             
             if response.status_code == 200:
                 data = response.json()
                 
                 # Verify required structure
-                required_fields = ["summary", "at_risk_members", "common_risk_factors"]
+                required_fields = ["query", "results", "total_results"]
                 missing_fields = [field for field in required_fields if field not in data]
                 
                 if missing_fields:
-                    self.log_result("Churn Prediction Structure", False, 
+                    self.log_result("Global Search Structure", False, 
                                   f"Missing fields: {missing_fields}")
                     return False
                 
-                # Verify summary structure
-                summary = data["summary"]
-                summary_fields = ["at_risk_count", "risk_percentage", "by_risk_level"]
-                missing_summary_fields = [field for field in summary_fields if field not in summary]
-                
-                if missing_summary_fields:
-                    self.log_result("Churn Prediction Summary Structure", False, 
-                                  f"Missing summary fields: {missing_summary_fields}")
+                # Verify empty results for short query
+                if data["total_results"] != 0:
+                    self.log_result("Global Search Short Query", False, 
+                                  f"Expected 0 results for short query, got {data['total_results']}")
                     return False
+                else:
+                    self.log_result("Global Search Short Query", True, 
+                                  "Correctly returns empty results for query < 2 characters")
                 
-                # Verify by_risk_level structure
-                by_risk_level = summary["by_risk_level"]
-                risk_level_fields = ["critical", "high", "medium"]
-                missing_risk_fields = [field for field in risk_level_fields if field not in by_risk_level]
-                
-                if missing_risk_fields:
-                    self.log_result("Churn Prediction Risk Level Structure", False, 
-                                  f"Missing risk level fields: {missing_risk_fields}")
+                # Test with query length >= 2
+                response = requests.get(f"{API_BASE}/engagement/search?query=test", headers=self.headers)
+                if response.status_code == 200:
+                    search_data = response.json()
+                    
+                    # Verify results structure
+                    results = search_data["results"]
+                    result_categories = ["members", "classes", "invoices"]
+                    missing_categories = [cat for cat in result_categories if cat not in results]
+                    
+                    if missing_categories:
+                        self.log_result("Global Search Results Categories", False, 
+                                      f"Missing result categories: {missing_categories}")
+                        return False
+                    
+                    # Verify member results structure
+                    if results["members"]:
+                        member = results["members"][0]
+                        member_fields = ["id", "name", "email", "phone", "status", "type"]
+                        missing_member_fields = [field for field in member_fields if field not in member]
+                        
+                        if missing_member_fields:
+                            self.log_result("Global Search Member Structure", False, 
+                                          f"Missing member fields: {missing_member_fields}")
+                            return False
+                        
+                        if member["type"] != "member":
+                            self.log_result("Global Search Member Type", False, 
+                                          f"Expected type 'member', got '{member['type']}'")
+                            return False
+                    
+                    # Verify class results structure
+                    if results["classes"]:
+                        class_result = results["classes"][0]
+                        class_fields = ["id", "name", "instructor", "type"]
+                        missing_class_fields = [field for field in class_fields if field not in class_result]
+                        
+                        if missing_class_fields:
+                            self.log_result("Global Search Class Structure", False, 
+                                          f"Missing class fields: {missing_class_fields}")
+                            return False
+                        
+                        if class_result["type"] != "class":
+                            self.log_result("Global Search Class Type", False, 
+                                          f"Expected type 'class', got '{class_result['type']}'")
+                            return False
+                    
+                    # Verify invoice results structure
+                    if results["invoices"]:
+                        invoice = results["invoices"][0]
+                        invoice_fields = ["id", "invoice_number", "member_id", "amount", "status", "type"]
+                        missing_invoice_fields = [field for field in invoice_fields if field not in invoice]
+                        
+                        if missing_invoice_fields:
+                            self.log_result("Global Search Invoice Structure", False, 
+                                          f"Missing invoice fields: {missing_invoice_fields}")
+                            return False
+                        
+                        if invoice["type"] != "invoice":
+                            self.log_result("Global Search Invoice Type", False, 
+                                          f"Expected type 'invoice', got '{invoice['type']}'")
+                            return False
+                    
+                    # Verify limit of 10 per category
+                    for category, items in results.items():
+                        if len(items) > 10:
+                            self.log_result(f"Global Search {category.title()} Limit", False, 
+                                          f"Should return max 10 {category}, got {len(items)}")
+                            return False
+                    
+                    # Verify total_results count
+                    expected_total = len(results["members"]) + len(results["classes"]) + len(results["invoices"])
+                    if search_data["total_results"] != expected_total:
+                        self.log_result("Global Search Total Results Count", False, 
+                                      f"Expected {expected_total}, got {search_data['total_results']}")
+                        return False
+                    
+                    self.log_result("Global Search API", True, 
+                                  f"Search for 'test' returned {search_data['total_results']} results: "
+                                  f"{len(results['members'])} members, {len(results['classes'])} classes, "
+                                  f"{len(results['invoices'])} invoices")
+                    return True
+                    
+                else:
+                    self.log_result("Global Search API", False, 
+                                  f"Failed to search with valid query: {response.status_code}")
                     return False
-                
-                # Verify data types
-                if not isinstance(summary["at_risk_count"], int):
-                    self.log_result("Churn Prediction At Risk Count Type", False, 
-                                  "At risk count should be integer")
-                    return False
-                
-                if not isinstance(summary["risk_percentage"], (int, float)):
-                    self.log_result("Churn Prediction Risk Percentage Type", False, 
-                                  "Risk percentage should be number")
-                    return False
-                
-                # Verify at_risk_members structure
-                if data["at_risk_members"]:
-                    at_risk_member = data["at_risk_members"][0]
-                    member_fields = ["member_id", "member_name", "email", "phone", "membership_type", 
-                                   "risk_score", "risk_level", "risk_reasons", "last_visit"]
-                    missing_member_fields = [field for field in member_fields if field not in at_risk_member]
-                    
-                    if missing_member_fields:
-                        self.log_result("Churn Prediction At Risk Members Structure", False, 
-                                      f"Missing at risk member fields: {missing_member_fields}")
-                        return False
-                    
-                    # Verify risk score and level logic
-                    risk_score = at_risk_member["risk_score"]
-                    risk_level = at_risk_member["risk_level"]
-                    
-                    if risk_level == "Critical" and risk_score < 50:
-                        self.log_result("Churn Prediction Risk Level Logic", False, 
-                                      f"Critical risk should have score ≥50, got {risk_score}")
-                        return False
-                    elif risk_level == "High" and (risk_score < 30 or risk_score >= 50):
-                        self.log_result("Churn Prediction Risk Level Logic", False, 
-                                      f"High risk should have score 30-49, got {risk_score}")
-                        return False
-                    elif risk_level == "Medium" and (risk_score < 15 or risk_score >= 30):
-                        self.log_result("Churn Prediction Risk Level Logic", False, 
-                                      f"Medium risk should have score 15-29, got {risk_score}")
-                        return False
-                    
-                    # Verify risk_reasons is a list
-                    if not isinstance(at_risk_member["risk_reasons"], list):
-                        self.log_result("Churn Prediction Risk Reasons Type", False, 
-                                      "Risk reasons should be a list")
-                        return False
-                
-                # Verify common_risk_factors structure
-                if data["common_risk_factors"]:
-                    risk_factor = data["common_risk_factors"][0]
-                    factor_fields = ["factor", "count"]
-                    missing_factor_fields = [field for field in factor_fields if field not in risk_factor]
-                    
-                    if missing_factor_fields:
-                        self.log_result("Churn Prediction Common Risk Factors Structure", False, 
-                                      f"Missing risk factor fields: {missing_factor_fields}")
-                        return False
-                
-                self.log_result("Churn Prediction Analytics API", True, 
-                              f"Retrieved churn prediction: {summary['at_risk_count']} at-risk members "
-                              f"({summary['risk_percentage']:.1f}% of total), "
-                              f"Critical: {by_risk_level['critical']}, High: {by_risk_level['high']}, "
-                              f"Medium: {by_risk_level['medium']}")
-                return True
                 
             else:
-                self.log_result("Churn Prediction Analytics API", False, 
-                              f"Failed to get churn prediction: {response.status_code}",
+                self.log_result("Global Search API", False, 
+                              f"Failed to perform global search: {response.status_code}",
                               {"response": response.text})
                 return False
                 
         except Exception as e:
-            self.log_result("Churn Prediction Analytics API", False, f"Error testing churn prediction API: {str(e)}")
+            self.log_result("Global Search API", False, f"Error testing global search API: {str(e)}")
             return False
     
     def test_analytics_api_authentication(self):
