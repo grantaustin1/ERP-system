@@ -3931,6 +3931,22 @@ async def execute_action(action: dict, trigger_data: dict):
         
         # TODO: Integrate SMS service (Twilio, etc.)
         logger.info(f"SMS Action (Mock): Sending to {phone}: {message}")
+        
+        # Log to journal
+        member_id = trigger_data.get("member_id")
+        if member_id:
+            await add_journal_entry(
+                member_id=member_id,
+                action_type="sms_sent",
+                description=f"SMS sent: {message[:100]}..." if len(message) > 100 else f"SMS sent: {message}",
+                metadata={
+                    "phone": phone,
+                    "full_message": message,
+                    "status": "sent_mock",
+                    "trigger_type": trigger_data.get("trigger_type")
+                }
+            )
+        
         return {"type": "sms", "status": "sent_mock", "phone": phone, "message": message}
     
     elif action_type == "send_whatsapp":
