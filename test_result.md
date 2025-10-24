@@ -5618,6 +5618,44 @@ backend:
       - working: true
         agent: "testing"
         comment: "✅ Engagement API Authentication working correctly: All 8 engagement endpoints properly require authentication (403 Forbidden without token). Tested endpoints: points/balance, points/award, points/transactions, points/leaderboard, search, activity-feed, score, overview. Authentication enforced consistently across all engagement features."
+
+
+frontend:
+  # No frontend tasks for Phase 2E - backend-focused engagement features
+
+
+metadata:
+  created_by: "main_agent"
+  version: "1.0"
+  test_sequence: 0
+  run_ui: false
+
+test_plan:
+  current_focus:
+    - "Phase 2E - Points Balance API"
+    - "Phase 2E - Points Award API"
+    - "Phase 2E - Points Transactions API"
+    - "Phase 2E - Points Leaderboard API"
+    - "Phase 2E - Global Search API"
+    - "Phase 2E - Activity Feed API"
+    - "Phase 2E - Engagement Score API"
+    - "Phase 2E - Engagement Overview API"
+    - "Phase 2E - Auto-Award Check-in System"
+    - "Phase 2E - Auto-Award Payment System"
+    - "Phase 2E - Engagement API Authentication"
+  stuck_tasks: []
+  test_all: false
+  test_priority: "high_first"
+
+agent_communication:
+  - agent: "main"
+    message: "✅ BILLING AUTOMATION - INVOICE GENERATION SYSTEM IMPLEMENTED. Backend: Created enhanced Invoice model with line items support (InvoiceLineItem with quantity, price, discount, tax), BillingSettings model for configuration (auto-email, tax, company details), helper functions for invoice calculations and sequential number generation, complete invoice CRUD APIs (create, read, update, void), professional PDF generation with ReportLab. Frontend: Created comprehensive InvoiceManagement page with create/edit dialogs, line items management, billing settings configuration, invoice listing with download/edit/void actions, integrated with all backend APIs. Added navigation link to sidebar and routing. All changes implemented and ready for backend testing via deep_testing_backend_v2."
+
+  - agent: "testing"
+    message: "✅ PHASE 1 QUICK WINS ENHANCED MEMBER MANAGEMENT TESTING COMPLETED - 95% SUCCESS RATE. **COMPREHENSIVE TESTING RESULTS**: Successfully tested all Phase 1 Quick Wins features on 102 member cards. **ENHANCED COLUMNS**: Join Date (✅) and Expiry Date (✅) displaying correctly on all member cards. Sessions Remaining, Last Visit, and Next Billing fields implemented but not populated with data (may need backend member data updates). **QUICK ACTION BUTTONS**: All 4 action buttons present and functional - QR (✅), Message (✅), Freeze (✅), Cancel (✅) with correct 2-row layout and appropriate colors (blue Message, yellow Freeze, red Cancel). **TAG SYSTEM**: Tag filter dropdown fully functional with all 7 default tags present (VIP, New Member, Late Payer, Personal Training, Group Classes, High Risk, Loyal). Tag filtering works correctly. **DIALOGS TESTING**: QR Code dialog opens with member QR display. Freeze Membership dialog complete with reason input, optional end date picker, notes textarea, yellow 'Freeze Membership' button, and Cancel button. Cancel Membership dialog working with red warning message, required reason field validation, notes field, red 'Cancel Membership' button (disabled without reason), and 'Go Back' button. **INTERACTION TESTING**: Member card clicks open profile dialog correctly, action buttons use stopPropagation to prevent profile dialog opening when clicked. **MINOR ISSUES**: Sessions Remaining, Last Visit, Next Billing not populated (backend data). No tags currently displayed on member cards (may need member tag assignments). **OVERALL**: All core Phase 1 Quick Wins features implemented and functional according to specifications."
+
+  - agent: "testing"
+    message: "✅ PHASE 2E ENGAGEMENT FEATURES BACKEND TESTING COMPLETE - 100% SUCCESS RATE (11/11 TESTS PASSED): Conducted comprehensive testing of all Phase 2E Engagement Features with perfect success rate. **POINTS SYSTEM (4 APIs)**: ✅ Points Balance API - Retrieves/initializes member balances correctly (0 points for new members). ✅ Points Award API - Awards points successfully (tested 25 points), records transactions, handles non-existent members. ✅ Points Transactions API - Returns transaction history sorted by date, custom limits working. ✅ Points Leaderboard API - Sorted by total points, member details included, custom limits functional. **GLOBAL SEARCH**: ✅ Search API - Returns empty for queries <2 chars, searches across members/classes/invoices, 10 per category limit enforced. **ACTIVITY FEED**: ✅ Activity Feed API - Aggregates from multiple sources (check-ins, payments, bookings, points), sorted by timestamp. **ENGAGEMENT SCORING (2 APIs)**: ✅ Engagement Score API - Calculates 5-factor score (0-100), proper level classification (At Risk <20%, Low 20-39%, Moderate 40-59%, Engaged 60-79%, Highly Engaged ≥80%), accurate percentage and color assignment. ✅ Engagement Overview API - Organization statistics, 5-level distribution, top performers list, performance optimized (100 members max). **AUTO-AWARD SYSTEM (2 APIs)**: ✅ Check-in Auto-Award - Awards 5 points per check-in via /api/access/validate, balance updates correctly, graceful error handling. ✅ Payment Auto-Award - Awards 10 points per payment via invoice status update, balance updates correctly, graceful error handling. **AUTHENTICATION**: ✅ All 8 endpoints properly protected (403 without token). All APIs return 200 OK with proper JSON structures, calculations accurate, ready for production use."
     priority: "high"
     needs_retesting: true
     status_history:
