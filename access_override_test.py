@@ -210,11 +210,11 @@ class AccessOverrideTester:
             
             membership_type_id = membership_types[0]["id"]
             
-            # Create test member
+            # Create test member with unique name
             timestamp = int(time.time())
             member_data = {
-                "first_name": "Test",
-                "last_name": "Member",
+                "first_name": f"TestMember{timestamp % 1000}",
+                "last_name": f"Override{timestamp % 1000}",
                 "email": f"test.member.{timestamp}@example.com",
                 "phone": f"082555{timestamp % 10000:04d}",
                 "membership_type_id": membership_type_id
