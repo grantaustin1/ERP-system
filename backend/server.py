@@ -86,6 +86,29 @@ def geocode_address(address: str) -> tuple:
     except (GeocoderTimedOut, GeocoderServiceError):
         return None, None
 
+async def add_journal_entry(
+    member_id: str,
+    action_type: str,
+    description: str,
+    metadata: dict = None,
+    created_by: str = None,
+    created_by_name: str = None
+):
+    """
+    Helper function to add a journal entry for a member.
+    Can be called from any endpoint to log member activities.
+    """
+    journal_entry = MemberJournal(
+        member_id=member_id,
+        action_type=action_type,
+        description=description,
+        metadata=metadata or {},
+        created_by=created_by or "system",
+        created_by_name=created_by_name or "System"
+    )
+    await db.member_journal.insert_one(journal_entry.model_dump())
+    return journal_entry
+
 # Models
 class MembershipType(BaseModel):
     model_config = ConfigDict(extra="ignore")
