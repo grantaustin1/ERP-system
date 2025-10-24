@@ -14,6 +14,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Checkbox } from '@/components/ui/checkbox';
 import { Users, UserCheck, Ban, FileText, TrendingUp, Activity, AlertCircle, AlertTriangle, CheckCircle, RefreshCw, Send, Mail, MessageSquare, Smartphone, Bell } from 'lucide-react';
 import { toast } from 'sonner';
+import SalesComparisonChart from '@/components/SalesComparisonChart';
+import KPISparklines from '@/components/KPISparklines';
+import BirthdayGallery from '@/components/BirthdayGallery';
+import UnifiedMessagingDialog from '@/components/UnifiedMessagingDialog';
 
 export default function Dashboard() {
   const [stats, setStats] = useState(null);
@@ -39,6 +43,16 @@ export default function Dashboard() {
   const [statDetailData, setStatDetailData] = useState(null);
   const [selectedDetailItem, setSelectedDetailItem] = useState(null); // Second level drill-down
   const [detailItemType, setDetailItemType] = useState(null); // member, invoice, access
+  
+  // Phase 2 - Dashboard enhancements
+  const [salesComparisonData, setSalesComparisonData] = useState(null);
+  const [kpiTrendsData, setKpiTrendsData] = useState(null);
+  const [birthdaysToday, setBirthdaysToday] = useState([]);
+  const [loadingPhase2, setLoadingPhase2] = useState(true);
+  
+  // Phase 3 - Unified messaging
+  const [messagingDialogOpen, setMessagingDialogOpen] = useState(false);
+  const [selectedMembersForMessaging, setSelectedMembersForMessaging] = useState([]);
   
   const navigate = useNavigate();
 
