@@ -128,118 +128,71 @@ class EngagementFeaturesTestRunner:
             self.log_result("Setup Test Members", False, f"Error creating test members: {str(e)}")
             return False
     
-    def test_revenue_breakdown_analytics_api(self):
-        """Test Revenue Breakdown Analytics API - GET /api/analytics/revenue-breakdown"""
-        print("\n=== Testing Revenue Breakdown Analytics API ===")
+    def test_points_balance_api(self):
+        """Test Points Balance API - GET /api/engagement/points/balance/{member_id}"""
+        print("\n=== Testing Points Balance API ===")
         
         try:
-            # Test with default period (12 months)
-            response = requests.get(f"{API_BASE}/analytics/revenue-breakdown", headers=self.headers)
+            # Test with existing member
+            response = requests.get(f"{API_BASE}/engagement/points/balance/{self.test_member_id}", headers=self.headers)
             
             if response.status_code == 200:
                 data = response.json()
                 
                 # Verify required structure
-                required_fields = ["summary", "by_membership_type", "by_payment_method", "monthly_trend"]
+                required_fields = ["member_id", "total_points", "lifetime_points", "last_updated"]
                 missing_fields = [field for field in required_fields if field not in data]
                 
                 if missing_fields:
-                    self.log_result("Revenue Breakdown Structure", False, 
+                    self.log_result("Points Balance Structure", False, 
                                   f"Missing fields: {missing_fields}")
                     return False
                 
-                # Verify summary structure
-                summary = data["summary"]
-                summary_fields = ["total_revenue", "mrr", "arpu", "active_members"]
-                missing_summary_fields = [field for field in summary_fields if field not in summary]
-                
-                if missing_summary_fields:
-                    self.log_result("Revenue Breakdown Summary Structure", False, 
-                                  f"Missing summary fields: {missing_summary_fields}")
-                    return False
-                
                 # Verify data types
-                if not isinstance(summary["total_revenue"], (int, float)):
-                    self.log_result("Revenue Breakdown Total Revenue Type", False, 
-                                  "Total revenue should be number")
+                if not isinstance(data["total_points"], int):
+                    self.log_result("Points Balance Total Points Type", False, 
+                                  "Total points should be integer")
                     return False
                 
-                if not isinstance(summary["mrr"], (int, float)):
-                    self.log_result("Revenue Breakdown MRR Type", False, 
-                                  "MRR should be number")
+                if not isinstance(data["lifetime_points"], int):
+                    self.log_result("Points Balance Lifetime Points Type", False, 
+                                  "Lifetime points should be integer")
                     return False
                 
-                if not isinstance(summary["arpu"], (int, float)):
-                    self.log_result("Revenue Breakdown ARPU Type", False, 
-                                  "ARPU should be number")
+                if data["member_id"] != self.test_member_id:
+                    self.log_result("Points Balance Member ID", False, 
+                                  "Member ID mismatch")
                     return False
                 
-                if not isinstance(summary["active_members"], int):
-                    self.log_result("Revenue Breakdown Active Members Type", False, 
-                                  "Active members should be integer")
-                    return False
+                self.log_result("Points Balance API (Existing Member)", True, 
+                              f"Retrieved balance: {data['total_points']} total, {data['lifetime_points']} lifetime")
                 
-                # Verify by_membership_type structure
-                if data["by_membership_type"]:
-                    membership_type = data["by_membership_type"][0]
-                    membership_fields = ["type", "revenue", "percentage"]
-                    missing_membership_fields = [field for field in membership_fields if field not in membership_type]
-                    
-                    if missing_membership_fields:
-                        self.log_result("Revenue Breakdown Membership Type Structure", False, 
-                                      f"Missing membership type fields: {missing_membership_fields}")
-                        return False
-                
-                # Verify by_payment_method structure
-                if data["by_payment_method"]:
-                    payment_method = data["by_payment_method"][0]
-                    payment_fields = ["method", "revenue", "percentage"]
-                    missing_payment_fields = [field for field in payment_fields if field not in payment_method]
-                    
-                    if missing_payment_fields:
-                        self.log_result("Revenue Breakdown Payment Method Structure", False, 
-                                      f"Missing payment method fields: {missing_payment_fields}")
-                        return False
-                
-                # Verify monthly_trend structure
-                if data["monthly_trend"]:
-                    trend = data["monthly_trend"][0]
-                    trend_fields = ["month", "revenue"]
-                    missing_trend_fields = [field for field in trend_fields if field not in trend]
-                    
-                    if missing_trend_fields:
-                        self.log_result("Revenue Breakdown Monthly Trend Structure", False, 
-                                      f"Missing monthly trend fields: {missing_trend_fields}")
-                        return False
-                
-                self.log_result("Revenue Breakdown Analytics API (Default)", True, 
-                              f"Retrieved revenue breakdown: Total Revenue R{summary['total_revenue']:.2f}, "
-                              f"MRR R{summary['mrr']:.2f}, ARPU R{summary['arpu']:.2f}, "
-                              f"Active Members {summary['active_members']}")
-                
-                # Test with different periods
-                test_periods = [3, 6, 24]
-                for period in test_periods:
-                    response = requests.get(f"{API_BASE}/analytics/revenue-breakdown?period_months={period}", headers=self.headers)
-                    if response.status_code == 200:
-                        period_data = response.json()
-                        self.log_result(f"Revenue Breakdown Analytics API ({period}m)", True, 
-                                      f"Retrieved {period}-month revenue breakdown successfully")
+                # Test with new member (should initialize to 0)
+                response = requests.get(f"{API_BASE}/engagement/points/balance/{self.test_member_id_2}", headers=self.headers)
+                if response.status_code == 200:
+                    new_data = response.json()
+                    if new_data["total_points"] == 0 and new_data["lifetime_points"] == 0:
+                        self.log_result("Points Balance API (New Member)", True, 
+                                      "New member initialized with 0 points")
                     else:
-                        self.log_result(f"Revenue Breakdown Analytics API ({period}m)", False, 
-                                      f"Failed to get {period}-month revenue breakdown: {response.status_code}")
+                        self.log_result("Points Balance API (New Member)", False, 
+                                      f"Expected 0 points, got {new_data['total_points']}")
                         return False
+                else:
+                    self.log_result("Points Balance API (New Member)", False, 
+                                  f"Failed to get balance for new member: {response.status_code}")
+                    return False
                 
                 return True
                 
             else:
-                self.log_result("Revenue Breakdown Analytics API", False, 
-                              f"Failed to get revenue breakdown: {response.status_code}",
+                self.log_result("Points Balance API", False, 
+                              f"Failed to get points balance: {response.status_code}",
                               {"response": response.text})
                 return False
                 
         except Exception as e:
-            self.log_result("Revenue Breakdown Analytics API", False, f"Error testing revenue breakdown API: {str(e)}")
+            self.log_result("Points Balance API", False, f"Error testing points balance API: {str(e)}")
             return False
     
     def test_geographic_distribution_analytics_api(self):
