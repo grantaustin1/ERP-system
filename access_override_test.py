@@ -441,7 +441,7 @@ class AccessOverrideTester:
                 return True
             elif response.status_code == 200:
                 result = response.json()
-                if result.get("access_granted") is False:
+                if result.get("success") is False:
                     self.log_result("Access Override Wrong PIN", True, 
                                   "Correctly rejected access with wrong PIN")
                     return True
