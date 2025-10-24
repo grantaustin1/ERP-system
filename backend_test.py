@@ -24,9 +24,10 @@ class EngagementFeaturesTestRunner:
         self.headers = {}
         self.test_results = []
         self.created_members = []  # Track created members for cleanup
-        self.created_access_logs = []  # Track created access logs for cleanup
+        self.created_invoices = []  # Track created invoices for cleanup
         self.test_member_id = None
         self.test_member_id_2 = None
+        self.test_invoice_id = None
         
     def log_result(self, test_name, success, message, details=None):
         """Log test result"""
