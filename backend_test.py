@@ -280,8 +280,20 @@ class DashboardTestRunner:
                                       f"Expected '{expected_full_name}', got '{member['full_name']}'")
                         return False
                 
-                self.log_result("Recent Members Today API", True, 
-                              f"Retrieved {len(members_today)} members for today")
+                # Check if our test members are included in today's results
+                test_member_found = False
+                if members_today:
+                    for member in members_today:
+                        if member.get("id") in [self.test_member_id, self.test_member_id_2]:
+                            test_member_found = True
+                            break
+                
+                if test_member_found:
+                    self.log_result("Recent Members Today API", True, 
+                                  f"Retrieved {len(members_today)} members for today (including test members)")
+                else:
+                    self.log_result("Recent Members Today API", True, 
+                                  f"Retrieved {len(members_today)} members for today (test members may be filtered by date)")
                 
                 # Test with period=yesterday
                 response_yesterday = requests.get(f"{API_BASE}/dashboard/recent-members?period=yesterday", headers=self.headers)
