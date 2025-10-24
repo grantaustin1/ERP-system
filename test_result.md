@@ -5352,3 +5352,84 @@ agent_communication:
   - agent: "testing"
     message: "✅ PHASE 2C REPORT LIBRARY BACKEND TESTING COMPLETE - ALL APIS WORKING PERFECTLY: Conducted comprehensive testing of all 3 Phase 2C Report Library APIs with 100% success rate. **INCOMPLETE DATA REPORT**: GET /api/reports/incomplete-data analyzed 106 members, correctly identified missing critical fields, calculated priority scores (Critical ≥20, High ≥10, Medium ≥5, Low <5), returned proper summary statistics and member details. **BIRTHDAY REPORT**: GET /api/reports/birthdays tested with multiple days_ahead values (7,14,30,60,90), verified default parameter (30), confirmed proper grouping logic (this_week ≤7, next_week 7-14, later >14), validated member details structure. **ANNIVERSARY REPORT**: GET /api/reports/anniversaries tested with multiple days_ahead values, verified milestone grouping (1_year, 5_years, 10_plus_years), confirmed 1+ years filter, validated member details structure. All APIs return 200 OK, proper JSON structure, accurate calculations, and handle empty states gracefully. Authentication working correctly. Ready for production use."
 
+
+# ==================== PHASE 2D - ADVANCED ANALYTICS ====================
+
+backend:
+  - task: "Phase 2D - Revenue Breakdown API"
+    implemented: true
+    working: "NA"
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Phase 2D Advanced Analytics - Implemented GET /api/analytics/revenue-breakdown with period_months parameter. Provides revenue analysis by membership type, payment method, and monthly trends. Calculates key metrics: Total Revenue, MRR (Monthly Recurring Revenue), ARPU (Average Revenue Per User). Returns summary statistics and formatted chart data. Ready for backend testing."
+
+  - task: "Phase 2D - Geographic Distribution API"
+    implemented: true
+    working: "NA"
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Phase 2D Advanced Analytics - Implemented GET /api/analytics/geographic-distribution endpoint. Analyzes member distribution by postcode (top 20), city (top 10), and state. Calculates coverage percentages for location data completeness. Provides member concentration insights for geographic targeting. Ready for backend testing."
+
+  - task: "Phase 2D - Attendance Deep Dive API"
+    implemented: true
+    working: "NA"
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Phase 2D Advanced Analytics - Implemented GET /api/analytics/attendance-deep-dive with days_back parameter. Provides peak hours analysis, 24-hour distribution, day-of-week patterns, member frequency distribution (1-5, 6-10, 11-20, 21-30, 31+ visits), and weekly trends. Calculates avg visits per member and unique member count. Ready for backend testing."
+
+  - task: "Phase 2D - Member Lifetime Value API"
+    implemented: true
+    working: "NA"
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Phase 2D Advanced Analytics - Implemented GET /api/analytics/member-lifetime-value endpoint. Calculates LTV for all members (active, frozen, cancelled) by analyzing paid invoices. Provides LTV breakdown by membership type with averages (avg_ltv, avg_monthly_value, avg_duration_months). Returns top 10 highest LTV members and overall LTV summary. Ready for backend testing."
+
+  - task: "Phase 2D - Churn Prediction API"
+    implemented: true
+    working: "NA"
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Phase 2D Advanced Analytics - Implemented GET /api/analytics/churn-prediction endpoint. Sophisticated risk scoring system analyzing: last visit date (0-30 points), payment issues (0-25 points), frozen status (0-20 points), missing contact info (0-5 points), attendance decline (0-15 points). Classifies members as Critical (50+), High (30-49), Medium (15-29) risk. Returns at-risk members list with detailed risk reasons and common risk factors analysis. Ready for backend testing."
+
+frontend:
+  - task: "Phase 2D - Advanced Analytics Page"
+    implemented: true
+    working: "NA"
+    file: "/app/frontend/src/pages/AdvancedAnalytics.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Phase 2D Advanced Analytics - Created comprehensive AdvancedAnalytics page with 5 tabs: Revenue, Geographic, Attendance, LTV, Churn Risk. **Revenue Tab**: Summary cards (Total Revenue, MRR, ARPU, Active Members), Pie chart for revenue by membership type, Bar chart for payment methods, Line chart for monthly trends with configurable period (3/6/12/24 months). **Geographic Tab**: Coverage metrics, Bar chart for top postcodes, Pie chart for city distribution. **Attendance Tab**: Summary metrics (total visits, unique members, avg visits/member), Peak hours list, Frequency distribution chart, 24-hour distribution line chart with configurable period (30/60/90/180 days). **LTV Tab**: Summary cards, LTV breakdown table by membership type, Top 10 highest LTV members list. **Churn Tab**: Risk level summaries (Critical/High/Medium), Common risk factors bar chart, At-risk members table with risk scores and reasons. All tabs feature responsive design, dark theme, interactive charts with Recharts library. Navigation added to sidebar (/advanced-analytics route). Ready for frontend testing."
+
+agent_communication:
+  - agent: "main"
+    message: "✅ PHASE 2D - ADVANCED ANALYTICS IMPLEMENTED: Created comprehensive advanced analytics system with 5 backend APIs and integrated frontend page. **BACKEND APIS**: (1) GET /api/analytics/revenue-breakdown - Revenue by membership type, payment method, monthly trends, MRR, ARPU calculations. (2) GET /api/analytics/geographic-distribution - Member distribution by postcode/city/state with coverage analysis. (3) GET /api/analytics/attendance-deep-dive - Peak hours, 24-hour distribution, frequency distribution, weekly trends. (4) GET /api/analytics/member-lifetime-value - LTV calculations by membership type, top members, avg metrics. (5) GET /api/analytics/churn-prediction - Sophisticated risk scoring (0-100 scale) with multi-factor analysis, classified risk levels (Critical/High/Medium), detailed risk reasons. **FRONTEND**: Created AdvancedAnalytics.js page with 5-tab interface, 25+ charts and visualizations, summary cards for key metrics, configurable date ranges for revenue and attendance, interactive tables for LTV and churn data. All components use Recharts library for data visualization. Dark theme consistent throughout. Navigation integrated into sidebar. Ready for comprehensive testing."
+
