@@ -518,77 +518,33 @@ class ReportLibraryTestRunner:
             self.log_result("Anniversary Report API", False, f"Error testing anniversary report API: {str(e)}")
             return False
     
-    def test_expiring_memberships_api(self):
-        """Test Expiring Memberships API - GET /api/retention/expiring-memberships"""
-        print("\n=== Testing Expiring Memberships API ===")
+    def test_report_api_authentication(self):
+        """Test that all report APIs require authentication"""
+        print("\n=== Testing Report API Authentication ===")
         
         try:
-            # Test different day periods
-            test_periods = [30, 60, 90]
+            # Test without authentication headers
+            endpoints = [
+                "/reports/incomplete-data",
+                "/reports/birthdays",
+                "/reports/anniversaries"
+            ]
             
-            for days in test_periods:
-                response = requests.get(f"{API_BASE}/retention/expiring-memberships?days={days}", headers=self.headers)
+            for endpoint in endpoints:
+                response = requests.get(f"{API_BASE}{endpoint}")
                 
-                if response.status_code == 200:
-                    data = response.json()
-                    
-                    # Verify required structure
-                    required_fields = ["period_days", "total", "members"]
-                    missing_fields = [field for field in required_fields if field not in data]
-                    
-                    if missing_fields:
-                        self.log_result(f"Expiring Memberships {days}d Structure", False, 
-                                      f"Missing fields: {missing_fields}")
-                        return False
-                    
-                    # Verify data types
-                    if data["period_days"] != days:
-                        self.log_result(f"Expiring Memberships {days}d Period Field", False, 
-                                      f"Period field mismatch: expected {days}, got {data['period_days']}")
-                        return False
-                    
-                    if not isinstance(data["total"], int):
-                        self.log_result(f"Expiring Memberships {days}d Total Type", False, 
-                                      "Total should be an integer")
-                        return False
-                    
-                    if not isinstance(data["members"], list):
-                        self.log_result(f"Expiring Memberships {days}d Members Type", False, 
-                                      "Members should be a list")
-                        return False
-                    
-                    # Verify member structure if members exist
-                    if data["members"]:
-                        member = data["members"][0]
-                        member_fields = [
-                            "id", "first_name", "last_name", "full_name", "email", 
-                            "expiry_date", "days_until_expiry", "membership_type", "is_debtor"
-                        ]
-                        missing_member_fields = [field for field in member_fields if field not in member]
-                        
-                        if missing_member_fields:
-                            self.log_result(f"Expiring Memberships {days}d Member Structure", False, 
-                                          f"Missing member fields: {missing_member_fields}")
-                            return False
-                        
-                        # Verify days_until_expiry is calculated correctly
-                        if not isinstance(member["days_until_expiry"], int):
-                            self.log_result(f"Expiring Memberships {days}d Days Until Expiry Type", False, 
-                                          "Days until expiry should be an integer")
-                            return False
-                    
-                    self.log_result(f"Expiring Memberships {days}d API", True, 
-                                  f"Retrieved {data['total']} memberships expiring in {days} days")
-                else:
-                    self.log_result(f"Expiring Memberships {days}d API", False, 
-                                  f"Failed to get expiring memberships: {response.status_code}",
-                                  {"response": response.text})
+                if response.status_code != 401:
+                    self.log_result(f"Authentication {endpoint}", False, 
+                                  f"Expected 401 Unauthorized, got {response.status_code}")
                     return False
+                
+                self.log_result(f"Authentication {endpoint}", True, 
+                              "Correctly requires authentication")
             
             return True
                 
         except Exception as e:
-            self.log_result("Expiring Memberships API", False, f"Error testing expiring memberships API: {str(e)}")
+            self.log_result("Report API Authentication", False, f"Error testing authentication: {str(e)}")
             return False
     
     def test_dropoff_analytics_api(self):
