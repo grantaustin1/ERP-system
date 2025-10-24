@@ -399,14 +399,16 @@ export default function InvoiceManagement() {
                   </div>
                 </DialogContent>
               </Dialog>
+              </PermissionGuard>
 
-              <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
-                <DialogTrigger asChild>
-                  <Button className="bg-blue-600 hover:bg-blue-700">
-                    <Plus className="h-4 w-4 mr-2" />
-                    Create Invoice
-                  </Button>
-                </DialogTrigger>
+              <PermissionGuard permission="billing:create">
+                <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
+                  <DialogTrigger asChild>
+                    <Button className="bg-blue-600 hover:bg-blue-700">
+                      <Plus className="h-4 w-4 mr-2" />
+                      Create Invoice
+                    </Button>
+                  </DialogTrigger>
                 <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto bg-slate-900 border-slate-800">
                   <DialogHeader>
                     <DialogTitle className="text-white">Create New Invoice</DialogTitle>
