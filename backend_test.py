@@ -218,8 +218,8 @@ class PriorityTestRunner:
         try:
             # First set existing notes on member
             existing_notes = "Previous notes: Member requested schedule change last month."
-            update_response = requests.patch(f"{API_BASE}/members/{self.test_member_id_2}", 
-                                           json={"notes": existing_notes}, headers=self.headers)
+            update_response = requests.put(f"{API_BASE}/members/{self.test_member_id_2}", 
+                                         json={"notes": existing_notes}, headers=self.headers)
             
             if update_response.status_code != 200:
                 self.log_result("Set Existing Notes", False, "Failed to set existing notes")
