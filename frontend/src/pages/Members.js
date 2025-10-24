@@ -283,6 +283,70 @@ export default function Members() {
     }
   };
 
+  // Phase 1 - Quick Wins: Member Action Handlers
+  const handleFreezeMembership = async () => {
+    if (!selectedMemberForAction) return;
+    setActionLoading(true);
+    try {
+      await axios.post(`${API}/members/${selectedMemberForAction.id}/freeze`, {
+        reason: actionReason || 'Freeze requested',
+        notes: actionNotes,
+        end_date: freezeEndDate ? new Date(freezeEndDate).toISOString() : null
+      });
+      toast.success('Membership frozen successfully');
+      setFreezeDialogOpen(false);
+      setActionReason('');
+      setActionNotes('');
+      setFreezeEndDate('');
+      setSelectedMemberForAction(null);
+      fetchMembers();
+      if (profileDialogOpen && selectedMemberForProfile?.id === selectedMemberForAction.id) {
+        fetchMemberProfile(selectedMemberForAction.id);
+      }
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Failed to freeze membership');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleUnfreezeMembership = async (memberId) => {
+    try {
+      await axios.post(`${API}/members/${memberId}/unfreeze`);
+      toast.success('Membership unfrozen successfully');
+      fetchMembers();
+      if (profileDialogOpen && selectedMemberForProfile?.id === memberId) {
+        fetchMemberProfile(memberId);
+      }
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Failed to unfreeze membership');
+    }
+  };
+
+  const handleCancelMembership = async () => {
+    if (!selectedMemberForAction) return;
+    setActionLoading(true);
+    try {
+      await axios.post(`${API}/members/${selectedMemberForAction.id}/cancel`, {
+        reason: actionReason || 'Cancellation requested',
+        notes: actionNotes
+      });
+      toast.success('Membership cancelled successfully');
+      setCancelDialogOpen(false);
+      setActionReason('');
+      setActionNotes('');
+      setSelectedMemberForAction(null);
+      fetchMembers();
+      if (profileDialogOpen && selectedMemberForProfile?.id === selectedMemberForAction.id) {
+        fetchMemberProfile(selectedMemberForAction.id);
+      }
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Failed to cancel membership');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
   const showQRCode = (member) => {
     setSelectedMember(member);
     setQrDialogOpen(true);
