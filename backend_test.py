@@ -756,14 +756,14 @@ class DashboardTestRunner:
 
 def main():
     """Main execution function"""
-    tester = PriorityTestRunner()
-    success = tester.run_priority_tests()
+    tester = DashboardTestRunner()
+    success = tester.run_dashboard_tests()
     
     if success:
-        print("\n🎉 ALL PRIORITY TESTS PASSED!")
+        print("\n🎉 ALL DASHBOARD TESTS PASSED!")
         exit(0)
     else:
-        print("\n💥 SOME PRIORITY TESTS FAILED!")
+        print("\n💥 SOME DASHBOARD TESTS FAILED!")
         exit(1)
 
 if __name__ == "__main__":
