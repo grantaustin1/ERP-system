@@ -1410,6 +1410,19 @@ export default function Dashboard() {
                           alertData?.summary?.red_count
                         } Members
                       </>
+
+
+          {/* Phase 3: Unified Messaging Dialog */}
+          <UnifiedMessagingDialog
+            open={messagingDialogOpen}
+            onOpenChange={setMessagingDialogOpen}
+            selectedMembers={selectedMembersForMessaging}
+            onSuccess={() => {
+              setSelectedMembersForMessaging([]);
+              toast.success('Messages sent successfully');
+            }}
+          />
+
                     )}
                   </Button>
                 </div>
