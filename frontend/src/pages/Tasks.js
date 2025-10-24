@@ -96,7 +96,19 @@ export default function Tasks() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      await axios.post(`${API}/tasks`, formData);
+      // Clean formData - remove "none" values and empty strings
+      const cleanedData = {
+        title: formData.title,
+        description: formData.description,
+        task_type_id: formData.task_type_id,
+        priority: formData.priority,
+        assigned_to_user_id: formData.assigned_to_user_id === 'none' ? '' : formData.assigned_to_user_id,
+        assigned_to_department: formData.assigned_to_department,
+        related_member_id: formData.related_member_id === 'none' ? '' : formData.related_member_id,
+        due_date: formData.due_date
+      };
+      
+      await axios.post(`${API}/tasks`, cleanedData);
       toast.success('Task created successfully');
       setDialogOpen(false);
       setFormData({
