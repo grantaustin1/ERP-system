@@ -372,95 +372,89 @@ class EngagementFeaturesTestRunner:
             self.log_result("Points Transactions API", False, f"Error testing points transactions API: {str(e)}")
             return False
     
-    def test_member_lifetime_value_analytics_api(self):
-        """Test Member Lifetime Value Analytics API - GET /api/analytics/member-lifetime-value"""
-        print("\n=== Testing Member Lifetime Value Analytics API ===")
+    def test_points_leaderboard_api(self):
+        """Test Points Leaderboard API - GET /api/engagement/points/leaderboard"""
+        print("\n=== Testing Points Leaderboard API ===")
         
         try:
-            response = requests.get(f"{API_BASE}/analytics/member-lifetime-value", headers=self.headers)
+            # Test with default limit (10)
+            response = requests.get(f"{API_BASE}/engagement/points/leaderboard", headers=self.headers)
             
             if response.status_code == 200:
                 data = response.json()
                 
                 # Verify required structure
-                required_fields = ["summary", "by_membership_type", "top_members"]
+                required_fields = ["period", "leaderboard", "total_members"]
                 missing_fields = [field for field in required_fields if field not in data]
                 
                 if missing_fields:
-                    self.log_result("Member Lifetime Value Structure", False, 
+                    self.log_result("Points Leaderboard Structure", False, 
                                   f"Missing fields: {missing_fields}")
                     return False
                 
-                # Verify summary structure
-                summary = data["summary"]
-                summary_fields = ["total_lifetime_value", "avg_ltv_per_member", "total_members_analyzed"]
-                missing_summary_fields = [field for field in summary_fields if field not in summary]
-                
-                if missing_summary_fields:
-                    self.log_result("Member Lifetime Value Summary Structure", False, 
-                                  f"Missing summary fields: {missing_summary_fields}")
-                    return False
-                
-                # Verify data types
-                if not isinstance(summary["total_lifetime_value"], (int, float)):
-                    self.log_result("Member Lifetime Value Total LTV Type", False, 
-                                  "Total lifetime value should be number")
-                    return False
-                
-                if not isinstance(summary["avg_ltv_per_member"], (int, float)):
-                    self.log_result("Member Lifetime Value Avg LTV Type", False, 
-                                  "Avg LTV per member should be number")
-                    return False
-                
-                if not isinstance(summary["total_members_analyzed"], int):
-                    self.log_result("Member Lifetime Value Total Members Type", False, 
-                                  "Total members analyzed should be integer")
-                    return False
-                
-                # Verify by_membership_type structure
-                if data["by_membership_type"]:
-                    membership_type = data["by_membership_type"][0]
-                    membership_fields = ["membership_type", "avg_ltv", "avg_monthly_value", 
-                                       "avg_duration_months", "member_count", "total_ltv"]
-                    missing_membership_fields = [field for field in membership_fields if field not in membership_type]
+                # Verify leaderboard structure
+                if data["leaderboard"]:
+                    leader = data["leaderboard"][0]
+                    leader_fields = ["member_id", "member_name", "email", "membership_type", "total_points", "lifetime_points"]
+                    missing_leader_fields = [field for field in leader_fields if field not in leader]
                     
-                    if missing_membership_fields:
-                        self.log_result("Member Lifetime Value Membership Type Structure", False, 
-                                      f"Missing membership type fields: {missing_membership_fields}")
-                        return False
-                
-                # Verify top_members structure (top 10)
-                if data["top_members"]:
-                    top_member = data["top_members"][0]
-                    member_fields = ["member_id", "member_name", "membership_type", 
-                                   "ltv", "monthly_value", "duration_months"]
-                    missing_member_fields = [field for field in member_fields if field not in top_member]
-                    
-                    if missing_member_fields:
-                        self.log_result("Member Lifetime Value Top Members Structure", False, 
-                                      f"Missing top member fields: {missing_member_fields}")
+                    if missing_leader_fields:
+                        self.log_result("Points Leaderboard Leader Structure", False, 
+                                      f"Missing leader fields: {missing_leader_fields}")
                         return False
                     
-                    # Verify top 10 limit
-                    if len(data["top_members"]) > 10:
-                        self.log_result("Member Lifetime Value Top Members Limit", False, 
-                                      f"Should return top 10 members, got {len(data['top_members'])}")
-                        return False
+                    # Verify sorted by total_points descending
+                    if len(data["leaderboard"]) > 1:
+                        first_leader = data["leaderboard"][0]
+                        second_leader = data["leaderboard"][1]
+                        if first_leader["total_points"] < second_leader["total_points"]:
+                            self.log_result("Points Leaderboard Sort Order", False, 
+                                          "Leaderboard not sorted by total_points descending")
+                            return False
+                        else:
+                            self.log_result("Points Leaderboard Sort Order", True, 
+                                          "Leaderboard correctly sorted by total_points descending")
                 
-                self.log_result("Member Lifetime Value Analytics API", True, 
-                              f"Retrieved LTV analysis: Total LTV R{summary['total_lifetime_value']:.2f}, "
-                              f"Avg LTV R{summary['avg_ltv_per_member']:.2f}, "
-                              f"{summary['total_members_analyzed']} members analyzed")
+                # Test with custom limit (20)
+                response = requests.get(f"{API_BASE}/engagement/points/leaderboard?limit=20", headers=self.headers)
+                if response.status_code == 200:
+                    limited_data = response.json()
+                    if len(limited_data["leaderboard"]) <= 20:
+                        self.log_result("Points Leaderboard Custom Limit", True, 
+                                      f"Custom limit working: {len(limited_data['leaderboard'])} members")
+                    else:
+                        self.log_result("Points Leaderboard Custom Limit", False, 
+                                      f"Expected ≤20 members, got {len(limited_data['leaderboard'])}")
+                        return False
+                else:
+                    self.log_result("Points Leaderboard Custom Limit", False, 
+                                  f"Failed to get leaderboard with custom limit: {response.status_code}")
+                    return False
+                
+                # Verify member details included
+                if data["leaderboard"]:
+                    first_member = data["leaderboard"][0]
+                    if not first_member.get("member_name") or not first_member.get("email"):
+                        self.log_result("Points Leaderboard Member Details", False, 
+                                      "Member details (name, email) not properly included")
+                        return False
+                    else:
+                        self.log_result("Points Leaderboard Member Details", True, 
+                                      "Member details properly included")
+                
+                self.log_result("Points Leaderboard API", True, 
+                              f"Retrieved leaderboard with {len(data['leaderboard'])} members, "
+                              f"total members: {data['total_members']}")
                 return True
                 
             else:
-                self.log_result("Member Lifetime Value Analytics API", False, 
-                              f"Failed to get member lifetime value: {response.status_code}",
+                self.log_result("Points Leaderboard API", False, 
+                              f"Failed to get points leaderboard: {response.status_code}",
                               {"response": response.text})
                 return False
                 
         except Exception as e:
-            self.log_result("Member Lifetime Value Analytics API", False, f"Error testing member lifetime value API: {str(e)}")
+            self.log_result("Points Leaderboard API", False, f"Error testing points leaderboard API: {str(e)}")
             return False
     
     def test_churn_prediction_analytics_api(self):
