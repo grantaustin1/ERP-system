@@ -675,14 +675,14 @@ class ReportLibraryTestRunner:
 
 def main():
     """Main execution function"""
-    tester = RetentionTestRunner()
-    success = tester.run_retention_tests()
+    tester = ReportLibraryTestRunner()
+    success = tester.run_report_library_tests()
     
     if success:
-        print("\n🎉 ALL RETENTION INTELLIGENCE TESTS PASSED!")
+        print("\n🎉 ALL REPORT LIBRARY TESTS PASSED!")
         exit(0)
     else:
-        print("\n💥 SOME RETENTION INTELLIGENCE TESTS FAILED!")
+        print("\n💥 SOME REPORT LIBRARY TESTS FAILED!")
         exit(1)
 
 if __name__ == "__main__":
