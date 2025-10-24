@@ -502,7 +502,8 @@ class ClubManagerTester:
                 "subject": "Template Test",
                 "message_body": "This is a template message for {first_name}",
                 "is_marketing": True,
-                "save_as_template": True
+                "save_as_template": True,
+                "template_name": "Test Template"  # Required for save_as_template
             }
             
             response = requests.post(f"{API_BASE}/messaging/send-unified", 
