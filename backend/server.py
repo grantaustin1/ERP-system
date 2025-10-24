@@ -4376,8 +4376,14 @@ async def get_sales_comparison(current_user: User = Depends(get_current_user)):
         else:
             current_month_sales = None
         
-        # Previous month sales (same day)
-        prev_month_date = previous_month_start.replace(day=day)
+        # Previous month sales (same day, handle month with fewer days)
+        try:
+            prev_month_date = previous_month_start.replace(day=day)
+        except ValueError:
+            # Handle case where previous month has fewer days (e.g., Feb 30)
+            import calendar
+            last_day_prev_month = calendar.monthrange(previous_month_start.year, previous_month_start.month)[1]
+            prev_month_date = previous_month_start.replace(day=min(day, last_day_prev_month))
         prev_sales = await db.invoices.aggregate([
             {
                 "$match": {
