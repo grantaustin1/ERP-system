@@ -1607,15 +1607,18 @@ backend:
 
   - task: "Enhanced Member Profile Endpoint - Phase 1 Fields"
     implemented: true
-    working: "NA"
+    working: false
     file: "/app/backend/server.py"
-    stuck_count: 0
+    stuck_count: 1
     priority: "high"
     needs_retesting: true
     status_history:
       - working: "NA"
         agent: "main"
         comment: "Enhanced GET /api/members/{member_id}/profile endpoint to include Phase 1 fields: sessions_remaining (from member data), last_visit_date (from last access log timestamp), next_billing_date (calculated from join_date + duration_months or from member data), tags (list of tag names). Returns in profile response alongside existing retention, payment_progress, and missing_data fields. Ready for testing."
+      - working: false
+        agent: "testing"
+        comment: "❌ ENHANCED PROFILE ENDPOINT STRUCTURE ISSUE: GET /api/members/{id}/profile returns Phase 1 fields (sessions_remaining, last_visit_date, next_billing_date, tags) correctly, but response structure is incorrect. Expected basic profile fields (id, first_name, last_name, email, phone, membership_status) at root level, but they're missing. Profile endpoint should return member data directly, not nested. Response structure needs adjustment to match expected format."
 
   - task: "Auto-Update Last Visit Date on Access Grant"
     implemented: true
