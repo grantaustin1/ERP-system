@@ -262,13 +262,23 @@ class AdvancedAnalyticsTestRunner:
                 
                 # Verify summary structure
                 summary = data["summary"]
-                summary_fields = ["total_members", "members_with_postcode", "members_with_city", 
-                                "members_with_state", "postcode_coverage", "city_coverage", "state_coverage"]
+                summary_fields = ["total_members", "with_postcode", "with_city", 
+                                "with_state", "coverage"]
                 missing_summary_fields = [field for field in summary_fields if field not in summary]
                 
                 if missing_summary_fields:
                     self.log_result("Geographic Distribution Summary Structure", False, 
                                   f"Missing summary fields: {missing_summary_fields}")
+                    return False
+                
+                # Verify coverage structure
+                coverage = summary["coverage"]
+                coverage_fields = ["postcode", "city", "state"]
+                missing_coverage_fields = [field for field in coverage_fields if field not in coverage]
+                
+                if missing_coverage_fields:
+                    self.log_result("Geographic Distribution Coverage Structure", False, 
+                                  f"Missing coverage fields: {missing_coverage_fields}")
                     return False
                 
                 # Verify data types
