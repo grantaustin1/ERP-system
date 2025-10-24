@@ -710,6 +710,42 @@ export default function Dashboard() {
             />
           </div>
 
+          {/* Phase 2B - Retention Intelligence Section */}
+          <div className="mb-8">
+            <h2 className="text-2xl font-bold text-white mb-4 flex items-center gap-2">
+              <AlertTriangle className="w-6 h-6 text-red-400" />
+              Retention Intelligence
+            </h2>
+            <p className="text-slate-400 mb-6">
+              Proactive alerts and analytics to prevent member cancellations
+            </p>
+            
+            {/* At-Risk Members Widget */}
+            <div className="mb-6">
+              <AtRiskMembersWidget data={atRiskMembers} loading={loadingRetention} />
+            </div>
+            
+            {/* Retention Alerts & Dropoff Analytics */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+              <RetentionAlertsWidget 
+                alerts7={alerts7Days}
+                alerts14={alerts14Days}
+                alerts28={alerts28Days}
+                loading={loadingRetention}
+              />
+              <DropoffAnalyticsCard data={dropoffAnalytics} loading={loadingRetention} />
+            </div>
+            
+            {/* Expiring Memberships Table */}
+            <div>
+              <ExpiringMembershipsTable 
+                data={expiringMemberships}
+                period={30}
+                loading={loadingRetention}
+              />
+            </div>
+          </div>
+
           {/* Phase 2: Sales Comparison Chart */}
           {!loadingPhase2 && salesComparisonData && (
             <div className="mt-8">
