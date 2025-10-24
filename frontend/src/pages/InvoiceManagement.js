@@ -13,8 +13,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 import { FileText, Plus, Edit, Trash2, Eye, Download, Settings } from 'lucide-react';
 import { toast } from 'sonner';
+import { usePermissions } from '@/contexts/PermissionContext';
+import PermissionGuard from '@/components/PermissionGuard';
 
 export default function InvoiceManagement() {
+  const { canCreate, canEdit, canDelete } = usePermissions();
   const [invoices, setInvoices] = useState([]);
   const [members, setMembers] = useState([]);
   const [loading, setLoading] = useState(true);
