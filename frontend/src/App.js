@@ -7,6 +7,7 @@ import Dashboard from '@/pages/Dashboard';
 import Members from '@/pages/Members';
 import AccessControl from '@/pages/AccessControlEnhanced';
 import BillingEnhanced from '@/pages/BillingEnhanced';
+import InvoiceManagement from '@/pages/InvoiceManagement';
 import MemberPortal from '@/pages/MemberPortalEnhanced';
 import Settings from '@/pages/Settings';
 import SettingsNew from '@/pages/SettingsNew';
