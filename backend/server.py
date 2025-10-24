@@ -5540,6 +5540,347 @@ async def get_recent_members(period: str = "today", current_user: User = Depends
     return recent_members
 
 
+# ===================== Phase 2B - Retention Intelligence Routes =====================
+
+@api_router.get("/retention/at-risk-members")
+async def get_at_risk_members(current_user: User = Depends(get_current_user)):
+    """Get members at high risk of cancellation based on attendance patterns"""
+    from datetime import datetime, timedelta
+    
+    now = datetime.now(timezone.utc)
+    seven_days_ago = now - timedelta(days=7)
+    fourteen_days_ago = now - timedelta(days=14)
+    twenty_eight_days_ago = now - timedelta(days=28)
+    
+    # Get all active members
+    active_members = await db.members.find(
+        {"membership_status": "active"},
+        {"_id": 0}
+    ).to_list(None)
+    
+    at_risk_members = []
+    
+    for member in active_members:
+        risk_score = 0
+        risk_factors = []
+        
+        # Check last visit date
+        last_visit = member.get("last_visit_date")
+        if last_visit:
+            last_visit_dt = datetime.fromisoformat(last_visit) if isinstance(last_visit, str) else last_visit
+            days_since_visit = (now - last_visit_dt).days
+            
+            if days_since_visit >= 28:
+                risk_score += 40
+                risk_factors.append(f"No visit in {days_since_visit} days")
+            elif days_since_visit >= 14:
+                risk_score += 25
+                risk_factors.append(f"No visit in {days_since_visit} days")
+            elif days_since_visit >= 7:
+                risk_score += 10
+                risk_factors.append(f"No visit in {days_since_visit} days")
+        else:
+            # No last visit recorded
+            risk_score += 30
+            risk_factors.append("No attendance recorded")
+        
+        # Check if member is a debtor
+        if member.get("is_debtor"):
+            risk_score += 20
+            risk_factors.append("Outstanding payment")
+        
+        # Check missing data
+        if not member.get("phone"):
+            risk_score += 5
+            risk_factors.append("No contact phone")
+        
+        # Check membership expiry
+        expiry_date = member.get("expiry_date")
+        if expiry_date:
+            expiry_dt = datetime.fromisoformat(expiry_date) if isinstance(expiry_date, str) else expiry_date
+            days_until_expiry = (expiry_dt - now).days
+            
+            if 0 < days_until_expiry <= 30:
+                risk_score += 15
+                risk_factors.append(f"Expires in {days_until_expiry} days")
+        
+        # Categorize risk level
+        if risk_score >= 50:
+            risk_level = "critical"
+        elif risk_score >= 30:
+            risk_level = "high"
+        elif risk_score >= 15:
+            risk_level = "medium"
+        else:
+            continue  # Skip low-risk members
+        
+        at_risk_members.append({
+            "id": member.get("id"),
+            "first_name": member.get("first_name"),
+            "last_name": member.get("last_name"),
+            "full_name": f"{member.get('first_name', '')} {member.get('last_name', '')}".strip(),
+            "email": member.get("email"),
+            "phone": member.get("phone"),
+            "last_visit_date": last_visit,
+            "days_since_visit": days_since_visit if last_visit else None,
+            "membership_type": member.get("membership_type"),
+            "is_debtor": member.get("is_debtor", False),
+            "risk_score": risk_score,
+            "risk_level": risk_level,
+            "risk_factors": risk_factors,
+            "expiry_date": member.get("expiry_date")
+        })
+    
+    # Sort by risk score descending
+    at_risk_members.sort(key=lambda x: x["risk_score"], reverse=True)
+    
+    return {
+        "total": len(at_risk_members),
+        "critical": len([m for m in at_risk_members if m["risk_level"] == "critical"]),
+        "high": len([m for m in at_risk_members if m["risk_level"] == "high"]),
+        "medium": len([m for m in at_risk_members if m["risk_level"] == "medium"]),
+        "members": at_risk_members
+    }
+
+
+@api_router.get("/retention/retention-alerts")
+async def get_retention_alerts(days: int = 7, current_user: User = Depends(get_current_user)):
+    """Get members who haven't visited in X days (7, 14, or 28)"""
+    from datetime import datetime, timedelta
+    
+    now = datetime.now(timezone.utc)
+    cutoff_date = now - timedelta(days=days)
+    
+    # Get active members
+    active_members = await db.members.find(
+        {"membership_status": "active"},
+        {"_id": 0}
+    ).to_list(None)
+    
+    alert_members = []
+    
+    for member in active_members:
+        last_visit = member.get("last_visit_date")
+        
+        if not last_visit:
+            # No visit recorded - high priority
+            alert_members.append({
+                "id": member.get("id"),
+                "first_name": member.get("first_name"),
+                "last_name": member.get("last_name"),
+                "full_name": f"{member.get('first_name', '')} {member.get('last_name', '')}".strip(),
+                "email": member.get("email"),
+                "phone": member.get("phone"),
+                "last_visit_date": None,
+                "days_since_visit": None,
+                "join_date": member.get("join_date"),
+                "membership_type": member.get("membership_type")
+            })
+        else:
+            last_visit_dt = datetime.fromisoformat(last_visit) if isinstance(last_visit, str) else last_visit
+            
+            if last_visit_dt < cutoff_date:
+                days_since = (now - last_visit_dt).days
+                alert_members.append({
+                    "id": member.get("id"),
+                    "first_name": member.get("first_name"),
+                    "last_name": member.get("last_name"),
+                    "full_name": f"{member.get('first_name', '')} {member.get('last_name', '')}".strip(),
+                    "email": member.get("email"),
+                    "phone": member.get("phone"),
+                    "last_visit_date": last_visit,
+                    "days_since_visit": days_since,
+                    "join_date": member.get("join_date"),
+                    "membership_type": member.get("membership_type")
+                })
+    
+    # Sort by days since visit (nulls first)
+    alert_members.sort(key=lambda x: x["days_since_visit"] if x["days_since_visit"] is not None else 999, reverse=True)
+    
+    return {
+        "alert_type": f"{days}_day_retention_alert",
+        "days": days,
+        "total": len(alert_members),
+        "members": alert_members
+    }
+
+
+@api_router.get("/retention/sleeping-members")
+async def get_sleeping_members(current_user: User = Depends(get_current_user)):
+    """Get active members with no attendance in last 30 days"""
+    from datetime import datetime, timedelta
+    
+    now = datetime.now(timezone.utc)
+    thirty_days_ago = now - timedelta(days=30)
+    
+    # Get active members with no recent visits
+    active_members = await db.members.find(
+        {"membership_status": "active"},
+        {"_id": 0}
+    ).to_list(None)
+    
+    sleeping_members = []
+    
+    for member in active_members:
+        last_visit = member.get("last_visit_date")
+        
+        if not last_visit:
+            # Never visited
+            sleeping_members.append({
+                "id": member.get("id"),
+                "first_name": member.get("first_name"),
+                "last_name": member.get("last_name"),
+                "full_name": f"{member.get('first_name', '')} {member.get('last_name', '')}".strip(),
+                "email": member.get("email"),
+                "phone": member.get("phone"),
+                "last_visit_date": None,
+                "days_sleeping": "Never visited",
+                "join_date": member.get("join_date"),
+                "membership_type": member.get("membership_type"),
+                "is_debtor": member.get("is_debtor", False)
+            })
+        else:
+            last_visit_dt = datetime.fromisoformat(last_visit) if isinstance(last_visit, str) else last_visit
+            
+            if last_visit_dt < thirty_days_ago:
+                days_since = (now - last_visit_dt).days
+                sleeping_members.append({
+                    "id": member.get("id"),
+                    "first_name": member.get("first_name"),
+                    "last_name": member.get("last_name"),
+                    "full_name": f"{member.get('first_name', '')} {member.get('last_name', '')}".strip(),
+                    "email": member.get("email"),
+                    "phone": member.get("phone"),
+                    "last_visit_date": last_visit,
+                    "days_sleeping": days_since,
+                    "join_date": member.get("join_date"),
+                    "membership_type": member.get("membership_type"),
+                    "is_debtor": member.get("is_debtor", False)
+                })
+    
+    return {
+        "total": len(sleeping_members),
+        "members": sleeping_members
+    }
+
+
+@api_router.get("/retention/expiring-memberships")
+async def get_expiring_memberships(days: int = 30, current_user: User = Depends(get_current_user)):
+    """Get memberships expiring in next X days (30, 60, or 90)"""
+    from datetime import datetime, timedelta
+    
+    now = datetime.now(timezone.utc)
+    future_date = now + timedelta(days=days)
+    
+    # Get members with expiry date in the range
+    members = await db.members.find(
+        {
+            "membership_status": "active",
+            "expiry_date": {
+                "$gte": now.isoformat(),
+                "$lte": future_date.isoformat()
+            }
+        },
+        {"_id": 0}
+    ).sort("expiry_date", 1).to_list(None)
+    
+    expiring_members = []
+    
+    for member in members:
+        expiry_date = member.get("expiry_date")
+        if expiry_date:
+            expiry_dt = datetime.fromisoformat(expiry_date) if isinstance(expiry_date, str) else expiry_date
+            days_until_expiry = (expiry_dt - now).days
+            
+            expiring_members.append({
+                "id": member.get("id"),
+                "first_name": member.get("first_name"),
+                "last_name": member.get("last_name"),
+                "full_name": f"{member.get('first_name', '')} {member.get('last_name', '')}".strip(),
+                "email": member.get("email"),
+                "phone": member.get("phone"),
+                "expiry_date": expiry_date,
+                "days_until_expiry": days_until_expiry,
+                "membership_type": member.get("membership_type"),
+                "last_visit_date": member.get("last_visit_date"),
+                "is_debtor": member.get("is_debtor", False)
+            })
+    
+    return {
+        "period_days": days,
+        "total": len(expiring_members),
+        "members": expiring_members
+    }
+
+
+@api_router.get("/retention/dropoff-analytics")
+async def get_dropoff_analytics(current_user: User = Depends(get_current_user)):
+    """Analyze attendance patterns before member dropoff/cancellation"""
+    from datetime import datetime, timedelta
+    
+    # Get cancelled members from last 90 days
+    now = datetime.now(timezone.utc)
+    ninety_days_ago = now - timedelta(days=90)
+    
+    cancelled_members = await db.members.find(
+        {
+            "membership_status": "cancelled",
+            "cancellation_date": {"$gte": ninety_days_ago.isoformat()}
+        },
+        {"_id": 0}
+    ).to_list(None)
+    
+    # Analyze attendance before cancellation
+    dropoff_patterns = []
+    total_days_before_cancel = 0
+    count = 0
+    
+    for member in cancelled_members:
+        cancellation_date = member.get("cancellation_date")
+        if not cancellation_date:
+            continue
+        
+        cancel_dt = datetime.fromisoformat(cancellation_date) if isinstance(cancellation_date, str) else cancellation_date
+        
+        # Get last attendance before cancellation
+        last_visit = member.get("last_visit_date")
+        if last_visit:
+            last_visit_dt = datetime.fromisoformat(last_visit) if isinstance(last_visit, str) else last_visit
+            days_inactive = (cancel_dt - last_visit_dt).days
+            
+            if days_inactive >= 0:  # Only count if last visit was before cancellation
+                total_days_before_cancel += days_inactive
+                count += 1
+                
+                dropoff_patterns.append({
+                    "member_id": member.get("id"),
+                    "member_name": f"{member.get('first_name', '')} {member.get('last_name', '')}".strip(),
+                    "last_visit_date": last_visit,
+                    "cancellation_date": cancellation_date,
+                    "days_inactive_before_cancel": days_inactive
+                })
+    
+    average_days_before_cancel = round(total_days_before_cancel / count, 1) if count > 0 else 0
+    
+    # Distribution of inactive periods
+    distribution = {
+        "0-7_days": len([p for p in dropoff_patterns if 0 <= p["days_inactive_before_cancel"] <= 7]),
+        "8-14_days": len([p for p in dropoff_patterns if 8 <= p["days_inactive_before_cancel"] <= 14]),
+        "15-30_days": len([p for p in dropoff_patterns if 15 <= p["days_inactive_before_cancel"] <= 30]),
+        "31-60_days": len([p for p in dropoff_patterns if 31 <= p["days_inactive_before_cancel"] <= 60]),
+        "60+_days": len([p for p in dropoff_patterns if p["days_inactive_before_cancel"] > 60])
+    }
+    
+    return {
+        "total_cancelled_members": len(cancelled_members),
+        "members_analyzed": count,
+        "average_days_inactive_before_cancel": average_days_before_cancel,
+        "distribution": distribution,
+        "recommendation": f"Members inactive for {int(average_days_before_cancel / 2)} days should be contacted",
+        "patterns": dropoff_patterns[:20]  # Return top 20 for reference
+    }
+
+
 # Levy Routes
 @api_router.get("/levies", response_model=List[Levy])
 async def get_levies(status: Optional[str] = None, current_user: User = Depends(get_current_user)):
