@@ -103,7 +103,7 @@ export default function Tasks() {
         task_type_id: formData.task_type_id,
         priority: formData.priority,
         assigned_to_user_id: formData.assigned_to_user_id === 'none' ? '' : formData.assigned_to_user_id,
-        assigned_to_department: formData.assigned_to_department,
+        assigned_to_department: formData.assigned_to_department === 'none' ? '' : formData.assigned_to_department,
         related_member_id: formData.related_member_id === 'none' ? '' : formData.related_member_id,
         due_date: formData.due_date
       };
