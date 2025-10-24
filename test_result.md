@@ -1798,14 +1798,9 @@ metadata:
 
 test_plan:
   current_focus:
-    - "Notification Templates API - GET Templates"
-    - "Notification Templates API - POST Create Template"
-    - "Notification Templates API - PUT Update Template"
-    - "Notification Templates API - DELETE Template"
-    - "Notification Templates API - Seed Defaults"
-    - "Template Management UI in Settings"
-    - "Template Create/Edit Dialog"
-    - "Template Delete Functionality"
+    - "ClubManager Enhancement - Phase 1 Components"
+    - "ClubManager Enhancement - Phase 2 Dashboard"
+    - "ClubManager Enhancement - Phase 3 Messaging"
   stuck_tasks: []
   test_all: false
   test_priority: "high_first"
