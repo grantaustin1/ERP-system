@@ -68,6 +68,7 @@ function App() {
             <Route path="/packages" element={<PrivateRoute><PackageSetup /></PrivateRoute>} />
             <Route path="/automations" element={<PrivateRoute><Automations /></PrivateRoute>} />
             <Route path="/analytics" element={<PrivateRoute><Analytics /></PrivateRoute>} />
+            <Route path="/reports" element={<PrivateRoute><Reports /></PrivateRoute>} />
             <Route path="/import" element={<PrivateRoute><DataImport /></PrivateRoute>} />
             <Route path="/permission-matrix" element={<PrivateRoute><PermissionMatrix /></PrivateRoute>} />
             <Route path="/user-roles" element={<PrivateRoute><UserRoleManagement /></PrivateRoute>} />
