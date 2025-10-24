@@ -27,6 +27,7 @@ export default function Sidebar() {
     { path: '/products', icon: Tag, label: 'Products', testId: 'nav-products' },
     { path: '/marketing', icon: TrendingUp, label: 'Marketing', testId: 'nav-marketing' },
     { path: '/automations', icon: Zap, label: 'Automations', testId: 'nav-automations' },
+    { path: '/tasks', icon: CheckSquare, label: 'Tasks', testId: 'nav-tasks' },
     { path: '/import', icon: Upload, label: 'Import Data', testId: 'nav-import' },
     { path: '/permission-matrix', icon: Shield, label: 'Permissions', testId: 'nav-permissions' },
     { path: '/user-roles', icon: UserCog, label: 'User Roles', testId: 'nav-user-roles' },
