@@ -27,6 +27,7 @@ import POS from '@/pages/POS';
 import ProductManagement from '@/pages/ProductManagement';
 import Tasks from '@/pages/Tasks';
 import { Toaster } from '@/components/ui/sonner';
+import { PermissionProvider } from '@/contexts/PermissionContext';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 export const API = `${BACKEND_URL}/api`;
