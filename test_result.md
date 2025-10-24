@@ -5632,18 +5632,9 @@ metadata:
 
 test_plan:
   current_focus:
-    - "Phase 2E - Points Balance API"
-    - "Phase 2E - Points Award API"
-    - "Phase 2E - Points Transactions API"
-    - "Phase 2E - Points Leaderboard API"
-    - "Phase 2E - Global Search API"
-    - "Phase 2E - Activity Feed API"
-    - "Phase 2E - Engagement Score API"
-    - "Phase 2E - Engagement Overview API"
-    - "Phase 2E - Auto-Award Check-in System"
-    - "Phase 2E - Auto-Award Payment System"
-    - "Phase 2E - Engagement API Authentication"
-  stuck_tasks: []
+    - "Phase 2E - Sidebar Navigation Links"
+  stuck_tasks:
+    - "Phase 2E - Sidebar Navigation Links"
   test_all: false
   test_priority: "high_first"
 
