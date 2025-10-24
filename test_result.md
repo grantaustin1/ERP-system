@@ -5203,3 +5203,14 @@ frontend:
       - working: true
         agent: "testing"
         comment: "✅ Dashboard Integration WORKING PERFECTLY: Retention Intelligence section properly integrated with AlertTriangle icon and description 'Proactive alerts and analytics to prevent member cancellations'. All 4 Phase 2B components render correctly: At-Risk Members (full width), Retention Alerts and Dropoff Analytics (2-column grid side-by-side), Expiring Memberships Table (full width). Section appears AFTER Phase 2A components (Today/Yesterday cards, Recent Members) and BEFORE existing Phase 2 components (Sales Chart, KPI Sparklines, Birthday Gallery). API integration working with real data from backend (104 at-risk members, 102 retention alerts, 73 expiring memberships). No console errors. Perfect integration with existing dashboard layout."
+  - task: "Phase 2A - Chart Selector Component"
+    implemented: true
+    working: "NA"
+    file: "/app/frontend/src/components/ChartSelector.jsx, /app/frontend/src/pages/Dashboard.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Phase 2A Chart Selector Component implemented with dropdown for 5 chart types: Age Distribution Analysis (bar), Average Membership Duration (bar), Attendance by Day of Week (bar), Top Referring Members (bar), Member Acquisition Sources (pie). Integrated into Dashboard.js after Birthday Gallery section. Uses Chart.js and react-chartjs-2 for chart rendering. Backend APIs already implemented at /api/charts/{chart-type}. Component includes loading states, empty states, proper dark theme styling, and responsive design. Ready for comprehensive frontend testing."
