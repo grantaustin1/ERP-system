@@ -2740,6 +2740,299 @@ async def create_journal_entry(
     
     return journal_entry
 
+# Task Type Routes
+@api_router.get("/task-types", response_model=List[TaskType])
+async def get_task_types(current_user: User = Depends(get_current_user)):
+    """Get all task types"""
+    task_types = await db.task_types.find(
+        {"is_active": True},
+        {"_id": 0}
+    ).sort("name", 1).to_list(length=None)
+    return task_types
+
+@api_router.post("/task-types", response_model=TaskType)
+async def create_task_type(
+    task_type_data: TaskTypeCreate,
+    current_user: User = Depends(get_current_user)
+):
+    """Create a new task type"""
+    task_type = TaskType(**task_type_data.model_dump())
+    await db.task_types.insert_one(task_type.model_dump())
+    return task_type
+
+@api_router.put("/task-types/{type_id}", response_model=TaskType)
+async def update_task_type(
+    type_id: str,
+    task_type_data: TaskTypeUpdate,
+    current_user: User = Depends(get_current_user)
+):
+    """Update a task type"""
+    task_type = await db.task_types.find_one({"type_id": type_id}, {"_id": 0})
+    if not task_type:
+        raise HTTPException(status_code=404, detail="Task type not found")
+    
+    updates = {k: v for k, v in task_type_data.model_dump().items() if v is not None}
+    if updates:
+        await db.task_types.update_one(
+            {"type_id": type_id},
+            {"$set": updates}
+        )
+    
+    updated_task_type = await db.task_types.find_one({"type_id": type_id}, {"_id": 0})
+    return updated_task_type
+
+@api_router.delete("/task-types/{type_id}")
+async def delete_task_type(
+    type_id: str,
+    current_user: User = Depends(get_current_user)
+):
+    """Soft delete a task type"""
+    result = await db.task_types.update_one(
+        {"type_id": type_id},
+        {"$set": {"is_active": False}}
+    )
+    if result.modified_count == 0:
+        raise HTTPException(status_code=404, detail="Task type not found")
+    return {"message": "Task type deleted successfully"}
+
+# Task Routes
+@api_router.get("/tasks", response_model=List[Task])
+async def get_tasks(
+    status: Optional[str] = None,
+    priority: Optional[str] = None,
+    task_type_id: Optional[str] = None,
+    assigned_to_user_id: Optional[str] = None,
+    assigned_to_department: Optional[str] = None,
+    related_member_id: Optional[str] = None,
+    overdue: Optional[bool] = None,
+    current_user: User = Depends(get_current_user)
+):
+    """Get all tasks with optional filters"""
+    query = {}
+    
+    if status:
+        query["status"] = status
+    if priority:
+        query["priority"] = priority
+    if task_type_id:
+        query["task_type_id"] = task_type_id
+    if assigned_to_user_id:
+        query["assigned_to_user_id"] = assigned_to_user_id
+    if assigned_to_department:
+        query["assigned_to_department"] = assigned_to_department
+    if related_member_id:
+        query["related_member_id"] = related_member_id
+    if overdue:
+        query["due_date"] = {"$lt": datetime.now(timezone.utc)}
+        query["status"] = {"$nin": ["completed", "cancelled"]}
+    
+    tasks = await db.tasks.find(query, {"_id": 0}).sort("created_at", -1).to_list(length=None)
+    return tasks
+
+@api_router.get("/tasks/my-tasks", response_model=List[Task])
+async def get_my_tasks(current_user: User = Depends(get_current_user)):
+    """Get tasks assigned to current user"""
+    tasks = await db.tasks.find(
+        {"assigned_to_user_id": current_user.id},
+        {"_id": 0}
+    ).sort("created_at", -1).to_list(length=None)
+    return tasks
+
+@api_router.get("/tasks/stats")
+async def get_task_stats(current_user: User = Depends(get_current_user)):
+    """Get task statistics"""
+    total = await db.tasks.count_documents({})
+    pending = await db.tasks.count_documents({"status": "pending"})
+    in_progress = await db.tasks.count_documents({"status": "in_progress"})
+    completed = await db.tasks.count_documents({"status": "completed"})
+    
+    my_tasks = await db.tasks.count_documents({"assigned_to_user_id": current_user.id})
+    my_overdue = await db.tasks.count_documents({
+        "assigned_to_user_id": current_user.id,
+        "due_date": {"$lt": datetime.now(timezone.utc)},
+        "status": {"$nin": ["completed", "cancelled"]}
+    })
+    
+    return {
+        "total": total,
+        "pending": pending,
+        "in_progress": in_progress,
+        "completed": completed,
+        "my_tasks": my_tasks,
+        "my_overdue": my_overdue
+    }
+
+@api_router.get("/tasks/{task_id}", response_model=Task)
+async def get_task(task_id: str, current_user: User = Depends(get_current_user)):
+    """Get a specific task"""
+    task = await db.tasks.find_one({"task_id": task_id}, {"_id": 0})
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+    return task
+
+@api_router.post("/tasks", response_model=Task)
+async def create_task(
+    task_data: TaskCreate,
+    current_user: User = Depends(get_current_user)
+):
+    """Create a new task"""
+    # Get task type name
+    task_type = await db.task_types.find_one({"type_id": task_data.task_type_id}, {"_id": 0})
+    if not task_type:
+        raise HTTPException(status_code=404, detail="Task type not found")
+    
+    # Get assigned user name if assigned
+    assigned_to_user_name = None
+    if task_data.assigned_to_user_id:
+        assigned_user = await db.users.find_one({"id": task_data.assigned_to_user_id}, {"_id": 0})
+        if assigned_user:
+            assigned_to_user_name = assigned_user.get("full_name")
+    
+    # Get related member name if related
+    related_member_name = None
+    if task_data.related_member_id:
+        member = await db.members.find_one({"id": task_data.related_member_id}, {"_id": 0})
+        if member:
+            related_member_name = f"{member.get('first_name')} {member.get('last_name')}"
+    
+    task = Task(
+        **task_data.model_dump(),
+        task_type_name=task_type.get("name"),
+        assigned_to_user_name=assigned_to_user_name,
+        related_member_name=related_member_name,
+        created_by=current_user.id,
+        created_by_name=current_user.full_name
+    )
+    
+    await db.tasks.insert_one(task.model_dump())
+    
+    # Log to journal if related to member
+    if task_data.related_member_id:
+        await add_journal_entry(
+            member_id=task_data.related_member_id,
+            action_type="task_created",
+            description=f"Task created: {task.title}",
+            metadata={
+                "task_id": task.task_id,
+                "task_type": task_type.get("name"),
+                "priority": task.priority,
+                "assigned_to": assigned_to_user_name or task_data.assigned_to_department
+            },
+            created_by=current_user.id,
+            created_by_name=current_user.full_name
+        )
+    
+    return task
+
+@api_router.put("/tasks/{task_id}", response_model=Task)
+async def update_task(
+    task_id: str,
+    task_data: TaskUpdate,
+    current_user: User = Depends(get_current_user)
+):
+    """Update a task"""
+    task = await db.tasks.find_one({"task_id": task_id}, {"_id": 0})
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+    
+    updates = {k: v for k, v in task_data.model_dump().items() if v is not None}
+    updates["updated_at"] = datetime.now(timezone.utc)
+    
+    # If status changed to completed, record completion
+    if task_data.status == "completed" and task.get("status") != "completed":
+        updates["completed_at"] = datetime.now(timezone.utc)
+        updates["completed_by"] = current_user.id
+        updates["completed_by_name"] = current_user.full_name
+    
+    # Update denormalized fields
+    if task_data.task_type_id:
+        task_type = await db.task_types.find_one({"type_id": task_data.task_type_id}, {"_id": 0})
+        if task_type:
+            updates["task_type_name"] = task_type.get("name")
+    
+    if task_data.assigned_to_user_id:
+        assigned_user = await db.users.find_one({"id": task_data.assigned_to_user_id}, {"_id": 0})
+        if assigned_user:
+            updates["assigned_to_user_name"] = assigned_user.get("full_name")
+    
+    await db.tasks.update_one({"task_id": task_id}, {"$set": updates})
+    
+    updated_task = await db.tasks.find_one({"task_id": task_id}, {"_id": 0})
+    return updated_task
+
+@api_router.delete("/tasks/{task_id}")
+async def delete_task(task_id: str, current_user: User = Depends(get_current_user)):
+    """Delete a task"""
+    result = await db.tasks.delete_one({"task_id": task_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Task not found")
+    return {"message": "Task deleted successfully"}
+
+# Task Comment Routes
+@api_router.get("/tasks/{task_id}/comments", response_model=List[TaskComment])
+async def get_task_comments(
+    task_id: str,
+    current_user: User = Depends(get_current_user)
+):
+    """Get all comments for a task"""
+    comments = await db.task_comments.find(
+        {"task_id": task_id},
+        {"_id": 0}
+    ).sort("created_at", 1).to_list(length=None)
+    return comments
+
+@api_router.post("/tasks/{task_id}/comments", response_model=TaskComment)
+async def create_task_comment(
+    task_id: str,
+    comment_data: TaskCommentCreate,
+    current_user: User = Depends(get_current_user)
+):
+    """Add a comment to a task"""
+    task = await db.tasks.find_one({"task_id": task_id}, {"_id": 0})
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+    
+    comment = TaskComment(
+        task_id=task_id,
+        content=comment_data.content,
+        attachments=comment_data.attachments,
+        created_by=current_user.id,
+        created_by_name=current_user.full_name
+    )
+    
+    await db.task_comments.insert_one(comment.model_dump())
+    
+    # Update comment count on task
+    await db.tasks.update_one(
+        {"task_id": task_id},
+        {"$inc": {"comment_count": 1}}
+    )
+    
+    return comment
+
+@api_router.delete("/tasks/{task_id}/comments/{comment_id}")
+async def delete_task_comment(
+    task_id: str,
+    comment_id: str,
+    current_user: User = Depends(get_current_user)
+):
+    """Delete a comment from a task"""
+    result = await db.task_comments.delete_one({
+        "comment_id": comment_id,
+        "task_id": task_id
+    })
+    
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Comment not found")
+    
+    # Update comment count on task
+    await db.tasks.update_one(
+        {"task_id": task_id},
+        {"$inc": {"comment_count": -1}}
+    )
+    
+    return {"message": "Comment deleted successfully"}
+
 # Access Control Routes
 @api_router.post("/access/validate")
 async def validate_access(data: AccessLogCreate):
