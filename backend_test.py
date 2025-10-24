@@ -588,14 +588,14 @@ class RetentionTestRunner:
 
 def main():
     """Main execution function"""
-    tester = DashboardTestRunner()
-    success = tester.run_dashboard_tests()
+    tester = RetentionTestRunner()
+    success = tester.run_retention_tests()
     
     if success:
-        print("\n🎉 ALL DASHBOARD TESTS PASSED!")
+        print("\n🎉 ALL RETENTION INTELLIGENCE TESTS PASSED!")
         exit(0)
     else:
-        print("\n💥 SOME DASHBOARD TESTS FAILED!")
+        print("\n💥 SOME RETENTION INTELLIGENCE TESTS FAILED!")
         exit(1)
 
 if __name__ == "__main__":
