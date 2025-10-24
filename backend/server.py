@@ -6466,6 +6466,599 @@ async def get_anniversary_report(
 
 
 
+# ==================== PHASE 2D - ADVANCED ANALYTICS ENDPOINTS ====================
+
+@api_router.get("/analytics/revenue-breakdown")
+async def get_revenue_breakdown(
+    period_months: int = 12,
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Advanced revenue analytics with breakdown by membership type and payment method
+    """
+    from datetime import datetime, timedelta
+    from collections import defaultdict
+    
+    # Calculate date range
+    end_date = datetime.now(timezone.utc)
+    start_date = end_date - timedelta(days=period_months * 30)
+    
+    # Get all invoices in period
+    invoices = await db.invoices.find(
+        {
+            "status": "paid",
+            "paid_date": {"$gte": start_date.isoformat(), "$lte": end_date.isoformat()}
+        },
+        {"_id": 0}
+    ).to_list(None)
+    
+    # Initialize aggregations
+    by_membership_type = defaultdict(float)
+    by_payment_method = defaultdict(float)
+    monthly_revenue = defaultdict(float)
+    total_revenue = 0.0
+    
+    for invoice in invoices:
+        amount = invoice.get("total_amount", 0)
+        total_revenue += amount
+        
+        # By membership type
+        membership_type = invoice.get("membership_type", "Unknown")
+        by_membership_type[membership_type] += amount
+        
+        # By payment method
+        payment_method = invoice.get("payment_method", "Unknown")
+        by_payment_method[payment_method] += amount
+        
+        # By month
+        paid_date = invoice.get("paid_date")
+        if paid_date:
+            try:
+                if isinstance(paid_date, str):
+                    date_obj = datetime.fromisoformat(paid_date)
+                else:
+                    date_obj = paid_date
+                month_key = date_obj.strftime("%Y-%m")
+                monthly_revenue[month_key] += amount
+            except:
+                pass
+    
+    # Get active members for ARPU calculation
+    active_members = await db.members.count_documents(
+        {"membership_status": "active"}
+    )
+    
+    # Calculate metrics
+    arpu = total_revenue / active_members if active_members > 0 else 0
+    mrr = total_revenue / period_months if period_months > 0 else 0
+    
+    # Format data for charts
+    membership_type_data = [
+        {"type": k, "revenue": round(v, 2), "percentage": round(v / total_revenue * 100, 1) if total_revenue > 0 else 0}
+        for k, v in sorted(by_membership_type.items(), key=lambda x: x[1], reverse=True)
+    ]
+    
+    payment_method_data = [
+        {"method": k, "revenue": round(v, 2), "percentage": round(v / total_revenue * 100, 1) if total_revenue > 0 else 0}
+        for k, v in sorted(by_payment_method.items(), key=lambda x: x[1], reverse=True)
+    ]
+    
+    monthly_data = [
+        {"month": k, "revenue": round(v, 2)}
+        for k, v in sorted(monthly_revenue.items())
+    ]
+    
+    return {
+        "summary": {
+            "total_revenue": round(total_revenue, 2),
+            "period_months": period_months,
+            "active_members": active_members,
+            "arpu": round(arpu, 2),
+            "mrr": round(mrr, 2),
+            "date_range": {
+                "from": start_date.strftime("%Y-%m-%d"),
+                "to": end_date.strftime("%Y-%m-%d")
+            }
+        },
+        "by_membership_type": membership_type_data,
+        "by_payment_method": payment_method_data,
+        "monthly_trend": monthly_data
+    }
+
+
+@api_router.get("/analytics/geographic-distribution")
+async def get_geographic_distribution(current_user: User = Depends(get_current_user)):
+    """
+    Member distribution by postcode/location for heatmap visualization
+    """
+    from collections import Counter
+    
+    # Get all active members with addresses
+    members = await db.members.find(
+        {"membership_status": {"$in": ["active", "frozen"]}},
+        {"_id": 0, "address": 1, "postcode": 1, "city": 1, "state": 1}
+    ).to_list(None)
+    
+    # Extract postcodes and cities
+    postcodes = []
+    cities = []
+    states = []
+    
+    for member in members:
+        postcode = member.get("postcode")
+        if postcode:
+            # Normalize postcode (first 3-4 digits for grouping)
+            postcode_str = str(postcode)
+            if len(postcode_str) >= 3:
+                postcodes.append(postcode_str[:4] if len(postcode_str) >= 4 else postcode_str[:3])
+        
+        city = member.get("city")
+        if city:
+            cities.append(city)
+        
+        state = member.get("state")
+        if state:
+            states.append(state)
+    
+    # Count occurrences
+    postcode_counts = Counter(postcodes)
+    city_counts = Counter(cities)
+    state_counts = Counter(states)
+    
+    # Format for visualization
+    postcode_data = [
+        {"postcode": k, "count": v, "percentage": round(v / len(postcodes) * 100, 1) if len(postcodes) > 0 else 0}
+        for k, v in postcode_counts.most_common(20)  # Top 20 postcodes
+    ]
+    
+    city_data = [
+        {"city": k, "count": v, "percentage": round(v / len(cities) * 100, 1) if len(cities) > 0 else 0}
+        for k, v in city_counts.most_common(10)  # Top 10 cities
+    ]
+    
+    state_data = [
+        {"state": k, "count": v, "percentage": round(v / len(states) * 100, 1) if len(states) > 0 else 0}
+        for k, v in state_counts.most_common()
+    ]
+    
+    return {
+        "summary": {
+            "total_members": len(members),
+            "with_postcode": len(postcodes),
+            "with_city": len(cities),
+            "with_state": len(states),
+            "coverage": {
+                "postcode": round(len(postcodes) / len(members) * 100, 1) if len(members) > 0 else 0,
+                "city": round(len(cities) / len(members) * 100, 1) if len(members) > 0 else 0,
+                "state": round(len(states) / len(members) * 100, 1) if len(members) > 0 else 0
+            }
+        },
+        "by_postcode": postcode_data,
+        "by_city": city_data,
+        "by_state": state_data
+    }
+
+
+@api_router.get("/analytics/attendance-deep-dive")
+async def get_attendance_deep_dive(
+    days_back: int = 90,
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Deep-dive attendance analytics: peak hours, frequency distribution, patterns
+    """
+    from datetime import datetime, timedelta
+    from collections import defaultdict, Counter
+    
+    # Calculate date range
+    end_date = datetime.now(timezone.utc)
+    start_date = end_date - timedelta(days=days_back)
+    
+    # Get all access logs in period
+    access_logs = await db.access_logs.find(
+        {
+            "access_time": {"$gte": start_date.isoformat(), "$lte": end_date.isoformat()},
+            "access_granted": True
+        },
+        {"_id": 0}
+    ).to_list(None)
+    
+    # Initialize analytics
+    hourly_distribution = defaultdict(int)
+    daily_distribution = defaultdict(int)
+    member_frequency = defaultdict(int)
+    weekly_pattern = defaultdict(int)
+    
+    for log in access_logs:
+        access_time_str = log.get("access_time")
+        member_id = log.get("member_id")
+        
+        if access_time_str:
+            try:
+                if isinstance(access_time_str, str):
+                    access_dt = datetime.fromisoformat(access_time_str)
+                else:
+                    access_dt = access_time_str
+                
+                # Hour of day (0-23)
+                hour = access_dt.hour
+                hourly_distribution[hour] += 1
+                
+                # Day of week (0=Monday, 6=Sunday)
+                day_of_week = access_dt.weekday()
+                day_names = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+                daily_distribution[day_names[day_of_week]] += 1
+                
+                # Week number for trends
+                week_key = access_dt.strftime("%Y-W%U")
+                weekly_pattern[week_key] += 1
+                
+                # Member frequency
+                if member_id:
+                    member_frequency[member_id] += 1
+                    
+            except:
+                pass
+    
+    # Find peak hours (top 5)
+    peak_hours = sorted(hourly_distribution.items(), key=lambda x: x[1], reverse=True)[:5]
+    peak_hours_data = [
+        {
+            "hour": f"{h:02d}:00", 
+            "count": count,
+            "percentage": round(count / len(access_logs) * 100, 1) if len(access_logs) > 0 else 0
+        }
+        for h, count in peak_hours
+    ]
+    
+    # Format hourly distribution for chart
+    hourly_data = [
+        {"hour": f"{h:02d}:00", "count": hourly_distribution.get(h, 0)}
+        for h in range(24)
+    ]
+    
+    # Format daily distribution
+    daily_data = [
+        {"day": day, "count": daily_distribution.get(day, 0)}
+        for day in ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+    ]
+    
+    # Member frequency distribution
+    frequency_ranges = {
+        "1-5 visits": 0,
+        "6-10 visits": 0,
+        "11-20 visits": 0,
+        "21-30 visits": 0,
+        "31+ visits": 0
+    }
+    
+    for member_id, count in member_frequency.items():
+        if count <= 5:
+            frequency_ranges["1-5 visits"] += 1
+        elif count <= 10:
+            frequency_ranges["6-10 visits"] += 1
+        elif count <= 20:
+            frequency_ranges["11-20 visits"] += 1
+        elif count <= 30:
+            frequency_ranges["21-30 visits"] += 1
+        else:
+            frequency_ranges["31+ visits"] += 1
+    
+    frequency_data = [
+        {"range": k, "members": v}
+        for k, v in frequency_ranges.items()
+    ]
+    
+    # Calculate average visits per member
+    total_unique_members = len(member_frequency)
+    avg_visits = len(access_logs) / total_unique_members if total_unique_members > 0 else 0
+    
+    # Weekly trend
+    weekly_trend_data = [
+        {"week": k, "count": v}
+        for k, v in sorted(weekly_pattern.items())
+    ]
+    
+    return {
+        "summary": {
+            "total_visits": len(access_logs),
+            "unique_members": total_unique_members,
+            "avg_visits_per_member": round(avg_visits, 1),
+            "period_days": days_back,
+            "date_range": {
+                "from": start_date.strftime("%Y-%m-%d"),
+                "to": end_date.strftime("%Y-%m-%d")
+            }
+        },
+        "peak_hours": peak_hours_data,
+        "hourly_distribution": hourly_data,
+        "daily_distribution": daily_data,
+        "frequency_distribution": frequency_data,
+        "weekly_trend": weekly_trend_data
+    }
+
+
+@api_router.get("/analytics/member-lifetime-value")
+async def get_member_lifetime_value(current_user: User = Depends(get_current_user)):
+    """
+    Calculate and analyze member lifetime value by membership type
+    """
+    from datetime import datetime
+    from collections import defaultdict
+    
+    # Get all members with their invoices
+    members = await db.members.find(
+        {"membership_status": {"$in": ["active", "frozen", "cancelled"]}},
+        {"_id": 0}
+    ).to_list(None)
+    
+    # Initialize LTV tracking
+    ltv_by_type = defaultdict(list)
+    ltv_by_status = defaultdict(list)
+    
+    for member in members:
+        member_id = member.get("id")
+        membership_type = member.get("membership_type", "Unknown")
+        membership_status = member.get("membership_status", "active")
+        join_date = member.get("join_date")
+        
+        # Calculate membership duration in months
+        if join_date:
+            try:
+                if isinstance(join_date, str):
+                    join_dt = datetime.fromisoformat(join_date)
+                else:
+                    join_dt = join_date
+                
+                duration_days = (datetime.now(timezone.utc) - join_dt).days
+                duration_months = max(1, duration_days / 30)
+            except:
+                duration_months = 1
+        else:
+            duration_months = 1
+        
+        # Get total revenue from this member
+        invoices = await db.invoices.find(
+            {"member_id": member_id, "status": "paid"},
+            {"_id": 0, "total_amount": 1}
+        ).to_list(None)
+        
+        total_revenue = sum(inv.get("total_amount", 0) for inv in invoices)
+        
+        # Calculate LTV metrics
+        ltv = total_revenue
+        monthly_value = total_revenue / duration_months if duration_months > 0 else 0
+        
+        ltv_data = {
+            "member_id": member_id,
+            "member_name": f"{member.get('first_name', '')} {member.get('last_name', '')}".strip(),
+            "membership_type": membership_type,
+            "membership_status": membership_status,
+            "ltv": round(ltv, 2),
+            "monthly_value": round(monthly_value, 2),
+            "duration_months": round(duration_months, 1),
+            "total_invoices": len(invoices)
+        }
+        
+        ltv_by_type[membership_type].append(ltv_data)
+        ltv_by_status[membership_status].append(ltv_data)
+    
+    # Calculate averages by membership type
+    type_summary = []
+    for mtype, members_data in ltv_by_type.items():
+        if members_data:
+            avg_ltv = sum(m["ltv"] for m in members_data) / len(members_data)
+            avg_monthly = sum(m["monthly_value"] for m in members_data) / len(members_data)
+            avg_duration = sum(m["duration_months"] for m in members_data) / len(members_data)
+            
+            type_summary.append({
+                "membership_type": mtype,
+                "member_count": len(members_data),
+                "avg_ltv": round(avg_ltv, 2),
+                "avg_monthly_value": round(avg_monthly, 2),
+                "avg_duration_months": round(avg_duration, 1),
+                "total_ltv": round(sum(m["ltv"] for m in members_data), 2)
+            })
+    
+    # Sort by avg LTV
+    type_summary.sort(key=lambda x: x["avg_ltv"], reverse=True)
+    
+    # Top 10 highest LTV members
+    all_members_ltv = []
+    for members_data in ltv_by_type.values():
+        all_members_ltv.extend(members_data)
+    
+    all_members_ltv.sort(key=lambda x: x["ltv"], reverse=True)
+    top_members = all_members_ltv[:10]
+    
+    # Calculate overall metrics
+    total_ltv = sum(m["ltv"] for m in all_members_ltv)
+    avg_ltv_overall = total_ltv / len(all_members_ltv) if all_members_ltv else 0
+    
+    return {
+        "summary": {
+            "total_members_analyzed": len(all_members_ltv),
+            "total_lifetime_value": round(total_ltv, 2),
+            "avg_ltv_per_member": round(avg_ltv_overall, 2)
+        },
+        "by_membership_type": type_summary,
+        "top_members": top_members
+    }
+
+
+@api_router.get("/analytics/churn-prediction")
+async def get_churn_prediction(current_user: User = Depends(get_current_user)):
+    """
+    Churn prediction and risk scoring for members
+    """
+    from datetime import datetime, timedelta
+    from collections import defaultdict
+    
+    # Get all active and frozen members
+    members = await db.members.find(
+        {"membership_status": {"$in": ["active", "frozen"]}},
+        {"_id": 0}
+    ).to_list(None)
+    
+    at_risk_members = []
+    risk_factors = defaultdict(int)
+    
+    today = datetime.now(timezone.utc)
+    thirty_days_ago = today - timedelta(days=30)
+    sixty_days_ago = today - timedelta(days=60)
+    
+    for member in members:
+        member_id = member.get("id")
+        risk_score = 0
+        risk_reasons = []
+        
+        # Factor 1: Last visit date (HIGH IMPACT)
+        last_visit = member.get("last_visit_date")
+        if last_visit:
+            try:
+                if isinstance(last_visit, str):
+                    last_visit_dt = datetime.fromisoformat(last_visit)
+                else:
+                    last_visit_dt = last_visit
+                
+                days_since_visit = (today - last_visit_dt).days
+                
+                if days_since_visit > 60:
+                    risk_score += 30
+                    risk_reasons.append(f"No visit in {days_since_visit} days")
+                    risk_factors["No recent visits (60+ days)"] += 1
+                elif days_since_visit > 30:
+                    risk_score += 15
+                    risk_reasons.append(f"Last visit {days_since_visit} days ago")
+                    risk_factors["Declining attendance (30+ days)"] += 1
+            except:
+                risk_score += 20
+                risk_reasons.append("No visit history")
+                risk_factors["No visit history"] += 1
+        else:
+            risk_score += 20
+            risk_reasons.append("No visit history")
+            risk_factors["No visit history"] += 1
+        
+        # Factor 2: Payment issues (HIGH IMPACT)
+        overdue_invoices = await db.invoices.count_documents({
+            "member_id": member_id,
+            "status": "overdue"
+        })
+        
+        if overdue_invoices > 0:
+            risk_score += 25
+            risk_reasons.append(f"{overdue_invoices} overdue invoice(s)")
+            risk_factors["Payment issues"] += 1
+        
+        # Factor 3: Frozen status (MEDIUM IMPACT)
+        if member.get("membership_status") == "frozen":
+            risk_score += 20
+            risk_reasons.append("Membership frozen")
+            risk_factors["Frozen membership"] += 1
+        
+        # Factor 4: Missing contact information (LOW IMPACT)
+        if not member.get("email") or not member.get("phone"):
+            risk_score += 5
+            risk_reasons.append("Incomplete contact info")
+            risk_factors["Missing contact info"] += 1
+        
+        # Factor 5: Recent attendance decline
+        recent_visits = await db.access_logs.count_documents({
+            "member_id": member_id,
+            "access_granted": True,
+            "access_time": {"$gte": thirty_days_ago.isoformat()}
+        })
+        
+        previous_visits = await db.access_logs.count_documents({
+            "member_id": member_id,
+            "access_granted": True,
+            "access_time": {
+                "$gte": sixty_days_ago.isoformat(),
+                "$lt": thirty_days_ago.isoformat()
+            }
+        })
+        
+        if previous_visits > 0 and recent_visits < previous_visits * 0.5:
+            risk_score += 15
+            risk_reasons.append("Attendance declining 50%+")
+            risk_factors["Attendance decline"] += 1
+        
+        # Classify risk level
+        if risk_score >= 50:
+            risk_level = "Critical"
+            at_risk_members.append({
+                "member_id": member_id,
+                "member_name": f"{member.get('first_name', '')} {member.get('last_name', '')}".strip(),
+                "email": member.get("email"),
+                "phone": member.get("phone"),
+                "membership_type": member.get("membership_type"),
+                "membership_status": member.get("membership_status"),
+                "risk_score": risk_score,
+                "risk_level": risk_level,
+                "risk_reasons": risk_reasons,
+                "last_visit": last_visit
+            })
+        elif risk_score >= 30:
+            risk_level = "High"
+            at_risk_members.append({
+                "member_id": member_id,
+                "member_name": f"{member.get('first_name', '')} {member.get('last_name', '')}".strip(),
+                "email": member.get("email"),
+                "phone": member.get("phone"),
+                "membership_type": member.get("membership_type"),
+                "membership_status": member.get("membership_status"),
+                "risk_score": risk_score,
+                "risk_level": risk_level,
+                "risk_reasons": risk_reasons,
+                "last_visit": last_visit
+            })
+        elif risk_score >= 15:
+            risk_level = "Medium"
+            at_risk_members.append({
+                "member_id": member_id,
+                "member_name": f"{member.get('first_name', '')} {member.get('last_name', '')}".strip(),
+                "email": member.get("email"),
+                "phone": member.get("phone"),
+                "membership_type": member.get("membership_type"),
+                "membership_status": member.get("membership_status"),
+                "risk_score": risk_score,
+                "risk_level": risk_level,
+                "risk_reasons": risk_reasons,
+                "last_visit": last_visit
+            })
+    
+    # Sort by risk score
+    at_risk_members.sort(key=lambda x: x["risk_score"], reverse=True)
+    
+    # Count by risk level
+    critical_count = sum(1 for m in at_risk_members if m["risk_level"] == "Critical")
+    high_count = sum(1 for m in at_risk_members if m["risk_level"] == "High")
+    medium_count = sum(1 for m in at_risk_members if m["risk_level"] == "Medium")
+    
+    # Format risk factors
+    risk_factors_data = [
+        {"factor": k, "count": v}
+        for k, v in sorted(risk_factors.items(), key=lambda x: x[1], reverse=True)
+    ]
+    
+    return {
+        "summary": {
+            "total_members_analyzed": len(members),
+            "at_risk_count": len(at_risk_members),
+            "risk_percentage": round(len(at_risk_members) / len(members) * 100, 1) if len(members) > 0 else 0,
+            "by_risk_level": {
+                "critical": critical_count,
+                "high": high_count,
+                "medium": medium_count
+            }
+        },
+        "at_risk_members": at_risk_members,
+        "common_risk_factors": risk_factors_data
+    }
+
+
+
 
 # Levy Routes
 @api_router.get("/levies", response_model=List[Levy])
