@@ -356,11 +356,14 @@ function AccessControlEnhanced() {
           <Button onClick={openOverrideDialog} variant="outline">
             <KeyRound className="mr-2 h-4 w-4" /> Manual Override
           </Button>
-          <Dialog open={showCheckinDialog} onOpenChange={setShowCheckinDialog}>
-            <Button onClick={() => setShowCheckinDialog(true)}>
-              <UserCheck className="mr-2 h-4 w-4" /> Manual Check-in
-            </Button>
-          <DialogContent>
+          <Button onClick={() => setShowCheckinDialog(true)}>
+            <UserCheck className="mr-2 h-4 w-4" /> Manual Check-in
+          </Button>
+        </div>
+      </div>
+
+      <Dialog open={showCheckinDialog} onOpenChange={setShowCheckinDialog}>
+        <DialogContent>
             <DialogHeader>
               <DialogTitle>Manual Check-in</DialogTitle>
             </DialogHeader>
