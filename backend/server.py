@@ -2684,6 +2684,20 @@ async def validate_access(data: AccessLogCreate):
             log_doc = access_log.model_dump()
             log_doc["timestamp"] = log_doc["timestamp"].isoformat()
             await db.access_logs.insert_one(log_doc)
+            
+            # Log to journal
+            await add_journal_entry(
+                member_id=member_obj.id,
+                action_type="access_denied",
+                description=f"Access denied: Outstanding debt (R{member_obj.debt_amount:.2f})",
+                metadata={
+                    "reason": "Member has outstanding debt",
+                    "debt_amount": member_obj.debt_amount,
+                    "location": data.location,
+                    "access_method": data.access_method
+                }
+            )
+            
             return {
                 "access": "denied", 
                 "reason": "Member has outstanding debt",
@@ -2698,6 +2712,19 @@ async def validate_access(data: AccessLogCreate):
             log_doc = access_log.model_dump()
             log_doc["timestamp"] = log_doc["timestamp"].isoformat()
             await db.access_logs.insert_one(log_doc)
+            
+            # Log to journal
+            await add_journal_entry(
+                member_id=member_obj.id,
+                action_type="access_denied",
+                description="Access denied: Membership suspended",
+                metadata={
+                    "reason": "Membership suspended",
+                    "location": data.location,
+                    "access_method": data.access_method
+                }
+            )
+            
             return {"access": "denied", "reason": "Membership suspended", "member": member_obj}
     
     if member_obj.membership_status == "cancelled":
@@ -2706,6 +2733,19 @@ async def validate_access(data: AccessLogCreate):
             log_doc = access_log.model_dump()
             log_doc["timestamp"] = log_doc["timestamp"].isoformat()
             await db.access_logs.insert_one(log_doc)
+            
+            # Log to journal
+            await add_journal_entry(
+                member_id=member_obj.id,
+                action_type="access_denied",
+                description="Access denied: Membership cancelled",
+                metadata={
+                    "reason": "Membership cancelled",
+                    "location": data.location,
+                    "access_method": data.access_method
+                }
+            )
+            
             return {"access": "denied", "reason": "Membership cancelled", "member": member_obj}
     
     # Check expiry
@@ -2715,6 +2755,20 @@ async def validate_access(data: AccessLogCreate):
             log_doc = access_log.model_dump()
             log_doc["timestamp"] = log_doc["timestamp"].isoformat()
             await db.access_logs.insert_one(log_doc)
+            
+            # Log to journal
+            await add_journal_entry(
+                member_id=member_obj.id,
+                action_type="access_denied",
+                description=f"Access denied: Membership expired on {member_obj.expiry_date.strftime('%Y-%m-%d')}",
+                metadata={
+                    "reason": "Membership expired",
+                    "expiry_date": member_obj.expiry_date.isoformat(),
+                    "location": data.location,
+                    "access_method": data.access_method
+                }
+            )
+            
             return {
                 "access": "denied", 
                 "reason": "Membership expired",
