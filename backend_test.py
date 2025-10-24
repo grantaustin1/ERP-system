@@ -325,7 +325,7 @@ class DashboardTestRunner:
             return False
         
         try:
-            # Create access log for today
+            # Create access log for today using access validation endpoint
             access_log_data = {
                 "member_id": self.test_member_id,
                 "access_method": "qr_code",
@@ -333,13 +333,12 @@ class DashboardTestRunner:
                 "device_id": "device_001"
             }
             
-            response = requests.post(f"{API_BASE}/access-logs", json=access_log_data, headers=self.headers)
+            response = requests.post(f"{API_BASE}/access/validate", json=access_log_data, headers=self.headers)
             
             if response.status_code == 200:
-                access_log = response.json()
-                self.created_access_logs.append(access_log.get("id"))
+                result = response.json()
                 self.log_result("Create Test Access Log", True, 
-                              f"Created access log for member {self.test_member_id[:8]}")
+                              f"Created access log for member {self.test_member_id[:8]} - Status: {result.get('status')}")
                 return True
             else:
                 self.log_result("Create Test Access Log", False, 
