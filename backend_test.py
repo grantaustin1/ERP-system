@@ -2857,10 +2857,815 @@ class MemberJournalTester:
         print("\n" + "=" * 80)
 
 
+class TaskingSystemTester:
+    def __init__(self):
+        self.token = None
+        self.headers = {}
+        self.test_results = []
+        self.created_task_types = []
+        self.created_tasks = []
+        self.created_comments = []
+        
+    def log_result(self, test_name, success, message, details=None):
+        """Log test result"""
+        result = {
+            "test": test_name,
+            "success": success,
+            "message": message,
+            "timestamp": datetime.now().isoformat(),
+            "details": details or {}
+        }
+        self.test_results.append(result)
+        status = "✅ PASS" if success else "❌ FAIL"
+        print(f"{status}: {test_name} - {message}")
+        if details and not success:
+            print(f"   Details: {details}")
+    
+    def authenticate(self):
+        """Authenticate and get token"""
+        try:
+            response = requests.post(f"{API_BASE}/auth/login", json={
+                "email": TEST_EMAIL,
+                "password": TEST_PASSWORD
+            })
+            
+            if response.status_code == 200:
+                data = response.json()
+                self.token = data["access_token"]
+                self.headers = {"Authorization": f"Bearer {self.token}"}
+                self.log_result("Authentication", True, "Successfully authenticated")
+                return True
+            else:
+                self.log_result("Authentication", False, f"Failed to authenticate: {response.status_code}", 
+                              {"response": response.text})
+                return False
+        except Exception as e:
+            self.log_result("Authentication", False, f"Authentication error: {str(e)}")
+            return False
+    
+    def test_seed_default_task_types(self):
+        """Test seeding default task types"""
+        print("\n=== Testing Seed Default Task Types ===")
+        
+        try:
+            response = requests.post(f"{API_BASE}/task-types/seed-defaults", 
+                                   headers=self.headers)
+            
+            if response.status_code == 200:
+                result = response.json()
+                
+                # Verify response structure
+                if result.get("success") and "task types" in result.get("message", ""):
+                    task_types = result.get("task_types", [])
+                    
+                    if len(task_types) == 6:
+                        # Verify each task type has required fields
+                        required_fields = ["type_id", "name", "description", "color", "icon", "is_active"]
+                        all_valid = True
+                        
+                        for task_type in task_types:
+                            if not all(field in task_type for field in required_fields):
+                                all_valid = False
+                                break
+                        
+                        if all_valid:
+                            self.log_result("Seed Default Task Types", True, 
+                                          f"Successfully seeded 6 default task types with all required fields")
+                            return task_types
+                        else:
+                            self.log_result("Seed Default Task Types", False, 
+                                          "Task types missing required fields")
+                            return None
+                    else:
+                        self.log_result("Seed Default Task Types", False, 
+                                      f"Expected 6 task types, got {len(task_types)}")
+                        return None
+                else:
+                    self.log_result("Seed Default Task Types", False, 
+                                  f"Unexpected seed response: {result}")
+                    return None
+            else:
+                self.log_result("Seed Default Task Types", False, 
+                              f"Failed to seed task types: {response.status_code}",
+                              {"response": response.text})
+                return None
+                
+        except Exception as e:
+            self.log_result("Seed Default Task Types", False, f"Error seeding task types: {str(e)}")
+            return None
+    
+    def test_task_types_crud(self):
+        """Test Task Types CRUD operations"""
+        print("\n=== Testing Task Types CRUD ===")
+        
+        # Test GET all task types
+        try:
+            response = requests.get(f"{API_BASE}/task-types", headers=self.headers)
+            
+            if response.status_code == 200:
+                task_types = response.json()
+                
+                if len(task_types) >= 6:  # Should have seeded types
+                    self.log_result("GET Task Types", True, 
+                                  f"Retrieved {len(task_types)} task types")
+                    
+                    # Test POST - Create custom task type
+                    custom_task_type = {
+                        "name": "Custom Test Task",
+                        "description": "Test task type",
+                        "color": "#10b981",
+                        "icon": "test"
+                    }
+                    
+                    response = requests.post(f"{API_BASE}/task-types", 
+                                           json=custom_task_type, headers=self.headers)
+                    
+                    if response.status_code == 200:
+                        created_task_type = response.json()
+                        task_type_id = created_task_type.get("type_id")
+                        
+                        if task_type_id:
+                            self.created_task_types.append(task_type_id)
+                            self.log_result("POST Task Type", True, 
+                                          f"Created custom task type with ID: {task_type_id}")
+                            
+                            # Test PUT - Update task type
+                            update_data = {
+                                "name": "Updated Custom Task",
+                                "description": "Updated description",
+                                "color": "#ef4444"
+                            }
+                            
+                            response = requests.put(f"{API_BASE}/task-types/{task_type_id}", 
+                                                  json=update_data, headers=self.headers)
+                            
+                            if response.status_code == 200:
+                                updated_task_type = response.json()
+                                
+                                if (updated_task_type.get("name") == "Updated Custom Task" and
+                                    updated_task_type.get("color") == "#ef4444"):
+                                    self.log_result("PUT Task Type", True, 
+                                                  "Task type updated successfully")
+                                else:
+                                    self.log_result("PUT Task Type", False, 
+                                                  "Task type update did not persist correctly")
+                            else:
+                                self.log_result("PUT Task Type", False, 
+                                              f"Failed to update task type: {response.status_code}")
+                            
+                            # Test DELETE - Soft delete task type
+                            response = requests.delete(f"{API_BASE}/task-types/{task_type_id}", 
+                                                     headers=self.headers)
+                            
+                            if response.status_code == 200:
+                                # Verify it's soft deleted (is_active=false)
+                                response = requests.get(f"{API_BASE}/task-types", headers=self.headers)
+                                if response.status_code == 200:
+                                    all_task_types = response.json()
+                                    deleted_type = next((t for t in all_task_types if t.get("type_id") == task_type_id), None)
+                                    
+                                    if deleted_type and deleted_type.get("is_active") is False:
+                                        self.log_result("DELETE Task Type", True, 
+                                                      "Task type soft deleted successfully (is_active=false)")
+                                    else:
+                                        self.log_result("DELETE Task Type", False, 
+                                                      "Task type not properly soft deleted")
+                            else:
+                                self.log_result("DELETE Task Type", False, 
+                                              f"Failed to delete task type: {response.status_code}")
+                        else:
+                            self.log_result("POST Task Type", False, 
+                                          "Created task type missing type_id")
+                    else:
+                        self.log_result("POST Task Type", False, 
+                                      f"Failed to create task type: {response.status_code}")
+                else:
+                    self.log_result("GET Task Types", False, 
+                                  f"Expected at least 6 task types, got {len(task_types)}")
+            else:
+                self.log_result("GET Task Types", False, 
+                              f"Failed to get task types: {response.status_code}")
+                
+        except Exception as e:
+            self.log_result("Task Types CRUD", False, f"Error in CRUD operations: {str(e)}")
+    
+    def test_task_creation(self):
+        """Test task creation with denormalized fields"""
+        print("\n=== Testing Task Creation ===")
+        
+        try:
+            # Get a member ID and user ID from existing data
+            members_response = requests.get(f"{API_BASE}/members", headers=self.headers)
+            users_response = requests.get(f"{API_BASE}/users", headers=self.headers)
+            task_types_response = requests.get(f"{API_BASE}/task-types", headers=self.headers)
+            
+            if (members_response.status_code == 200 and 
+                users_response.status_code == 200 and 
+                task_types_response.status_code == 200):
+                
+                members = members_response.json()
+                users = users_response.json()
+                task_types = task_types_response.json()
+                
+                if members and users and task_types:
+                    member_id = members[0]["id"]
+                    user_id = users[0]["id"]
+                    task_type_id = task_types[0]["type_id"]
+                    
+                    # Create task
+                    task_data = {
+                        "title": "Test Task - Cancellation Request",
+                        "description": "Member requesting cancellation",
+                        "task_type_id": task_type_id,
+                        "priority": "high",
+                        "assigned_to_user_id": user_id,
+                        "related_member_id": member_id,
+                        "due_date": "2025-12-31T23:59:59Z"
+                    }
+                    
+                    response = requests.post(f"{API_BASE}/tasks", 
+                                           json=task_data, headers=self.headers)
+                    
+                    if response.status_code == 200:
+                        created_task = response.json()
+                        task_id = created_task.get("task_id")
+                        
+                        if task_id:
+                            self.created_tasks.append(task_id)
+                            
+                            # Verify denormalized fields are populated
+                            required_denorm_fields = [
+                                "task_type_name", "assigned_to_user_name", 
+                                "related_member_name", "created_by", "created_by_name"
+                            ]
+                            
+                            has_denorm_fields = all(field in created_task and created_task[field] 
+                                                  for field in required_denorm_fields)
+                            
+                            if has_denorm_fields:
+                                self.log_result("Task Creation", True, 
+                                              f"Task created successfully with denormalized fields populated")
+                                return task_id
+                            else:
+                                missing_fields = [field for field in required_denorm_fields 
+                                                if field not in created_task or not created_task[field]]
+                                self.log_result("Task Creation", False, 
+                                              f"Task created but missing denormalized fields: {missing_fields}")
+                                return task_id
+                        else:
+                            self.log_result("Task Creation", False, 
+                                          "Task created but missing task_id")
+                            return None
+                    else:
+                        self.log_result("Task Creation", False, 
+                                      f"Failed to create task: {response.status_code}",
+                                      {"response": response.text})
+                        return None
+                else:
+                    self.log_result("Task Creation Setup", False, 
+                                  "Missing required data (members, users, or task types)")
+                    return None
+            else:
+                self.log_result("Task Creation Setup", False, 
+                              "Failed to get required data for task creation")
+                return None
+                
+        except Exception as e:
+            self.log_result("Task Creation", False, f"Error creating task: {str(e)}")
+            return None
+    
+    def test_task_retrieval_with_filters(self):
+        """Test task retrieval with various filters"""
+        print("\n=== Testing Task Retrieval with Filters ===")
+        
+        try:
+            # Test 1: Get all tasks (no filters)
+            response = requests.get(f"{API_BASE}/tasks", headers=self.headers)
+            
+            if response.status_code == 200:
+                all_tasks = response.json()
+                self.log_result("GET All Tasks", True, 
+                              f"Retrieved {len(all_tasks)} tasks")
+                
+                if all_tasks:
+                    # Test 2: Filter by status
+                    response = requests.get(f"{API_BASE}/tasks?status=pending", headers=self.headers)
+                    
+                    if response.status_code == 200:
+                        pending_tasks = response.json()
+                        self.log_result("Filter by Status", True, 
+                                      f"Retrieved {len(pending_tasks)} pending tasks")
+                    else:
+                        self.log_result("Filter by Status", False, 
+                                      f"Failed to filter by status: {response.status_code}")
+                    
+                    # Test 3: Filter by priority
+                    response = requests.get(f"{API_BASE}/tasks?priority=high", headers=self.headers)
+                    
+                    if response.status_code == 200:
+                        high_priority_tasks = response.json()
+                        self.log_result("Filter by Priority", True, 
+                                      f"Retrieved {len(high_priority_tasks)} high priority tasks")
+                    else:
+                        self.log_result("Filter by Priority", False, 
+                                      f"Failed to filter by priority: {response.status_code}")
+                    
+                    # Test 4: Filter by task type
+                    if all_tasks:
+                        task_type_id = all_tasks[0].get("task_type_id")
+                        if task_type_id:
+                            response = requests.get(f"{API_BASE}/tasks?task_type_id={task_type_id}", 
+                                                  headers=self.headers)
+                            
+                            if response.status_code == 200:
+                                filtered_tasks = response.json()
+                                self.log_result("Filter by Task Type", True, 
+                                              f"Retrieved {len(filtered_tasks)} tasks for task type")
+                            else:
+                                self.log_result("Filter by Task Type", False, 
+                                              f"Failed to filter by task type: {response.status_code}")
+                    
+                    # Test 5: Get specific task
+                    if self.created_tasks:
+                        task_id = self.created_tasks[0]
+                        response = requests.get(f"{API_BASE}/tasks/{task_id}", headers=self.headers)
+                        
+                        if response.status_code == 200:
+                            specific_task = response.json()
+                            if specific_task.get("task_id") == task_id:
+                                self.log_result("GET Specific Task", True, 
+                                              f"Retrieved specific task: {task_id}")
+                            else:
+                                self.log_result("GET Specific Task", False, 
+                                              "Retrieved task ID doesn't match requested")
+                        else:
+                            self.log_result("GET Specific Task", False, 
+                                          f"Failed to get specific task: {response.status_code}")
+                else:
+                    self.log_result("Task Retrieval", False, "No tasks found for filtering tests")
+            else:
+                self.log_result("GET All Tasks", False, 
+                              f"Failed to get tasks: {response.status_code}")
+                
+        except Exception as e:
+            self.log_result("Task Retrieval", False, f"Error in task retrieval: {str(e)}")
+    
+    def test_my_tasks_endpoint(self):
+        """Test My Tasks endpoint"""
+        print("\n=== Testing My Tasks Endpoint ===")
+        
+        try:
+            response = requests.get(f"{API_BASE}/tasks/my-tasks", headers=self.headers)
+            
+            if response.status_code == 200:
+                my_tasks = response.json()
+                self.log_result("My Tasks Endpoint", True, 
+                              f"Retrieved {len(my_tasks)} tasks assigned to current user")
+                return True
+            else:
+                self.log_result("My Tasks Endpoint", False, 
+                              f"Failed to get my tasks: {response.status_code}",
+                              {"response": response.text})
+                return False
+                
+        except Exception as e:
+            self.log_result("My Tasks Endpoint", False, f"Error getting my tasks: {str(e)}")
+            return False
+    
+    def test_task_stats_endpoint(self):
+        """Test Task Stats endpoint"""
+        print("\n=== Testing Task Stats Endpoint ===")
+        
+        try:
+            response = requests.get(f"{API_BASE}/tasks/stats", headers=self.headers)
+            
+            if response.status_code == 200:
+                stats = response.json()
+                
+                # Verify expected stats fields
+                expected_fields = ["total", "pending", "in_progress", "completed", "my_tasks", "my_overdue"]
+                
+                has_all_fields = all(field in stats for field in expected_fields)
+                
+                if has_all_fields:
+                    self.log_result("Task Stats Endpoint", True, 
+                                  f"Retrieved task stats: {stats}")
+                    return True
+                else:
+                    missing_fields = [field for field in expected_fields if field not in stats]
+                    self.log_result("Task Stats Endpoint", False, 
+                                  f"Missing stats fields: {missing_fields}")
+                    return False
+            else:
+                self.log_result("Task Stats Endpoint", False, 
+                              f"Failed to get task stats: {response.status_code}",
+                              {"response": response.text})
+                return False
+                
+        except Exception as e:
+            self.log_result("Task Stats Endpoint", False, f"Error getting task stats: {str(e)}")
+            return False
+    
+    def test_task_update(self):
+        """Test task status updates"""
+        print("\n=== Testing Task Update ===")
+        
+        if not self.created_tasks:
+            self.log_result("Task Update", False, "No tasks available for update testing")
+            return False
+        
+        try:
+            task_id = self.created_tasks[0]
+            
+            # Test 1: Update status to in_progress
+            update_data = {"status": "in_progress"}
+            
+            response = requests.put(f"{API_BASE}/tasks/{task_id}", 
+                                  json=update_data, headers=self.headers)
+            
+            if response.status_code == 200:
+                updated_task = response.json()
+                
+                if updated_task.get("status") == "in_progress":
+                    self.log_result("Update Task Status", True, 
+                                  "Task status updated to in_progress")
+                    
+                    # Test 2: Update status to completed
+                    complete_data = {"status": "completed"}
+                    
+                    response = requests.put(f"{API_BASE}/tasks/{task_id}", 
+                                          json=complete_data, headers=self.headers)
+                    
+                    if response.status_code == 200:
+                        completed_task = response.json()
+                        
+                        # Verify completion fields are set
+                        if (completed_task.get("status") == "completed" and
+                            completed_task.get("completed_at") and
+                            completed_task.get("completed_by") and
+                            completed_task.get("completed_by_name")):
+                            self.log_result("Complete Task", True, 
+                                          "Task completed with completion fields set")
+                            return True
+                        else:
+                            self.log_result("Complete Task", False, 
+                                          "Task completed but completion fields not set properly")
+                            return False
+                    else:
+                        self.log_result("Complete Task", False, 
+                                      f"Failed to complete task: {response.status_code}")
+                        return False
+                else:
+                    self.log_result("Update Task Status", False, 
+                                  "Task status not updated correctly")
+                    return False
+            else:
+                self.log_result("Update Task Status", False, 
+                              f"Failed to update task: {response.status_code}")
+                return False
+                
+        except Exception as e:
+            self.log_result("Task Update", False, f"Error updating task: {str(e)}")
+            return False
+    
+    def test_task_comments(self):
+        """Test task comments system"""
+        print("\n=== Testing Task Comments ===")
+        
+        if not self.created_tasks:
+            self.log_result("Task Comments", False, "No tasks available for comment testing")
+            return False
+        
+        try:
+            task_id = self.created_tasks[0]
+            
+            # Test 1: Create comment
+            comment_data = {"content": "Test comment on task"}
+            
+            response = requests.post(f"{API_BASE}/tasks/{task_id}/comments", 
+                                   json=comment_data, headers=self.headers)
+            
+            if response.status_code == 200:
+                created_comment = response.json()
+                comment_id = created_comment.get("comment_id")
+                
+                if comment_id and created_comment.get("created_by_name"):
+                    self.created_comments.append(comment_id)
+                    self.log_result("Create Task Comment", True, 
+                                  f"Comment created with ID: {comment_id}")
+                    
+                    # Test 2: Get task comments
+                    response = requests.get(f"{API_BASE}/tasks/{task_id}/comments", 
+                                          headers=self.headers)
+                    
+                    if response.status_code == 200:
+                        comments = response.json()
+                        
+                        if len(comments) > 0 and any(c.get("comment_id") == comment_id for c in comments):
+                            self.log_result("Get Task Comments", True, 
+                                          f"Retrieved {len(comments)} comments including created comment")
+                            
+                            # Verify task comment_count is incremented
+                            task_response = requests.get(f"{API_BASE}/tasks/{task_id}", 
+                                                       headers=self.headers)
+                            
+                            if task_response.status_code == 200:
+                                task = task_response.json()
+                                if task.get("comment_count", 0) > 0:
+                                    self.log_result("Comment Count Update", True, 
+                                                  f"Task comment_count incremented to {task.get('comment_count')}")
+                                else:
+                                    self.log_result("Comment Count Update", False, 
+                                                  "Task comment_count not incremented")
+                            
+                            # Test 3: Delete comment
+                            response = requests.delete(f"{API_BASE}/tasks/{task_id}/comments/{comment_id}", 
+                                                     headers=self.headers)
+                            
+                            if response.status_code == 200:
+                                # Verify comment is deleted and count decremented
+                                comments_response = requests.get(f"{API_BASE}/tasks/{task_id}/comments", 
+                                                               headers=self.headers)
+                                task_response = requests.get(f"{API_BASE}/tasks/{task_id}", 
+                                                           headers=self.headers)
+                                
+                                if (comments_response.status_code == 200 and 
+                                    task_response.status_code == 200):
+                                    
+                                    updated_comments = comments_response.json()
+                                    updated_task = task_response.json()
+                                    
+                                    comment_deleted = not any(c.get("comment_id") == comment_id 
+                                                            for c in updated_comments)
+                                    count_decremented = updated_task.get("comment_count", 0) == 0
+                                    
+                                    if comment_deleted and count_decremented:
+                                        self.log_result("Delete Task Comment", True, 
+                                                      "Comment deleted and count decremented")
+                                        return True
+                                    else:
+                                        self.log_result("Delete Task Comment", False, 
+                                                      "Comment not properly deleted or count not decremented")
+                                        return False
+                            else:
+                                self.log_result("Delete Task Comment", False, 
+                                              f"Failed to delete comment: {response.status_code}")
+                                return False
+                        else:
+                            self.log_result("Get Task Comments", False, 
+                                          "Created comment not found in comments list")
+                            return False
+                    else:
+                        self.log_result("Get Task Comments", False, 
+                                      f"Failed to get comments: {response.status_code}")
+                        return False
+                else:
+                    self.log_result("Create Task Comment", False, 
+                                  "Comment created but missing required fields")
+                    return False
+            else:
+                self.log_result("Create Task Comment", False, 
+                              f"Failed to create comment: {response.status_code}")
+                return False
+                
+        except Exception as e:
+            self.log_result("Task Comments", False, f"Error in comment operations: {str(e)}")
+            return False
+    
+    def test_task_journal_integration(self):
+        """Test task journal integration"""
+        print("\n=== Testing Task Journal Integration ===")
+        
+        try:
+            # Get a member ID
+            members_response = requests.get(f"{API_BASE}/members", headers=self.headers)
+            
+            if members_response.status_code == 200:
+                members = members_response.json()
+                
+                if members:
+                    member_id = members[0]["id"]
+                    
+                    # Get task types
+                    task_types_response = requests.get(f"{API_BASE}/task-types", headers=self.headers)
+                    
+                    if task_types_response.status_code == 200:
+                        task_types = task_types_response.json()
+                        
+                        if task_types:
+                            task_type_id = task_types[0]["type_id"]
+                            
+                            # Create a task with related_member_id
+                            task_data = {
+                                "title": "Journal Integration Test Task",
+                                "description": "Testing journal integration",
+                                "task_type_id": task_type_id,
+                                "priority": "medium",
+                                "related_member_id": member_id
+                            }
+                            
+                            response = requests.post(f"{API_BASE}/tasks", 
+                                                   json=task_data, headers=self.headers)
+                            
+                            if response.status_code == 200:
+                                created_task = response.json()
+                                task_id = created_task.get("task_id")
+                                
+                                if task_id:
+                                    self.created_tasks.append(task_id)
+                                    
+                                    # Check member journal for task_created entry
+                                    journal_response = requests.get(f"{API_BASE}/members/{member_id}/journal", 
+                                                                  headers=self.headers)
+                                    
+                                    if journal_response.status_code == 200:
+                                        journal_entries = journal_response.json()
+                                        
+                                        # Look for task_created entry
+                                        task_entry = next((entry for entry in journal_entries 
+                                                         if entry.get("action_type") == "task_created"), None)
+                                        
+                                        if task_entry and task_entry.get("metadata", {}).get("task_id") == task_id:
+                                            self.log_result("Task Journal Integration", True, 
+                                                          "Task creation logged in member journal with proper metadata")
+                                            return True
+                                        else:
+                                            self.log_result("Task Journal Integration", False, 
+                                                          "Task creation not found in member journal")
+                                            return False
+                                    else:
+                                        self.log_result("Task Journal Integration", False, 
+                                                      f"Failed to get member journal: {journal_response.status_code}")
+                                        return False
+                                else:
+                                    self.log_result("Task Journal Integration", False, 
+                                                  "Task created but missing task_id")
+                                    return False
+                            else:
+                                self.log_result("Task Journal Integration", False, 
+                                              f"Failed to create task: {response.status_code}")
+                                return False
+                        else:
+                            self.log_result("Task Journal Integration", False, 
+                                          "No task types available")
+                            return False
+                    else:
+                        self.log_result("Task Journal Integration", False, 
+                                      "Failed to get task types")
+                        return False
+                else:
+                    self.log_result("Task Journal Integration", False, 
+                                  "No members available for testing")
+                    return False
+            else:
+                self.log_result("Task Journal Integration", False, 
+                              "Failed to get members")
+                return False
+                
+        except Exception as e:
+            self.log_result("Task Journal Integration", False, f"Error in journal integration: {str(e)}")
+            return False
+    
+    def test_task_deletion(self):
+        """Test task deletion"""
+        print("\n=== Testing Task Deletion ===")
+        
+        if not self.created_tasks:
+            self.log_result("Task Deletion", False, "No tasks available for deletion testing")
+            return False
+        
+        try:
+            task_id = self.created_tasks[-1]  # Use last created task
+            
+            response = requests.delete(f"{API_BASE}/tasks/{task_id}", headers=self.headers)
+            
+            if response.status_code == 200:
+                # Verify task is deleted
+                get_response = requests.get(f"{API_BASE}/tasks/{task_id}", headers=self.headers)
+                
+                if get_response.status_code == 404:
+                    self.log_result("Task Deletion", True, 
+                                  f"Task {task_id} deleted successfully")
+                    self.created_tasks.remove(task_id)  # Remove from cleanup list
+                    return True
+                else:
+                    self.log_result("Task Deletion", False, 
+                                  "Task still exists after deletion")
+                    return False
+            else:
+                self.log_result("Task Deletion", False, 
+                              f"Failed to delete task: {response.status_code}")
+                return False
+                
+        except Exception as e:
+            self.log_result("Task Deletion", False, f"Error deleting task: {str(e)}")
+            return False
+    
+    def cleanup_test_data(self):
+        """Clean up test data created during testing"""
+        print("\n=== Cleaning Up Test Data ===")
+        
+        # Clean up created tasks
+        for task_id in self.created_tasks:
+            try:
+                response = requests.delete(f"{API_BASE}/tasks/{task_id}", headers=self.headers)
+                if response.status_code == 200:
+                    self.log_result("Cleanup Task", True, f"Deleted task {task_id}")
+                else:
+                    self.log_result("Cleanup Task", False, f"Failed to delete task {task_id}")
+            except Exception as e:
+                self.log_result("Cleanup Task", False, f"Error cleaning up task {task_id}: {str(e)}")
+        
+        # Clean up created task types
+        for type_id in self.created_task_types:
+            try:
+                response = requests.delete(f"{API_BASE}/task-types/{type_id}", headers=self.headers)
+                if response.status_code == 200:
+                    self.log_result("Cleanup Task Type", True, f"Deleted task type {type_id}")
+                else:
+                    self.log_result("Cleanup Task Type", False, f"Failed to delete task type {type_id}")
+            except Exception as e:
+                self.log_result("Cleanup Task Type", False, f"Error cleaning up task type {type_id}: {str(e)}")
+        
+        if self.created_tasks or self.created_task_types:
+            self.log_result("Cleanup Test Data", True, 
+                          f"Attempted cleanup of {len(self.created_tasks)} tasks and {len(self.created_task_types)} task types")
+    
+    def run_tasking_tests(self):
+        """Run all tasking system tests"""
+        print("🚀 Starting Tasking System Backend Tests")
+        print(f"Testing against: {API_BASE}")
+        print("=" * 80)
+        
+        # Authenticate first
+        if not self.authenticate():
+            print("❌ Authentication failed. Cannot proceed with tests.")
+            return
+        
+        print("\n📋 TASKING SYSTEM COMPREHENSIVE TESTING")
+        print("Testing Requirements:")
+        print("- Authentication: admin@gym.com / admin123")
+        print("- Seed default task types (6 types)")
+        print("- Task types CRUD operations")
+        print("- Task creation with denormalized fields")
+        print("- Task retrieval with filters")
+        print("- My tasks endpoint")
+        print("- Task stats endpoint")
+        print("- Task status updates")
+        print("- Task comments system")
+        print("- Task journal integration")
+        print("- Task deletion")
+        
+        # Execute all test phases
+        self.test_seed_default_task_types()
+        self.test_task_types_crud()
+        task_id = self.test_task_creation()
+        self.test_task_retrieval_with_filters()
+        self.test_my_tasks_endpoint()
+        self.test_task_stats_endpoint()
+        self.test_task_update()
+        self.test_task_comments()
+        self.test_task_journal_integration()
+        self.test_task_deletion()
+        
+        # Cleanup
+        self.cleanup_test_data()
+        
+        # Print summary
+        self.print_summary()
+    
+    def print_summary(self):
+        """Print test summary"""
+        print("\n" + "=" * 60)
+        print("🏁 TASKING SYSTEM TEST SUMMARY")
+        print("=" * 60)
+        
+        total_tests = len(self.test_results)
+        passed_tests = len([r for r in self.test_results if r["success"]])
+        failed_tests = total_tests - passed_tests
+        
+        print(f"Total Tests: {total_tests}")
+        print(f"✅ Passed: {passed_tests}")
+        print(f"❌ Failed: {failed_tests}")
+        print(f"Success Rate: {(passed_tests/total_tests*100):.1f}%")
+        
+        if failed_tests > 0:
+            print("\n❌ FAILED TESTS:")
+            for result in self.test_results:
+                if not result["success"]:
+                    print(f"  - {result['test']}: {result['message']}")
+        
+        print("\n" + "=" * 80)
+
+
 if __name__ == "__main__":
     import sys
     
-    if len(sys.argv) > 1 and sys.argv[1] == "journal":
+    if len(sys.argv) > 1 and sys.argv[1] == "tasking":
+        # Run tasking system tests
+        tester = TaskingSystemTester()
+        tester.run_tasking_tests()
+    elif len(sys.argv) > 1 and sys.argv[1] == "journal":
         # Run member journal tests as requested in review
         tester = MemberJournalTester()
         tester.run_journal_tests()
@@ -2877,6 +3682,6 @@ if __name__ == "__main__":
         tester = NotificationTemplateTester()
         tester.run_notification_template_tests()
     else:
-        # Run member journal tests by default (as requested in review)
-        tester = MemberJournalTester()
-        tester.run_journal_tests()
+        # Run tasking system tests by default
+        tester = TaskingSystemTester()
+        tester.run_tasking_tests()
