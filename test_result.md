@@ -1228,6 +1228,78 @@ backend:
         agent: "testing"
         comment: "✅ Datetime Field Conversion WORKING CORRECTLY: All datetime fields in member profile responses are properly formatted. Fields like join_date, created_at, freeze_start_date, freeze_end_date are correctly serialized as ISO format strings or handled as datetime objects. No datetime conversion issues found in profile endpoint responses. Datetime parsing and formatting working correctly for member drill-down functionality."
 
+
+  - task: "ClubManager Phase 1 - Enhanced Member Profile with Retention Metrics"
+    implemented: true
+    working: false
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history: []
+    description: "Enhanced GET /api/members/{member_id}/profile endpoint with retention metrics (current vs previous month attendance with percentage change), retention status categorization (collating, consistent, good, alert, critical), payment progress calculation (paid/unpaid/remaining), and missing data detection."
+    
+  - task: "ClubManager Phase 2 - Sales Comparison API"
+    implemented: true
+    working: false
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history: []
+    description: "New GET /api/dashboard/sales-comparison endpoint returning daily sales data comparing current month (up to today), previous month same period, last year same period, and monthly target with linear progression."
+    
+  - task: "ClubManager Phase 2 - KPI Trends API"
+    implemented: true
+    working: false
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history: []
+    description: "New GET /api/dashboard/kpi-trends endpoint returning 12-week trends for people registered, memberships started, attendance, bookings, booking attendance, product sales, and tasks created."
+    
+  - task: "ClubManager Phase 2 - Birthdays Today API"
+    implemented: true
+    working: false
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history: []
+    description: "New GET /api/dashboard/birthdays-today endpoint returning members with birthdays today including full name, age, photo URL, membership status, and email."
+    
+  - task: "ClubManager Phase 3 - SMS Credits API"
+    implemented: true
+    working: false
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history: []
+    description: "New GET /api/messaging/sms-credits endpoint returning available SMS credits, usage statistics, and cost information."
+    
+  - task: "ClubManager Phase 3 - Unified Messaging API"
+    implemented: true
+    working: false
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history: []
+    description: "New POST /api/messaging/send-unified endpoint supporting SMS, Email, WhatsApp, and Push notifications with template support, save as template functionality, personalization, and member journal logging."
+    
+  - task: "ClubManager Phase 3 - Messaging Templates Dropdown API"
+    implemented: true
+    working: false
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history: []
+    description: "New GET /api/messaging/templates/dropdown endpoint returning simplified template list formatted for dropdown selection with id, name, subject, message, and category."
+
+
 frontend:
   - task: "Member Profile Drill-Down Functionality"
     implemented: true
