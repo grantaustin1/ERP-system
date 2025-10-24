@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-Backend Test Suite - Phase 2B Retention Intelligence APIs
-Focus on Retention Intelligence backend APIs testing
+Backend Test Suite - Phase 2C Report Library APIs
+Focus on Report Library backend APIs testing
 """
 
 import requests
@@ -18,7 +18,7 @@ API_BASE = f"{BASE_URL}/api"
 TEST_EMAIL = "admin@gym.com"
 TEST_PASSWORD = "admin123"
 
-class RetentionTestRunner:
+class ReportLibraryTestRunner:
     def __init__(self):
         self.token = None
         self.headers = {}
