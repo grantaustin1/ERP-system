@@ -416,6 +416,61 @@ class TaskAttachment(BaseModel):
     uploaded_by_name: Optional[str] = None
     uploaded_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
+class OverrideReason(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    reason_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    name: str
+    description: Optional[str] = None
+    parent_id: Optional[str] = None  # For hierarchical reasons (main → sub)
+    is_active: bool = True
+    requires_pin: bool = True  # Whether this reason requires PIN verification
+    order: int = 0  # For sorting
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+class OverrideReasonCreate(BaseModel):
+    name: str
+    description: Optional[str] = None
+    parent_id: Optional[str] = None
+    requires_pin: bool = True
+    order: int = 0
+
+class OverrideReasonUpdate(BaseModel):
+    name: Optional[str] = None
+    description: Optional[str] = None
+    is_active: Optional[bool] = None
+    requires_pin: Optional[bool] = None
+    order: Optional[int] = None
+
+class AccessOverride(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    override_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    member_id: str
+    member_name: Optional[str] = None
+    member_status: Optional[str] = None  # active, expired, suspended, prospect
+    reason_id: str
+    reason_name: Optional[str] = None
+    sub_reason_id: Optional[str] = None
+    sub_reason_name: Optional[str] = None
+    pin_verified: bool = False
+    pin_entered: Optional[str] = None  # For logging (not the actual PIN)
+    staff_id: str
+    staff_name: Optional[str] = None
+    location: Optional[str] = None
+    notes: Optional[str] = None
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+class AccessOverrideCreate(BaseModel):
+    member_id: Optional[str] = None  # Can be None for new prospects
+    first_name: Optional[str] = None  # For new prospects
+    last_name: Optional[str] = None  # For new prospects
+    phone: Optional[str] = None  # For new prospects
+    email: Optional[str] = None  # For new prospects
+    reason_id: str
+    sub_reason_id: Optional[str] = None
+    access_pin: Optional[str] = None
+    location: Optional[str] = None
+    notes: Optional[str] = None
+
 class Invoice(BaseModel):
     model_config = ConfigDict(extra="ignore")
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
