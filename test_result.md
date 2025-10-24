@@ -214,15 +214,18 @@ backend:
 
   - task: "Billing Settings Model & API"
     implemented: true
-    working: "NA"
+    working: true
     file: "/app/backend/server.py"
     stuck_count: 0
     priority: "high"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
       - working: "NA"
         agent: "main"
         comment: "Created BillingSettings model with auto-email configuration (auto_email_invoices, email_on_invoice_created, email_on_invoice_overdue, email_reminder_days_before_due), tax settings (default_tax_rate, tax_enabled, tax_number), company details (company_name, address, phone, email), invoice numbering format, payment terms. Added GET /api/billing/settings and POST /api/billing/settings endpoints. Ready for testing."
+      - working: true
+        agent: "testing"
+        comment: "✅ Billing Settings API working perfectly: GET /api/billing/settings returns default settings with all required fields (auto_email_invoices, email_on_invoice_created, email_on_invoice_overdue, default_tax_rate, tax_enabled, invoice_prefix, invoice_number_format, company_name, default_payment_terms_days). POST /api/billing/settings successfully creates/updates settings with all fields including email reminders [7,3,1], tax configuration (15% rate, VAT number), company details (name, address, phone, email), and invoice numbering format."
 
   - task: "Invoice Helper Functions - Calculate Totals & Generate Number"
     implemented: true
