@@ -1,13 +1,15 @@
 #!/usr/bin/env python3
 """
-Backend Test Suite for Access Override System
-Comprehensive testing of override reasons, member search, access overrides, and prospect conversion
+Backend Test Suite for Billing Automation & Invoice Generation System
+Comprehensive testing of billing settings, invoice CRUD, PDF generation, and validation
 """
 
 import requests
 import json
 import time
 import os
+import tempfile
+import csv
 from datetime import datetime, timezone, timedelta
 
 # Configuration
