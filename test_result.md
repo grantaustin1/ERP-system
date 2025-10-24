@@ -4650,23 +4650,13 @@ metadata:
 
 test_plan:
   current_focus:
-    - "Invoice Line Item Model & Enhanced Invoice Model"
-    - "Billing Settings Model & API"
-    - "Invoice Helper Functions - Calculate Totals & Generate Number"
-    - "Enhanced Create Invoice API with Line Items"
-    - "Get Invoice Details API"
-    - "Update Invoice API"
-    - "Void Invoice API"
-    - "Generate Invoice PDF API"
-    - "Invoice Management UI - Create Invoice Dialog"
-    - "Invoice Management UI - Invoice List & Actions"
-    - "Invoice Management UI - Edit Invoice Dialog"
-    - "Invoice Management UI - Billing Settings Dialog"
-    - "Invoice Management UI - PDF Download"
-    - "Invoice Management Navigation - Sidebar & Routing"
-  stuck_tasks: []
+    - "Member Action APIs - Freeze/Unfreeze/Cancel"
+    - "Enhanced Member Profile Endpoint - Phase 1 Fields"
+  stuck_tasks:
+    - "Member Action APIs - Freeze/Unfreeze/Cancel"
+    - "Enhanced Member Profile Endpoint - Phase 1 Fields"
   test_all: false
-  test_priority: "high_first"
+  test_priority: "stuck_first"
 
 agent_communication:
   - agent: "main"
