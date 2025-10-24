@@ -4002,6 +4002,23 @@ async def execute_action(action: dict, trigger_data: dict):
                 email=email
             )
             
+            # Log to journal
+            member_id = trigger_data.get("member_id")
+            if member_id:
+                await add_journal_entry(
+                    member_id=member_id,
+                    action_type="whatsapp_sent",
+                    description=f"WhatsApp sent: {message[:100]}..." if len(message) > 100 else f"WhatsApp sent: {message}",
+                    metadata={
+                        "phone": phone,
+                        "full_message": message,
+                        "template_name": template_name,
+                        "message_id": result.get("messageId"),
+                        "status": "sent" if not respondio_service.is_mocked else "sent_mock",
+                        "trigger_type": trigger_data.get("trigger_type")
+                    }
+                )
+            
             return {
                 "type": "whatsapp",
                 "status": "sent" if not respondio_service.is_mocked else "sent_mock",
