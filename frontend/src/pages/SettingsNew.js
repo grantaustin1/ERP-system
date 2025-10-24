@@ -135,6 +135,21 @@ export default function SettingsNew() {
     icon: 'clipboard'
   });
 
+  // System Settings state
+  const [systemSettings, setSystemSettings] = useState({
+    business_name: 'Fitness Center',
+    timezone: 'Africa/Johannesburg',
+    currency: 'ZAR',
+    date_format: 'DD/MM/YYYY',
+    time_format: '24h',
+    language: 'en',
+    max_daily_overrides: 3,
+    session_timeout: 30,
+    enable_notifications: true,
+    enable_email_reports: true,
+    enable_sms_notifications: false
+  });
+
   useEffect(() => {
     fetchData();
     fetchTemplates();
