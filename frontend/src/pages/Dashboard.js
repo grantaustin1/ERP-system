@@ -18,6 +18,9 @@ import SalesComparisonChart from '@/components/SalesComparisonChart';
 import KPISparklines from '@/components/KPISparklines';
 import BirthdayGallery from '@/components/BirthdayGallery';
 import UnifiedMessagingDialog from '@/components/UnifiedMessagingDialog';
+import DateRangeSelector from '@/components/DateRangeSelector';
+import DashboardSnapshotCards from '@/components/DashboardSnapshotCards';
+import RecentMembersWidget from '@/components/RecentMembersWidget';
 
 export default function Dashboard() {
   const [stats, setStats] = useState(null);
