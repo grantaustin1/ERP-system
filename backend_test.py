@@ -492,16 +492,222 @@ class AdvancedAnalyticsTestRunner:
             self.log_result("Attendance Deep Dive Analytics API", False, f"Error testing attendance deep dive API: {str(e)}")
             return False
     
-    def test_report_api_authentication(self):
-        """Test that all report APIs require authentication"""
-        print("\n=== Testing Report API Authentication ===")
+    def test_member_lifetime_value_analytics_api(self):
+        """Test Member Lifetime Value Analytics API - GET /api/analytics/member-lifetime-value"""
+        print("\n=== Testing Member Lifetime Value Analytics API ===")
+        
+        try:
+            response = requests.get(f"{API_BASE}/analytics/member-lifetime-value", headers=self.headers)
+            
+            if response.status_code == 200:
+                data = response.json()
+                
+                # Verify required structure
+                required_fields = ["summary", "by_membership_type", "top_members"]
+                missing_fields = [field for field in required_fields if field not in data]
+                
+                if missing_fields:
+                    self.log_result("Member Lifetime Value Structure", False, 
+                                  f"Missing fields: {missing_fields}")
+                    return False
+                
+                # Verify summary structure
+                summary = data["summary"]
+                summary_fields = ["total_lifetime_value", "avg_ltv_per_member", "total_members_analyzed"]
+                missing_summary_fields = [field for field in summary_fields if field not in summary]
+                
+                if missing_summary_fields:
+                    self.log_result("Member Lifetime Value Summary Structure", False, 
+                                  f"Missing summary fields: {missing_summary_fields}")
+                    return False
+                
+                # Verify data types
+                if not isinstance(summary["total_lifetime_value"], (int, float)):
+                    self.log_result("Member Lifetime Value Total LTV Type", False, 
+                                  "Total lifetime value should be number")
+                    return False
+                
+                if not isinstance(summary["avg_ltv_per_member"], (int, float)):
+                    self.log_result("Member Lifetime Value Avg LTV Type", False, 
+                                  "Avg LTV per member should be number")
+                    return False
+                
+                if not isinstance(summary["total_members_analyzed"], int):
+                    self.log_result("Member Lifetime Value Total Members Type", False, 
+                                  "Total members analyzed should be integer")
+                    return False
+                
+                # Verify by_membership_type structure
+                if data["by_membership_type"]:
+                    membership_type = data["by_membership_type"][0]
+                    membership_fields = ["membership_type", "avg_ltv", "avg_monthly_value", 
+                                       "avg_duration_months", "member_count", "total_ltv"]
+                    missing_membership_fields = [field for field in membership_fields if field not in membership_type]
+                    
+                    if missing_membership_fields:
+                        self.log_result("Member Lifetime Value Membership Type Structure", False, 
+                                      f"Missing membership type fields: {missing_membership_fields}")
+                        return False
+                
+                # Verify top_members structure (top 10)
+                if data["top_members"]:
+                    top_member = data["top_members"][0]
+                    member_fields = ["id", "first_name", "last_name", "full_name", "membership_type", 
+                                   "lifetime_value", "total_paid", "duration_months", "avg_monthly_value"]
+                    missing_member_fields = [field for field in member_fields if field not in top_member]
+                    
+                    if missing_member_fields:
+                        self.log_result("Member Lifetime Value Top Members Structure", False, 
+                                      f"Missing top member fields: {missing_member_fields}")
+                        return False
+                    
+                    # Verify top 10 limit
+                    if len(data["top_members"]) > 10:
+                        self.log_result("Member Lifetime Value Top Members Limit", False, 
+                                      f"Should return top 10 members, got {len(data['top_members'])}")
+                        return False
+                
+                self.log_result("Member Lifetime Value Analytics API", True, 
+                              f"Retrieved LTV analysis: Total LTV R{summary['total_lifetime_value']:.2f}, "
+                              f"Avg LTV R{summary['avg_ltv_per_member']:.2f}, "
+                              f"{summary['total_members_analyzed']} members analyzed")
+                return True
+                
+            else:
+                self.log_result("Member Lifetime Value Analytics API", False, 
+                              f"Failed to get member lifetime value: {response.status_code}",
+                              {"response": response.text})
+                return False
+                
+        except Exception as e:
+            self.log_result("Member Lifetime Value Analytics API", False, f"Error testing member lifetime value API: {str(e)}")
+            return False
+    
+    def test_churn_prediction_analytics_api(self):
+        """Test Churn Prediction Analytics API - GET /api/analytics/churn-prediction"""
+        print("\n=== Testing Churn Prediction Analytics API ===")
+        
+        try:
+            response = requests.get(f"{API_BASE}/analytics/churn-prediction", headers=self.headers)
+            
+            if response.status_code == 200:
+                data = response.json()
+                
+                # Verify required structure
+                required_fields = ["summary", "at_risk_members", "common_risk_factors"]
+                missing_fields = [field for field in required_fields if field not in data]
+                
+                if missing_fields:
+                    self.log_result("Churn Prediction Structure", False, 
+                                  f"Missing fields: {missing_fields}")
+                    return False
+                
+                # Verify summary structure
+                summary = data["summary"]
+                summary_fields = ["at_risk_count", "risk_percentage", "by_risk_level"]
+                missing_summary_fields = [field for field in summary_fields if field not in summary]
+                
+                if missing_summary_fields:
+                    self.log_result("Churn Prediction Summary Structure", False, 
+                                  f"Missing summary fields: {missing_summary_fields}")
+                    return False
+                
+                # Verify by_risk_level structure
+                by_risk_level = summary["by_risk_level"]
+                risk_level_fields = ["critical", "high", "medium"]
+                missing_risk_fields = [field for field in risk_level_fields if field not in by_risk_level]
+                
+                if missing_risk_fields:
+                    self.log_result("Churn Prediction Risk Level Structure", False, 
+                                  f"Missing risk level fields: {missing_risk_fields}")
+                    return False
+                
+                # Verify data types
+                if not isinstance(summary["at_risk_count"], int):
+                    self.log_result("Churn Prediction At Risk Count Type", False, 
+                                  "At risk count should be integer")
+                    return False
+                
+                if not isinstance(summary["risk_percentage"], (int, float)):
+                    self.log_result("Churn Prediction Risk Percentage Type", False, 
+                                  "Risk percentage should be number")
+                    return False
+                
+                # Verify at_risk_members structure
+                if data["at_risk_members"]:
+                    at_risk_member = data["at_risk_members"][0]
+                    member_fields = ["id", "first_name", "last_name", "full_name", "membership_type", 
+                                   "risk_score", "risk_level", "risk_reasons", "last_visit_date"]
+                    missing_member_fields = [field for field in member_fields if field not in at_risk_member]
+                    
+                    if missing_member_fields:
+                        self.log_result("Churn Prediction At Risk Members Structure", False, 
+                                      f"Missing at risk member fields: {missing_member_fields}")
+                        return False
+                    
+                    # Verify risk score and level logic
+                    risk_score = at_risk_member["risk_score"]
+                    risk_level = at_risk_member["risk_level"]
+                    
+                    if risk_level == "Critical" and risk_score < 50:
+                        self.log_result("Churn Prediction Risk Level Logic", False, 
+                                      f"Critical risk should have score ≥50, got {risk_score}")
+                        return False
+                    elif risk_level == "High" and (risk_score < 30 or risk_score >= 50):
+                        self.log_result("Churn Prediction Risk Level Logic", False, 
+                                      f"High risk should have score 30-49, got {risk_score}")
+                        return False
+                    elif risk_level == "Medium" and (risk_score < 15 or risk_score >= 30):
+                        self.log_result("Churn Prediction Risk Level Logic", False, 
+                                      f"Medium risk should have score 15-29, got {risk_score}")
+                        return False
+                    
+                    # Verify risk_reasons is a list
+                    if not isinstance(at_risk_member["risk_reasons"], list):
+                        self.log_result("Churn Prediction Risk Reasons Type", False, 
+                                      "Risk reasons should be a list")
+                        return False
+                
+                # Verify common_risk_factors structure
+                if data["common_risk_factors"]:
+                    risk_factor = data["common_risk_factors"][0]
+                    factor_fields = ["factor", "member_count", "percentage"]
+                    missing_factor_fields = [field for field in factor_fields if field not in risk_factor]
+                    
+                    if missing_factor_fields:
+                        self.log_result("Churn Prediction Common Risk Factors Structure", False, 
+                                      f"Missing risk factor fields: {missing_factor_fields}")
+                        return False
+                
+                self.log_result("Churn Prediction Analytics API", True, 
+                              f"Retrieved churn prediction: {summary['at_risk_count']} at-risk members "
+                              f"({summary['risk_percentage']:.1f}% of total), "
+                              f"Critical: {by_risk_level['critical']}, High: {by_risk_level['high']}, "
+                              f"Medium: {by_risk_level['medium']}")
+                return True
+                
+            else:
+                self.log_result("Churn Prediction Analytics API", False, 
+                              f"Failed to get churn prediction: {response.status_code}",
+                              {"response": response.text})
+                return False
+                
+        except Exception as e:
+            self.log_result("Churn Prediction Analytics API", False, f"Error testing churn prediction API: {str(e)}")
+            return False
+    
+    def test_analytics_api_authentication(self):
+        """Test that all analytics APIs require authentication"""
+        print("\n=== Testing Analytics API Authentication ===")
         
         try:
             # Test without authentication headers
             endpoints = [
-                "/reports/incomplete-data",
-                "/reports/birthdays",
-                "/reports/anniversaries"
+                "/analytics/revenue-breakdown",
+                "/analytics/geographic-distribution",
+                "/analytics/attendance-deep-dive",
+                "/analytics/member-lifetime-value",
+                "/analytics/churn-prediction"
             ]
             
             for endpoint in endpoints:
@@ -518,7 +724,7 @@ class AdvancedAnalyticsTestRunner:
             return True
                 
         except Exception as e:
-            self.log_result("Report API Authentication", False, f"Error testing authentication: {str(e)}")
+            self.log_result("Analytics API Authentication", False, f"Error testing authentication: {str(e)}")
             return False
     
     def test_report_api_error_handling(self):
