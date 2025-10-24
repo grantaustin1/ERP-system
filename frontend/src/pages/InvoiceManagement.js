@@ -262,13 +262,14 @@ export default function InvoiceManagement() {
               <p className="text-slate-400">Create, manage, and track invoices</p>
             </div>
             <div className="flex gap-3">
-              <Dialog open={settingsDialogOpen} onOpenChange={setSettingsDialogOpen}>
-                <DialogTrigger asChild>
-                  <Button variant="outline" className="border-slate-700 text-slate-300 hover:bg-slate-800">
-                    <Settings className="h-4 w-4 mr-2" />
-                    Settings
-                  </Button>
-                </DialogTrigger>
+              <PermissionGuard permission="settings:edit">
+                <Dialog open={settingsDialogOpen} onOpenChange={setSettingsDialogOpen}>
+                  <DialogTrigger asChild>
+                    <Button variant="outline" className="border-slate-700 text-slate-300 hover:bg-slate-800">
+                      <Settings className="h-4 w-4 mr-2" />
+                      Settings
+                    </Button>
+                  </DialogTrigger>
                 <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto bg-slate-900 border-slate-800">
                   <DialogHeader>
                     <DialogTitle className="text-white">Billing Settings</DialogTitle>
