@@ -4460,6 +4460,52 @@ async def update_invoice(invoice_id: str, data: InvoiceUpdate, current_user: Use
         update_data["notes"] = data.notes
     if data.status is not None:
         update_data["status"] = data.status
+        # If marking as paid, set paid_date and award points
+        if data.status == "paid" and invoice.get("status") != "paid":
+            update_data["paid_date"] = datetime.now(timezone.utc).isoformat()
+            
+            # AUTO-AWARD POINTS: Payment reward (10 points per payment)
+            import uuid
+            try:
+                member_id = invoice.get("member_id")
+                if member_id:
+                    balance = await db.points_balances.find_one({"member_id": member_id}, {"_id": 0})
+                    
+                    if not balance:
+                        balance = {"member_id": member_id, "total_points": 0, "lifetime_points": 0}
+                    
+                    # Award 10 points for payment
+                    points_to_award = 10
+                    new_total = balance.get("total_points", 0) + points_to_award
+                    new_lifetime = balance.get("lifetime_points", 0) + points_to_award
+                    
+                    await db.points_balances.update_one(
+                        {"member_id": member_id},
+                        {
+                            "$set": {
+                                "total_points": new_total,
+                                "lifetime_points": new_lifetime,
+                                "last_updated": datetime.now(timezone.utc).isoformat()
+                            }
+                        },
+                        upsert=True
+                    )
+                    
+                    # Record transaction
+                    transaction = {
+                        "id": str(uuid.uuid4()),
+                        "member_id": member_id,
+                        "points": points_to_award,
+                        "transaction_type": "earned",
+                        "reason": "Payment completed",
+                        "reference_id": invoice_id,
+                        "created_at": datetime.now(timezone.utc).isoformat()
+                    }
+                    
+                    await db.points_transactions.insert_one(transaction.copy())
+            except Exception as e:
+                # Don't fail the payment if points award fails
+                print(f"Failed to award points: {e}")
     
     # If line items updated, recalculate totals
     if data.line_items is not None:
