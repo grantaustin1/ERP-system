@@ -261,13 +261,13 @@ class EngagementFeaturesTestRunner:
                 
                 # Test with non-existent member (should initialize)
                 fake_member_id = "fake_member_123"
-                award_data_fake = {
+                award_params_fake = {
                     "member_id": fake_member_id,
                     "points": 10,
                     "reason": "Test for new member"
                 }
                 
-                response = requests.post(f"{API_BASE}/engagement/points/award", json=award_data_fake, headers=self.headers)
+                response = requests.post(f"{API_BASE}/engagement/points/award", params=award_params_fake, headers=self.headers)
                 if response.status_code == 200:
                     fake_data = response.json()
                     if fake_data["new_balance"] == 10:
