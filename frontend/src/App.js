@@ -49,35 +49,37 @@ function PrivateRoute({ children }) {
 function App() {
   return (
     <div className="App">
-      <BrowserRouter>
-        <Routes>
-          <Route path="/login" element={<Login />} />
-          <Route path="/member-portal" element={<MemberPortal />} />
-          <Route path="/" element={<PrivateRoute><Dashboard /></PrivateRoute>} />
-          <Route path="/members" element={<PrivateRoute><Members /></PrivateRoute>} />
-          <Route path="/access" element={<PrivateRoute><AccessControl /></PrivateRoute>} />
-          <Route path="/classes" element={<PrivateRoute><Classes /></PrivateRoute>} />
-          <Route path="/billing" element={<PrivateRoute><BillingEnhanced /></PrivateRoute>} />
-          <Route path="/invoices" element={<PrivateRoute><InvoiceManagement /></PrivateRoute>} />
-          <Route path="/cancellations" element={<PrivateRoute><Cancellations /></PrivateRoute>} />
-          <Route path="/levies" element={<PrivateRoute><Levies /></PrivateRoute>} />
-          <Route path="/marketing" element={<PrivateRoute><Marketing /></PrivateRoute>} />
-          <Route path="/packages" element={<PrivateRoute><PackageSetup /></PrivateRoute>} />
-          <Route path="/automations" element={<PrivateRoute><Automations /></PrivateRoute>} />
-          <Route path="/analytics" element={<PrivateRoute><Analytics /></PrivateRoute>} />
-          <Route path="/import" element={<PrivateRoute><DataImport /></PrivateRoute>} />
-          <Route path="/permission-matrix" element={<PrivateRoute><PermissionMatrix /></PrivateRoute>} />
-          <Route path="/user-roles" element={<PrivateRoute><UserRoleManagement /></PrivateRoute>} />
-          <Route path="/pos" element={<PrivateRoute><POS /></PrivateRoute>} />
-          <Route path="/products" element={<PrivateRoute><ProductManagement /></PrivateRoute>} />
-          <Route path="/tasks" element={<PrivateRoute><Tasks /></PrivateRoute>} />
-          <Route path="/settings" element={<PrivateRoute><SettingsNew /></PrivateRoute>} />
-          <Route path="/settings-old" element={<PrivateRoute><Settings /></PrivateRoute>} />
-          <Route path="/debit-orders" element={<PrivateRoute><DebitOrderManagement /></PrivateRoute>} />
-          <Route path="/reconciliation" element={<PrivateRoute><TransactionReconciliation /></PrivateRoute>} />
-        </Routes>
-      </BrowserRouter>
-      <Toaster />
+      <PermissionProvider>
+        <BrowserRouter>
+          <Routes>
+            <Route path="/login" element={<Login />} />
+            <Route path="/member-portal" element={<MemberPortal />} />
+            <Route path="/" element={<PrivateRoute><Dashboard /></PrivateRoute>} />
+            <Route path="/members" element={<PrivateRoute><Members /></PrivateRoute>} />
+            <Route path="/access" element={<PrivateRoute><AccessControl /></PrivateRoute>} />
+            <Route path="/classes" element={<PrivateRoute><Classes /></PrivateRoute>} />
+            <Route path="/billing" element={<PrivateRoute><BillingEnhanced /></PrivateRoute>} />
+            <Route path="/invoices" element={<PrivateRoute><InvoiceManagement /></PrivateRoute>} />
+            <Route path="/cancellations" element={<PrivateRoute><Cancellations /></PrivateRoute>} />
+            <Route path="/levies" element={<PrivateRoute><Levies /></PrivateRoute>} />
+            <Route path="/marketing" element={<PrivateRoute><Marketing /></PrivateRoute>} />
+            <Route path="/packages" element={<PrivateRoute><PackageSetup /></PrivateRoute>} />
+            <Route path="/automations" element={<PrivateRoute><Automations /></PrivateRoute>} />
+            <Route path="/analytics" element={<PrivateRoute><Analytics /></PrivateRoute>} />
+            <Route path="/import" element={<PrivateRoute><DataImport /></PrivateRoute>} />
+            <Route path="/permission-matrix" element={<PrivateRoute><PermissionMatrix /></PrivateRoute>} />
+            <Route path="/user-roles" element={<PrivateRoute><UserRoleManagement /></PrivateRoute>} />
+            <Route path="/pos" element={<PrivateRoute><POS /></PrivateRoute>} />
+            <Route path="/products" element={<PrivateRoute><ProductManagement /></PrivateRoute>} />
+            <Route path="/tasks" element={<PrivateRoute><Tasks /></PrivateRoute>} />
+            <Route path="/settings" element={<PrivateRoute><SettingsNew /></PrivateRoute>} />
+            <Route path="/settings-old" element={<PrivateRoute><Settings /></PrivateRoute>} />
+            <Route path="/debit-orders" element={<PrivateRoute><DebitOrderManagement /></PrivateRoute>} />
+            <Route path="/reconciliation" element={<PrivateRoute><TransactionReconciliation /></PrivateRoute>} />
+          </Routes>
+        </BrowserRouter>
+        <Toaster />
+      </PermissionProvider>
     </div>
   );
 }
