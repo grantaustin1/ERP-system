@@ -61,6 +61,8 @@ export default function Dashboard() {
     fetchAlertData();
     fetchClassBookingStats();
   }, []);
+    fetchPhase2Data();
+
 
   const fetchStats = async () => {
     try {
