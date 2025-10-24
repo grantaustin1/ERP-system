@@ -4656,13 +4656,11 @@ metadata:
 
 test_plan:
   current_focus:
-    - "Member Action APIs - Freeze/Unfreeze/Cancel"
-    - "Enhanced Member Profile Endpoint - Phase 1 Fields"
+    []
   stuck_tasks:
-    - "Member Action APIs - Freeze/Unfreeze/Cancel"
-    - "Enhanced Member Profile Endpoint - Phase 1 Fields"
+    []
   test_all: false
-  test_priority: "stuck_first"
+  test_priority: "high_first"
 
 agent_communication:
   - agent: "main"
