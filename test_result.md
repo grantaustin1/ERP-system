@@ -289,15 +289,18 @@ backend:
 
   - task: "Void Invoice API"
     implemented: true
-    working: "NA"
+    working: true
     file: "/app/backend/server.py"
     stuck_count: 0
     priority: "high"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
       - working: "NA"
         agent: "main"
         comment: "Created DELETE /api/invoices/{invoice_id} endpoint to void invoices (soft delete). Prevents voiding paid invoices. Updates status to 'void' with optional reason. Logs action to member journal. Ready for testing."
+      - working: true
+        agent: "testing"
+        comment: "✅ Void Invoice API working correctly: DELETE /api/invoices/{invoice_id} successfully voids invoices with optional reason parameter. Returns success message 'Invoice voided successfully' and updates invoice status to 'void' in database. Status change verified through subsequent GET request. Soft delete functionality working as expected."
 
   - task: "Generate Invoice PDF API"
     implemented: true
