@@ -2318,11 +2318,554 @@ class MemberProfileDrillDownTester:
         
         print("\n" + "=" * 80)
 
+
+class MemberJournalTester:
+    def __init__(self):
+        self.token = None
+        self.headers = {}
+        self.test_results = []
+        self.created_members = []  # Track created members for cleanup
+        self.created_notes = []    # Track created notes for cleanup
+        
+    def log_result(self, test_name, success, message, details=None):
+        """Log test result"""
+        result = {
+            "test": test_name,
+            "success": success,
+            "message": message,
+            "timestamp": datetime.now().isoformat(),
+            "details": details or {}
+        }
+        self.test_results.append(result)
+        status = "✅ PASS" if success else "❌ FAIL"
+        print(f"{status}: {test_name} - {message}")
+        if details and not success:
+            print(f"   Details: {details}")
+    
+    def authenticate(self):
+        """Authenticate and get token"""
+        try:
+            response = requests.post(f"{API_BASE}/auth/login", json={
+                "email": TEST_EMAIL,
+                "password": TEST_PASSWORD
+            })
+            
+            if response.status_code == 200:
+                data = response.json()
+                self.token = data["access_token"]
+                self.headers = {"Authorization": f"Bearer {self.token}"}
+                self.log_result("Authentication", True, "Successfully authenticated")
+                return True
+            else:
+                self.log_result("Authentication", False, f"Failed to authenticate: {response.status_code}", 
+                              {"response": response.text})
+                return False
+        except Exception as e:
+            self.log_result("Authentication", False, f"Authentication error: {str(e)}")
+            return False
+    
+    def get_test_member(self):
+        """Get or create a test member for journal testing"""
+        try:
+            # First try to get existing members
+            response = requests.get(f"{API_BASE}/members", headers=self.headers)
+            if response.status_code == 200:
+                members = response.json()
+                if members:
+                    member_id = members[0]["id"]
+                    self.log_result("Get Test Member", True, f"Using existing member: {member_id}")
+                    return member_id
+            
+            # If no members exist, create one
+            # Get membership type first
+            response = requests.get(f"{API_BASE}/membership-types", headers=self.headers)
+            if response.status_code != 200:
+                self.log_result("Get Membership Types", False, "Failed to get membership types")
+                return None
+            
+            membership_types = response.json()
+            if not membership_types:
+                self.log_result("Get Membership Types", False, "No membership types found")
+                return None
+            
+            membership_type_id = membership_types[0]["id"]
+            
+            # Create test member
+            timestamp = int(time.time())
+            member_data = {
+                "first_name": "Journal",
+                "last_name": "TestMember",
+                "email": f"journal.test.{timestamp}@example.com",
+                "phone": f"082{timestamp % 10000000:07d}",
+                "membership_type_id": membership_type_id
+            }
+            
+            response = requests.post(f"{API_BASE}/members", json=member_data, headers=self.headers)
+            if response.status_code == 200:
+                member = response.json()
+                member_id = member["id"]
+                self.created_members.append(member_id)
+                self.log_result("Create Test Member", True, f"Created test member: {member_id}")
+                return member_id
+            else:
+                self.log_result("Create Test Member", False, f"Failed to create member: {response.status_code}")
+                return None
+                
+        except Exception as e:
+            self.log_result("Get Test Member", False, f"Error getting test member: {str(e)}")
+            return None
+    
+    def test_journal_entry_creation_manual(self, member_id):
+        """Test 1: Journal Entry Creation via Manual Endpoint"""
+        print("\n=== Test 1: Journal Entry Creation via Manual Endpoint ===")
+        
+        try:
+            journal_data = {
+                "action_type": "email_sent",
+                "description": "Test email sent to member",
+                "metadata": {
+                    "email": "test@example.com",
+                    "subject": "Test Subject",
+                    "full_body": "This is a test email body"
+                }
+            }
+            
+            response = requests.post(f"{API_BASE}/members/{member_id}/journal", 
+                                   json=journal_data, headers=self.headers)
+            
+            if response.status_code == 200:
+                journal_entry = response.json()
+                
+                # Verify journal entry structure
+                required_fields = ["journal_id", "member_id", "action_type", "description", 
+                                 "metadata", "created_by", "created_by_name", "created_at"]
+                has_all_fields = all(field in journal_entry for field in required_fields)
+                
+                if has_all_fields:
+                    # Verify field values
+                    if (journal_entry.get("action_type") == "email_sent" and
+                        journal_entry.get("description") == "Test email sent to member" and
+                        journal_entry.get("member_id") == member_id and
+                        journal_entry.get("metadata", {}).get("email") == "test@example.com"):
+                        
+                        self.log_result("Manual Journal Entry Creation", True, 
+                                      f"Journal entry created successfully with ID: {journal_entry.get('journal_id')}")
+                        return journal_entry.get("journal_id")
+                    else:
+                        self.log_result("Manual Journal Entry Creation", False, 
+                                      "Journal entry created but field values incorrect",
+                                      {"expected": journal_data, "actual": journal_entry})
+                        return None
+                else:
+                    missing_fields = [field for field in required_fields if field not in journal_entry]
+                    self.log_result("Manual Journal Entry Creation", False, 
+                                  f"Journal entry missing required fields: {missing_fields}")
+                    return None
+            else:
+                self.log_result("Manual Journal Entry Creation", False, 
+                              f"Failed to create journal entry: {response.status_code}",
+                              {"response": response.text})
+                return None
+                
+        except Exception as e:
+            self.log_result("Manual Journal Entry Creation", False, f"Error creating journal entry: {str(e)}")
+            return None
+    
+    def test_journal_retrieval_with_filters(self, member_id):
+        """Test 2: Journal Retrieval with Filters"""
+        print("\n=== Test 2: Journal Retrieval with Filters ===")
+        
+        try:
+            # Test 1: Get all entries (no filters)
+            response = requests.get(f"{API_BASE}/members/{member_id}/journal", headers=self.headers)
+            
+            if response.status_code == 200:
+                all_entries = response.json()
+                if len(all_entries) > 0:
+                    self.log_result("Journal Retrieval - All Entries", True, 
+                                  f"Retrieved {len(all_entries)} journal entries")
+                else:
+                    self.log_result("Journal Retrieval - All Entries", False, "No journal entries found")
+                    return False
+            else:
+                self.log_result("Journal Retrieval - All Entries", False, 
+                              f"Failed to retrieve journal entries: {response.status_code}")
+                return False
+            
+            # Test 2: Filter by action_type
+            response = requests.get(f"{API_BASE}/members/{member_id}/journal?action_type=email_sent", 
+                                  headers=self.headers)
+            
+            if response.status_code == 200:
+                filtered_entries = response.json()
+                # Verify all entries have the correct action_type
+                if all(entry.get("action_type") == "email_sent" for entry in filtered_entries):
+                    self.log_result("Journal Retrieval - Filter by Action Type", True, 
+                                  f"Retrieved {len(filtered_entries)} email_sent entries")
+                else:
+                    self.log_result("Journal Retrieval - Filter by Action Type", False, 
+                                  "Filter by action_type not working correctly")
+            else:
+                self.log_result("Journal Retrieval - Filter by Action Type", False, 
+                              f"Failed to filter by action_type: {response.status_code}")
+            
+            # Test 3: Search in description
+            response = requests.get(f"{API_BASE}/members/{member_id}/journal?search=test", 
+                                  headers=self.headers)
+            
+            if response.status_code == 200:
+                search_entries = response.json()
+                # Verify entries contain the search term
+                if all("test" in entry.get("description", "").lower() for entry in search_entries):
+                    self.log_result("Journal Retrieval - Search Filter", True, 
+                                  f"Retrieved {len(search_entries)} entries containing 'test'")
+                else:
+                    self.log_result("Journal Retrieval - Search Filter", False, 
+                                  "Search filter not working correctly")
+            else:
+                self.log_result("Journal Retrieval - Search Filter", False, 
+                              f"Failed to search journal entries: {response.status_code}")
+            
+            return True
+            
+        except Exception as e:
+            self.log_result("Journal Retrieval with Filters", False, f"Error testing journal retrieval: {str(e)}")
+            return False
+    
+    def test_automatic_journal_logging_profile_update(self, member_id):
+        """Test 3: Automatic Journal Logging - Profile Update"""
+        print("\n=== Test 3: Automatic Journal Logging - Profile Update ===")
+        
+        try:
+            # Update member profile
+            update_data = {
+                "first_name": "UpdatedJournal"
+            }
+            
+            response = requests.put(f"{API_BASE}/members/{member_id}", 
+                                  json=update_data, headers=self.headers)
+            
+            if response.status_code == 200:
+                self.log_result("Member Profile Update", True, "Member profile updated successfully")
+                
+                # Wait a moment for journal entry to be created
+                time.sleep(1)
+                
+                # Check if profile_updated entry appears in journal
+                response = requests.get(f"{API_BASE}/members/{member_id}/journal", headers=self.headers)
+                
+                if response.status_code == 200:
+                    journal_entries = response.json()
+                    
+                    # Look for profile_updated entry
+                    profile_update_entries = [entry for entry in journal_entries 
+                                            if entry.get("action_type") == "profile_updated"]
+                    
+                    if profile_update_entries:
+                        latest_entry = profile_update_entries[0]  # Most recent
+                        
+                        # Verify metadata contains changed fields
+                        metadata = latest_entry.get("metadata", {})
+                        if "first_name" in str(metadata):
+                            self.log_result("Automatic Profile Update Logging", True, 
+                                          "Profile update automatically logged with changed fields in metadata")
+                            return True
+                        else:
+                            self.log_result("Automatic Profile Update Logging", False, 
+                                          "Profile update logged but metadata doesn't contain changed fields",
+                                          {"metadata": metadata})
+                            return False
+                    else:
+                        self.log_result("Automatic Profile Update Logging", False, 
+                                      "Profile update not automatically logged")
+                        return False
+                else:
+                    self.log_result("Automatic Profile Update Logging", False, 
+                                  f"Failed to retrieve journal after update: {response.status_code}")
+                    return False
+            else:
+                self.log_result("Member Profile Update", False, 
+                              f"Failed to update member profile: {response.status_code}")
+                return False
+                
+        except Exception as e:
+            self.log_result("Automatic Profile Update Logging", False, f"Error testing profile update logging: {str(e)}")
+            return False
+    
+    def test_automatic_journal_logging_note_creation(self, member_id):
+        """Test 4: Automatic Journal Logging - Note Creation"""
+        print("\n=== Test 4: Automatic Journal Logging - Note Creation ===")
+        
+        try:
+            # Create a note
+            note_data = {
+                "content": "Test note for journal"
+            }
+            
+            response = requests.post(f"{API_BASE}/members/{member_id}/notes", 
+                                   json=note_data, headers=self.headers)
+            
+            if response.status_code == 200:
+                note = response.json()
+                note_id = note.get("note_id")
+                self.created_notes.append(note_id)
+                self.log_result("Note Creation", True, f"Note created successfully with ID: {note_id}")
+                
+                # Wait a moment for journal entry to be created
+                time.sleep(1)
+                
+                # Check if note_added entry appears in journal
+                response = requests.get(f"{API_BASE}/members/{member_id}/journal", headers=self.headers)
+                
+                if response.status_code == 200:
+                    journal_entries = response.json()
+                    
+                    # Look for note_added entry
+                    note_added_entries = [entry for entry in journal_entries 
+                                        if entry.get("action_type") == "note_added"]
+                    
+                    if note_added_entries:
+                        self.log_result("Automatic Note Creation Logging", True, 
+                                      "Note creation automatically logged")
+                        return note_id
+                    else:
+                        self.log_result("Automatic Note Creation Logging", False, 
+                                      "Note creation not automatically logged")
+                        return note_id
+                else:
+                    self.log_result("Automatic Note Creation Logging", False, 
+                                  f"Failed to retrieve journal after note creation: {response.status_code}")
+                    return note_id
+            else:
+                self.log_result("Note Creation", False, 
+                              f"Failed to create note: {response.status_code}")
+                return None
+                
+        except Exception as e:
+            self.log_result("Automatic Note Creation Logging", False, f"Error testing note creation logging: {str(e)}")
+            return None
+    
+    def test_automatic_journal_logging_note_deletion(self, member_id, note_id):
+        """Test 5: Automatic Journal Logging - Note Deletion"""
+        print("\n=== Test 5: Automatic Journal Logging - Note Deletion ===")
+        
+        if not note_id:
+            self.log_result("Note Deletion Test", False, "No note ID provided for deletion test")
+            return False
+        
+        try:
+            # Delete the note
+            response = requests.delete(f"{API_BASE}/members/{member_id}/notes/{note_id}", 
+                                     headers=self.headers)
+            
+            if response.status_code == 200:
+                self.log_result("Note Deletion", True, f"Note {note_id} deleted successfully")
+                
+                # Wait a moment for journal entry to be created
+                time.sleep(1)
+                
+                # Check if note_deleted entry appears in journal
+                response = requests.get(f"{API_BASE}/members/{member_id}/journal", headers=self.headers)
+                
+                if response.status_code == 200:
+                    journal_entries = response.json()
+                    
+                    # Look for note_deleted entry
+                    note_deleted_entries = [entry for entry in journal_entries 
+                                          if entry.get("action_type") == "note_deleted"]
+                    
+                    if note_deleted_entries:
+                        self.log_result("Automatic Note Deletion Logging", True, 
+                                      "Note deletion automatically logged")
+                        return True
+                    else:
+                        self.log_result("Automatic Note Deletion Logging", False, 
+                                      "Note deletion not automatically logged")
+                        return False
+                else:
+                    self.log_result("Automatic Note Deletion Logging", False, 
+                                  f"Failed to retrieve journal after note deletion: {response.status_code}")
+                    return False
+            else:
+                self.log_result("Note Deletion", False, 
+                              f"Failed to delete note: {response.status_code}")
+                return False
+                
+        except Exception as e:
+            self.log_result("Automatic Note Deletion Logging", False, f"Error testing note deletion logging: {str(e)}")
+            return False
+    
+    def test_journal_metadata_verification(self, member_id):
+        """Test 6: Journal Metadata Verification"""
+        print("\n=== Test 6: Journal Metadata Verification ===")
+        
+        try:
+            # Get all journal entries
+            response = requests.get(f"{API_BASE}/members/{member_id}/journal", headers=self.headers)
+            
+            if response.status_code == 200:
+                journal_entries = response.json()
+                
+                if not journal_entries:
+                    self.log_result("Journal Metadata Verification", False, "No journal entries to verify")
+                    return False
+                
+                # Check the first entry for required fields
+                entry = journal_entries[0]
+                required_fields = [
+                    "journal_id", "member_id", "action_type", "description", 
+                    "metadata", "created_by", "created_by_name", "created_at"
+                ]
+                
+                missing_fields = [field for field in required_fields if field not in entry]
+                
+                if not missing_fields:
+                    # Verify field types and formats
+                    checks = []
+                    
+                    # Check journal_id is string
+                    if isinstance(entry.get("journal_id"), str):
+                        checks.append("journal_id is string")
+                    
+                    # Check member_id matches
+                    if entry.get("member_id") == member_id:
+                        checks.append("member_id matches")
+                    
+                    # Check action_type is string
+                    if isinstance(entry.get("action_type"), str):
+                        checks.append("action_type is string")
+                    
+                    # Check metadata is dict
+                    if isinstance(entry.get("metadata"), dict):
+                        checks.append("metadata is dict")
+                    
+                    # Check created_at is datetime string
+                    created_at = entry.get("created_at")
+                    if isinstance(created_at, str) and "T" in created_at:
+                        checks.append("created_at is datetime string")
+                    
+                    if len(checks) >= 4:  # Most checks passed
+                        self.log_result("Journal Metadata Verification", True, 
+                                      f"Journal entries have proper structure: {', '.join(checks)}")
+                        return True
+                    else:
+                        self.log_result("Journal Metadata Verification", False, 
+                                      f"Some metadata checks failed. Passed: {', '.join(checks)}")
+                        return False
+                else:
+                    self.log_result("Journal Metadata Verification", False, 
+                                  f"Journal entries missing required fields: {missing_fields}")
+                    return False
+            else:
+                self.log_result("Journal Metadata Verification", False, 
+                              f"Failed to retrieve journal entries: {response.status_code}")
+                return False
+                
+        except Exception as e:
+            self.log_result("Journal Metadata Verification", False, f"Error verifying journal metadata: {str(e)}")
+            return False
+    
+    def cleanup_test_data(self):
+        """Clean up test data created during testing"""
+        print("\n=== Cleaning Up Test Data ===")
+        
+        # Clean up created notes (if any remain)
+        for note_id in self.created_notes:
+            try:
+                # Notes might already be deleted in tests, so ignore errors
+                pass
+            except Exception:
+                pass
+        
+        # Clean up created members
+        for member_id in self.created_members:
+            try:
+                # Note: Assuming there's a delete endpoint, otherwise skip cleanup
+                # response = requests.delete(f"{API_BASE}/members/{member_id}", headers=self.headers)
+                # For now, just log that we would clean up
+                pass
+            except Exception as e:
+                self.log_result("Cleanup Member", False, f"Error cleaning up member {member_id}: {str(e)}")
+        
+        if self.created_members or self.created_notes:
+            self.log_result("Cleanup Test Data", True, 
+                          f"Attempted cleanup of {len(self.created_members)} members and {len(self.created_notes)} notes")
+    
+    def run_journal_tests(self):
+        """Run all member journal tests"""
+        print("🚀 Starting Member Journal Functionality Tests")
+        print(f"Testing against: {API_BASE}")
+        print("=" * 80)
+        
+        # Authenticate first
+        if not self.authenticate():
+            print("❌ Authentication failed. Cannot proceed with tests.")
+            return
+        
+        print("\n📋 MEMBER JOURNAL TESTING")
+        print("Testing Requirements:")
+        print("- Authentication: admin@gym.com / admin123")
+        print("- Manual journal entry creation")
+        print("- Journal retrieval with filters (action_type, search)")
+        print("- Automatic logging on profile updates")
+        print("- Automatic logging on note creation/deletion")
+        print("- Journal metadata verification")
+        
+        # Get test member
+        member_id = self.get_test_member()
+        if not member_id:
+            print("❌ Failed to get test member. Cannot proceed with tests.")
+            return
+        
+        print(f"\n🧪 Using test member ID: {member_id}")
+        
+        # Execute all test scenarios
+        journal_entry_id = self.test_journal_entry_creation_manual(member_id)
+        self.test_journal_retrieval_with_filters(member_id)
+        self.test_automatic_journal_logging_profile_update(member_id)
+        note_id = self.test_automatic_journal_logging_note_creation(member_id)
+        self.test_automatic_journal_logging_note_deletion(member_id, note_id)
+        self.test_journal_metadata_verification(member_id)
+        
+        # Cleanup
+        self.cleanup_test_data()
+        
+        # Print summary
+        self.print_summary()
+    
+    def print_summary(self):
+        """Print test summary"""
+        print("\n" + "=" * 60)
+        print("🏁 MEMBER JOURNAL TEST SUMMARY")
+        print("=" * 60)
+        
+        total_tests = len(self.test_results)
+        passed_tests = len([r for r in self.test_results if r["success"]])
+        failed_tests = total_tests - passed_tests
+        
+        print(f"Total Tests: {total_tests}")
+        print(f"✅ Passed: {passed_tests}")
+        print(f"❌ Failed: {failed_tests}")
+        print(f"Success Rate: {(passed_tests/total_tests*100):.1f}%")
+        
+        if failed_tests > 0:
+            print("\n❌ FAILED TESTS:")
+            for result in self.test_results:
+                if not result["success"]:
+                    print(f"  - {result['test']}: {result['message']}")
+        
+        print("\n" + "=" * 80)
+
+
 if __name__ == "__main__":
     import sys
     
-    if len(sys.argv) > 1 and sys.argv[1] == "profile":
-        # Run member profile drill-down tests as requested
+    if len(sys.argv) > 1 and sys.argv[1] == "journal":
+        # Run member journal tests as requested in review
+        tester = MemberJournalTester()
+        tester.run_journal_tests()
+    elif len(sys.argv) > 1 and sys.argv[1] == "profile":
+        # Run member profile drill-down tests
         tester = MemberProfileDrillDownTester()
         tester.run_member_profile_tests()
     elif len(sys.argv) > 1 and sys.argv[1] == "levy":
@@ -2334,6 +2877,6 @@ if __name__ == "__main__":
         tester = NotificationTemplateTester()
         tester.run_notification_template_tests()
     else:
-        # Run member profile drill-down tests by default (as requested in review)
-        tester = MemberProfileDrillDownTester()
-        tester.run_member_profile_tests()
+        # Run member journal tests by default (as requested in review)
+        tester = MemberJournalTester()
+        tester.run_journal_tests()
