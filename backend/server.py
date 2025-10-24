@@ -2609,6 +2609,77 @@ async def get_member_profile(member_id: str, current_user: User = Depends(get_cu
         "status": {"$in": ["pending", "overdue"]}
     })
     
+    # Calculate retention metrics (attendance comparison: current month vs previous month)
+    from datetime import datetime, timedelta
+    now = datetime.now(timezone.utc)
+    current_month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    previous_month_start = (current_month_start - timedelta(days=1)).replace(day=1)
+    
+    current_month_visits = await db.access_logs.count_documents({
+        "member_id": member_id,
+        "timestamp": {"$gte": current_month_start.isoformat()}
+    })
+    
+    previous_month_visits = await db.access_logs.count_documents({
+        "member_id": member_id,
+        "timestamp": {
+            "$gte": previous_month_start.isoformat(),
+            "$lt": current_month_start.isoformat()
+        }
+    })
+    
+    # Calculate retention percentage
+    retention_percentage = 0
+    retention_status = "collating"  # collating, consistent, good, alert, critical
+    
+    if previous_month_visits > 0:
+        retention_percentage = round(((current_month_visits - previous_month_visits) / previous_month_visits) * 100)
+        
+        if retention_percentage >= 50:
+            retention_status = "good"  # Green
+        elif retention_percentage >= -10 and retention_percentage < 50:
+            retention_status = "consistent"  # No change
+        elif retention_percentage >= -40 and retention_percentage < -10:
+            retention_status = "alert"  # Orange
+        else:
+            retention_status = "critical"  # Red
+    elif current_month_visits > 0:
+        retention_status = "consistent"
+    
+    # Calculate payment progress from invoices
+    all_invoices = await db.invoices.find(
+        {"member_id": member_id},
+        {"_id": 0}
+    ).to_list(length=None)
+    
+    total_paid = sum(inv.get("amount_paid", 0.0) for inv in all_invoices if inv.get("status") == "paid")
+    total_unpaid = sum(inv.get("amount_due", 0.0) for inv in all_invoices if inv.get("status") in ["pending", "failed"])
+    total_owed = sum(inv.get("amount_due", 0.0) for inv in all_invoices if inv.get("status") in ["pending", "overdue", "failed"])
+    total_amount = total_paid + total_owed
+    
+    payment_progress = {
+        "paid": total_paid,
+        "unpaid": total_unpaid,
+        "remaining": total_owed,
+        "total": total_amount,
+        "paid_percentage": round((total_paid / total_amount * 100) if total_amount > 0 else 0, 2),
+        "unpaid_percentage": round((total_unpaid / total_amount * 100) if total_amount > 0 else 0, 2),
+        "remaining_percentage": round((total_owed / total_amount * 100) if total_amount > 0 else 0, 2)
+    }
+    
+    # Check for missing data
+    missing_data = []
+    if not member.get("phone"):
+        missing_data.append("phone")
+    if not member.get("home_phone") and not member.get("work_phone"):
+        missing_data.append("additional_phone")
+    if not member.get("emergency_contact"):
+        missing_data.append("emergency_contact")
+    if not member.get("address"):
+        missing_data.append("address")
+    if not member.get("bank_account_number"):
+        missing_data.append("bank_details")
+    
     return {
         "member": member,
         "membership_type": membership_type,
@@ -2620,7 +2691,15 @@ async def get_member_profile(member_id: str, current_user: User = Depends(get_cu
             "no_show_count": member.get("no_show_count", 0),
             "debt_amount": member.get("debt_amount", 0.0),
             "last_access": last_access["timestamp"] if last_access else None
-        }
+        },
+        "retention": {
+            "current_month_visits": current_month_visits,
+            "previous_month_visits": previous_month_visits,
+            "percentage_change": retention_percentage,
+            "status": retention_status
+        },
+        "payment_progress": payment_progress,
+        "missing_data": missing_data
     }
 
 @api_router.get("/members/{member_id}/access-logs")
