@@ -7059,6 +7059,606 @@ async def get_churn_prediction(current_user: User = Depends(get_current_user)):
 
 
 
+# ==================== PHASE 2E - ENGAGEMENT FEATURES ENDPOINTS ====================
+
+# Pydantic models for Points System
+class PointTransaction(BaseModel):
+    id: str
+    member_id: str
+    points: int
+    transaction_type: str  # earned, redeemed, adjusted
+    reason: str
+    created_at: str
+    reference_id: Optional[str] = None
+
+class PointsBalance(BaseModel):
+    member_id: str
+    total_points: int
+    lifetime_points: int
+    last_updated: str
+
+
+@api_router.get("/engagement/points/balance/{member_id}")
+async def get_member_points_balance(
+    member_id: str,
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Get points balance for a specific member
+    """
+    # Get or create points balance
+    balance = await db.points_balances.find_one({"member_id": member_id}, {"_id": 0})
+    
+    if not balance:
+        # Initialize balance
+        balance = {
+            "member_id": member_id,
+            "total_points": 0,
+            "lifetime_points": 0,
+            "last_updated": datetime.now(timezone.utc).isoformat()
+        }
+        await db.points_balances.insert_one(balance.copy())
+    
+    return balance
+
+
+@api_router.post("/engagement/points/award")
+async def award_points(
+    member_id: str,
+    points: int,
+    reason: str,
+    reference_id: Optional[str] = None,
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Award points to a member
+    """
+    from datetime import datetime
+    import uuid
+    
+    # Get current balance
+    balance = await db.points_balances.find_one({"member_id": member_id}, {"_id": 0})
+    
+    if not balance:
+        balance = {
+            "member_id": member_id,
+            "total_points": 0,
+            "lifetime_points": 0
+        }
+    
+    # Update balance
+    new_total = balance.get("total_points", 0) + points
+    new_lifetime = balance.get("lifetime_points", 0) + points
+    
+    await db.points_balances.update_one(
+        {"member_id": member_id},
+        {
+            "$set": {
+                "total_points": new_total,
+                "lifetime_points": new_lifetime,
+                "last_updated": datetime.now(timezone.utc).isoformat()
+            }
+        },
+        upsert=True
+    )
+    
+    # Record transaction
+    transaction = {
+        "id": str(uuid.uuid4()),
+        "member_id": member_id,
+        "points": points,
+        "transaction_type": "earned",
+        "reason": reason,
+        "reference_id": reference_id,
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    
+    await db.points_transactions.insert_one(transaction.copy())
+    
+    return {
+        "success": True,
+        "new_balance": new_total,
+        "points_awarded": points,
+        "transaction_id": transaction["id"]
+    }
+
+
+@api_router.get("/engagement/points/transactions/{member_id}")
+async def get_member_points_transactions(
+    member_id: str,
+    limit: int = 50,
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Get points transaction history for a member
+    """
+    transactions = await db.points_transactions.find(
+        {"member_id": member_id},
+        {"_id": 0}
+    ).sort("created_at", -1).limit(limit).to_list(None)
+    
+    return {
+        "member_id": member_id,
+        "transactions": transactions,
+        "total_transactions": len(transactions)
+    }
+
+
+@api_router.get("/engagement/points/leaderboard")
+async def get_points_leaderboard(
+    limit: int = 10,
+    period: str = "all_time",  # all_time, month, week
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Get points leaderboard
+    """
+    from datetime import datetime, timedelta
+    
+    # Get all balances
+    balances = await db.points_balances.find({}, {"_id": 0}).to_list(None)
+    
+    # Get member details
+    leaderboard = []
+    for balance in balances:
+        member = await db.members.find_one(
+            {"id": balance["member_id"]},
+            {"_id": 0, "first_name": 1, "last_name": 1, "email": 1, "membership_type": 1}
+        )
+        
+        if member:
+            leaderboard.append({
+                "member_id": balance["member_id"],
+                "member_name": f"{member.get('first_name', '')} {member.get('last_name', '')}".strip(),
+                "email": member.get("email"),
+                "membership_type": member.get("membership_type"),
+                "total_points": balance.get("total_points", 0),
+                "lifetime_points": balance.get("lifetime_points", 0)
+            })
+    
+    # Sort by total points
+    leaderboard.sort(key=lambda x: x["total_points"], reverse=True)
+    
+    return {
+        "period": period,
+        "leaderboard": leaderboard[:limit],
+        "total_members": len(leaderboard)
+    }
+
+
+@api_router.get("/engagement/search")
+async def global_search(
+    query: str,
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Global search across members, classes, transactions, invoices
+    """
+    if len(query) < 2:
+        return {
+            "query": query,
+            "results": {
+                "members": [],
+                "classes": [],
+                "invoices": [],
+                "transactions": []
+            },
+            "total_results": 0
+        }
+    
+    # Search members
+    member_results = await db.members.find(
+        {
+            "$or": [
+                {"first_name": {"$regex": query, "$options": "i"}},
+                {"last_name": {"$regex": query, "$options": "i"}},
+                {"email": {"$regex": query, "$options": "i"}},
+                {"phone": {"$regex": query, "$options": "i"}},
+                {"id": {"$regex": query, "$options": "i"}}
+            ]
+        },
+        {"_id": 0, "id": 1, "first_name": 1, "last_name": 1, "email": 1, "phone": 1, "membership_status": 1}
+    ).limit(10).to_list(None)
+    
+    # Format member results
+    members = [
+        {
+            "id": m.get("id"),
+            "name": f"{m.get('first_name', '')} {m.get('last_name', '')}".strip(),
+            "email": m.get("email"),
+            "phone": m.get("phone"),
+            "status": m.get("membership_status"),
+            "type": "member"
+        }
+        for m in member_results
+    ]
+    
+    # Search classes
+    class_results = await db.classes.find(
+        {
+            "$or": [
+                {"name": {"$regex": query, "$options": "i"}},
+                {"instructor": {"$regex": query, "$options": "i"}}
+            ]
+        },
+        {"_id": 0, "id": 1, "name": 1, "instructor": 1, "date": 1, "time": 1}
+    ).limit(10).to_list(None)
+    
+    # Format class results
+    classes = [
+        {
+            "id": c.get("id"),
+            "name": c.get("name"),
+            "instructor": c.get("instructor"),
+            "date": c.get("date"),
+            "time": c.get("time"),
+            "type": "class"
+        }
+        for c in class_results
+    ]
+    
+    # Search invoices
+    invoice_results = await db.invoices.find(
+        {
+            "$or": [
+                {"invoice_number": {"$regex": query, "$options": "i"}},
+                {"member_id": {"$regex": query, "$options": "i"}}
+            ]
+        },
+        {"_id": 0, "id": 1, "invoice_number": 1, "member_id": 1, "total_amount": 1, "status": 1, "due_date": 1}
+    ).limit(10).to_list(None)
+    
+    # Format invoice results
+    invoices = [
+        {
+            "id": i.get("id"),
+            "invoice_number": i.get("invoice_number"),
+            "member_id": i.get("member_id"),
+            "amount": i.get("total_amount"),
+            "status": i.get("status"),
+            "due_date": i.get("due_date"),
+            "type": "invoice"
+        }
+        for i in invoice_results
+    ]
+    
+    total_results = len(members) + len(classes) + len(invoices)
+    
+    return {
+        "query": query,
+        "results": {
+            "members": members,
+            "classes": classes,
+            "invoices": invoices
+        },
+        "total_results": total_results
+    }
+
+
+@api_router.get("/engagement/activity-feed/{member_id}")
+async def get_member_activity_feed(
+    member_id: str,
+    limit: int = 50,
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Get activity feed for a specific member
+    """
+    from datetime import datetime
+    
+    activities = []
+    
+    # Get access logs (check-ins)
+    access_logs = await db.access_logs.find(
+        {"member_id": member_id, "access_granted": True},
+        {"_id": 0}
+    ).sort("access_time", -1).limit(20).to_list(None)
+    
+    for log in access_logs:
+        activities.append({
+            "type": "check_in",
+            "timestamp": log.get("access_time"),
+            "description": f"Checked in at gym",
+            "icon": "activity",
+            "color": "green"
+        })
+    
+    # Get invoice payments
+    invoices = await db.invoices.find(
+        {"member_id": member_id, "status": "paid"},
+        {"_id": 0}
+    ).sort("paid_date", -1).limit(20).to_list(None)
+    
+    for invoice in invoices:
+        activities.append({
+            "type": "payment",
+            "timestamp": invoice.get("paid_date"),
+            "description": f"Paid invoice {invoice.get('invoice_number')} - R{invoice.get('total_amount', 0)}",
+            "icon": "dollar_sign",
+            "color": "blue",
+            "reference_id": invoice.get("id")
+        })
+    
+    # Get class bookings
+    bookings = await db.class_bookings.find(
+        {"member_id": member_id},
+        {"_id": 0}
+    ).sort("booked_at", -1).limit(20).to_list(None)
+    
+    for booking in bookings:
+        # Get class details
+        class_info = await db.classes.find_one(
+            {"id": booking.get("class_id")},
+            {"_id": 0, "name": 1}
+        )
+        class_name = class_info.get("name", "Class") if class_info else "Class"
+        
+        activities.append({
+            "type": "class_booking",
+            "timestamp": booking.get("booked_at"),
+            "description": f"Booked class: {class_name}",
+            "icon": "calendar",
+            "color": "purple",
+            "reference_id": booking.get("class_id")
+        })
+    
+    # Get points transactions
+    points_txn = await db.points_transactions.find(
+        {"member_id": member_id},
+        {"_id": 0}
+    ).sort("created_at", -1).limit(20).to_list(None)
+    
+    for txn in points_txn:
+        points = txn.get("points", 0)
+        sign = "+" if points > 0 else ""
+        activities.append({
+            "type": "points",
+            "timestamp": txn.get("created_at"),
+            "description": f"{sign}{points} points - {txn.get('reason')}",
+            "icon": "award",
+            "color": "yellow"
+        })
+    
+    # Sort all activities by timestamp
+    activities.sort(key=lambda x: x.get("timestamp", ""), reverse=True)
+    
+    return {
+        "member_id": member_id,
+        "activities": activities[:limit],
+        "total_activities": len(activities)
+    }
+
+
+@api_router.get("/engagement/score/{member_id}")
+async def get_member_engagement_score(
+    member_id: str,
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Calculate engagement score for a member
+    """
+    from datetime import datetime, timedelta
+    
+    score = 0
+    factors = []
+    
+    # Factor 1: Recent attendance (0-30 points)
+    thirty_days_ago = datetime.now(timezone.utc) - timedelta(days=30)
+    recent_visits = await db.access_logs.count_documents({
+        "member_id": member_id,
+        "access_granted": True,
+        "access_time": {"$gte": thirty_days_ago.isoformat()}
+    })
+    
+    attendance_score = min(recent_visits * 2, 30)  # 2 points per visit, max 30
+    score += attendance_score
+    factors.append({
+        "factor": "Recent Attendance",
+        "score": attendance_score,
+        "max_score": 30,
+        "details": f"{recent_visits} visits in last 30 days"
+    })
+    
+    # Factor 2: Payment history (0-20 points)
+    paid_invoices = await db.invoices.count_documents({
+        "member_id": member_id,
+        "status": "paid"
+    })
+    
+    overdue_invoices = await db.invoices.count_documents({
+        "member_id": member_id,
+        "status": "overdue"
+    })
+    
+    payment_score = min(paid_invoices * 2, 20) - (overdue_invoices * 5)
+    payment_score = max(0, payment_score)  # Don't go negative
+    score += payment_score
+    factors.append({
+        "factor": "Payment History",
+        "score": payment_score,
+        "max_score": 20,
+        "details": f"{paid_invoices} paid, {overdue_invoices} overdue"
+    })
+    
+    # Factor 3: Class participation (0-25 points)
+    class_bookings = await db.class_bookings.count_documents({
+        "member_id": member_id
+    })
+    
+    class_score = min(class_bookings * 3, 25)  # 3 points per class, max 25
+    score += class_score
+    factors.append({
+        "factor": "Class Participation",
+        "score": class_score,
+        "max_score": 25,
+        "details": f"{class_bookings} classes booked"
+    })
+    
+    # Factor 4: Loyalty (membership duration) (0-15 points)
+    member = await db.members.find_one({"id": member_id}, {"_id": 0, "join_date": 1})
+    loyalty_score = 0
+    
+    if member and member.get("join_date"):
+        try:
+            join_date = member.get("join_date")
+            if isinstance(join_date, str):
+                join_dt = datetime.fromisoformat(join_date)
+            else:
+                join_dt = join_date
+            
+            days_member = (datetime.now(timezone.utc) - join_dt).days
+            months_member = days_member / 30
+            loyalty_score = min(int(months_member), 15)  # 1 point per month, max 15
+        except:
+            loyalty_score = 0
+    
+    score += loyalty_score
+    factors.append({
+        "factor": "Membership Loyalty",
+        "score": loyalty_score,
+        "max_score": 15,
+        "details": f"{loyalty_score} months"
+    })
+    
+    # Factor 5: Rewards engagement (0-10 points)
+    points_balance = await db.points_balances.find_one({"member_id": member_id}, {"_id": 0})
+    points_score = 0
+    
+    if points_balance:
+        lifetime_points = points_balance.get("lifetime_points", 0)
+        points_score = min(int(lifetime_points / 10), 10)  # 1 point per 10 rewards points, max 10
+    
+    score += points_score
+    factors.append({
+        "factor": "Rewards Engagement",
+        "score": points_score,
+        "max_score": 10,
+        "details": f"{points_balance.get('lifetime_points', 0) if points_balance else 0} rewards points"
+    })
+    
+    # Calculate engagement level
+    max_score = 100
+    percentage = round(score / max_score * 100, 1)
+    
+    if percentage >= 80:
+        level = "Highly Engaged"
+        color = "green"
+    elif percentage >= 60:
+        level = "Engaged"
+        color = "blue"
+    elif percentage >= 40:
+        level = "Moderately Engaged"
+        color = "yellow"
+    elif percentage >= 20:
+        level = "Low Engagement"
+        color = "orange"
+    else:
+        level = "At Risk"
+        color = "red"
+    
+    return {
+        "member_id": member_id,
+        "engagement_score": score,
+        "max_score": max_score,
+        "percentage": percentage,
+        "level": level,
+        "color": color,
+        "factors": factors
+    }
+
+
+@api_router.get("/engagement/overview")
+async def get_engagement_overview(current_user: User = Depends(get_current_user)):
+    """
+    Get overall engagement statistics for all members
+    """
+    from datetime import datetime, timedelta
+    
+    # Get all active members
+    members = await db.members.find(
+        {"membership_status": {"$in": ["active", "frozen"]}},
+        {"_id": 0, "id": 1}
+    ).to_list(None)
+    
+    engagement_levels = {
+        "Highly Engaged": 0,
+        "Engaged": 0,
+        "Moderately Engaged": 0,
+        "Low Engagement": 0,
+        "At Risk": 0
+    }
+    
+    total_score = 0
+    scored_members = []
+    
+    # Calculate engagement for each member (sample first 100 for performance)
+    for member in members[:100]:
+        member_id = member.get("id")
+        
+        # Simplified scoring for overview
+        thirty_days_ago = datetime.now(timezone.utc) - timedelta(days=30)
+        recent_visits = await db.access_logs.count_documents({
+            "member_id": member_id,
+            "access_granted": True,
+            "access_time": {"$gte": thirty_days_ago.isoformat()}
+        })
+        
+        score = min(recent_visits * 10, 100)  # Simplified: 10 points per visit
+        total_score += score
+        
+        percentage = score
+        
+        if percentage >= 80:
+            level = "Highly Engaged"
+        elif percentage >= 60:
+            level = "Engaged"
+        elif percentage >= 40:
+            level = "Moderately Engaged"
+        elif percentage >= 20:
+            level = "Low Engagement"
+        else:
+            level = "At Risk"
+        
+        engagement_levels[level] += 1
+        scored_members.append({"member_id": member_id, "score": score})
+    
+    avg_score = total_score / len(members[:100]) if members else 0
+    
+    # Get top engaged members
+    scored_members.sort(key=lambda x: x["score"], reverse=True)
+    top_members = []
+    
+    for sm in scored_members[:10]:
+        member = await db.members.find_one(
+            {"id": sm["member_id"]},
+            {"_id": 0, "first_name": 1, "last_name": 1, "email": 1}
+        )
+        if member:
+            top_members.append({
+                "member_id": sm["member_id"],
+                "member_name": f"{member.get('first_name', '')} {member.get('last_name', '')}".strip(),
+                "email": member.get("email"),
+                "score": sm["score"]
+            })
+    
+    # Format engagement levels for chart
+    engagement_data = [
+        {"level": k, "count": v}
+        for k, v in engagement_levels.items()
+    ]
+    
+    return {
+        "summary": {
+            "total_members": len(members),
+            "members_analyzed": len(members[:100]),
+            "avg_engagement_score": round(avg_score, 1)
+        },
+        "by_level": engagement_data,
+        "top_engaged_members": top_members
+    }
+
+
+
 
 # Levy Routes
 @api_router.get("/levies", response_model=List[Levy])
