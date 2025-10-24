@@ -67,6 +67,7 @@ function App() {
           <Route path="/user-roles" element={<PrivateRoute><UserRoleManagement /></PrivateRoute>} />
           <Route path="/pos" element={<PrivateRoute><POS /></PrivateRoute>} />
           <Route path="/products" element={<PrivateRoute><ProductManagement /></PrivateRoute>} />
+          <Route path="/tasks" element={<PrivateRoute><Tasks /></PrivateRoute>} />
           <Route path="/settings" element={<PrivateRoute><SettingsNew /></PrivateRoute>} />
           <Route path="/settings-old" element={<PrivateRoute><Settings /></PrivateRoute>} />
           <Route path="/debit-orders" element={<PrivateRoute><DebitOrderManagement /></PrivateRoute>} />
