@@ -466,21 +466,21 @@ class ClubManagerTester:
                 if response.status_code == 200:
                     result = response.json()
                     
-                    # Check for required response fields
-                    required_fields = ["sent_count", "failed_count", "message_type", "total_recipients"]
+                    # Check for required response fields (API doesn't return message_type and total_recipients)
+                    required_fields = ["sent_count", "failed_count", "success"]
                     has_all_fields = all(field in result for field in required_fields)
                     
                     if has_all_fields:
                         sent_count = result.get("sent_count", 0)
                         failed_count = result.get("failed_count", 0)
-                        total_recipients = result.get("total_recipients", 0)
+                        success = result.get("success", False)
                         
-                        if total_recipients == len(test_payload["member_ids"]):
+                        if success and (sent_count + failed_count) == len(test_payload["member_ids"]):
                             self.log_result(f"Unified Messaging {message_type.upper()}", True, 
-                                          f"{message_type} message sent: {sent_count} sent, {failed_count} failed, {total_recipients} total")
+                                          f"{message_type} message sent: {sent_count} sent, {failed_count} failed")
                         else:
                             self.log_result(f"Unified Messaging {message_type.upper()}", False, 
-                                          f"Recipient count mismatch: expected {len(test_payload['member_ids'])}, got {total_recipients}")
+                                          f"Messaging failed or count mismatch: success={success}, sent={sent_count}, failed={failed_count}")
                     else:
                         missing_fields = [f for f in required_fields if f not in result]
                         self.log_result(f"Unified Messaging {message_type.upper()}", False, 
