@@ -344,154 +344,152 @@ class AdvancedAnalyticsTestRunner:
             self.log_result("Geographic Distribution Analytics API", False, f"Error testing geographic distribution API: {str(e)}")
             return False
     
-    def test_anniversary_report_api(self):
-        """Test Anniversary Report API - GET /api/reports/anniversaries"""
-        print("\n=== Testing Anniversary Report API ===")
+    def test_attendance_deep_dive_analytics_api(self):
+        """Test Attendance Deep Dive Analytics API - GET /api/analytics/attendance-deep-dive"""
+        print("\n=== Testing Attendance Deep Dive Analytics API ===")
         
         try:
-            # Test different day periods
-            test_periods = [7, 14, 30, 60, 90]
+            # Test with default period (90 days)
+            response = requests.get(f"{API_BASE}/analytics/attendance-deep-dive", headers=self.headers)
             
-            for days in test_periods:
-                response = requests.get(f"{API_BASE}/reports/anniversaries?days_ahead={days}", headers=self.headers)
-                
-                if response.status_code == 200:
-                    data = response.json()
-                    
-                    # Verify required structure
-                    required_fields = ["summary", "anniversaries"]
-                    missing_fields = [field for field in required_fields if field not in data]
-                    
-                    if missing_fields:
-                        self.log_result(f"Anniversary Report {days}d Structure", False, 
-                                      f"Missing fields: {missing_fields}")
-                        return False
-                    
-                    # Verify summary structure
-                    summary = data["summary"]
-                    summary_fields = ["total_upcoming", "date_range", "by_milestone"]
-                    missing_summary_fields = [field for field in summary_fields if field not in summary]
-                    
-                    if missing_summary_fields:
-                        self.log_result(f"Anniversary Report {days}d Summary Structure", False, 
-                                      f"Missing summary fields: {missing_summary_fields}")
-                        return False
-                    
-                    # Verify date_range structure
-                    date_range = summary["date_range"]
-                    date_range_fields = ["from", "to", "days"]
-                    missing_date_fields = [field for field in date_range_fields if field not in date_range]
-                    
-                    if missing_date_fields:
-                        self.log_result(f"Anniversary Report {days}d Date Range Structure", False, 
-                                      f"Missing date range fields: {missing_date_fields}")
-                        return False
-                    
-                    # Verify days parameter matches
-                    if date_range["days"] != days:
-                        self.log_result(f"Anniversary Report {days}d Days Parameter", False, 
-                                      f"Days parameter mismatch: expected {days}, got {date_range['days']}")
-                        return False
-                    
-                    # Verify by_milestone structure
-                    by_milestone = summary["by_milestone"]
-                    milestone_fields = ["1_year", "5_years", "10_plus_years"]
-                    missing_milestone_fields = [field for field in milestone_fields if field not in by_milestone]
-                    
-                    if missing_milestone_fields:
-                        self.log_result(f"Anniversary Report {days}d Milestone Structure", False, 
-                                      f"Missing milestone fields: {missing_milestone_fields}")
-                        return False
-                    
-                    # Verify anniversaries structure
-                    anniversaries = data["anniversaries"]
-                    anniversary_fields = ["by_milestone", "all"]
-                    missing_anniversary_fields = [field for field in anniversary_fields if field not in anniversaries]
-                    
-                    if missing_anniversary_fields:
-                        self.log_result(f"Anniversary Report {days}d Anniversaries Structure", False, 
-                                      f"Missing anniversary fields: {missing_anniversary_fields}")
-                        return False
-                    
-                    # Verify by_milestone breakdown
-                    milestone_breakdown = anniversaries["by_milestone"]
-                    milestone_breakdown_fields = ["1_year", "5_years", "10_plus_years"]
-                    missing_breakdown_fields = [field for field in milestone_breakdown_fields if field not in milestone_breakdown]
-                    
-                    if missing_breakdown_fields:
-                        self.log_result(f"Anniversary Report {days}d Milestone Breakdown", False, 
-                                      f"Missing milestone breakdown fields: {missing_breakdown_fields}")
-                        return False
-                    
-                    # Verify member structure if anniversaries exist
-                    if anniversaries["all"]:
-                        member = anniversaries["all"][0]
-                        member_fields = [
-                            "id", "first_name", "last_name", "full_name", "email", "phone",
-                            "join_date", "anniversary_date", "years_completing", "days_until"
-                        ]
-                        missing_member_fields = [field for field in member_fields if field not in member]
-                        
-                        if missing_member_fields:
-                            self.log_result(f"Anniversary Report {days}d Member Structure", False, 
-                                          f"Missing member fields: {missing_member_fields}")
-                            return False
-                        
-                        # Verify only 1+ year members are included
-                        years_completing = member["years_completing"]
-                        if years_completing < 1:
-                            self.log_result(f"Anniversary Report {days}d Years Filter", False, 
-                                          f"Only members with 1+ years should be included, found {years_completing}")
-                            return False
-                        
-                        # Verify milestone grouping logic
-                        if years_completing == 1 and member not in milestone_breakdown["1_year"]:
-                            self.log_result(f"Anniversary Report {days}d Milestone Grouping", False, 
-                                          f"1-year member should be in 1_year group")
-                            return False
-                        elif years_completing == 5 and member not in milestone_breakdown["5_years"]:
-                            self.log_result(f"Anniversary Report {days}d Milestone Grouping", False, 
-                                          f"5-year member should be in 5_years group")
-                            return False
-                        elif years_completing >= 10 and member not in milestone_breakdown["10_plus_years"]:
-                            self.log_result(f"Anniversary Report {days}d Milestone Grouping", False, 
-                                          f"10+ year member should be in 10_plus_years group")
-                            return False
-                    
-                    # Verify totals match
-                    calculated_total = by_milestone["1_year"] + by_milestone["5_years"] + by_milestone["10_plus_years"]
-                    if summary["total_upcoming"] != calculated_total:
-                        self.log_result(f"Anniversary Report {days}d Total Calculation", False, 
-                                      f"Total mismatch: {summary['total_upcoming']} != {calculated_total}")
-                        return False
-                    
-                    self.log_result(f"Anniversary Report {days}d API", True, 
-                                  f"Retrieved {summary['total_upcoming']} upcoming anniversaries "
-                                  f"(1yr: {by_milestone['1_year']}, 5yr: {by_milestone['5_years']}, 10+yr: {by_milestone['10_plus_years']})")
-                else:
-                    self.log_result(f"Anniversary Report {days}d API", False, 
-                                  f"Failed to get anniversary report: {response.status_code}",
-                                  {"response": response.text})
-                    return False
-            
-            # Test default parameter (30 days)
-            response = requests.get(f"{API_BASE}/reports/anniversaries", headers=self.headers)
             if response.status_code == 200:
                 data = response.json()
-                if data["summary"]["date_range"]["days"] != 30:
-                    self.log_result("Anniversary Report Default Parameter", False, 
-                                  f"Default days_ahead should be 30, got {data['summary']['date_range']['days']}")
+                
+                # Verify required structure
+                required_fields = ["summary", "peak_hours", "hourly_distribution", 
+                                 "daily_distribution", "frequency_distribution", "weekly_trend"]
+                missing_fields = [field for field in required_fields if field not in data]
+                
+                if missing_fields:
+                    self.log_result("Attendance Deep Dive Structure", False, 
+                                  f"Missing fields: {missing_fields}")
                     return False
-                self.log_result("Anniversary Report Default Parameter", True, "Default days_ahead=30 working correctly")
+                
+                # Verify summary structure
+                summary = data["summary"]
+                summary_fields = ["total_visits", "unique_members", "avg_visits_per_member", "date_range"]
+                missing_summary_fields = [field for field in summary_fields if field not in summary]
+                
+                if missing_summary_fields:
+                    self.log_result("Attendance Deep Dive Summary Structure", False, 
+                                  f"Missing summary fields: {missing_summary_fields}")
+                    return False
+                
+                # Verify data types
+                if not isinstance(summary["total_visits"], int):
+                    self.log_result("Attendance Deep Dive Total Visits Type", False, 
+                                  "Total visits should be integer")
+                    return False
+                
+                if not isinstance(summary["unique_members"], int):
+                    self.log_result("Attendance Deep Dive Unique Members Type", False, 
+                                  "Unique members should be integer")
+                    return False
+                
+                if not isinstance(summary["avg_visits_per_member"], (int, float)):
+                    self.log_result("Attendance Deep Dive Avg Visits Type", False, 
+                                  "Avg visits per member should be number")
+                    return False
+                
+                # Verify peak_hours structure (top 5)
+                if data["peak_hours"]:
+                    peak_hour = data["peak_hours"][0]
+                    peak_fields = ["hour", "visit_count", "percentage"]
+                    missing_peak_fields = [field for field in peak_fields if field not in peak_hour]
+                    
+                    if missing_peak_fields:
+                        self.log_result("Attendance Deep Dive Peak Hours Structure", False, 
+                                      f"Missing peak hour fields: {missing_peak_fields}")
+                        return False
+                    
+                    # Verify top 5 limit
+                    if len(data["peak_hours"]) > 5:
+                        self.log_result("Attendance Deep Dive Peak Hours Limit", False, 
+                                      f"Should return top 5 peak hours, got {len(data['peak_hours'])}")
+                        return False
+                
+                # Verify hourly_distribution structure (24 hours)
+                if len(data["hourly_distribution"]) != 24:
+                    self.log_result("Attendance Deep Dive Hourly Distribution Count", False, 
+                                  f"Should have 24 hourly entries, got {len(data['hourly_distribution'])}")
+                    return False
+                
+                if data["hourly_distribution"]:
+                    hourly = data["hourly_distribution"][0]
+                    hourly_fields = ["hour", "visit_count", "percentage"]
+                    missing_hourly_fields = [field for field in hourly_fields if field not in hourly]
+                    
+                    if missing_hourly_fields:
+                        self.log_result("Attendance Deep Dive Hourly Distribution Structure", False, 
+                                      f"Missing hourly fields: {missing_hourly_fields}")
+                        return False
+                
+                # Verify daily_distribution structure (7 days)
+                if len(data["daily_distribution"]) != 7:
+                    self.log_result("Attendance Deep Dive Daily Distribution Count", False, 
+                                  f"Should have 7 daily entries, got {len(data['daily_distribution'])}")
+                    return False
+                
+                if data["daily_distribution"]:
+                    daily = data["daily_distribution"][0]
+                    daily_fields = ["day", "visit_count", "percentage"]
+                    missing_daily_fields = [field for field in daily_fields if field not in daily]
+                    
+                    if missing_daily_fields:
+                        self.log_result("Attendance Deep Dive Daily Distribution Structure", False, 
+                                      f"Missing daily fields: {missing_daily_fields}")
+                        return False
+                
+                # Verify frequency_distribution structure
+                if data["frequency_distribution"]:
+                    frequency = data["frequency_distribution"][0]
+                    frequency_fields = ["range", "member_count", "percentage"]
+                    missing_frequency_fields = [field for field in frequency_fields if field not in frequency]
+                    
+                    if missing_frequency_fields:
+                        self.log_result("Attendance Deep Dive Frequency Distribution Structure", False, 
+                                      f"Missing frequency fields: {missing_frequency_fields}")
+                        return False
+                
+                # Verify weekly_trend structure
+                if data["weekly_trend"]:
+                    weekly = data["weekly_trend"][0]
+                    weekly_fields = ["week", "visit_count", "unique_members"]
+                    missing_weekly_fields = [field for field in weekly_fields if field not in weekly]
+                    
+                    if missing_weekly_fields:
+                        self.log_result("Attendance Deep Dive Weekly Trend Structure", False, 
+                                      f"Missing weekly trend fields: {missing_weekly_fields}")
+                        return False
+                
+                self.log_result("Attendance Deep Dive Analytics API (Default)", True, 
+                              f"Retrieved attendance analysis: {summary['total_visits']} total visits, "
+                              f"{summary['unique_members']} unique members, "
+                              f"{summary['avg_visits_per_member']:.1f} avg visits per member")
+                
+                # Test with different periods
+                test_periods = [30, 60, 180]
+                for period in test_periods:
+                    response = requests.get(f"{API_BASE}/analytics/attendance-deep-dive?days_back={period}", headers=self.headers)
+                    if response.status_code == 200:
+                        period_data = response.json()
+                        self.log_result(f"Attendance Deep Dive Analytics API ({period}d)", True, 
+                                      f"Retrieved {period}-day attendance analysis successfully")
+                    else:
+                        self.log_result(f"Attendance Deep Dive Analytics API ({period}d)", False, 
+                                      f"Failed to get {period}-day attendance analysis: {response.status_code}")
+                        return False
+                
+                return True
+                
             else:
-                self.log_result("Anniversary Report Default Parameter", False, 
-                              f"Failed to test default parameter: {response.status_code}")
+                self.log_result("Attendance Deep Dive Analytics API", False, 
+                              f"Failed to get attendance deep dive: {response.status_code}",
+                              {"response": response.text})
                 return False
-            
-            return True
                 
         except Exception as e:
-            self.log_result("Anniversary Report API", False, f"Error testing anniversary report API: {str(e)}")
+            self.log_result("Attendance Deep Dive Analytics API", False, f"Error testing attendance deep dive API: {str(e)}")
             return False
     
     def test_report_api_authentication(self):
