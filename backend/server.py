@@ -2341,6 +2341,35 @@ async def update_member(member_id: str, updates: dict, current_user: User = Depe
     if result.modified_count == 0:
         return {"message": "No changes made", "member_id": member_id}
     
+    # Log profile update to journal
+    changed_fields = list(updates.keys())
+    description = f"Profile updated: {', '.join(changed_fields)}"
+    await add_journal_entry(
+        member_id=member_id,
+        action_type="profile_updated",
+        description=description,
+        metadata={
+            "changed_fields": changed_fields,
+            "updates": {k: str(v) for k, v in updates.items()}  # Convert to strings for JSON
+        },
+        created_by=current_user.id,
+        created_by_name=current_user.full_name
+    )
+    
+    # Check for status changes
+    if "membership_status" in updates:
+        await add_journal_entry(
+            member_id=member_id,
+            action_type="status_changed",
+            description=f"Membership status changed to: {updates['membership_status']}",
+            metadata={
+                "old_status": member.get("membership_status"),
+                "new_status": updates["membership_status"]
+            },
+            created_by=current_user.id,
+            created_by_name=current_user.full_name
+        )
+    
     return {"message": "Member updated successfully", "member_id": member_id}
 
 @api_router.get("/members/{member_id}/profile")
