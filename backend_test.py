@@ -13,7 +13,7 @@ import csv
 from datetime import datetime, timezone, timedelta
 
 # Configuration
-BASE_URL = os.getenv('REACT_APP_BACKEND_URL', 'https://fit-club-erp.preview.emergentagent.com')
+BASE_URL = os.getenv('REACT_APP_BACKEND_URL', 'https://fit-manager-pro.preview.emergentagent.com')
 API_BASE = f"{BASE_URL}/api"
 
 # Test credentials
