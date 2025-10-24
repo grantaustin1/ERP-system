@@ -2985,10 +2985,31 @@ async def create_task(
     if not task_type:
         raise HTTPException(status_code=404, detail="Task type not found")
     
-    # Get assigned user name if assigned
+    # Auto-assign to user based on department if no user specified
+    assigned_to_user_id = task_data.assigned_to_user_id
     assigned_to_user_name = None
-    if task_data.assigned_to_user_id:
-        assigned_user = await db.users.find_one({"id": task_data.assigned_to_user_id}, {"_id": 0})
+    
+    if not assigned_to_user_id and task_data.assigned_to_department and task_data.assigned_to_department != "none":
+        # Map department to role
+        department_to_role = {
+            "Admin": ["admin_manager", "head_admin"],
+            "Reception": ["admin_manager", "head_admin"],
+            "Fitness": ["fitness_head", "fitness_manager", "personal_trainer"],
+            "Sales": ["sales_head", "sales_manager"],
+            "HOD": ["business_owner", "head_admin", "operations_head"],
+            "Maintenance": ["maintenance_head"]
+        }
+        
+        roles_to_search = department_to_role.get(task_data.assigned_to_department, [])
+        if roles_to_search:
+            # Find first user with one of these roles
+            user = await db.users.find_one({"role": {"$in": roles_to_search}}, {"_id": 0})
+            if user:
+                assigned_to_user_id = user.get("id")
+                assigned_to_user_name = user.get("full_name")
+    elif assigned_to_user_id:
+        # Get assigned user name if directly assigned
+        assigned_user = await db.users.find_one({"id": assigned_to_user_id}, {"_id": 0})
         if assigned_user:
             assigned_to_user_name = assigned_user.get("full_name")
     
@@ -3000,10 +3021,17 @@ async def create_task(
             related_member_name = f"{member.get('first_name')} {member.get('last_name')}"
     
     task = Task(
-        **task_data.model_dump(),
+        title=task_data.title,
+        description=task_data.description,
+        task_type_id=task_data.task_type_id,
         task_type_name=task_type.get("name"),
+        priority=task_data.priority,
+        assigned_to_user_id=assigned_to_user_id,
         assigned_to_user_name=assigned_to_user_name,
+        assigned_to_department=task_data.assigned_to_department if task_data.assigned_to_department != "none" else None,
+        related_member_id=task_data.related_member_id,
         related_member_name=related_member_name,
+        due_date=task_data.due_date,
         created_by=current_user.id,
         created_by_name=current_user.full_name
     )
