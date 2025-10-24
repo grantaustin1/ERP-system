@@ -98,8 +98,6 @@ export default function Dashboard() {
     }
   };
 
-  };
-
   const fetchStatDetails = async (statType) => {
     try {
       setSelectedStat(statType);
