@@ -293,146 +293,83 @@ class EngagementFeaturesTestRunner:
             self.log_result("Points Award API", False, f"Error testing points award API: {str(e)}")
             return False
     
-    def test_attendance_deep_dive_analytics_api(self):
-        """Test Attendance Deep Dive Analytics API - GET /api/analytics/attendance-deep-dive"""
-        print("\n=== Testing Attendance Deep Dive Analytics API ===")
+    def test_points_transactions_api(self):
+        """Test Points Transactions API - GET /api/engagement/points/transactions/{member_id}"""
+        print("\n=== Testing Points Transactions API ===")
         
         try:
-            # Test with default period (90 days)
-            response = requests.get(f"{API_BASE}/analytics/attendance-deep-dive", headers=self.headers)
+            # Test with default limit (50)
+            response = requests.get(f"{API_BASE}/engagement/points/transactions/{self.test_member_id}", headers=self.headers)
             
             if response.status_code == 200:
                 data = response.json()
                 
                 # Verify required structure
-                required_fields = ["summary", "peak_hours", "hourly_distribution", 
-                                 "daily_distribution", "frequency_distribution", "weekly_trend"]
+                required_fields = ["member_id", "transactions", "total_transactions"]
                 missing_fields = [field for field in required_fields if field not in data]
                 
                 if missing_fields:
-                    self.log_result("Attendance Deep Dive Structure", False, 
+                    self.log_result("Points Transactions Structure", False, 
                                   f"Missing fields: {missing_fields}")
                     return False
                 
-                # Verify summary structure
-                summary = data["summary"]
-                summary_fields = ["total_visits", "unique_members", "avg_visits_per_member", "date_range"]
-                missing_summary_fields = [field for field in summary_fields if field not in summary]
-                
-                if missing_summary_fields:
-                    self.log_result("Attendance Deep Dive Summary Structure", False, 
-                                  f"Missing summary fields: {missing_summary_fields}")
+                # Verify member ID
+                if data["member_id"] != self.test_member_id:
+                    self.log_result("Points Transactions Member ID", False, 
+                                  "Member ID mismatch")
                     return False
                 
-                # Verify data types
-                if not isinstance(summary["total_visits"], int):
-                    self.log_result("Attendance Deep Dive Total Visits Type", False, 
-                                  "Total visits should be integer")
-                    return False
-                
-                if not isinstance(summary["unique_members"], int):
-                    self.log_result("Attendance Deep Dive Unique Members Type", False, 
-                                  "Unique members should be integer")
-                    return False
-                
-                if not isinstance(summary["avg_visits_per_member"], (int, float)):
-                    self.log_result("Attendance Deep Dive Avg Visits Type", False, 
-                                  "Avg visits per member should be number")
-                    return False
-                
-                # Verify peak_hours structure (top 5)
-                if data["peak_hours"]:
-                    peak_hour = data["peak_hours"][0]
-                    peak_fields = ["hour", "visit_count", "percentage"]
-                    missing_peak_fields = [field for field in peak_fields if field not in peak_hour]
+                # Verify transactions structure
+                if data["transactions"]:
+                    transaction = data["transactions"][0]
+                    txn_fields = ["id", "member_id", "points", "transaction_type", "reason", "created_at"]
+                    missing_txn_fields = [field for field in txn_fields if field not in transaction]
                     
-                    if missing_peak_fields:
-                        self.log_result("Attendance Deep Dive Peak Hours Structure", False, 
-                                      f"Missing peak hour fields: {missing_peak_fields}")
+                    if missing_txn_fields:
+                        self.log_result("Points Transactions Transaction Structure", False, 
+                                      f"Missing transaction fields: {missing_txn_fields}")
                         return False
                     
-                    # Verify top 5 limit
-                    if len(data["peak_hours"]) > 5:
-                        self.log_result("Attendance Deep Dive Peak Hours Limit", False, 
-                                      f"Should return top 5 peak hours, got {len(data['peak_hours'])}")
-                        return False
+                    # Verify transactions are sorted by created_at descending
+                    if len(data["transactions"]) > 1:
+                        first_txn = data["transactions"][0]
+                        second_txn = data["transactions"][1]
+                        if first_txn["created_at"] < second_txn["created_at"]:
+                            self.log_result("Points Transactions Sort Order", False, 
+                                          "Transactions not sorted by created_at descending")
+                            return False
+                        else:
+                            self.log_result("Points Transactions Sort Order", True, 
+                                          "Transactions correctly sorted by created_at descending")
                 
-                # Verify hourly_distribution structure (24 hours)
-                if len(data["hourly_distribution"]) != 24:
-                    self.log_result("Attendance Deep Dive Hourly Distribution Count", False, 
-                                  f"Should have 24 hourly entries, got {len(data['hourly_distribution'])}")
-                    return False
-                
-                if data["hourly_distribution"]:
-                    hourly = data["hourly_distribution"][0]
-                    hourly_fields = ["hour", "count"]
-                    missing_hourly_fields = [field for field in hourly_fields if field not in hourly]
-                    
-                    if missing_hourly_fields:
-                        self.log_result("Attendance Deep Dive Hourly Distribution Structure", False, 
-                                      f"Missing hourly fields: {missing_hourly_fields}")
-                        return False
-                
-                # Verify daily_distribution structure (7 days)
-                if len(data["daily_distribution"]) != 7:
-                    self.log_result("Attendance Deep Dive Daily Distribution Count", False, 
-                                  f"Should have 7 daily entries, got {len(data['daily_distribution'])}")
-                    return False
-                
-                if data["daily_distribution"]:
-                    daily = data["daily_distribution"][0]
-                    daily_fields = ["day", "count"]
-                    missing_daily_fields = [field for field in daily_fields if field not in daily]
-                    
-                    if missing_daily_fields:
-                        self.log_result("Attendance Deep Dive Daily Distribution Structure", False, 
-                                      f"Missing daily fields: {missing_daily_fields}")
-                        return False
-                
-                # Verify frequency_distribution structure
-                if data["frequency_distribution"]:
-                    frequency = data["frequency_distribution"][0]
-                    frequency_fields = ["range", "members"]
-                    missing_frequency_fields = [field for field in frequency_fields if field not in frequency]
-                    
-                    if missing_frequency_fields:
-                        self.log_result("Attendance Deep Dive Frequency Distribution Structure", False, 
-                                      f"Missing frequency fields: {missing_frequency_fields}")
-                        return False
-                
-                # Verify weekly_trend structure (may be empty if no data)
-                # Weekly trend is optional and may be empty if no attendance data exists
-                self.log_result("Attendance Deep Dive Weekly Trend", True, 
-                              f"Weekly trend contains {len(data['weekly_trend'])} entries")
-                
-                self.log_result("Attendance Deep Dive Analytics API (Default)", True, 
-                              f"Retrieved attendance analysis: {summary['total_visits']} total visits, "
-                              f"{summary['unique_members']} unique members, "
-                              f"{summary['avg_visits_per_member']:.1f} avg visits per member")
-                
-                # Test with different periods
-                test_periods = [30, 60, 180]
-                for period in test_periods:
-                    response = requests.get(f"{API_BASE}/analytics/attendance-deep-dive?days_back={period}", headers=self.headers)
-                    if response.status_code == 200:
-                        period_data = response.json()
-                        self.log_result(f"Attendance Deep Dive Analytics API ({period}d)", True, 
-                                      f"Retrieved {period}-day attendance analysis successfully")
+                # Test with custom limit
+                response = requests.get(f"{API_BASE}/engagement/points/transactions/{self.test_member_id}?limit=5", headers=self.headers)
+                if response.status_code == 200:
+                    limited_data = response.json()
+                    if len(limited_data["transactions"]) <= 5:
+                        self.log_result("Points Transactions Custom Limit", True, 
+                                      f"Custom limit working: {len(limited_data['transactions'])} transactions")
                     else:
-                        self.log_result(f"Attendance Deep Dive Analytics API ({period}d)", False, 
-                                      f"Failed to get {period}-day attendance analysis: {response.status_code}")
+                        self.log_result("Points Transactions Custom Limit", False, 
+                                      f"Expected ≤5 transactions, got {len(limited_data['transactions'])}")
                         return False
+                else:
+                    self.log_result("Points Transactions Custom Limit", False, 
+                                  f"Failed to get transactions with custom limit: {response.status_code}")
+                    return False
                 
+                self.log_result("Points Transactions API", True, 
+                              f"Retrieved {data['total_transactions']} transactions for member")
                 return True
                 
             else:
-                self.log_result("Attendance Deep Dive Analytics API", False, 
-                              f"Failed to get attendance deep dive: {response.status_code}",
+                self.log_result("Points Transactions API", False, 
+                              f"Failed to get points transactions: {response.status_code}",
                               {"response": response.text})
                 return False
                 
         except Exception as e:
-            self.log_result("Attendance Deep Dive Analytics API", False, f"Error testing attendance deep dive API: {str(e)}")
+            self.log_result("Points Transactions API", False, f"Error testing points transactions API: {str(e)}")
             return False
     
     def test_member_lifetime_value_analytics_api(self):
