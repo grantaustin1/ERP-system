@@ -5456,7 +5456,157 @@ agent_communication:
 backend:
   - task: "Phase 2E - Points Balance API"
     implemented: true
-    working: "NA"
+    working: true
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Implemented GET /api/engagement/points/balance/{member_id} endpoint to retrieve or initialize member points balance. Returns member_id, total_points, lifetime_points, last_updated. Auto-initializes new members with 0 points."
+      - working: true
+        agent: "testing"
+        comment: "✅ Points Balance API working perfectly: Successfully retrieves balance for existing members (0 total, 0 lifetime initially). Correctly initializes new members with 0 points when first accessed. Response structure includes all required fields (member_id, total_points, lifetime_points, last_updated). Data types validated correctly (integers for points, string for member_id and timestamp)."
+
+  - task: "Phase 2E - Points Award API"
+    implemented: true
+    working: true
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Implemented POST /api/engagement/points/award endpoint with query parameters: member_id, points, reason, optional reference_id. Updates balance, records transaction, supports non-existent member initialization."
+      - working: true
+        agent: "testing"
+        comment: "✅ Points Award API working perfectly: Successfully awards points (tested 25 points), updates balance correctly, records transaction with proper structure (id, member_id, points, transaction_type='earned', reason, reference_id, created_at). Initializes non-existent members correctly. Returns success response with new_balance, points_awarded, transaction_id."
+
+  - task: "Phase 2E - Points Transactions API"
+    implemented: true
+    working: true
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Implemented GET /api/engagement/points/transactions/{member_id} endpoint with optional limit parameter (default 50). Returns transaction history sorted by created_at descending."
+      - working: true
+        agent: "testing"
+        comment: "✅ Points Transactions API working correctly: Returns proper structure (member_id, transactions array, total_transactions). Transactions sorted by created_at descending. Custom limit parameter working (tested with limit=5). Transaction structure includes all required fields (id, member_id, points, transaction_type, reason, created_at, optional reference_id)."
+
+  - task: "Phase 2E - Points Leaderboard API"
+    implemented: true
+    working: true
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Implemented GET /api/engagement/points/leaderboard endpoint with optional limit (default 10) and period parameters. Enriches with member details (name, email, membership_type), sorted by total_points descending."
+      - working: true
+        agent: "testing"
+        comment: "✅ Points Leaderboard API working perfectly: Returns leaderboard sorted by total_points descending. Custom limit working (tested with limit=20). Member details properly included (member_name, email, membership_type, total_points, lifetime_points). Response structure includes period, leaderboard array, total_members count."
+
+  - task: "Phase 2E - Global Search API"
+    implemented: true
+    working: true
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Implemented GET /api/engagement/search endpoint with query parameter. Searches across members (name, email, phone), classes (name, instructor), invoices (invoice_number, member_id). Returns empty for queries < 2 characters, limits 10 per category."
+      - working: true
+        agent: "testing"
+        comment: "✅ Global Search API working correctly: Returns empty results for queries < 2 characters as expected. Searches across all categories (members, classes, invoices) with proper structure. Results categorized correctly with type field. Limit of 10 per category enforced. Total results count accurate. Tested with 'test' query returning 11 results (10 members, 1 class, 0 invoices)."
+
+  - task: "Phase 2E - Activity Feed API"
+    implemented: true
+    working: true
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Implemented GET /api/engagement/activity-feed/{member_id} endpoint with optional limit (default 50). Aggregates activities from multiple sources: check-ins, payments, class bookings, points transactions. Sorted by timestamp descending."
+      - working: true
+        agent: "testing"
+        comment: "✅ Activity Feed API working correctly: Aggregates activities from multiple sources (check_in, payment, class_booking, points). Activities sorted by timestamp descending. Custom limit working (tested with limit=10). Activity structure includes type, timestamp, description, icon, color. Successfully tested with points activities visible."
+
+  - task: "Phase 2E - Engagement Score API"
+    implemented: true
+    working: true
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Implemented GET /api/engagement/score/{member_id} endpoint calculating 5-factor engagement score (0-100): Recent Attendance (0-30), Payment History (0-20), Class Participation (0-25), Membership Loyalty (0-15), Rewards Engagement (0-10). Includes level classification and color coding."
+      - working: true
+        agent: "testing"
+        comment: "✅ Engagement Score API working perfectly: Calculates accurate engagement score (0-100 range). All 5 factors present with correct max scores (Recent Attendance: 30, Payment History: 20, Class Participation: 25, Membership Loyalty: 15, Rewards Engagement: 10). Level classification working correctly (Highly Engaged ≥80%, Engaged 60-79%, Moderately Engaged 40-59%, Low Engagement 20-39%, At Risk <20%). Color assignment accurate. Percentage calculation correct."
+
+  - task: "Phase 2E - Engagement Overview API"
+    implemented: true
+    working: true
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Implemented GET /api/engagement/overview endpoint providing organization-wide engagement statistics. Analyzes up to 100 members for performance, calculates engagement distribution by 5 levels, includes top engaged members list."
+      - working: true
+        agent: "testing"
+        comment: "✅ Engagement Overview API working correctly: Returns summary statistics (total_members, members_analyzed, avg_engagement_score). Engagement distribution includes all 5 levels (Highly Engaged, Engaged, Moderately Engaged, Low Engagement, At Risk). Top engaged members list with proper structure (member_id, member_name, email, score). Performance optimized (analyzed 100 members max). Tested with 116 total members."
+
+  - task: "Phase 2E - Auto-Award Check-in System"
+    implemented: true
+    working: true
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Integrated auto-award system in POST /api/access/validate endpoint. Awards 5 points per check-in, updates balance, records transaction with reason 'Check-in reward'. Fails gracefully if points award fails without affecting access grant."
+      - working: true
+        agent: "testing"
+        comment: "✅ Auto-Award Check-in System working perfectly: Successfully awards 5 points on check-in via /api/access/validate. Balance increases correctly (25→30 points tested). Transaction recorded with proper reason 'Check-in reward'. Check-in succeeds even if points award fails (graceful error handling). Access validation returns correct 'granted' status."
+
+  - task: "Phase 2E - Auto-Award Payment System"
+    implemented: true
+    working: true
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Integrated auto-award system in PUT /api/invoices/{invoice_id} endpoint. Awards 10 points when invoice status changed to 'paid', updates balance, records transaction with reason 'Payment completed'. Fails gracefully if points award fails without affecting payment processing."
+      - working: true
+        agent: "testing"
+        comment: "✅ Auto-Award Payment System working perfectly: Successfully awards 10 points when invoice marked as paid. Balance increases correctly (30→40 points tested). Transaction recorded with proper reason 'Payment completed'. Payment processing succeeds even if points award fails (graceful error handling). Invoice status updates correctly to 'paid'."
+
+  - task: "Phase 2E - Engagement API Authentication"
+    implemented: true
+    working: true
     file: "/app/backend/server.py"
     stuck_count: 0
     priority: "high"
