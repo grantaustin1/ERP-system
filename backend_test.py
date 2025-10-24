@@ -217,8 +217,19 @@ class DashboardTestRunner:
                                   "Memberships growth percentage calculation incorrect")
                     return False
                 
+                # Log sample data for verification
+                sample_data = {
+                    "today": today_data,
+                    "yesterday": yesterday_data,
+                    "growth_sample": {
+                        "memberships_growth": growth["memberships_growth"],
+                        "net_gain_growth": growth["net_gain_growth"],
+                        "attendance_growth": growth["attendance_growth"]
+                    }
+                }
+                
                 self.log_result("Dashboard Snapshot API", True, 
-                              f"All fields present and correctly structured. Today: {today_data}, Growth: {growth['memberships_growth']}%")
+                              f"All fields present and correctly structured. Sample data: {json.dumps(sample_data, indent=2)}")
                 return True
                 
             else:
