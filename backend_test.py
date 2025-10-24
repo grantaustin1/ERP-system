@@ -426,7 +426,7 @@ class AdvancedAnalyticsTestRunner:
                 
                 if data["hourly_distribution"]:
                     hourly = data["hourly_distribution"][0]
-                    hourly_fields = ["hour", "visit_count", "percentage"]
+                    hourly_fields = ["hour", "count"]
                     missing_hourly_fields = [field for field in hourly_fields if field not in hourly]
                     
                     if missing_hourly_fields:
