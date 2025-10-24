@@ -5881,6 +5881,270 @@ async def get_dropoff_analytics(current_user: User = Depends(get_current_user)):
     }
 
 
+# ===================== Phase 2A - Chart Data Routes =====================
+
+@api_router.get("/charts/age-distribution")
+async def get_age_distribution(current_user: User = Depends(get_current_user)):
+    """Get age distribution of active members for chart"""
+    from datetime import datetime
+    
+    # Get all active members
+    active_members = await db.members.find(
+        {"membership_status": "active"},
+        {"_id": 0, "date_of_birth": 1}
+    ).to_list(None)
+    
+    # Calculate ages and group into ranges
+    age_ranges = {
+        "Under 18": 0,
+        "18-24": 0,
+        "25-34": 0,
+        "35-44": 0,
+        "45-54": 0,
+        "55-64": 0,
+        "65+": 0,
+        "Unknown": 0
+    }
+    
+    now = datetime.now(timezone.utc)
+    
+    for member in active_members:
+        dob = member.get("date_of_birth")
+        if not dob:
+            age_ranges["Unknown"] += 1
+            continue
+        
+        try:
+            if isinstance(dob, str):
+                dob_dt = datetime.fromisoformat(dob)
+            else:
+                dob_dt = dob
+            
+            age = (now - dob_dt).days // 365
+            
+            if age < 18:
+                age_ranges["Under 18"] += 1
+            elif age < 25:
+                age_ranges["18-24"] += 1
+            elif age < 35:
+                age_ranges["25-34"] += 1
+            elif age < 45:
+                age_ranges["35-44"] += 1
+            elif age < 55:
+                age_ranges["45-54"] += 1
+            elif age < 65:
+                age_ranges["55-64"] += 1
+            else:
+                age_ranges["65+"] += 1
+        except:
+            age_ranges["Unknown"] += 1
+    
+    # Format for chart
+    chart_data = [
+        {"category": category, "value": count}
+        for category, count in age_ranges.items()
+        if count > 0  # Only include ranges with members
+    ]
+    
+    return {
+        "total_members": len(active_members),
+        "data": chart_data
+    }
+
+
+@api_router.get("/charts/membership-duration")
+async def get_membership_duration(current_user: User = Depends(get_current_user)):
+    """Get average membership duration by type"""
+    from datetime import datetime
+    
+    # Get all members
+    all_members = await db.members.find(
+        {},
+        {"_id": 0, "membership_type": 1, "join_date": 1, "expiry_date": 1, "membership_status": 1}
+    ).to_list(None)
+    
+    # Calculate average duration by membership type
+    duration_by_type = {}
+    
+    for member in all_members:
+        membership_type = member.get("membership_type", "Unknown")
+        join_date = member.get("join_date")
+        
+        if not join_date:
+            continue
+        
+        try:
+            join_dt = datetime.fromisoformat(join_date) if isinstance(join_date, str) else join_date
+            
+            # Calculate duration
+            if member.get("membership_status") == "active":
+                end_date = datetime.now(timezone.utc)
+            else:
+                expiry_date = member.get("expiry_date")
+                if expiry_date:
+                    end_date = datetime.fromisoformat(expiry_date) if isinstance(expiry_date, str) else expiry_date
+                else:
+                    end_date = datetime.now(timezone.utc)
+            
+            duration_days = (end_date - join_dt).days
+            
+            if membership_type not in duration_by_type:
+                duration_by_type[membership_type] = []
+            
+            duration_by_type[membership_type].append(duration_days)
+        except:
+            continue
+    
+    # Calculate averages
+    chart_data = []
+    for mtype, durations in duration_by_type.items():
+        avg_days = sum(durations) / len(durations) if durations else 0
+        avg_months = round(avg_days / 30, 1)
+        
+        chart_data.append({
+            "membership_type": mtype,
+            "average_duration_days": round(avg_days, 1),
+            "average_duration_months": avg_months,
+            "member_count": len(durations)
+        })
+    
+    # Sort by member count descending
+    chart_data.sort(key=lambda x: x["member_count"], reverse=True)
+    
+    return {
+        "data": chart_data
+    }
+
+
+@api_router.get("/charts/attendance-by-day")
+async def get_attendance_by_day(current_user: User = Depends(get_current_user)):
+    """Get attendance distribution by day of week"""
+    from datetime import datetime, timedelta
+    
+    # Get access logs from last 30 days
+    now = datetime.now(timezone.utc)
+    thirty_days_ago = now - timedelta(days=30)
+    
+    access_logs = await db.access_logs.find(
+        {
+            "timestamp": {"$gte": thirty_days_ago.isoformat()},
+            "status": "granted"
+        },
+        {"_id": 0, "timestamp": 1}
+    ).to_list(None)
+    
+    # Count by day of week
+    day_counts = {
+        "Monday": 0,
+        "Tuesday": 0,
+        "Wednesday": 0,
+        "Thursday": 0,
+        "Friday": 0,
+        "Saturday": 0,
+        "Sunday": 0
+    }
+    
+    for log in access_logs:
+        timestamp = log.get("timestamp")
+        if timestamp:
+            try:
+                dt = datetime.fromisoformat(timestamp) if isinstance(timestamp, str) else timestamp
+                day_name = dt.strftime("%A")
+                if day_name in day_counts:
+                    day_counts[day_name] += 1
+            except:
+                continue
+    
+    # Format for chart (maintain day order)
+    day_order = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+    chart_data = [
+        {"day": day, "count": day_counts[day]}
+        for day in day_order
+    ]
+    
+    return {
+        "period": "Last 30 Days",
+        "total_attendance": sum(day_counts.values()),
+        "data": chart_data
+    }
+
+
+@api_router.get("/charts/top-referrers")
+async def get_top_referrers(limit: int = 10, current_user: User = Depends(get_current_user)):
+    """Get members who have referred the most people"""
+    
+    # Get all members with referrer information
+    members = await db.members.find(
+        {"referred_by": {"$exists": True, "$ne": None}},
+        {"_id": 0, "referred_by": 1}
+    ).to_list(None)
+    
+    # Count referrals per referrer
+    referral_counts = {}
+    for member in members:
+        referrer_id = member.get("referred_by")
+        if referrer_id:
+            referral_counts[referrer_id] = referral_counts.get(referrer_id, 0) + 1
+    
+    # Get referrer details and format data
+    chart_data = []
+    for referrer_id, count in referral_counts.items():
+        referrer = await db.members.find_one(
+            {"id": referrer_id},
+            {"_id": 0, "first_name": 1, "last_name": 1, "email": 1}
+        )
+        
+        if referrer:
+            chart_data.append({
+                "referrer_id": referrer_id,
+                "referrer_name": f"{referrer.get('first_name', '')} {referrer.get('last_name', '')}".strip(),
+                "email": referrer.get("email"),
+                "referral_count": count
+            })
+    
+    # Sort by count and limit
+    chart_data.sort(key=lambda x: x["referral_count"], reverse=True)
+    chart_data = chart_data[:limit]
+    
+    return {
+        "total_referrals": len(members),
+        "total_referrers": len(referral_counts),
+        "data": chart_data
+    }
+
+
+@api_router.get("/charts/member-sources")
+async def get_member_sources(current_user: User = Depends(get_current_user)):
+    """Get distribution of member acquisition sources"""
+    
+    # Get all members with source/promotion information
+    members = await db.members.find(
+        {},
+        {"_id": 0, "promotion_source": 1, "how_did_you_hear": 1}
+    ).to_list(None)
+    
+    # Count by source
+    source_counts = {}
+    
+    for member in members:
+        source = member.get("promotion_source") or member.get("how_did_you_hear") or "Unknown"
+        source_counts[source] = source_counts.get(source, 0) + 1
+    
+    # Format for chart
+    chart_data = [
+        {"source": source, "count": count}
+        for source, count in source_counts.items()
+    ]
+    
+    # Sort by count descending
+    chart_data.sort(key=lambda x: x["count"], reverse=True)
+    
+    return {
+        "total_members": len(members),
+        "data": chart_data[:10]  # Top 10 sources
+    }
+
+
 # Levy Routes
 @api_router.get("/levies", response_model=List[Levy])
 async def get_levies(status: Optional[str] = None, current_user: User = Depends(get_current_user)):
