@@ -1959,9 +1959,30 @@ class EnhancedMemberManagementTester:
             self.log_result("Cleanup Test Data", True, 
                           f"Attempted cleanup of {len(self.created_invoices)} invoices and {len(self.created_members)} members")
     
+    def cleanup_test_data(self):
+        """Clean up created test data"""
+        print("\n🧹 Cleaning up test data...")
+        
+        # Clean up created members
+        for member_id in self.created_members:
+            try:
+                requests.delete(f"{API_BASE}/members/{member_id}", headers=self.headers)
+            except:
+                pass
+        
+        # Clean up created tags
+        for tag_id in self.created_tags:
+            try:
+                requests.delete(f"{API_BASE}/tags/{tag_id}", headers=self.headers)
+            except:
+                pass
+        
+        self.log_result("Cleanup", True, 
+                      f"Attempted cleanup of {len(self.created_members)} members and {len(self.created_tags)} tags")
+    
     def run_all_tests(self):
-        """Run all billing and invoice tests"""
-        print("🚀 Starting Billing Automation & Invoice Generation System Tests")
+        """Run all Enhanced Member Management Phase 1 tests"""
+        print("🚀 Starting Enhanced Member Management System Tests - Phase 1 Quick Wins")
         print(f"Testing against: {API_BASE}")
         print("=" * 80)
         
@@ -1971,51 +1992,59 @@ class EnhancedMemberManagementTester:
             return
         
         # Setup test data
-        if not self.setup_test_member():
-            print("❌ Failed to setup test member. Cannot proceed with invoice tests.")
+        if not self.setup_test_members():
+            print("❌ Failed to setup test members. Cannot proceed with tests.")
             return
         
         # Run all test phases
-        print("\n📋 COMPREHENSIVE BILLING & INVOICE TESTING")
+        print("\n📋 PHASE 1 - QUICK WINS TESTING")
         print("Testing Requirements:")
         print("- Authentication: admin@gym.com / admin123")
-        print("- Billing Settings API (GET/POST)")
-        print("- Invoice CRUD operations with line items")
-        print("- Invoice calculations (subtotal, tax, discount, total)")
-        print("- Invoice number generation (sequential)")
-        print("- PDF generation")
-        print("- Validation scenarios")
-        print("- Invoice status management (void)")
+        print("- Tag Management APIs (GET, POST, PUT, DELETE)")
+        print("- Member Tagging APIs (Add/Remove tags)")
+        print("- Member Action APIs (Freeze, Unfreeze, Cancel)")
+        print("- Enhanced Profile Endpoint (Phase 1 fields)")
+        print("- Auto-Update Last Visit on Access Grant")
+        print("- Journal Entry Creation for Actions")
         
         # Execute all test phases
         print("\n" + "="*60)
-        print("PHASE 1: BILLING SETTINGS TESTING")
+        print("PHASE 1A: TAG MANAGEMENT TESTING")
         print("="*60)
-        self.test_billing_settings_get_default()
-        self.test_billing_settings_create_update()
+        default_tags = self.test_get_default_tags()
+        created_tags = self.test_create_custom_tags()
+        
+        if created_tags:
+            # Test updating the first created tag
+            self.test_update_tag(created_tags[0])
         
         print("\n" + "="*60)
-        print("PHASE 2: INVOICE CRUD TESTING")
+        print("PHASE 1B: MEMBER TAGGING TESTING")
         print("="*60)
-        invoice_id = self.test_create_invoice_with_line_items()
-        self.test_get_invoices_list()
-        
-        if invoice_id:
-            self.test_get_invoice_details(invoice_id)
-            self.test_update_invoice(invoice_id)
-            self.test_invoice_pdf_generation(invoice_id)
-            # Note: We'll test void at the end so we don't break other tests
+        self.test_add_tags_to_member()
+        self.test_remove_tags_from_member()
         
         print("\n" + "="*60)
-        print("PHASE 3: VALIDATION TESTING")
+        print("PHASE 1C: MEMBER ACTION TESTING")
         print("="*60)
-        self.test_validation_scenarios()
+        self.test_member_freeze_actions()
+        self.test_member_unfreeze_actions()
+        self.test_member_cancel_actions()
         
         print("\n" + "="*60)
-        print("PHASE 4: INVOICE STATUS MANAGEMENT")
+        print("PHASE 1D: ENHANCED PROFILE & ACCESS TESTING")
         print("="*60)
-        if invoice_id:
-            self.test_void_invoice(invoice_id)
+        self.test_enhanced_profile_endpoint()
+        self.test_access_validate_last_visit_update()
+        
+        print("\n" + "="*60)
+        print("PHASE 1E: JOURNAL & CLEANUP TESTING")
+        print("="*60)
+        self.test_get_invoices_list()  # This is actually journal entries test
+        
+        # Test tag deletion (removes from members)
+        if self.created_tags:
+            self.test_delete_tag_removes_from_members()
         
         # Cleanup
         self.cleanup_test_data()
