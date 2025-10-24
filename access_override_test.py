@@ -603,12 +603,8 @@ class AccessOverrideTester:
             membership_type_id = membership_types[0]["id"]
             
             # Convert prospect to member
-            conversion_data = {
-                "membership_type_id": membership_type_id
-            }
-            
             response = requests.post(f"{API_BASE}/members/convert-prospect/{self.test_prospect_id}", 
-                                   json=conversion_data, headers=self.headers)
+                                   params={"membership_type_id": membership_type_id}, headers=self.headers)
             
             if response.status_code == 200:
                 result = response.json()
