@@ -4023,6 +4023,260 @@ async def generate_invoice_number() -> str:
     
     return f"{prefix}-{year}-{str(sequence).zfill(4)}"
 
+# ===================== Tag Management Routes =====================
+
+@api_router.get("/tags")
+async def get_all_tags(current_user: User = Depends(get_current_user)):
+    """Get all available tags"""
+    tags = await db.tags.find({}, {"_id": 0}).sort("name", 1).to_list(length=None)
+    return tags
+
+@api_router.post("/tags", response_model=Tag)
+async def create_tag(data: TagCreate, current_user: User = Depends(get_current_user)):
+    """Create a new tag"""
+    # Check if tag with same name already exists
+    existing = await db.tags.find_one({"name": data.name})
+    if existing:
+        raise HTTPException(status_code=400, detail="Tag with this name already exists")
+    
+    tag = Tag(
+        name=data.name,
+        color=data.color or "#3b82f6",
+        description=data.description,
+        category=data.category,
+        created_by=current_user.id,
+        usage_count=0
+    )
+    
+    await db.tags.insert_one(tag.model_dump())
+    return tag
+
+@api_router.put("/tags/{tag_id}", response_model=Tag)
+async def update_tag(tag_id: str, data: TagUpdate, current_user: User = Depends(get_current_user)):
+    """Update a tag"""
+    tag = await db.tags.find_one({"id": tag_id}, {"_id": 0})
+    if not tag:
+        raise HTTPException(status_code=404, detail="Tag not found")
+    
+    update_data = {}
+    if data.name is not None:
+        # Check if new name conflicts with existing tag
+        existing = await db.tags.find_one({"name": data.name, "id": {"$ne": tag_id}})
+        if existing:
+            raise HTTPException(status_code=400, detail="Tag with this name already exists")
+        update_data["name"] = data.name
+    if data.color is not None:
+        update_data["color"] = data.color
+    if data.description is not None:
+        update_data["description"] = data.description
+    if data.category is not None:
+        update_data["category"] = data.category
+    
+    if update_data:
+        await db.tags.update_one({"id": tag_id}, {"$set": update_data})
+        tag.update(update_data)
+    
+    return Tag(**tag)
+
+@api_router.delete("/tags/{tag_id}")
+async def delete_tag(tag_id: str, current_user: User = Depends(get_current_user)):
+    """Delete a tag and remove it from all members"""
+    tag = await db.tags.find_one({"id": tag_id}, {"_id": 0})
+    if not tag:
+        raise HTTPException(status_code=404, detail="Tag not found")
+    
+    # Remove tag from all members
+    await db.members.update_many(
+        {"tags": tag["name"]},
+        {"$pull": {"tags": tag["name"]}}
+    )
+    
+    # Delete tag
+    await db.tags.delete_one({"id": tag_id})
+    
+    return {"message": "Tag deleted successfully"}
+
+@api_router.post("/members/{member_id}/tags/{tag_name}")
+async def add_tag_to_member(member_id: str, tag_name: str, current_user: User = Depends(get_current_user)):
+    """Add a tag to a member"""
+    # Verify member exists
+    member = await db.members.find_one({"id": member_id})
+    if not member:
+        raise HTTPException(status_code=404, detail="Member not found")
+    
+    # Verify tag exists
+    tag = await db.tags.find_one({"name": tag_name})
+    if not tag:
+        raise HTTPException(status_code=404, detail="Tag not found")
+    
+    # Check if member already has this tag
+    if tag_name in member.get("tags", []):
+        return {"message": "Member already has this tag"}
+    
+    # Add tag to member
+    await db.members.update_one(
+        {"id": member_id},
+        {"$addToSet": {"tags": tag_name}}
+    )
+    
+    # Update tag usage count
+    await db.tags.update_one(
+        {"name": tag_name},
+        {"$inc": {"usage_count": 1}}
+    )
+    
+    # Add journal entry
+    await add_journal_entry(
+        member_id=member_id,
+        action_type="tag_added",
+        description=f"Tag '{tag_name}' added to member",
+        created_by=current_user.id,
+        created_by_name=current_user.full_name
+    )
+    
+    return {"message": "Tag added to member successfully"}
+
+@api_router.delete("/members/{member_id}/tags/{tag_name}")
+async def remove_tag_from_member(member_id: str, tag_name: str, current_user: User = Depends(get_current_user)):
+    """Remove a tag from a member"""
+    # Verify member exists
+    member = await db.members.find_one({"id": member_id})
+    if not member:
+        raise HTTPException(status_code=404, detail="Member not found")
+    
+    # Remove tag from member
+    await db.members.update_one(
+        {"id": member_id},
+        {"$pull": {"tags": tag_name}}
+    )
+    
+    # Update tag usage count
+    await db.tags.update_one(
+        {"name": tag_name},
+        {"$inc": {"usage_count": -1}}
+    )
+    
+    # Add journal entry
+    await add_journal_entry(
+        member_id=member_id,
+        action_type="tag_removed",
+        description=f"Tag '{tag_name}' removed from member",
+        created_by=current_user.id,
+        created_by_name=current_user.full_name
+    )
+    
+    return {"message": "Tag removed from member successfully"}
+
+# ===================== Member Action Routes =====================
+
+@api_router.post("/members/{member_id}/freeze")
+async def freeze_membership(member_id: str, data: MemberActionRequest, current_user: User = Depends(get_current_user)):
+    """Freeze a member's membership"""
+    member = await db.members.find_one({"id": member_id}, {"_id": 0})
+    if not member:
+        raise HTTPException(status_code=404, detail="Member not found")
+    
+    if member.get("freeze_status"):
+        raise HTTPException(status_code=400, detail="Membership is already frozen")
+    
+    # Update member freeze status
+    freeze_data = {
+        "freeze_status": True,
+        "freeze_start_date": datetime.now(timezone.utc).isoformat(),
+        "freeze_reason": data.reason or "Freeze requested",
+        "membership_status": "frozen"
+    }
+    
+    if data.end_date:
+        freeze_data["freeze_end_date"] = data.end_date.isoformat()
+    
+    await db.members.update_one(
+        {"id": member_id},
+        {"$set": freeze_data}
+    )
+    
+    # Add journal entry
+    await add_journal_entry(
+        member_id=member_id,
+        action_type="membership_frozen",
+        description=f"Membership frozen. Reason: {data.reason or 'Freeze requested'}",
+        metadata={"end_date": data.end_date.isoformat() if data.end_date else None},
+        created_by=current_user.id,
+        created_by_name=current_user.full_name
+    )
+    
+    return {"message": "Membership frozen successfully", "freeze_end_date": data.end_date}
+
+@api_router.post("/members/{member_id}/unfreeze")
+async def unfreeze_membership(member_id: str, current_user: User = Depends(get_current_user)):
+    """Unfreeze a member's membership"""
+    member = await db.members.find_one({"id": member_id}, {"_id": 0})
+    if not member:
+        raise HTTPException(status_code=404, detail="Member not found")
+    
+    if not member.get("freeze_status"):
+        raise HTTPException(status_code=400, detail="Membership is not frozen")
+    
+    # Update member freeze status
+    await db.members.update_one(
+        {"id": member_id},
+        {"$set": {
+            "freeze_status": False,
+            "freeze_start_date": None,
+            "freeze_end_date": None,
+            "freeze_reason": None,
+            "membership_status": "active"
+        }}
+    )
+    
+    # Add journal entry
+    await add_journal_entry(
+        member_id=member_id,
+        action_type="membership_unfrozen",
+        description="Membership unfrozen",
+        created_by=current_user.id,
+        created_by_name=current_user.full_name
+    )
+    
+    return {"message": "Membership unfrozen successfully"}
+
+@api_router.post("/members/{member_id}/cancel")
+async def cancel_membership(member_id: str, data: MemberActionRequest, current_user: User = Depends(get_current_user)):
+    """Cancel a member's membership"""
+    member = await db.members.find_one({"id": member_id}, {"_id": 0})
+    if not member:
+        raise HTTPException(status_code=404, detail="Member not found")
+    
+    if member.get("membership_status") == "cancelled":
+        raise HTTPException(status_code=400, detail="Membership is already cancelled")
+    
+    # Update member status
+    cancellation_data = {
+        "membership_status": "cancelled",
+        "cancellation_date": datetime.now(timezone.utc).isoformat(),
+        "cancellation_reason": data.reason or "Cancellation requested"
+    }
+    
+    if data.notes:
+        cancellation_data["notes"] = (member.get("notes", "") + f"\n\nCancellation Notes: {data.notes}").strip()
+    
+    await db.members.update_one(
+        {"id": member_id},
+        {"$set": cancellation_data}
+    )
+    
+    # Add journal entry
+    await add_journal_entry(
+        member_id=member_id,
+        action_type="membership_cancelled",
+        description=f"Membership cancelled. Reason: {data.reason or 'Cancellation requested'}",
+        metadata={"notes": data.notes},
+        created_by=current_user.id,
+        created_by_name=current_user.full_name
+    )
+    
+    return {"message": "Membership cancelled successfully"}
+
 # ===================== Invoice Routes =====================
 
 @api_router.post("/invoices", response_model=Invoice)
