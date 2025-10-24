@@ -1622,15 +1622,18 @@ backend:
 
   - task: "Auto-Update Last Visit Date on Access Grant"
     implemented: true
-    working: "NA"
+    working: true
     file: "/app/backend/server.py"
     stuck_count: 0
     priority: "high"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
       - working: "NA"
         agent: "main"
         comment: "Updated POST /api/access/validate endpoint to automatically set member's last_visit_date when access is granted. Updates member document with current timestamp after successful access log creation. Provides accurate last visit tracking for member cards. Ready for testing."
+      - working: true
+        agent: "testing"
+        comment: "✅ AUTO-UPDATE LAST VISIT WORKING: POST /api/access/validate successfully grants access and updates member's last_visit_date field. Access response includes full member data with updated timestamp. Last visit date updates correctly from null to current timestamp when access is granted. Journal entries created for access actions. Auto-update functionality operational and accurate."
 
 frontend:
   - task: "Invoice Management UI - Create Invoice Dialog"
