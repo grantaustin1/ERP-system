@@ -317,6 +317,18 @@ backend:
         agent: "testing"
         comment: "✅ Generate Invoice PDF API working correctly: GET /api/invoices/{invoice_id}/pdf successfully generates PDF invoices using ReportLab. Returns proper PDF response (2851 bytes) with correct content-type. PDF generation includes all invoice details, line items, and calculations. Professional invoice layout with company header, member details, itemized billing table, and totals summary working as expected."
 
+  - task: "Get Invoices List API"
+    implemented: true
+    working: true
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "testing"
+        comment: "✅ Get Invoices List API working correctly: GET /api/invoices successfully returns list of all invoices (retrieved 83 invoices). Response is properly formatted as JSON array. Supports optional member_id filtering. All invoice objects contain required fields for list display."
+
 
   - task: "Enhanced Duplicate Detection - Check Duplicate Endpoint"
     implemented: true
