@@ -139,8 +139,8 @@ class PriorityTestRunner:
         # Test 1: Cancel member with NULL notes field
         try:
             # First ensure member has NULL notes
-            await_result = requests.patch(f"{API_BASE}/members/{self.test_member_id}", 
-                                        json={"notes": None}, headers=self.headers)
+            await_result = requests.put(f"{API_BASE}/members/{self.test_member_id}", 
+                                      json={"notes": None}, headers=self.headers)
             
             cancel_data = {
                 "reason": "Moving to another city",
