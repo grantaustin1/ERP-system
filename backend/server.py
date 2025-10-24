@@ -4045,6 +4045,23 @@ async def execute_action(action: dict, trigger_data: dict):
         
         # TODO: Integrate email service (SendGrid, AWS SES, etc.)
         logger.info(f"Email Action (Mock): Sending to {email}: {subject}")
+        
+        # Log to journal
+        member_id = trigger_data.get("member_id")
+        if member_id:
+            await add_journal_entry(
+                member_id=member_id,
+                action_type="email_sent",
+                description=f"Email sent: {subject}",
+                metadata={
+                    "email": email,
+                    "subject": subject,
+                    "full_body": body,
+                    "status": "sent_mock",
+                    "trigger_type": trigger_data.get("trigger_type")
+                }
+            )
+        
         return {"type": "email", "status": "sent_mock", "email": email, "subject": subject, "body": body}
     
     elif action_type == "send_push":
