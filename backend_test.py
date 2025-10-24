@@ -727,38 +727,38 @@ class AdvancedAnalyticsTestRunner:
             self.log_result("Analytics API Authentication", False, f"Error testing authentication: {str(e)}")
             return False
     
-    def test_report_api_error_handling(self):
-        """Test error handling for report APIs"""
-        print("\n=== Testing Report API Error Handling ===")
+    def test_analytics_api_error_handling(self):
+        """Test error handling for analytics APIs"""
+        print("\n=== Testing Analytics API Error Handling ===")
         
         try:
-            # Test invalid parameters for birthday report
-            response = requests.get(f"{API_BASE}/reports/birthdays?days_ahead=-1", headers=self.headers)
+            # Test invalid parameters for revenue breakdown
+            response = requests.get(f"{API_BASE}/analytics/revenue-breakdown?period_months=-1", headers=self.headers)
             # Should still work but with reasonable defaults or handle gracefully
             
-            # Test invalid parameters for anniversary report  
-            response = requests.get(f"{API_BASE}/reports/anniversaries?days_ahead=0", headers=self.headers)
+            # Test invalid parameters for attendance deep dive
+            response = requests.get(f"{API_BASE}/analytics/attendance-deep-dive?days_back=0", headers=self.headers)
             # Should still work but with reasonable defaults or handle gracefully
             
             # Test very large parameters
-            response = requests.get(f"{API_BASE}/reports/birthdays?days_ahead=10000", headers=self.headers)
+            response = requests.get(f"{API_BASE}/analytics/revenue-breakdown?period_months=1000", headers=self.headers)
             if response.status_code == 200:
-                self.log_result("Birthday Report Large Parameter", True, "Handles large parameters gracefully")
+                self.log_result("Revenue Breakdown Large Parameter", True, "Handles large parameters gracefully")
             else:
-                self.log_result("Birthday Report Large Parameter", False, f"Failed with large parameter: {response.status_code}")
+                self.log_result("Revenue Breakdown Large Parameter", False, f"Failed with large parameter: {response.status_code}")
                 return False
             
-            response = requests.get(f"{API_BASE}/reports/anniversaries?days_ahead=10000", headers=self.headers)
+            response = requests.get(f"{API_BASE}/analytics/attendance-deep-dive?days_back=10000", headers=self.headers)
             if response.status_code == 200:
-                self.log_result("Anniversary Report Large Parameter", True, "Handles large parameters gracefully")
+                self.log_result("Attendance Deep Dive Large Parameter", True, "Handles large parameters gracefully")
             else:
-                self.log_result("Anniversary Report Large Parameter", False, f"Failed with large parameter: {response.status_code}")
+                self.log_result("Attendance Deep Dive Large Parameter", False, f"Failed with large parameter: {response.status_code}")
                 return False
             
             return True
                 
         except Exception as e:
-            self.log_result("Report API Error Handling", False, f"Error testing error handling: {str(e)}")
+            self.log_result("Analytics API Error Handling", False, f"Error testing error handling: {str(e)}")
             return False
     
     def cleanup_test_data(self):
