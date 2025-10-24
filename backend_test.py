@@ -547,80 +547,38 @@ class ReportLibraryTestRunner:
             self.log_result("Report API Authentication", False, f"Error testing authentication: {str(e)}")
             return False
     
-    def test_dropoff_analytics_api(self):
-        """Test Dropoff Analytics API - GET /api/retention/dropoff-analytics"""
-        print("\n=== Testing Dropoff Analytics API ===")
+    def test_report_api_error_handling(self):
+        """Test error handling for report APIs"""
+        print("\n=== Testing Report API Error Handling ===")
         
         try:
-            response = requests.get(f"{API_BASE}/retention/dropoff-analytics", headers=self.headers)
+            # Test invalid parameters for birthday report
+            response = requests.get(f"{API_BASE}/reports/birthdays?days_ahead=-1", headers=self.headers)
+            # Should still work but with reasonable defaults or handle gracefully
             
+            # Test invalid parameters for anniversary report  
+            response = requests.get(f"{API_BASE}/reports/anniversaries?days_ahead=0", headers=self.headers)
+            # Should still work but with reasonable defaults or handle gracefully
+            
+            # Test very large parameters
+            response = requests.get(f"{API_BASE}/reports/birthdays?days_ahead=10000", headers=self.headers)
             if response.status_code == 200:
-                data = response.json()
-                
-                # Verify required structure
-                required_fields = [
-                    "total_cancelled_members", "members_analyzed", 
-                    "average_days_inactive_before_cancel", "distribution", "recommendation"
-                ]
-                missing_fields = [field for field in required_fields if field not in data]
-                
-                if missing_fields:
-                    self.log_result("Dropoff Analytics Structure", False, 
-                                  f"Missing fields: {missing_fields}")
-                    return False
-                
-                # Verify data types
-                if not isinstance(data["total_cancelled_members"], int):
-                    self.log_result("Dropoff Analytics Total Cancelled Type", False, 
-                                  "Total cancelled members should be an integer")
-                    return False
-                
-                if not isinstance(data["members_analyzed"], int):
-                    self.log_result("Dropoff Analytics Members Analyzed Type", False, 
-                                  "Members analyzed should be an integer")
-                    return False
-                
-                if not isinstance(data["average_days_inactive_before_cancel"], (int, float)):
-                    self.log_result("Dropoff Analytics Average Days Type", False, 
-                                  "Average days should be a number")
-                    return False
-                
-                # Verify distribution structure
-                distribution = data["distribution"]
-                expected_distribution_keys = ["0-7_days", "8-14_days", "15-30_days", "31-60_days", "60+_days"]
-                missing_dist_keys = [key for key in expected_distribution_keys if key not in distribution]
-                
-                if missing_dist_keys:
-                    self.log_result("Dropoff Analytics Distribution Structure", False, 
-                                  f"Missing distribution keys: {missing_dist_keys}")
-                    return False
-                
-                # Verify all distribution values are integers
-                for key, value in distribution.items():
-                    if not isinstance(value, int):
-                        self.log_result("Dropoff Analytics Distribution Values", False, 
-                                      f"Distribution value for {key} should be integer, got {type(value)}")
-                        return False
-                
-                # Verify recommendation is a string
-                if not isinstance(data["recommendation"], str):
-                    self.log_result("Dropoff Analytics Recommendation Type", False, 
-                                  "Recommendation should be a string")
-                    return False
-                
-                self.log_result("Dropoff Analytics API", True, 
-                              f"Analyzed {data['members_analyzed']}/{data['total_cancelled_members']} cancelled members. "
-                              f"Average inactive days: {data['average_days_inactive_before_cancel']}")
-                return True
-                
+                self.log_result("Birthday Report Large Parameter", True, "Handles large parameters gracefully")
             else:
-                self.log_result("Dropoff Analytics API", False, 
-                              f"Failed to get dropoff analytics: {response.status_code}",
-                              {"response": response.text})
+                self.log_result("Birthday Report Large Parameter", False, f"Failed with large parameter: {response.status_code}")
                 return False
+            
+            response = requests.get(f"{API_BASE}/reports/anniversaries?days_ahead=10000", headers=self.headers)
+            if response.status_code == 200:
+                self.log_result("Anniversary Report Large Parameter", True, "Handles large parameters gracefully")
+            else:
+                self.log_result("Anniversary Report Large Parameter", False, f"Failed with large parameter: {response.status_code}")
+                return False
+            
+            return True
                 
         except Exception as e:
-            self.log_result("Dropoff Analytics API", False, f"Error testing dropoff analytics API: {str(e)}")
+            self.log_result("Report API Error Handling", False, f"Error testing error handling: {str(e)}")
             return False
     
     def cleanup_test_data(self):
