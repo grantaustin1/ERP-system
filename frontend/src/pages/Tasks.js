@@ -77,7 +77,7 @@ export default function Tasks() {
 
   const fetchUsers = async () => {
     try {
-      const response = await axios.get(`${API}/rbac/users`);
+      const response = await axios.get(`${API}/users/list`);
       setUsers(response.data);
     } catch (error) {
       console.error('Error fetching users:', error);
