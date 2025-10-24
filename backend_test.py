@@ -18,13 +18,13 @@ API_BASE = f"{BASE_URL}/api"
 TEST_EMAIL = "admin@gym.com"
 TEST_PASSWORD = "admin123"
 
-class PriorityTestRunner:
+class DashboardTestRunner:
     def __init__(self):
         self.token = None
         self.headers = {}
         self.test_results = []
         self.created_members = []  # Track created members for cleanup
-        self.created_tags = []  # Track created tags for cleanup
+        self.created_access_logs = []  # Track created access logs for cleanup
         self.test_member_id = None
         self.test_member_id_2 = None
         
