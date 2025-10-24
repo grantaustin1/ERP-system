@@ -1321,6 +1321,38 @@ backend:
     description: "New GET /api/messaging/templates/dropdown endpoint returning simplified template list formatted for dropdown selection with id, name, subject, message, and category."
 
 
+
+
+  - task: "ClubManager Phase 1 - Frontend Retention & Payment Components"
+    implemented: true
+    working: false
+    file: "/app/frontend/src/components/"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history: []
+    description: "Created RetentionIndicator.jsx, PaymentProgressBar.jsx, and MissingDataWarnings.jsx components. Integrated into Members.js member profile dialog to display retention metrics, payment progress bars, and missing data warnings."
+    
+  - task: "ClubManager Phase 2 - Dashboard Sales & KPI Components"
+    implemented: true
+    working: false
+    file: "/app/frontend/src/components/ and /app/frontend/src/pages/Dashboard.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history: []
+    description: "Created SalesComparisonChart.jsx (with Recharts LineChart comparing current, previous, last year, and target), KPISparklines.jsx (12-week trends with sparklines), and BirthdayGallery.jsx (photo gallery grid). Integrated into Dashboard.js with data fetching from new Phase 2 APIs."
+    
+  - task: "ClubManager Phase 3 - Unified Messaging Dialog"
+    implemented: true
+    working: false
+    file: "/app/frontend/src/components/UnifiedMessagingDialog.jsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history: []
+    description: "Created comprehensive UnifiedMessagingDialog component supporting SMS/Email/WhatsApp/Push with template selection, character counter, SMS credit display, save as template, marketing flag, show on check-in option, and member personalization. Integrated into Dashboard.js and Members.js with Send Message buttons."
+
 frontend:
   - task: "Member Profile Drill-Down Functionality"
     implemented: true
