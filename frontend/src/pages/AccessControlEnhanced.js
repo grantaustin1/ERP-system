@@ -707,6 +707,209 @@ function AccessControlEnhanced() {
           )}
         </TabsContent>
       </Tabs>
+
+      {/* Manual Override Dialog */}
+      <Dialog open={showOverrideDialog} onOpenChange={setShowOverrideDialog}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <KeyRound className="h-5 w-5" />
+              Manual Access Override
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            {/* Member Search */}
+            <div className="space-y-2">
+              <Label>Search Member (Name, Email, Phone, ID)</Label>
+              <div className="relative">
+                <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                <Input
+                  value={searchQuery}
+                  onChange={(e) => handleMemberSearch(e.target.value)}
+                  placeholder="Type to search..."
+                  className="pl-10"
+                />
+              </div>
+              {searchResults.length > 0 && (
+                <div className="border rounded-md max-h-48 overflow-y-auto">
+                  {searchResults.map((member) => (
+                    <div
+                      key={member.id}
+                      onClick={() => handleSelectMember(member)}
+                      className="p-3 hover:bg-gray-100 cursor-pointer border-b last:border-b-0"
+                    >
+                      <div className="font-medium">{member.first_name} {member.last_name}</div>
+                      <div className="text-sm text-gray-500">{member.email} • {member.phone}</div>
+                      <Badge variant={member.status_label === 'Active' ? 'default' : 'destructive'}>
+                        {member.status_label}
+                      </Badge>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Selected Member or New Prospect */}
+            {selectedMember ? (
+              <Card className="bg-blue-50">
+                <CardContent className="p-4">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <div className="font-bold">{selectedMember.first_name} {selectedMember.last_name}</div>
+                      <div className="text-sm text-gray-600">{selectedMember.email}</div>
+                      <div className="text-sm text-gray-600">{selectedMember.phone}</div>
+                    </div>
+                    <Badge variant={selectedMember.status_label === 'Active' ? 'default' : 'destructive'}>
+                      {selectedMember.status_label}
+                    </Badge>
+                  </div>
+                </CardContent>
+              </Card>
+            ) : (
+              <Card className="bg-yellow-50">
+                <CardContent className="p-4">
+                  <div className="text-sm font-medium mb-2">New Prospect - Enter Details:</div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <Label className="text-xs">First Name *</Label>
+                      <Input
+                        value={overrideForm.first_name}
+                        onChange={(e) => setOverrideForm({...overrideForm, first_name: e.target.value})}
+                        placeholder="First name"
+                        size="sm"
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-xs">Last Name *</Label>
+                      <Input
+                        value={overrideForm.last_name}
+                        onChange={(e) => setOverrideForm({...overrideForm, last_name: e.target.value})}
+                        placeholder="Last name"
+                        size="sm"
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-xs">Phone</Label>
+                      <Input
+                        value={overrideForm.phone}
+                        onChange={(e) => setOverrideForm({...overrideForm, phone: e.target.value})}
+                        placeholder="Phone"
+                        size="sm"
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-xs">Email</Label>
+                      <Input
+                        value={overrideForm.email}
+                        onChange={(e) => setOverrideForm({...overrideForm, email: e.target.value})}
+                        placeholder="Email"
+                        size="sm"
+                      />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Override Reason */}
+            <div className="space-y-2">
+              <Label>Override Reason *</Label>
+              <Select 
+                value={overrideForm.reason_id} 
+                onValueChange={(value) => {
+                  setOverrideForm({...overrideForm, reason_id: value, sub_reason_id: ''});
+                }}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select reason" />
+                </SelectTrigger>
+                <SelectContent>
+                  {overrideReasons.map((reason) => (
+                    <SelectItem key={reason.reason_id} value={reason.reason_id}>
+                      {reason.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Sub-reason (conditional) */}
+            {overrideForm.reason_id && overrideReasons.find(r => r.reason_id === overrideForm.reason_id)?.sub_reasons?.length > 0 && (
+              <div className="space-y-2">
+                <Label>Sub-Reason *</Label>
+                <Select 
+                  value={overrideForm.sub_reason_id} 
+                  onValueChange={(value) => setOverrideForm({...overrideForm, sub_reason_id: value})}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select sub-reason" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {overrideReasons.find(r => r.reason_id === overrideForm.reason_id)?.sub_reasons?.map((subReason) => (
+                      <SelectItem key={subReason.reason_id} value={subReason.reason_id}>
+                        {subReason.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            {/* PIN Input (conditional) */}
+            {selectedMember && overrideReasons.find(r => r.reason_id === overrideForm.reason_id)?.requires_pin && (
+              <div className="space-y-2">
+                <Label>Member Access PIN (Card Number) *</Label>
+                <Input
+                  type="text"
+                  value={overrideForm.access_pin}
+                  onChange={(e) => setOverrideForm({...overrideForm, access_pin: e.target.value})}
+                  placeholder="Enter member's access PIN"
+                />
+              </div>
+            )}
+
+            {/* Location */}
+            <div className="space-y-2">
+              <Label>Location</Label>
+              <Select 
+                value={overrideForm.location} 
+                onValueChange={(value) => setOverrideForm({...overrideForm, location: value})}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {LOCATIONS.map((loc) => (
+                    <SelectItem key={loc} value={loc}>{loc}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Notes */}
+            <div className="space-y-2">
+              <Label>Notes</Label>
+              <Input
+                value={overrideForm.notes}
+                onChange={(e) => setOverrideForm({...overrideForm, notes: e.target.value})}
+                placeholder="Optional notes..."
+              />
+            </div>
+
+            {/* Grant Access Button */}
+            <div className="flex gap-2 justify-end">
+              <Button variant="outline" onClick={() => setShowOverrideDialog(false)}>
+                Cancel
+              </Button>
+              <Button onClick={handleGrantOverride} className="bg-green-600 hover:bg-green-700">
+                <CheckCircle2 className="mr-2 h-4 w-4" />
+                Grant Access
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
