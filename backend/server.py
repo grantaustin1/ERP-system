@@ -471,16 +471,28 @@ class AccessOverrideCreate(BaseModel):
     location: Optional[str] = None
     notes: Optional[str] = None
 
+class InvoiceLineItem(BaseModel):
+    """Line item for invoice"""
+    item_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    description: str
+    quantity: float = 1.0
+    unit_price: float
+    discount_percent: float = 0.0
+    tax_percent: float = 0.0
+    subtotal: float = 0.0  # quantity * unit_price - discount
+    tax_amount: float = 0.0  # subtotal * tax_percent / 100
+    total: float = 0.0  # subtotal + tax_amount
+
 class Invoice(BaseModel):
     model_config = ConfigDict(extra="ignore")
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     member_id: str
     invoice_number: str
-    amount: float
+    amount: float  # Total invoice amount (sum of all line items)
     description: str
     due_date: datetime
     paid_date: Optional[datetime] = None
-    status: str = "pending"  # pending, paid, overdue, cancelled, failed
+    status: str = "pending"  # pending, paid, overdue, cancelled, failed, void
     payment_method: Optional[str] = None
     payment_gateway: Optional[str] = None  # Stripe, PayPal, Manual, etc.
     status_message: Optional[str] = None  # Additional status information
@@ -488,12 +500,31 @@ class Invoice(BaseModel):
     # For tracking debit order batches
     batch_id: Optional[str] = None
     batch_date: Optional[datetime] = None
+    # Line items for itemized billing
+    line_items: List[InvoiceLineItem] = []
+    subtotal: float = 0.0  # Sum of all line item subtotals
+    tax_total: float = 0.0  # Sum of all line item taxes
+    discount_total: float = 0.0  # Sum of all discounts
+    notes: Optional[str] = None
+    # Auto-generation tracking
+    auto_generated: bool = False
+    generated_from: Optional[str] = None  # 'membership_renewal', 'manual', etc.
 
 class InvoiceCreate(BaseModel):
     member_id: str
-    amount: float
     description: str
     due_date: datetime
+    line_items: List[InvoiceLineItem]
+    notes: Optional[str] = None
+    auto_generated: bool = False
+    generated_from: Optional[str] = None
+
+class InvoiceUpdate(BaseModel):
+    description: Optional[str] = None
+    due_date: Optional[datetime] = None
+    line_items: Optional[List[InvoiceLineItem]] = None
+    notes: Optional[str] = None
+    status: Optional[str] = None
 
 class Payment(BaseModel):
     model_config = ConfigDict(extra="ignore")
