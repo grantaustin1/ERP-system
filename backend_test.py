@@ -1141,10 +1141,10 @@ class EngagementFeaturesTestRunner:
             except Exception as e:
                 self.log_result(f"Cleanup Invoice {invoice_id[:8]}", False, f"Error: {str(e)}")
     
-    def run_advanced_analytics_tests(self):
-        """Run the advanced analytics API tests"""
+    def run_engagement_features_tests(self):
+        """Run the engagement features API tests"""
         print("=" * 80)
-        print("BACKEND TESTING - PHASE 2D ADVANCED ANALYTICS APIs")
+        print("BACKEND TESTING - PHASE 2E ENGAGEMENT FEATURES")
         print("=" * 80)
         
         # Step 1: Authenticate
@@ -1152,56 +1152,67 @@ class EngagementFeaturesTestRunner:
             print("❌ Authentication failed. Cannot proceed with tests.")
             return False
         
-        # Step 2: Setup test members (for context, though analytics APIs work with existing data)
+        # Step 2: Setup test members
         if not self.setup_test_members():
             print("❌ Failed to setup test members. Cannot proceed with tests.")
             return False
         
-        # Step 3: Run ADVANCED ANALYTICS API TESTS
+        # Step 3: Run ENGAGEMENT FEATURES API TESTS
         print("\n" + "=" * 60)
-        print("ADVANCED ANALYTICS API TESTS")
+        print("ENGAGEMENT FEATURES API TESTS")
         print("=" * 60)
         
-        analytics_results = []
+        engagement_results = []
         
         # 1. Authentication Tests
-        print("\n🔐 TEST 1: Analytics API Authentication")
-        analytics_results.append(self.test_analytics_api_authentication())
+        print("\n🔐 TEST 1: Engagement API Authentication")
+        engagement_results.append(self.test_engagement_api_authentication())
         
-        # 2. Revenue Breakdown Analytics API
-        print("\n💰 TEST 2: Revenue Breakdown Analytics API")
-        analytics_results.append(self.test_revenue_breakdown_analytics_api())
+        # 2. Points System Tests
+        print("\n🏆 TEST 2: Points Balance API")
+        engagement_results.append(self.test_points_balance_api())
         
-        # 3. Geographic Distribution Analytics API
-        print("\n🌍 TEST 3: Geographic Distribution Analytics API")
-        analytics_results.append(self.test_geographic_distribution_analytics_api())
+        print("\n🎁 TEST 3: Points Award API")
+        engagement_results.append(self.test_points_award_api())
         
-        # 4. Attendance Deep Dive Analytics API
-        print("\n📊 TEST 4: Attendance Deep Dive Analytics API")
-        analytics_results.append(self.test_attendance_deep_dive_analytics_api())
+        print("\n📜 TEST 4: Points Transactions API")
+        engagement_results.append(self.test_points_transactions_api())
         
-        # 5. Member Lifetime Value Analytics API
-        print("\n💎 TEST 5: Member Lifetime Value Analytics API")
-        analytics_results.append(self.test_member_lifetime_value_analytics_api())
+        print("\n🏅 TEST 5: Points Leaderboard API")
+        engagement_results.append(self.test_points_leaderboard_api())
         
-        # 6. Churn Prediction Analytics API
-        print("\n⚠️ TEST 6: Churn Prediction Analytics API")
-        analytics_results.append(self.test_churn_prediction_analytics_api())
+        # 3. Global Search Test
+        print("\n🔍 TEST 6: Global Search API")
+        engagement_results.append(self.test_global_search_api())
         
-        # 7. Error Handling Tests
-        print("\n🛠️ TEST 7: Analytics API Error Handling")
-        analytics_results.append(self.test_analytics_api_error_handling())
+        # 4. Activity Feed Test
+        print("\n📱 TEST 7: Activity Feed API")
+        engagement_results.append(self.test_activity_feed_api())
+        
+        # 5. Engagement Scoring Tests
+        print("\n📊 TEST 8: Engagement Score API")
+        engagement_results.append(self.test_engagement_score_api())
+        
+        print("\n📈 TEST 9: Engagement Overview API")
+        engagement_results.append(self.test_engagement_overview_api())
+        
+        # 6. Auto-Award System Tests
+        print("\n🚪 TEST 10: Auto-Award Check-in System")
+        engagement_results.append(self.test_auto_award_checkin())
+        
+        print("\n💳 TEST 11: Auto-Award Payment System")
+        engagement_results.append(self.test_auto_award_payment())
         
         # Step 4: Generate Summary
         print("\n" + "=" * 80)
         print("TEST RESULTS SUMMARY")
         print("=" * 80)
         
-        analytics_passed = sum(analytics_results)
-        analytics_total = len(analytics_results)
+        engagement_passed = sum(engagement_results)
+        engagement_total = len(engagement_results)
         
-        print(f"\n🎯 ADVANCED ANALYTICS TESTS: {analytics_passed}/{analytics_total} PASSED")
-        print(f"📈 SUCCESS RATE: {(analytics_passed/analytics_total)*100:.1f}%")
+        print(f"\n🎯 ENGAGEMENT FEATURES TESTS: {engagement_passed}/{engagement_total} PASSED")
+        print(f"📈 SUCCESS RATE: {(engagement_passed/engagement_total)*100:.1f}%")
         
         # Detailed results
         print(f"\n📋 DETAILED RESULTS:")
@@ -1212,8 +1223,8 @@ class EngagementFeaturesTestRunner:
         # Step 5: Cleanup
         self.cleanup_test_data()
         
-        # Return success if all analytics tests passed
-        return analytics_passed == analytics_total
+        # Return success if all engagement tests passed
+        return engagement_passed == engagement_total
 
 def main():
     """Main execution function"""
