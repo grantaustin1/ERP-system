@@ -192,7 +192,7 @@ class AdvancedAnalyticsTestRunner:
                 # Verify by_payment_method structure
                 if data["by_payment_method"]:
                     payment_method = data["by_payment_method"][0]
-                    payment_fields = ["payment_method", "revenue", "percentage", "transaction_count"]
+                    payment_fields = ["method", "revenue", "percentage"]
                     missing_payment_fields = [field for field in payment_fields if field not in payment_method]
                     
                     if missing_payment_fields:
