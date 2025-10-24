@@ -6145,6 +6145,328 @@ async def get_member_sources(current_user: User = Depends(get_current_user)):
     }
 
 
+# ==================== PHASE 2C - REPORT LIBRARY ENDPOINTS ====================
+
+@api_router.get("/reports/incomplete-data")
+async def get_incomplete_data_report(current_user: User = Depends(get_current_user)):
+    """
+    Generate report of members with incomplete data
+    Returns members missing critical information with priority scoring
+    """
+    from datetime import datetime
+    
+    # Get all active members
+    members = await db.members.find(
+        {"membership_status": {"$in": ["active", "frozen"]}},
+        {"_id": 0}
+    ).to_list(None)
+    
+    incomplete_members = []
+    
+    for member in members:
+        missing_fields = []
+        priority_score = 0
+        
+        # Check critical fields (high priority)
+        if not member.get("phone"):
+            missing_fields.append("Phone Number")
+            priority_score += 10
+        if not member.get("email"):
+            missing_fields.append("Email Address")
+            priority_score += 10
+        if not member.get("emergency_contact"):
+            missing_fields.append("Emergency Contact")
+            priority_score += 8
+        
+        # Check important fields (medium priority)
+        if not member.get("address"):
+            missing_fields.append("Physical Address")
+            priority_score += 5
+        if not member.get("date_of_birth"):
+            missing_fields.append("Date of Birth")
+            priority_score += 5
+        if not member.get("id_number"):
+            missing_fields.append("ID Number")
+            priority_score += 5
+        
+        # Check banking fields (medium-high priority for billing)
+        if not member.get("bank_account_number"):
+            missing_fields.append("Bank Account Number")
+            priority_score += 7
+        if not member.get("bank_branch_code"):
+            missing_fields.append("Bank Branch Code")
+            priority_score += 3
+        
+        # Check additional fields (low priority)
+        if not member.get("additional_phone"):
+            missing_fields.append("Additional Phone")
+            priority_score += 2
+        if not member.get("medical_conditions"):
+            missing_fields.append("Medical Conditions")
+            priority_score += 4
+        
+        # Only include members with missing data
+        if missing_fields:
+            # Determine priority level
+            if priority_score >= 20:
+                priority = "Critical"
+            elif priority_score >= 10:
+                priority = "High"
+            elif priority_score >= 5:
+                priority = "Medium"
+            else:
+                priority = "Low"
+            
+            incomplete_members.append({
+                "id": member.get("id"),
+                "first_name": member.get("first_name"),
+                "last_name": member.get("last_name"),
+                "full_name": f"{member.get('first_name', '')} {member.get('last_name', '')}".strip(),
+                "email": member.get("email", "N/A"),
+                "phone": member.get("phone", "N/A"),
+                "membership_status": member.get("membership_status", "active"),
+                "join_date": member.get("join_date"),
+                "missing_fields": missing_fields,
+                "missing_count": len(missing_fields),
+                "priority": priority,
+                "priority_score": priority_score
+            })
+    
+    # Sort by priority score (highest first)
+    incomplete_members.sort(key=lambda x: x["priority_score"], reverse=True)
+    
+    # Calculate summary statistics
+    total_members = len(members)
+    members_with_issues = len(incomplete_members)
+    critical_count = sum(1 for m in incomplete_members if m["priority"] == "Critical")
+    high_count = sum(1 for m in incomplete_members if m["priority"] == "High")
+    medium_count = sum(1 for m in incomplete_members if m["priority"] == "Medium")
+    low_count = sum(1 for m in incomplete_members if m["priority"] == "Low")
+    
+    # Most common missing fields
+    all_missing = []
+    for m in incomplete_members:
+        all_missing.extend(m["missing_fields"])
+    
+    from collections import Counter
+    missing_field_counts = Counter(all_missing).most_common(5)
+    
+    return {
+        "summary": {
+            "total_members": total_members,
+            "members_with_incomplete_data": members_with_issues,
+            "completion_rate": round((total_members - members_with_issues) / total_members * 100, 1) if total_members > 0 else 0,
+            "by_priority": {
+                "critical": critical_count,
+                "high": high_count,
+                "medium": medium_count,
+                "low": low_count
+            },
+            "most_common_missing": [
+                {"field": field, "count": count} 
+                for field, count in missing_field_counts
+            ]
+        },
+        "members": incomplete_members
+    }
+
+
+@api_router.get("/reports/birthdays")
+async def get_birthday_report(
+    days_ahead: int = 30,
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Generate birthday report for upcoming birthdays
+    """
+    from datetime import datetime, timedelta
+    
+    # Get all members
+    members = await db.members.find(
+        {"membership_status": {"$in": ["active", "frozen"]}},
+        {"_id": 0}
+    ).to_list(None)
+    
+    today = datetime.now(timezone.utc)
+    end_date = today + timedelta(days=days_ahead)
+    
+    upcoming_birthdays = []
+    
+    for member in members:
+        dob = member.get("date_of_birth")
+        if not dob:
+            continue
+        
+        try:
+            # Parse date of birth
+            if isinstance(dob, str):
+                dob_dt = datetime.fromisoformat(dob)
+            else:
+                dob_dt = dob
+            
+            # Calculate age
+            age = (today - dob_dt).days // 365
+            
+            # Get this year's birthday
+            birthday_this_year = dob_dt.replace(year=today.year)
+            
+            # If birthday already passed this year, check next year
+            if birthday_this_year < today:
+                birthday_this_year = dob_dt.replace(year=today.year + 1)
+            
+            # Check if birthday is within the date range
+            if today <= birthday_this_year <= end_date:
+                days_until = (birthday_this_year - today).days
+                
+                upcoming_birthdays.append({
+                    "id": member.get("id"),
+                    "first_name": member.get("first_name"),
+                    "last_name": member.get("last_name"),
+                    "full_name": f"{member.get('first_name', '')} {member.get('last_name', '')}".strip(),
+                    "email": member.get("email"),
+                    "phone": member.get("phone"),
+                    "date_of_birth": dob_dt.isoformat() if isinstance(dob_dt, datetime) else dob,
+                    "birthday_date": birthday_this_year.strftime("%Y-%m-%d"),
+                    "age_turning": age + 1,
+                    "days_until": days_until,
+                    "membership_status": member.get("membership_status", "active")
+                })
+        except Exception as e:
+            continue
+    
+    # Sort by days until birthday
+    upcoming_birthdays.sort(key=lambda x: x["days_until"])
+    
+    # Group by week
+    this_week = [b for b in upcoming_birthdays if b["days_until"] <= 7]
+    next_week = [b for b in upcoming_birthdays if 7 < b["days_until"] <= 14]
+    later = [b for b in upcoming_birthdays if b["days_until"] > 14]
+    
+    return {
+        "summary": {
+            "total_upcoming": len(upcoming_birthdays),
+            "date_range": {
+                "from": today.strftime("%Y-%m-%d"),
+                "to": end_date.strftime("%Y-%m-%d"),
+                "days": days_ahead
+            },
+            "by_period": {
+                "this_week": len(this_week),
+                "next_week": len(next_week),
+                "later": len(later)
+            }
+        },
+        "birthdays": {
+            "this_week": this_week,
+            "next_week": next_week,
+            "later": later,
+            "all": upcoming_birthdays
+        }
+    }
+
+
+@api_router.get("/reports/anniversaries")
+async def get_anniversary_report(
+    days_ahead: int = 30,
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Generate membership anniversary report
+    """
+    from datetime import datetime, timedelta
+    
+    # Get all members
+    members = await db.members.find(
+        {"membership_status": {"$in": ["active", "frozen"]}},
+        {"_id": 0}
+    ).to_list(None)
+    
+    today = datetime.now(timezone.utc)
+    end_date = today + timedelta(days=days_ahead)
+    
+    upcoming_anniversaries = []
+    
+    for member in members:
+        join_date = member.get("join_date")
+        if not join_date:
+            continue
+        
+        try:
+            # Parse join date
+            if isinstance(join_date, str):
+                join_dt = datetime.fromisoformat(join_date)
+            else:
+                join_dt = join_date
+            
+            # Calculate years of membership
+            years = (today - join_dt).days // 365
+            
+            # Get this year's anniversary
+            anniversary_this_year = join_dt.replace(year=today.year)
+            
+            # If anniversary already passed this year, check next year
+            if anniversary_this_year < today:
+                anniversary_this_year = join_dt.replace(year=today.year + 1)
+                years += 1
+            
+            # Check if anniversary is within the date range
+            if today <= anniversary_this_year <= end_date:
+                days_until = (anniversary_this_year - today).days
+                
+                # Only include significant anniversaries (1+ years)
+                if years > 0:
+                    upcoming_anniversaries.append({
+                        "id": member.get("id"),
+                        "first_name": member.get("first_name"),
+                        "last_name": member.get("last_name"),
+                        "full_name": f"{member.get('first_name', '')} {member.get('last_name', '')}".strip(),
+                        "email": member.get("email"),
+                        "phone": member.get("phone"),
+                        "join_date": join_dt.isoformat() if isinstance(join_dt, datetime) else join_date,
+                        "anniversary_date": anniversary_this_year.strftime("%Y-%m-%d"),
+                        "years_completing": years,
+                        "days_until": days_until,
+                        "membership_status": member.get("membership_status", "active"),
+                        "membership_type": member.get("membership_type")
+                    })
+        except Exception as e:
+            continue
+    
+    # Sort by days until anniversary
+    upcoming_anniversaries.sort(key=lambda x: x["days_until"])
+    
+    # Group by milestone
+    milestone_1_year = [a for a in upcoming_anniversaries if a["years_completing"] == 1]
+    milestone_5_years = [a for a in upcoming_anniversaries if a["years_completing"] == 5]
+    milestone_10_years = [a for a in upcoming_anniversaries if a["years_completing"] >= 10]
+    
+    return {
+        "summary": {
+            "total_upcoming": len(upcoming_anniversaries),
+            "date_range": {
+                "from": today.strftime("%Y-%m-%d"),
+                "to": end_date.strftime("%Y-%m-%d"),
+                "days": days_ahead
+            },
+            "by_milestone": {
+                "1_year": len(milestone_1_year),
+                "5_years": len(milestone_5_years),
+                "10_plus_years": len(milestone_10_years)
+            }
+        },
+        "anniversaries": {
+            "by_milestone": {
+                "1_year": milestone_1_year,
+                "5_years": milestone_5_years,
+                "10_plus_years": milestone_10_years
+            },
+            "all": upcoming_anniversaries
+        }
+    }
+
+
+
+
 # Levy Routes
 @api_router.get("/levies", response_model=List[Levy])
 async def get_levies(status: Optional[str] = None, current_user: User = Depends(get_current_user)):
