@@ -119,7 +119,8 @@ class PriorityTestRunner:
                 self.log_result("Setup Test Member 2", True, f"Created test member 2: {self.test_member_id_2}")
                 return True
             else:
-                self.log_result("Setup Test Member 2", False, f"Failed to create test member 2: {response.status_code}")
+                self.log_result("Setup Test Member 2", False, f"Failed to create test member 2: {response.status_code}",
+                              {"response": response.text})
                 return False
                 
         except Exception as e:
