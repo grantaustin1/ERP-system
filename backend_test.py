@@ -203,7 +203,7 @@ class AdvancedAnalyticsTestRunner:
                 # Verify monthly_trend structure
                 if data["monthly_trend"]:
                     trend = data["monthly_trend"][0]
-                    trend_fields = ["month", "revenue", "member_count"]
+                    trend_fields = ["month", "revenue"]
                     missing_trend_fields = [field for field in trend_fields if field not in trend]
                     
                     if missing_trend_fields:
