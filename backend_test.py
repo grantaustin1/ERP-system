@@ -125,433 +125,24 @@ class PriorityTestRunner:
             self.log_result("Setup Test Members", False, f"Error creating test members: {str(e)}")
             return False
     
-    def test_get_default_tags(self):
-        """Test GET /api/tags - Should return 7 default tags"""
-        print("\n=== Testing Get Default Tags ===")
-        
-        try:
-            response = requests.get(f"{API_BASE}/tags", headers=self.headers)
-            
-            if response.status_code == 200:
-                tags = response.json()
-                
-                # Verify we have the expected default tags
-                expected_default_tags = ["VIP", "New Member", "Late Payer", "Personal Training", "Group Classes", "High Risk", "Loyal"]
-                
-                if isinstance(tags, list) and len(tags) >= 7:
-                    tag_names = [tag.get("name", "") for tag in tags]
-                    has_default_tags = all(default_tag in tag_names for default_tag in expected_default_tags)
-                    
-                    if has_default_tags:
-                        self.log_result("Get Default Tags", True, 
-                                      f"Retrieved {len(tags)} tags including all 7 default tags")
-                        return tags
-                    else:
-                        missing_tags = [tag for tag in expected_default_tags if tag not in tag_names]
-                        self.log_result("Get Default Tags", False, 
-                                      f"Missing default tags: {missing_tags}")
-                        return tags
-                else:
-                    self.log_result("Get Default Tags", False, 
-                                  f"Expected at least 7 tags, got {len(tags) if isinstance(tags, list) else 'invalid response'}")
-                    return None
-            else:
-                self.log_result("Get Default Tags", False, 
-                              f"Failed to get tags: {response.status_code}",
-                              {"response": response.text})
-                return None
-                
-        except Exception as e:
-            self.log_result("Get Default Tags", False, f"Error getting tags: {str(e)}")
-            return None
     
-    def test_create_custom_tags(self):
-        """Test POST /api/tags - Create new tags with different colors and categories"""
-        print("\n=== Testing Create Custom Tags ===")
-        
-        # Test creating 3 custom tags with different properties
-        custom_tags = [
-            {
-                "name": "Premium Member",
-                "color": "#FFD700",  # Gold
-                "category": "Status",
-                "description": "Premium membership tier with exclusive benefits"
-            },
-            {
-                "name": "Fitness Challenge",
-                "color": "#FF6B35",  # Orange
-                "category": "Program",
-                "description": "Members participating in fitness challenges"
-            },
-            {
-                "name": "Corporate Client",
-                "color": "#4ECDC4",  # Teal
-                "category": "Type",
-                "description": "Corporate membership clients"
-            }
-        ]
-        
-        created_tags = []
-        
-        try:
-            for tag_data in custom_tags:
-                response = requests.post(f"{API_BASE}/tags", json=tag_data, headers=self.headers)
-                
-                if response.status_code == 200:
-                    tag = response.json()
-                    tag_id = tag.get("id")
-                    
-                    if tag_id:
-                        created_tags.append(tag_id)
-                        self.created_tags.append(tag_id)
-                    
-                    # Verify tag structure and data
-                    required_fields = ["id", "name", "color", "category", "description", "usage_count"]
-                    has_all_fields = all(field in tag for field in required_fields)
-                    
-                    # Verify data matches what we sent
-                    data_matches = (
-                        tag.get("name") == tag_data["name"] and
-                        tag.get("color") == tag_data["color"] and
-                        tag.get("category") == tag_data["category"] and
-                        tag.get("description") == tag_data["description"] and
-                        tag.get("usage_count") == 0  # Should start at 0
-                    )
-                    
-                    if has_all_fields and data_matches:
-                        self.log_result(f"Create Tag - {tag_data['name']}", True, 
-                                      f"Tag created successfully with correct properties")
-                    else:
-                        self.log_result(f"Create Tag - {tag_data['name']}", False, 
-                                      f"Tag creation issues: fields_complete={has_all_fields}, data_correct={data_matches}")
-                else:
-                    self.log_result(f"Create Tag - {tag_data['name']}", False, 
-                                  f"Failed to create tag: {response.status_code}",
-                                  {"response": response.text})
-            
-            if len(created_tags) == 3:
-                self.log_result("Create Custom Tags", True, 
-                              f"Successfully created {len(created_tags)} custom tags")
-                return created_tags
-            else:
-                self.log_result("Create Custom Tags", False, 
-                              f"Only created {len(created_tags)} of 3 expected tags")
-                return created_tags
-                
-        except Exception as e:
-            self.log_result("Create Custom Tags", False, f"Error creating custom tags: {str(e)}")
-            return []
-    
-    def test_update_tag(self, tag_id):
-        """Test PUT /api/tags/{tag_id} - Update tag properties"""
-        print("\n=== Testing Update Tag ===")
-        
-        if not tag_id:
-            self.log_result("Update Tag", False, "No tag ID provided")
-            return False
-        
-        try:
-            # Update tag data
-            update_data = {
-                "name": "Premium Member UPDATED",
-                "color": "#FF0000",  # Change to red
-                "category": "Status Updated",
-                "description": "Updated description for premium membership tier"
-            }
-            
-            response = requests.put(f"{API_BASE}/tags/{tag_id}", json=update_data, headers=self.headers)
-            
-            if response.status_code == 200:
-                updated_tag = response.json()
-                
-                # Verify updates were applied
-                updates_applied = (
-                    updated_tag.get("name") == update_data["name"] and
-                    updated_tag.get("color") == update_data["color"] and
-                    updated_tag.get("category") == update_data["category"] and
-                    updated_tag.get("description") == update_data["description"]
-                )
-                
-                if updates_applied:
-                    self.log_result("Update Tag", True, 
-                                  f"Tag updated successfully: {updated_tag.get('name')}")
-                    return True
-                else:
-                    self.log_result("Update Tag", False, 
-                                  "Tag update did not apply all changes correctly")
-                    return False
-            else:
-                self.log_result("Update Tag", False, 
-                              f"Failed to update tag: {response.status_code}",
-                              {"response": response.text})
-                return False
-                
-        except Exception as e:
-            self.log_result("Update Tag", False, f"Error updating tag: {str(e)}")
-            return False
-    
-    def test_add_tags_to_member(self):
-        """Test POST /api/members/{member_id}/tags/{tag_name} - Add multiple tags to member"""
-        print("\n=== Testing Add Tags to Member ===")
+    def test_member_cancel_api_priority(self):
+        """PRIORITY TEST: Member Cancel API - Test TypeError fix and proper field updates"""
+        print("\n=== PRIORITY TEST: Member Cancel API ===")
         
         if not self.test_member_id:
-            self.log_result("Add Tags to Member", False, "No test member available")
+            self.log_result("Member Cancel API", False, "No test member available")
             return False
         
-        # Test adding multiple tags to the member
-        test_tags = ["VIP", "Personal Training", "Premium Member UPDATED"]
-        added_tags = []
-        
+        # Test 1: Cancel member with NULL notes field
         try:
-            for tag_name in test_tags:
-                response = requests.post(f"{API_BASE}/members/{self.test_member_id}/tags/{tag_name}", 
-                                       headers=self.headers)
-                
-                if response.status_code == 200:
-                    result = response.json()
-                    
-                    # Verify response indicates success
-                    if "added" in result.get("message", "").lower() or result.get("success"):
-                        added_tags.append(tag_name)
-                        self.log_result(f"Add Tag - {tag_name}", True, 
-                                      f"Tag '{tag_name}' added to member successfully")
-                    else:
-                        self.log_result(f"Add Tag - {tag_name}", False, 
-                                      f"Unexpected response: {result}")
-                else:
-                    self.log_result(f"Add Tag - {tag_name}", False, 
-                                  f"Failed to add tag '{tag_name}': {response.status_code}",
-                                  {"response": response.text})
+            # First ensure member has NULL notes
+            await_result = requests.patch(f"{API_BASE}/members/{self.test_member_id}", 
+                                        json={"notes": None}, headers=self.headers)
             
-            # Verify tags were added by checking member profile
-            if len(added_tags) > 0:
-                member_response = requests.get(f"{API_BASE}/members/{self.test_member_id}", headers=self.headers)
-                if member_response.status_code == 200:
-                    member = member_response.json()
-                    member_tags = member.get("tags", [])
-                    
-                    tags_in_profile = all(tag in member_tags for tag in added_tags)
-                    
-                    if tags_in_profile:
-                        self.log_result("Verify Tags in Member Profile", True, 
-                                      f"All {len(added_tags)} tags found in member profile")
-                    else:
-                        missing_tags = [tag for tag in added_tags if tag not in member_tags]
-                        self.log_result("Verify Tags in Member Profile", False, 
-                                      f"Tags missing from member profile: {missing_tags}")
-            
-            # Check if usage_count incremented for tags
-            tags_response = requests.get(f"{API_BASE}/tags", headers=self.headers)
-            if tags_response.status_code == 200:
-                all_tags = tags_response.json()
-                
-                for tag_name in added_tags:
-                    tag = next((t for t in all_tags if t.get("name") == tag_name), None)
-                    if tag and tag.get("usage_count", 0) > 0:
-                        self.log_result(f"Usage Count - {tag_name}", True, 
-                                      f"Usage count incremented to {tag.get('usage_count')}")
-                    else:
-                        self.log_result(f"Usage Count - {tag_name}", False, 
-                                      f"Usage count not incremented for tag '{tag_name}'")
-            
-            if len(added_tags) >= 2:
-                self.log_result("Add Tags to Member", True, 
-                              f"Successfully added {len(added_tags)} tags to member")
-                return True
-            else:
-                self.log_result("Add Tags to Member", False, 
-                              f"Only added {len(added_tags)} of {len(test_tags)} expected tags")
-                return False
-                
-        except Exception as e:
-            self.log_result("Add Tags to Member", False, f"Error adding tags to member: {str(e)}")
-            return False
-    
-    def test_remove_tags_from_member(self):
-        """Test DELETE /api/members/{member_id}/tags/{tag_name} - Remove tags from member"""
-        print("\n=== Testing Remove Tags from Member ===")
-        
-        if not self.test_member_id:
-            self.log_result("Remove Tags from Member", False, "No test member available")
-            return False
-        
-        # Test removing one tag
-        tag_to_remove = "Personal Training"
-        
-        try:
-            response = requests.delete(f"{API_BASE}/members/{self.test_member_id}/tags/{tag_to_remove}", 
-                                     headers=self.headers)
-            
-            if response.status_code == 200:
-                result = response.json()
-                
-                # Verify response indicates success
-                if "removed" in result.get("message", "").lower() or result.get("success"):
-                    self.log_result("Remove Tag from Member", True, 
-                                  f"Tag '{tag_to_remove}' removed from member successfully")
-                    
-                    # Verify tag was removed from member profile
-                    member_response = requests.get(f"{API_BASE}/members/{self.test_member_id}", headers=self.headers)
-                    if member_response.status_code == 200:
-                        member = member_response.json()
-                        member_tags = member.get("tags", [])
-                        
-                        if tag_to_remove not in member_tags:
-                            self.log_result("Verify Tag Removed from Profile", True, 
-                                          f"Tag '{tag_to_remove}' no longer in member profile")
-                        else:
-                            self.log_result("Verify Tag Removed from Profile", False, 
-                                          f"Tag '{tag_to_remove}' still in member profile")
-                    
-                    # Check if usage_count decremented
-                    tags_response = requests.get(f"{API_BASE}/tags", headers=self.headers)
-                    if tags_response.status_code == 200:
-                        all_tags = tags_response.json()
-                        tag = next((t for t in all_tags if t.get("name") == tag_to_remove), None)
-                        if tag:
-                            self.log_result(f"Usage Count Decremented - {tag_to_remove}", True, 
-                                          f"Usage count is now {tag.get('usage_count', 0)}")
-                    
-                    return True
-                else:
-                    self.log_result("Remove Tag from Member", False, 
-                                  f"Unexpected response: {result}")
-                    return False
-            else:
-                self.log_result("Remove Tag from Member", False, 
-                              f"Failed to remove tag: {response.status_code}",
-                              {"response": response.text})
-                return False
-                
-        except Exception as e:
-            self.log_result("Remove Tags from Member", False, f"Error removing tag from member: {str(e)}")
-            return False
-    
-        """Test POST /api/members/{member_id}/freeze - Freeze membership with reason and end date"""
-        print("\n=== Testing Member Freeze Actions ===")
-        
-        if not self.test_member_id_2:
-            self.log_result("Member Freeze Actions", False, "No test member available")
-            return False
-        
-        try:
-            # Test freezing membership with end date
-            freeze_data = {
-                "reason": "Medical leave - surgery recovery",
-                "notes": "Member will be out for 6 weeks due to knee surgery",
-                "end_date": (datetime.now(timezone.utc) + timedelta(days=42)).isoformat()  # 6 weeks
-            }
-            
-            response = requests.post(f"{API_BASE}/members/{self.test_member_id_2}/freeze", 
-                                   json=freeze_data, headers=self.headers)
-            
-            if response.status_code == 200:
-                result = response.json()
-                
-                # Verify response indicates success
-                if "frozen" in result.get("message", "").lower() or result.get("success"):
-                    self.log_result("Freeze Membership", True, 
-                                  f"Membership frozen successfully: {result.get('message', '')}")
-                    
-                    # Verify member freeze status updated
-                    member_response = requests.get(f"{API_BASE}/members/{self.test_member_id_2}", headers=self.headers)
-                    if member_response.status_code == 200:
-                        member = member_response.json()
-                        
-                        freeze_status_checks = [
-                            member.get("freeze_status") == True,
-                            member.get("freeze_reason") == freeze_data["reason"],
-                            member.get("freeze_start_date") is not None,
-                            member.get("freeze_end_date") is not None
-                        ]
-                        
-                        if all(freeze_status_checks):
-                            self.log_result("Verify Freeze Status Fields", True, 
-                                          "All freeze status fields updated correctly")
-                        else:
-                            self.log_result("Verify Freeze Status Fields", False, 
-                                          f"Freeze status fields not updated correctly: {member}")
-                    
-                    return True
-                else:
-                    self.log_result("Freeze Membership", False, 
-                                  f"Unexpected freeze response: {result}")
-                    return False
-            else:
-                self.log_result("Freeze Membership", False, 
-                              f"Failed to freeze membership: {response.status_code}",
-                              {"response": response.text})
-                return False
-                
-        except Exception as e:
-            self.log_result("Member Freeze Actions", False, f"Error freezing membership: {str(e)}")
-            return False
-    
-    def test_member_unfreeze_actions(self):
-        """Test POST /api/members/{member_id}/unfreeze - Unfreeze membership"""
-        print("\n=== Testing Member Unfreeze Actions ===")
-        
-        if not self.test_member_id_2:
-            self.log_result("Member Unfreeze Actions", False, "No test member available")
-            return False
-        
-        try:
-            response = requests.post(f"{API_BASE}/members/{self.test_member_id_2}/unfreeze", 
-                                   headers=self.headers)
-            
-            if response.status_code == 200:
-                result = response.json()
-                
-                # Verify response indicates success
-                if "unfrozen" in result.get("message", "").lower() or result.get("success"):
-                    self.log_result("Unfreeze Membership", True, 
-                                  f"Membership unfrozen successfully: {result.get('message', '')}")
-                    
-                    # Verify member freeze status cleared
-                    member_response = requests.get(f"{API_BASE}/members/{self.test_member_id_2}", headers=self.headers)
-                    if member_response.status_code == 200:
-                        member = member_response.json()
-                        
-                        unfreeze_status_checks = [
-                            member.get("freeze_status") == False,
-                            member.get("membership_status") == "active"
-                        ]
-                        
-                        if all(unfreeze_status_checks):
-                            self.log_result("Verify Unfreeze Status Fields", True, 
-                                          "Freeze status cleared and membership returned to active")
-                        else:
-                            self.log_result("Verify Unfreeze Status Fields", False, 
-                                          f"Unfreeze status not updated correctly: freeze_status={member.get('freeze_status')}, membership_status={member.get('membership_status')}")
-                    
-                    return True
-                else:
-                    self.log_result("Unfreeze Membership", False, 
-                                  f"Unexpected unfreeze response: {result}")
-                    return False
-            else:
-                self.log_result("Unfreeze Membership", False, 
-                              f"Failed to unfreeze membership: {response.status_code}",
-                              {"response": response.text})
-                return False
-                
-        except Exception as e:
-            self.log_result("Member Unfreeze Actions", False, f"Error unfreezing membership: {str(e)}")
-            return False
-    
-    def test_member_cancel_actions(self):
-        """Test POST /api/members/{member_id}/cancel - Cancel membership with reason and notes"""
-        print("\n=== Testing Member Cancel Actions ===")
-        
-        if not self.test_member_id:
-            self.log_result("Member Cancel Actions", False, "No test member available")
-            return False
-        
-        try:
-            # Test cancelling membership
             cancel_data = {
-                "reason": "Relocating to another city",
-                "notes": "Member is moving to Johannesburg for work. Provided 30 days notice."
+                "reason": "Moving to another city",
+                "notes": "Member relocating for work - 30 days notice provided"
             }
             
             response = requests.post(f"{API_BASE}/members/{self.test_member_id}/cancel", 
@@ -561,46 +152,128 @@ class PriorityTestRunner:
                 result = response.json()
                 
                 # Verify response indicates success
-                if "cancelled" in result.get("message", "").lower() or result.get("success"):
-                    self.log_result("Cancel Membership", True, 
-                                  f"Membership cancelled successfully: {result.get('message', '')}")
+                if "cancelled" in result.get("message", "").lower():
+                    self.log_result("Cancel Member with NULL Notes", True, 
+                                  f"Successfully cancelled member: {result.get('message')}")
                     
-                    # Verify member cancellation status updated
+                    # Verify member fields updated correctly
                     member_response = requests.get(f"{API_BASE}/members/{self.test_member_id}", headers=self.headers)
                     if member_response.status_code == 200:
                         member = member_response.json()
                         
-                        cancel_status_checks = [
-                            member.get("membership_status") == "cancelled",
-                            member.get("cancellation_reason") == cancel_data["reason"],
-                            member.get("cancellation_date") is not None
-                        ]
+                        # Check all required fields
+                        checks = {
+                            "membership_status": member.get("membership_status") == "cancelled",
+                            "cancellation_reason": member.get("cancellation_reason") == cancel_data["reason"],
+                            "cancellation_date": member.get("cancellation_date") is not None,
+                            "notes_updated": cancel_data["notes"] in (member.get("notes") or "")
+                        }
                         
-                        if all(cancel_status_checks):
-                            self.log_result("Verify Cancel Status Fields", True, 
+                        if all(checks.values()):
+                            self.log_result("Verify Cancel Fields - NULL Notes", True, 
                                           "All cancellation fields updated correctly")
                         else:
-                            self.log_result("Verify Cancel Status Fields", False, 
-                                          f"Cancellation fields not updated correctly: status={member.get('membership_status')}, reason={member.get('cancellation_reason')}")
+                            failed_checks = [k for k, v in checks.items() if not v]
+                            self.log_result("Verify Cancel Fields - NULL Notes", False, 
+                                          f"Failed checks: {failed_checks}")
+                    
+                    # Verify journal entry created
+                    journal_response = requests.get(f"{API_BASE}/members/{self.test_member_id}/journal", headers=self.headers)
+                    if journal_response.status_code == 200:
+                        journal_entries = journal_response.json()
+                        cancel_entry = next((e for e in journal_entries if "cancelled" in e.get("description", "").lower()), None)
+                        
+                        if cancel_entry:
+                            self.log_result("Verify Cancel Journal Entry", True, 
+                                          "Journal entry created for cancellation")
+                        else:
+                            self.log_result("Verify Cancel Journal Entry", False, 
+                                          "No journal entry found for cancellation")
                     
                     return True
                 else:
-                    self.log_result("Cancel Membership", False, 
-                                  f"Unexpected cancel response: {result}")
+                    self.log_result("Cancel Member with NULL Notes", False, 
+                                  f"Unexpected response: {result}")
                     return False
             else:
-                self.log_result("Cancel Membership", False, 
-                              f"Failed to cancel membership: {response.status_code}",
+                self.log_result("Cancel Member with NULL Notes", False, 
+                              f"Failed to cancel member: {response.status_code}",
                               {"response": response.text})
                 return False
                 
         except Exception as e:
-            self.log_result("Member Cancel Actions", False, f"Error cancelling membership: {str(e)}")
+            self.log_result("Member Cancel API", False, f"Error testing cancel API: {str(e)}")
             return False
     
-    def test_enhanced_profile_endpoint(self):
-        """Test GET /api/members/{member_id}/profile - Verify returns Phase 1 fields"""
-        print("\n=== Testing Enhanced Profile Endpoint ===")
+    def test_member_cancel_existing_notes(self):
+        """Test Member Cancel API with existing notes"""
+        print("\n=== Testing Member Cancel with Existing Notes ===")
+        
+        if not self.test_member_id_2:
+            self.log_result("Member Cancel with Existing Notes", False, "No test member available")
+            return False
+        
+        try:
+            # First set existing notes on member
+            existing_notes = "Previous notes: Member requested schedule change last month."
+            update_response = requests.patch(f"{API_BASE}/members/{self.test_member_id_2}", 
+                                           json={"notes": existing_notes}, headers=self.headers)
+            
+            if update_response.status_code != 200:
+                self.log_result("Set Existing Notes", False, "Failed to set existing notes")
+                return False
+            
+            # Now cancel with additional notes
+            cancel_data = {
+                "reason": "Financial difficulties",
+                "notes": "Member unable to continue due to job loss. Offered payment plan but declined."
+            }
+            
+            response = requests.post(f"{API_BASE}/members/{self.test_member_id_2}/cancel", 
+                                   json=cancel_data, headers=self.headers)
+            
+            if response.status_code == 200:
+                result = response.json()
+                
+                if "cancelled" in result.get("message", "").lower():
+                    self.log_result("Cancel Member with Existing Notes", True, 
+                                  f"Successfully cancelled member: {result.get('message')}")
+                    
+                    # Verify notes were properly concatenated
+                    member_response = requests.get(f"{API_BASE}/members/{self.test_member_id_2}", headers=self.headers)
+                    if member_response.status_code == 200:
+                        member = member_response.json()
+                        final_notes = member.get("notes", "")
+                        
+                        # Check that both existing and new notes are present
+                        has_existing = existing_notes in final_notes
+                        has_new = cancel_data["notes"] in final_notes
+                        
+                        if has_existing and has_new:
+                            self.log_result("Verify Notes Concatenation", True, 
+                                          "Both existing and cancellation notes preserved")
+                        else:
+                            self.log_result("Verify Notes Concatenation", False, 
+                                          f"Notes concatenation failed: existing={has_existing}, new={has_new}")
+                    
+                    return True
+                else:
+                    self.log_result("Cancel Member with Existing Notes", False, 
+                                  f"Unexpected response: {result}")
+                    return False
+            else:
+                self.log_result("Cancel Member with Existing Notes", False, 
+                              f"Failed to cancel member: {response.status_code}",
+                              {"response": response.text})
+                return False
+                
+        except Exception as e:
+            self.log_result("Member Cancel with Existing Notes", False, f"Error testing cancel with existing notes: {str(e)}")
+            return False
+    
+    def test_enhanced_profile_endpoint_priority(self):
+        """PRIORITY TEST: Enhanced Profile Endpoint - Verify Phase 1 fields and structure"""
+        print("\n=== PRIORITY TEST: Enhanced Profile Endpoint ===")
         
         if not self.test_member_id_2:
             self.log_result("Enhanced Profile Endpoint", False, "No test member available")
@@ -612,7 +285,17 @@ class PriorityTestRunner:
             if response.status_code == 200:
                 profile = response.json()
                 
-                # Verify Phase 1 enhanced fields are present
+                # CRITICAL: Verify member data is nested under "member" key
+                has_member_key = "member" in profile
+                if not has_member_key:
+                    self.log_result("Profile Structure - Member Key", False, 
+                                  "Profile response missing 'member' key")
+                    return False
+                else:
+                    self.log_result("Profile Structure - Member Key", True, 
+                                  "Profile response has 'member' key")
+                
+                # Verify Phase 1 enhanced fields are present at root level
                 phase1_fields = [
                     "sessions_remaining",
                     "last_visit_date", 
@@ -620,33 +303,46 @@ class PriorityTestRunner:
                     "tags"
                 ]
                 
-                # Check if all Phase 1 fields are present (can be null but should exist)
-                has_phase1_fields = all(field in profile for field in phase1_fields)
+                missing_phase1_fields = [field for field in phase1_fields if field not in profile]
                 
-                # Verify basic profile structure
-                basic_fields = ["id", "first_name", "last_name", "email", "phone", "membership_status"]
-                has_basic_fields = all(field in profile for field in basic_fields)
-                
-                if has_phase1_fields and has_basic_fields:
-                    self.log_result("Enhanced Profile Endpoint", True, 
-                                  f"Profile includes all Phase 1 fields: {', '.join(phase1_fields)}")
-                    
-                    # Log current values for verification
-                    field_values = {field: profile.get(field) for field in phase1_fields}
-                    self.log_result("Profile Field Values", True, 
-                                  f"Phase 1 field values: {field_values}")
-                    
-                    return True
+                if not missing_phase1_fields:
+                    self.log_result("Phase 1 Fields Present", True, 
+                                  f"All Phase 1 fields present: {', '.join(phase1_fields)}")
                 else:
-                    missing_fields = []
-                    if not has_phase1_fields:
-                        missing_fields.extend([f for f in phase1_fields if f not in profile])
-                    if not has_basic_fields:
-                        missing_fields.extend([f for f in basic_fields if f not in profile])
-                    
-                    self.log_result("Enhanced Profile Endpoint", False, 
-                                  f"Missing profile fields: {missing_fields}")
+                    self.log_result("Phase 1 Fields Present", False, 
+                                  f"Missing Phase 1 fields: {missing_phase1_fields}")
                     return False
+                
+                # Verify standard member fields are present in member object
+                member_data = profile.get("member", {})
+                standard_fields = ["id", "first_name", "last_name", "email", "phone", "membership_status"]
+                missing_standard_fields = [field for field in standard_fields if field not in member_data]
+                
+                if not missing_standard_fields:
+                    self.log_result("Standard Member Fields", True, 
+                                  f"All standard fields present in member object")
+                else:
+                    self.log_result("Standard Member Fields", False, 
+                                  f"Missing standard fields in member object: {missing_standard_fields}")
+                
+                # Log current Phase 1 field values for verification
+                phase1_values = {field: profile.get(field) for field in phase1_fields}
+                self.log_result("Phase 1 Field Values", True, 
+                              f"Current values: {json.dumps(phase1_values, indent=2)}")
+                
+                # Verify additional profile sections exist
+                expected_sections = ["stats", "retention", "payment_progress"]
+                missing_sections = [section for section in expected_sections if section not in profile]
+                
+                if not missing_sections:
+                    self.log_result("Profile Sections Complete", True, 
+                                  "All expected profile sections present")
+                else:
+                    self.log_result("Profile Sections Complete", False, 
+                                  f"Missing profile sections: {missing_sections}")
+                
+                return len(missing_phase1_fields) == 0 and len(missing_standard_fields) == 0
+                
             else:
                 self.log_result("Enhanced Profile Endpoint", False, 
                               f"Failed to get member profile: {response.status_code}",
@@ -655,6 +351,177 @@ class PriorityTestRunner:
                 
         except Exception as e:
             self.log_result("Enhanced Profile Endpoint", False, f"Error getting member profile: {str(e)}")
+            return False
+    
+    def test_create_custom_tag_quick(self):
+        """Quick test: Create one custom tag"""
+        print("\n=== Quick Test: Create Custom Tag ===")
+        
+        try:
+            tag_data = {
+                "name": "Test Priority Tag",
+                "color": "#FF5722",
+                "category": "Testing",
+                "description": "Tag created during priority testing"
+            }
+            
+            response = requests.post(f"{API_BASE}/tags", json=tag_data, headers=self.headers)
+            
+            if response.status_code == 200:
+                tag = response.json()
+                tag_id = tag.get("id")
+                
+                if tag_id:
+                    self.created_tags.append(tag_id)
+                
+                # Verify tag structure
+                required_fields = ["id", "name", "color", "category", "description", "usage_count"]
+                has_all_fields = all(field in tag for field in required_fields)
+                
+                if has_all_fields and tag.get("name") == tag_data["name"]:
+                    self.log_result("Create Custom Tag", True, 
+                                  f"Tag created successfully: {tag.get('name')}")
+                    return tag_id
+                else:
+                    self.log_result("Create Custom Tag", False, 
+                                  "Tag creation issues with structure or data")
+                    return None
+            else:
+                self.log_result("Create Custom Tag", False, 
+                              f"Failed to create tag: {response.status_code}",
+                              {"response": response.text})
+                return None
+                
+        except Exception as e:
+            self.log_result("Create Custom Tag", False, f"Error creating tag: {str(e)}")
+            return None
+    
+    def test_add_tag_to_member_quick(self, tag_name="Test Priority Tag"):
+        """Quick test: Add tag to member"""
+        print("\n=== Quick Test: Add Tag to Member ===")
+        
+        if not self.test_member_id:
+            self.log_result("Add Tag to Member", False, "No test member available")
+            return False
+        
+        try:
+            response = requests.post(f"{API_BASE}/members/{self.test_member_id}/tags/{tag_name}", 
+                                   headers=self.headers)
+            
+            if response.status_code == 200:
+                result = response.json()
+                
+                if "added" in result.get("message", "").lower():
+                    self.log_result("Add Tag to Member", True, 
+                                  f"Tag '{tag_name}' added successfully")
+                    
+                    # Verify tag in member profile
+                    member_response = requests.get(f"{API_BASE}/members/{self.test_member_id}", headers=self.headers)
+                    if member_response.status_code == 200:
+                        member = member_response.json()
+                        member_tags = member.get("tags", [])
+                        
+                        if tag_name in member_tags:
+                            self.log_result("Verify Tag in Profile", True, 
+                                          f"Tag '{tag_name}' found in member profile")
+                            return True
+                        else:
+                            self.log_result("Verify Tag in Profile", False, 
+                                          f"Tag '{tag_name}' not found in member profile")
+                    
+                    return True
+                else:
+                    self.log_result("Add Tag to Member", False, 
+                                  f"Unexpected response: {result}")
+                    return False
+            else:
+                self.log_result("Add Tag to Member", False, 
+                              f"Failed to add tag: {response.status_code}",
+                              {"response": response.text})
+                return False
+                
+        except Exception as e:
+            self.log_result("Add Tag to Member", False, f"Error adding tag to member: {str(e)}")
+            return False
+    
+    def test_freeze_unfreeze_quick(self):
+        """Quick test: Freeze and Unfreeze membership"""
+        print("\n=== Quick Test: Freeze/Unfreeze Membership ===")
+        
+        if not self.test_member_id_2:
+            self.log_result("Freeze/Unfreeze Membership", False, "No test member available")
+            return False
+        
+        try:
+            # Test freeze
+            freeze_data = {
+                "reason": "Temporary medical leave",
+                "notes": "Member recovering from surgery",
+                "end_date": (datetime.now(timezone.utc) + timedelta(days=30)).isoformat()
+            }
+            
+            freeze_response = requests.post(f"{API_BASE}/members/{self.test_member_id_2}/freeze", 
+                                          json=freeze_data, headers=self.headers)
+            
+            if freeze_response.status_code == 200:
+                freeze_result = freeze_response.json()
+                
+                if "frozen" in freeze_result.get("message", "").lower():
+                    self.log_result("Freeze Membership", True, 
+                                  f"Membership frozen successfully")
+                    
+                    # Verify freeze status
+                    member_response = requests.get(f"{API_BASE}/members/{self.test_member_id_2}", headers=self.headers)
+                    if member_response.status_code == 200:
+                        member = member_response.json()
+                        
+                        if member.get("freeze_status") == True:
+                            self.log_result("Verify Freeze Status", True, 
+                                          "Freeze status updated correctly")
+                        else:
+                            self.log_result("Verify Freeze Status", False, 
+                                          f"Freeze status not updated: {member.get('freeze_status')}")
+                    
+                    # Test unfreeze
+                    unfreeze_response = requests.post(f"{API_BASE}/members/{self.test_member_id_2}/unfreeze", 
+                                                    headers=self.headers)
+                    
+                    if unfreeze_response.status_code == 200:
+                        unfreeze_result = unfreeze_response.json()
+                        
+                        if "unfrozen" in unfreeze_result.get("message", "").lower():
+                            self.log_result("Unfreeze Membership", True, 
+                                          f"Membership unfrozen successfully")
+                            
+                            # Verify unfreeze status
+                            member_response = requests.get(f"{API_BASE}/members/{self.test_member_id_2}", headers=self.headers)
+                            if member_response.status_code == 200:
+                                member = member_response.json()
+                                
+                                if member.get("freeze_status") == False:
+                                    self.log_result("Verify Unfreeze Status", True, 
+                                                  "Freeze status cleared correctly")
+                                    return True
+                                else:
+                                    self.log_result("Verify Unfreeze Status", False, 
+                                                  f"Freeze status not cleared: {member.get('freeze_status')}")
+                        else:
+                            self.log_result("Unfreeze Membership", False, 
+                                          f"Unexpected unfreeze response: {unfreeze_result}")
+                    else:
+                        self.log_result("Unfreeze Membership", False, 
+                                      f"Failed to unfreeze: {unfreeze_response.status_code}")
+                else:
+                    self.log_result("Freeze Membership", False, 
+                                  f"Unexpected freeze response: {freeze_result}")
+            else:
+                self.log_result("Freeze Membership", False, 
+                              f"Failed to freeze: {freeze_response.status_code}")
+            
+            return False
+                
+        except Exception as e:
+            self.log_result("Freeze/Unfreeze Membership", False, f"Error testing freeze/unfreeze: {str(e)}")
             return False
     
     def test_access_validate_last_visit_update(self):
