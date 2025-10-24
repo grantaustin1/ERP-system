@@ -141,6 +141,127 @@ function AccessControlEnhanced() {
     }
   };
 
+  // Manual Override functions
+  const fetchOverrideReasons = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`${API_URL}/api/override-reasons/hierarchical`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setOverrideReasons(data);
+      }
+    } catch (error) {
+      console.error('Failed to fetch override reasons:', error);
+    }
+  };
+
+  const handleMemberSearch = async (query) => {
+    setSearchQuery(query);
+    if (query.length < 2) {
+      setSearchResults([]);
+      return;
+    }
+
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`${API_URL}/api/members/search?q=${encodeURIComponent(query)}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setSearchResults(data);
+      }
+    } catch (error) {
+      console.error('Failed to search members:', error);
+    }
+  };
+
+  const handleSelectMember = (member) => {
+    setSelectedMember(member);
+    setOverrideForm({
+      ...overrideForm,
+      member_id: member.id,
+      first_name: member.first_name,
+      last_name: member.last_name,
+      phone: member.phone,
+      email: member.email
+    });
+    setSearchResults([]);
+    setSearchQuery(`${member.first_name} ${member.last_name}`);
+  };
+
+  const handleGrantOverride = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      
+      // Validate
+      if (!overrideForm.reason_id) {
+        toast.error('Please select an override reason');
+        return;
+      }
+
+      const selectedReason = overrideReasons.find(r => r.reason_id === overrideForm.reason_id);
+      if (selectedReason?.sub_reasons?.length > 0 && !overrideForm.sub_reason_id) {
+        toast.error('Please select a sub-reason');
+        return;
+      }
+
+      if (selectedReason?.requires_pin && !overrideForm.access_pin && overrideForm.member_id) {
+        toast.error('PIN is required for this override reason');
+        return;
+      }
+
+      if (!overrideForm.member_id && (!overrideForm.first_name || !overrideForm.last_name)) {
+        toast.error('Please search for a member or enter new prospect details');
+        return;
+      }
+
+      const response = await fetch(`${API_URL}/api/access/override`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(overrideForm)
+      });
+
+      const result = await response.json();
+      
+      if (response.ok) {
+        toast.success(result.is_new_prospect ? 'New prospect access granted!' : 'Access override granted!');
+        setShowOverrideDialog(false);
+        setOverrideForm({
+          member_id: '',
+          first_name: '',
+          last_name: '',
+          phone: '',
+          email: '',
+          reason_id: '',
+          sub_reason_id: '',
+          access_pin: '',
+          location: 'Main Entrance',
+          notes: ''
+        });
+        setSelectedMember(null);
+        setSearchQuery('');
+        setSearchResults([]);
+        fetchAccessLogs();
+      } else {
+        toast.error(result.detail || 'Failed to grant override');
+      }
+    } catch (error) {
+      console.error('Failed to grant override:', error);
+      toast.error('Failed to grant override');
+    }
+  };
+
+  const openOverrideDialog = () => {
+    fetchOverrideReasons();
+    setShowOverrideDialog(true);
+  };
+
   const handleQuickCheckin = async (memberId) => {
     try {
       const token = localStorage.getItem('token');
