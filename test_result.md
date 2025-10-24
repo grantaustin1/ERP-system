@@ -5373,15 +5373,18 @@ backend:
 
   - task: "Phase 2D - Geographic Distribution API"
     implemented: true
-    working: "NA"
+    working: true
     file: "/app/backend/server.py"
     stuck_count: 0
     priority: "high"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
       - working: "NA"
         agent: "main"
         comment: "Phase 2D Advanced Analytics - Implemented GET /api/analytics/geographic-distribution endpoint. Analyzes member distribution by postcode (top 20), city (top 10), and state. Calculates coverage percentages for location data completeness. Provides member concentration insights for geographic targeting. Ready for backend testing."
+      - working: true
+        agent: "testing"
+        comment: "✅ Geographic Distribution Analytics API working perfectly: GET /api/analytics/geographic-distribution returns 200 OK with proper structure. Summary contains total_members, with_postcode, with_city, with_state counts and coverage percentages (postcode, city, state). by_postcode array limited to top 20 with postcode, member_count, percentage fields. by_city array limited to top 10 with city, member_count, percentage fields. by_state array contains state, member_count, percentage fields. All data types correct and coverage calculations accurate."
 
   - task: "Phase 2D - Attendance Deep Dive API"
     implemented: true
