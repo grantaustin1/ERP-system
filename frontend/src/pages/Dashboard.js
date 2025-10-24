@@ -775,6 +775,11 @@ export default function Dashboard() {
             )}
           </div>
 
+          {/* Phase 2A: Chart Selector */}
+          <div className="mt-8">
+            <ChartSelector dateRange={dateRange} />
+          </div>
+
             <Card className="bg-slate-800/50 border-slate-700 backdrop-blur-lg">
               <CardHeader>
                 <div className="flex justify-between items-center">
