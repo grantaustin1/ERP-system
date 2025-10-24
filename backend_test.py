@@ -1539,14 +1539,7 @@ if __name__ == "__main__":
 
 
 if __name__ == "__main__":
-    print("🎯 Enhanced Member Management System - Phase 1 Quick Wins Testing")
-    print("=" * 80)
-    
-    tester = EnhancedMemberManagementTester()
-    tester.run_all_tests()
-        self.headers = {}
-        self.test_results = []
-        self.created_payment_options = []  # Track created payment options for cleanup
+    main()
         
     def log_result(self, test_name, success, message, details=None):
         """Log test result"""
