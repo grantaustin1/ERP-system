@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-Backend Test Suite - Phase 2A Dashboard Enhancements
-Focus on Dashboard Snapshot API and Recent Members API
+Backend Test Suite - Phase 2B Retention Intelligence APIs
+Focus on Retention Intelligence backend APIs testing
 """
 
 import requests
@@ -18,7 +18,7 @@ API_BASE = f"{BASE_URL}/api"
 TEST_EMAIL = "admin@gym.com"
 TEST_PASSWORD = "admin123"
 
-class DashboardTestRunner:
+class RetentionTestRunner:
     def __init__(self):
         self.token = None
         self.headers = {}
