@@ -587,6 +587,35 @@ export default function Dashboard() {
 
           {/* Class Booking Overview */}
           <div className="mt-8">
+
+          {/* Phase 2: Sales Comparison Chart */}
+          {!loadingPhase2 && salesComparisonData && (
+            <div className="mt-8">
+              <SalesComparisonChart 
+                data={salesComparisonData.data}
+                monthlyTarget={salesComparisonData.monthly_target}
+                currentMonthName={salesComparisonData.current_month_name}
+              />
+            </div>
+          )}
+
+          {/* Phase 2: 12-Week KPI Sparklines and Birthdays */}
+          <div className="mt-8 grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* KPI Sparklines - 2/3 width */}
+            {!loadingPhase2 && kpiTrendsData && (
+              <div className="lg:col-span-2">
+                <KPISparklines kpiData={kpiTrendsData} />
+              </div>
+            )}
+            
+            {/* Birthdays Today - 1/3 width */}
+            {!loadingPhase2 && (
+              <div className="lg:col-span-1">
+                <BirthdayGallery birthdays={birthdaysToday} />
+              </div>
+            )}
+          </div>
+
             <Card className="bg-slate-800/50 border-slate-700 backdrop-blur-lg">
               <CardHeader>
                 <div className="flex justify-between items-center">
