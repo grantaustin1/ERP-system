@@ -105,9 +105,9 @@ class PriorityTestRunner:
             # Create second test member
             member_data_2 = {
                 "first_name": "Bob",
-                "last_name": "TestMember",
+                "last_name": f"TestMember{timestamp}",
                 "email": f"bob.testmember.{timestamp}@example.com",
-                "phone": f"082222{timestamp % 10000:04d}",
+                "phone": f"082222{timestamp % 100000:05d}",
                 "membership_type_id": membership_type_id
             }
             
