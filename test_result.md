@@ -304,15 +304,18 @@ backend:
 
   - task: "Generate Invoice PDF API"
     implemented: true
-    working: "NA"
+    working: true
     file: "/app/backend/server.py"
     stuck_count: 0
     priority: "high"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
       - working: "NA"
         agent: "main"
         comment: "Created GET /api/invoices/{invoice_id}/pdf endpoint using ReportLab to generate professional PDF invoices. Includes company header (from billing settings), invoice info (number, date, due date, status), bill to section (member details), itemized line items table with quantity/price/discount/tax/total columns, subtotal/tax/discount/total summary, notes section, footer. Returns StreamingResponse with PDF download. Ready for testing."
+      - working: true
+        agent: "testing"
+        comment: "✅ Generate Invoice PDF API working correctly: GET /api/invoices/{invoice_id}/pdf successfully generates PDF invoices using ReportLab. Returns proper PDF response (2851 bytes) with correct content-type. PDF generation includes all invoice details, line items, and calculations. Professional invoice layout with company header, member details, itemized billing table, and totals summary working as expected."
 
 
   - task: "Enhanced Duplicate Detection - Check Duplicate Endpoint"
