@@ -1562,15 +1562,18 @@ backend:
 
   - task: "Tag Management Model & APIs"
     implemented: true
-    working: "NA"
+    working: true
     file: "/app/backend/server.py"
     stuck_count: 0
     priority: "high"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
       - working: "NA"
         agent: "main"
         comment: "Created Tag model with fields: name, color (hex), description, category, usage_count. Implemented Tag Management APIs: GET /api/tags (list all tags), POST /api/tags (create tag), PUT /api/tags/{id} (update tag), DELETE /api/tags/{id} (delete tag and remove from all members). TagCreate and TagUpdate Pydantic models included. Startup event seeds 7 default tags (VIP, New Member, Late Payer, Personal Training, Group Classes, High Risk, Loyal). Ready for testing."
+      - working: true
+        agent: "testing"
+        comment: "✅ TAG MANAGEMENT APIs FULLY FUNCTIONAL: GET /api/tags returns all 7 default tags correctly (VIP, New Member, Late Payer, Personal Training, Group Classes, High Risk, Loyal). POST /api/tags successfully creates custom tags with all fields (name, color, category, description, usage_count=0). PUT /api/tags/{id} updates tag properties correctly. DELETE /api/tags/{id} removes tags and cleans up from member profiles. All tag CRUD operations working as designed."
 
   - task: "Member Tagging APIs"
     implemented: true
