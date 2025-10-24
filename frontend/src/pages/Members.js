@@ -37,6 +37,14 @@ export default function Members() {
   const [invoices, setInvoices] = useState([]);
   const [notes, setNotes] = useState([]);
   const [newNoteContent, setNewNoteContent] = useState('');
+  // Journal state
+  const [journal, setJournal] = useState([]);
+  const [journalFilters, setJournalFilters] = useState({
+    action_type: 'all',
+    start_date: '',
+    end_date: '',
+    search: ''
+  });
   // Search and filter states
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
