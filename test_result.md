@@ -3645,15 +3645,18 @@ backend:
 
   - task: "Task Model and CRUD API"
     implemented: true
-    working: "NA"
+    working: true
     file: "/app/backend/server.py"
     stuck_count: 0
     priority: "high"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
       - working: "NA"
         agent: "main"
         comment: "Created comprehensive Task model with: task_id, title, description, task_type_id, priority (low/medium/high/urgent), status (pending/in_progress/completed/cancelled/on_hold/needs_review), assigned_to_user_id, assigned_to_department, related_member_id, due_date, created_by, comment_count, attachment_count. Implemented full CRUD: GET /api/tasks (with filters), POST /api/tasks, PUT /api/tasks/{task_id}, DELETE /api/tasks/{task_id}. Special endpoints: GET /api/tasks/my-tasks, GET /api/tasks/stats. Supports both individual and department assignment."
+      - working: true
+        agent: "testing"
+        comment: "✅ Task CRUD API fully functional: POST /api/tasks creates tasks with proper denormalized fields (task_type_name, related_member_name, created_by_name) populated from JWT and related entities. GET /api/tasks retrieves all tasks with filtering support (status=pending, priority=high, task_type_id). GET /api/tasks/{task_id} retrieves specific tasks. PUT /api/tasks/{task_id} updates task status with automatic completion field population (completed_at, completed_by, completed_by_name) when status='completed'. DELETE /api/tasks/{task_id} removes tasks. GET /api/tasks/my-tasks returns tasks assigned to current user. GET /api/tasks/stats returns comprehensive statistics (total, pending, in_progress, completed, my_tasks, my_overdue)."
 
   - task: "Task Comments System"
     implemented: true
