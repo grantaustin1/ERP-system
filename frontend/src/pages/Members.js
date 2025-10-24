@@ -1647,6 +1647,23 @@ export default function Members() {
               ) : null}
             </DialogContent>
           </Dialog>
+
+
+          {/* Phase 3: Unified Messaging Dialog */}
+          <UnifiedMessagingDialog
+            open={messagingDialogOpen}
+            onOpenChange={setMessagingDialogOpen}
+            selectedMembers={selectedMembersForMessaging}
+            onSuccess={() => {
+              setSelectedMembersForMessaging([]);
+              toast.success('Messages sent successfully');
+              // Refresh member data if needed
+              if (selectedMemberForProfile) {
+                fetchMemberProfile(selectedMemberForProfile.id);
+              }
+            }}
+          />
+
         </div>
       </div>
     </div>
