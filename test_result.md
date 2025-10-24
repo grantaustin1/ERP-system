@@ -5009,3 +5009,67 @@ agent_communication:
 
   - agent: "testing"
     message: "✅ PHASE 2B RETENTION INTELLIGENCE BACKEND TESTING COMPLETED - 100% SUCCESS RATE (5/5 tests passed). **AT-RISK MEMBERS API**: GET /api/retention/at-risk-members working perfectly with correct structure {total, critical, high, medium, members[]}. Risk scoring algorithm functioning correctly (65 points for member with no attendance + outstanding payment + expiring membership). Risk level categorization accurate (critical ≥50, high ≥30, medium ≥15). Risk factors array properly populated with specific reasons. Retrieved 104 at-risk members (Critical: 5, High: 97, Medium: 2). **RETENTION ALERTS API**: GET /api/retention/retention-alerts working correctly for all periods (7d: 102 members, 14d: 102 members, 28d: 102 members). Response structure verified {alert_type, days, total, members[]}. Days_since_visit calculation accurate. Alert type format correct (e.g., '7_day_retention_alert'). **SLEEPING MEMBERS API**: GET /api/retention/sleeping-members working correctly with structure {total, members[]}. Retrieved 102 sleeping members with no attendance in 30+ days. Days_sleeping calculation working ('Never visited' for members with no attendance record, integer days for others). **EXPIRING MEMBERSHIPS API**: GET /api/retention/expiring-memberships working correctly for all periods (30d: 73 members, 60d: 73 members, 90d: 73 members). Response structure verified {period_days, total, members[]}. Days_until_expiry calculation accurate (tested: 20 days until expiry). **DROPOFF ANALYTICS API**: GET /api/retention/dropoff-analytics working correctly with structure {total_cancelled_members, members_analyzed, average_days_inactive_before_cancel, distribution, recommendation}. Distribution breakdown verified with all required periods (0-7, 8-14, 15-30, 31-60, 60+ days). Recommendation text generation working. **DATA VERIFICATION**: All calculations (averages, days, scores) verified correct. Date filtering accurate for all periods. Member categorization working properly. All API responses include required fields and proper data types. **AUTHENTICATION**: Successfully tested with existing admin credentials. All Phase 2B retention intelligence backend APIs are production-ready and fully functional."
+
+  - agent: "testing"
+    message: "🎯 STARTING PHASE 2B RETENTION INTELLIGENCE FRONTEND TESTING - Comprehensive testing of all 4 Phase 2B components on Dashboard: At-Risk Members Widget, Retention Alerts Widget, Dropoff Analytics Card, and Expiring Memberships Table. Will verify UI rendering, data display, interactive elements, color coding, and integration with existing dashboard layout. Backend APIs confirmed working with 104 at-risk members, 102 retention alerts, 73 expiring memberships, and dropoff analytics data available for testing."
+
+frontend:
+  - task: "Phase 2B - At-Risk Members Widget"
+    implemented: true
+    working: "NA"
+    file: "/app/frontend/src/components/AtRiskMembersWidget.jsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Phase 2B At-Risk Members Widget implemented with summary badges (Critical/High/Medium), member cards with risk scores, risk factors, contact info, and View Profile buttons. Ready for comprehensive testing."
+
+  - task: "Phase 2B - Retention Alerts Widget"
+    implemented: true
+    working: "NA"
+    file: "/app/frontend/src/components/RetentionAlertsWidget.jsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Phase 2B Retention Alerts Widget implemented with tabbed interface (7/14/28 days), member cards with contact info, and empty states. Ready for comprehensive testing."
+
+  - task: "Phase 2B - Dropoff Analytics Card"
+    implemented: true
+    working: "NA"
+    file: "/app/frontend/src/components/DropoffAnalyticsCard.jsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Phase 2B Dropoff Analytics Card implemented with key insight box, distribution chart with 5 period bars, and stats summary. Ready for comprehensive testing."
+
+  - task: "Phase 2B - Expiring Memberships Table"
+    implemented: true
+    working: "NA"
+    file: "/app/frontend/src/components/ExpiringMembershipsTable.jsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Phase 2B Expiring Memberships Table implemented with member count badge, table structure with all required columns, color-coded urgency badges, and clickable member names. Ready for comprehensive testing."
+
+  - task: "Phase 2B - Dashboard Integration"
+    implemented: true
+    working: "NA"
+    file: "/app/frontend/src/pages/Dashboard.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Phase 2B Dashboard integration complete with Retention Intelligence section, all 4 widgets properly positioned, API calls to retention endpoints, and proper loading states. Ready for comprehensive testing."
