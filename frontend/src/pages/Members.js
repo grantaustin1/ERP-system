@@ -342,6 +342,36 @@ export default function Members() {
     }
   };
 
+  const handleJournalFilterChange = async () => {
+    if (!selectedMemberForProfile) return;
+    
+    try {
+      // Build query params
+      const params = new URLSearchParams();
+      if (journalFilters.action_type && journalFilters.action_type !== 'all') {
+        params.append('action_type', journalFilters.action_type);
+      }
+      if (journalFilters.start_date) {
+        params.append('start_date', journalFilters.start_date);
+      }
+      if (journalFilters.end_date) {
+        params.append('end_date', journalFilters.end_date);
+      }
+      if (journalFilters.search) {
+        params.append('search', journalFilters.search);
+      }
+      params.append('limit', '100');
+      
+      const journalRes = await axios.get(
+        `${API}/members/${selectedMemberForProfile.id}/journal?${params.toString()}`
+      );
+      setJournal(journalRes.data);
+    } catch (error) {
+      console.error('Error fetching journal:', error);
+      toast.error('Failed to load journal entries');
+    }
+  };
+
   useEffect(() => {
     if (selectedMemberForProfile && profileDialogOpen) {
       fetchMemberProfile(selectedMemberForProfile.id);
