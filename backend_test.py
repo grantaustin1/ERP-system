@@ -607,10 +607,10 @@ class ReportLibraryTestRunner:
             except Exception as e:
                 self.log_result(f"Cleanup Access Log {access_log_id[:8]}", False, f"Error: {str(e)}")
     
-    def run_retention_tests(self):
-        """Run the retention intelligence API tests"""
+    def run_report_library_tests(self):
+        """Run the report library API tests"""
         print("=" * 80)
-        print("BACKEND TESTING - PHASE 2B RETENTION INTELLIGENCE APIs")
+        print("BACKEND TESTING - PHASE 2C REPORT LIBRARY APIs")
         print("=" * 80)
         
         # Step 1: Authenticate
@@ -618,48 +618,48 @@ class ReportLibraryTestRunner:
             print("❌ Authentication failed. Cannot proceed with tests.")
             return False
         
-        # Step 2: Setup test members (for context, though retention APIs work with existing data)
+        # Step 2: Setup test members (for context, though report APIs work with existing data)
         if not self.setup_test_members():
             print("❌ Failed to setup test members. Cannot proceed with tests.")
             return False
         
-        # Step 3: Run RETENTION API TESTS
+        # Step 3: Run REPORT LIBRARY API TESTS
         print("\n" + "=" * 60)
-        print("RETENTION INTELLIGENCE API TESTS")
+        print("REPORT LIBRARY API TESTS")
         print("=" * 60)
         
-        retention_results = []
+        report_results = []
         
-        # 1. At-Risk Members API
-        print("\n🚨 TEST 1: At-Risk Members API")
-        retention_results.append(self.test_at_risk_members_api())
+        # 1. Authentication Tests
+        print("\n🔐 TEST 1: Report API Authentication")
+        report_results.append(self.test_report_api_authentication())
         
-        # 2. Retention Alerts API (7, 14, 28 days)
-        print("\n⚠️ TEST 2: Retention Alerts API")
-        retention_results.append(self.test_retention_alerts_api())
+        # 2. Incomplete Data Report API
+        print("\n📊 TEST 2: Incomplete Data Report API")
+        report_results.append(self.test_incomplete_data_report_api())
         
-        # 3. Sleeping Members API
-        print("\n😴 TEST 3: Sleeping Members API")
-        retention_results.append(self.test_sleeping_members_api())
+        # 3. Birthday Report API (7, 14, 30, 60, 90 days)
+        print("\n🎂 TEST 3: Birthday Report API")
+        report_results.append(self.test_birthday_report_api())
         
-        # 4. Expiring Memberships API (30, 60, 90 days)
-        print("\n⏰ TEST 4: Expiring Memberships API")
-        retention_results.append(self.test_expiring_memberships_api())
+        # 4. Anniversary Report API (7, 14, 30, 60, 90 days)
+        print("\n🎉 TEST 4: Anniversary Report API")
+        report_results.append(self.test_anniversary_report_api())
         
-        # 5. Dropoff Analytics API
-        print("\n📉 TEST 5: Dropoff Analytics API")
-        retention_results.append(self.test_dropoff_analytics_api())
+        # 5. Error Handling Tests
+        print("\n⚠️ TEST 5: Report API Error Handling")
+        report_results.append(self.test_report_api_error_handling())
         
         # Step 4: Generate Summary
         print("\n" + "=" * 80)
         print("TEST RESULTS SUMMARY")
         print("=" * 80)
         
-        retention_passed = sum(retention_results)
-        retention_total = len(retention_results)
+        report_passed = sum(report_results)
+        report_total = len(report_results)
         
-        print(f"\n🎯 RETENTION TESTS: {retention_passed}/{retention_total} PASSED")
-        print(f"📈 SUCCESS RATE: {(retention_passed/retention_total)*100:.1f}%")
+        print(f"\n🎯 REPORT LIBRARY TESTS: {report_passed}/{report_total} PASSED")
+        print(f"📈 SUCCESS RATE: {(report_passed/report_total)*100:.1f}%")
         
         # Detailed results
         print(f"\n📋 DETAILED RESULTS:")
@@ -670,8 +670,8 @@ class ReportLibraryTestRunner:
         # Step 5: Cleanup
         self.cleanup_test_data()
         
-        # Return success if all retention tests passed
-        return retention_passed == retention_total
+        # Return success if all report tests passed
+        return report_passed == report_total
 
 def main():
     """Main execution function"""
