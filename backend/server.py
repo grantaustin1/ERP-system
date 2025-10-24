@@ -3360,6 +3360,7 @@ async def create_access_override(
     # Log to access logs
     access_log = AccessLog(
         member_id=member_id,
+        member_name=member_name,
         access_method="manual_override",
         status="granted",
         reason=f"Override: {reason.get('name')}" + (f" - {sub_reason.get('name')}" if sub_reason else ""),
