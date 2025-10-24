@@ -442,9 +442,8 @@ function AccessControlEnhanced() {
                 <Button type="submit">Check In</Button>
               </div>
             </form>
-          </DialogContent>
-        </Dialog>
-      </div>
+        </DialogContent>
+      </Dialog>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList>
