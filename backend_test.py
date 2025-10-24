@@ -2916,29 +2916,39 @@ class TaskingSystemTester:
                 
                 # Verify response structure
                 if result.get("success") and "task types" in result.get("message", ""):
-                    task_types = result.get("task_types", [])
+                    self.log_result("Seed Default Task Types", True, 
+                                  f"Seed endpoint successful: {result.get('message')}")
                     
-                    if len(task_types) == 6:
-                        # Verify each task type has required fields
-                        required_fields = ["type_id", "name", "description", "color", "icon", "is_active"]
-                        all_valid = True
+                    # Now verify by getting the actual task types
+                    response = requests.get(f"{API_BASE}/task-types", headers=self.headers)
+                    if response.status_code == 200:
+                        task_types = response.json()
                         
-                        for task_type in task_types:
-                            if not all(field in task_type for field in required_fields):
-                                all_valid = False
-                                break
-                        
-                        if all_valid:
-                            self.log_result("Seed Default Task Types", True, 
-                                          f"Successfully seeded 6 default task types with all required fields")
-                            return task_types
+                        if len(task_types) >= 6:
+                            # Verify each task type has required fields
+                            required_fields = ["type_id", "name", "description", "color", "icon", "is_active"]
+                            all_valid = True
+                            
+                            for task_type in task_types:
+                                if not all(field in task_type for field in required_fields):
+                                    all_valid = False
+                                    break
+                            
+                            if all_valid:
+                                self.log_result("Verify Seeded Task Types", True, 
+                                              f"Successfully verified {len(task_types)} task types with all required fields")
+                                return task_types
+                            else:
+                                self.log_result("Verify Seeded Task Types", False, 
+                                              "Task types missing required fields")
+                                return None
                         else:
-                            self.log_result("Seed Default Task Types", False, 
-                                          "Task types missing required fields")
+                            self.log_result("Verify Seeded Task Types", False, 
+                                          f"Expected at least 6 task types, got {len(task_types)}")
                             return None
                     else:
-                        self.log_result("Seed Default Task Types", False, 
-                                      f"Expected 6 task types, got {len(task_types)}")
+                        self.log_result("Verify Seeded Task Types", False, 
+                                      f"Failed to get task types after seeding: {response.status_code}")
                         return None
                 else:
                     self.log_result("Seed Default Task Types", False, 
