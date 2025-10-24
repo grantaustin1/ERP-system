@@ -280,38 +280,218 @@ class RetentionTestRunner:
             self.log_result("Retention Alerts API", False, f"Error testing retention alerts API: {str(e)}")
             return False
     
-    def create_test_access_logs(self):
-        """Create test access logs for dashboard testing"""
-        print("\n=== Creating Test Access Logs ===")
-        
-        if not self.test_member_id:
-            self.log_result("Create Test Access Logs", False, "No test member available")
-            return False
+    def test_sleeping_members_api(self):
+        """Test Sleeping Members API - GET /api/retention/sleeping-members"""
+        print("\n=== Testing Sleeping Members API ===")
         
         try:
-            # Create access log for today using access validation endpoint
-            access_log_data = {
-                "member_id": self.test_member_id,
-                "access_method": "qr_code",
-                "location": "Main Entrance",
-                "device_id": "device_001"
-            }
-            
-            response = requests.post(f"{API_BASE}/access/validate", json=access_log_data, headers=self.headers)
+            response = requests.get(f"{API_BASE}/retention/sleeping-members", headers=self.headers)
             
             if response.status_code == 200:
-                result = response.json()
-                self.log_result("Create Test Access Log", True, 
-                              f"Created access log for member {self.test_member_id[:8]} - Status: {result.get('status')}")
+                data = response.json()
+                
+                # Verify required structure
+                required_fields = ["total", "members"]
+                missing_fields = [field for field in required_fields if field not in data]
+                
+                if missing_fields:
+                    self.log_result("Sleeping Members Structure", False, 
+                                  f"Missing fields: {missing_fields}")
+                    return False
+                
+                # Verify data types
+                if not isinstance(data["total"], int):
+                    self.log_result("Sleeping Members Total Type", False, 
+                                  "Total should be an integer")
+                    return False
+                
+                if not isinstance(data["members"], list):
+                    self.log_result("Sleeping Members Members Type", False, 
+                                  "Members should be a list")
+                    return False
+                
+                # Verify member structure if members exist
+                if data["members"]:
+                    member = data["members"][0]
+                    member_fields = [
+                        "id", "first_name", "last_name", "full_name", "email", 
+                        "last_visit_date", "days_sleeping", "join_date", "is_debtor"
+                    ]
+                    missing_member_fields = [field for field in member_fields if field not in member]
+                    
+                    if missing_member_fields:
+                        self.log_result("Sleeping Members Member Structure", False, 
+                                      f"Missing member fields: {missing_member_fields}")
+                        return False
+                    
+                    # Verify days_sleeping calculation
+                    days_sleeping = member["days_sleeping"]
+                    if days_sleeping != "Never visited" and not isinstance(days_sleeping, int):
+                        self.log_result("Sleeping Members Days Sleeping Type", False, 
+                                      "Days sleeping should be integer or 'Never visited'")
+                        return False
+                
+                self.log_result("Sleeping Members API", True, 
+                              f"Retrieved {data['total']} sleeping members (no attendance in 30+ days)")
                 return True
+                
             else:
-                self.log_result("Create Test Access Log", False, 
-                              f"Failed to create access log: {response.status_code}",
+                self.log_result("Sleeping Members API", False, 
+                              f"Failed to get sleeping members: {response.status_code}",
                               {"response": response.text})
                 return False
                 
         except Exception as e:
-            self.log_result("Create Test Access Logs", False, f"Error creating access logs: {str(e)}")
+            self.log_result("Sleeping Members API", False, f"Error testing sleeping members API: {str(e)}")
+            return False
+    
+    def test_expiring_memberships_api(self):
+        """Test Expiring Memberships API - GET /api/retention/expiring-memberships"""
+        print("\n=== Testing Expiring Memberships API ===")
+        
+        try:
+            # Test different day periods
+            test_periods = [30, 60, 90]
+            
+            for days in test_periods:
+                response = requests.get(f"{API_BASE}/retention/expiring-memberships?days={days}", headers=self.headers)
+                
+                if response.status_code == 200:
+                    data = response.json()
+                    
+                    # Verify required structure
+                    required_fields = ["period_days", "total", "members"]
+                    missing_fields = [field for field in required_fields if field not in data]
+                    
+                    if missing_fields:
+                        self.log_result(f"Expiring Memberships {days}d Structure", False, 
+                                      f"Missing fields: {missing_fields}")
+                        return False
+                    
+                    # Verify data types
+                    if data["period_days"] != days:
+                        self.log_result(f"Expiring Memberships {days}d Period Field", False, 
+                                      f"Period field mismatch: expected {days}, got {data['period_days']}")
+                        return False
+                    
+                    if not isinstance(data["total"], int):
+                        self.log_result(f"Expiring Memberships {days}d Total Type", False, 
+                                      "Total should be an integer")
+                        return False
+                    
+                    if not isinstance(data["members"], list):
+                        self.log_result(f"Expiring Memberships {days}d Members Type", False, 
+                                      "Members should be a list")
+                        return False
+                    
+                    # Verify member structure if members exist
+                    if data["members"]:
+                        member = data["members"][0]
+                        member_fields = [
+                            "id", "first_name", "last_name", "full_name", "email", 
+                            "expiry_date", "days_until_expiry", "membership_type", "is_debtor"
+                        ]
+                        missing_member_fields = [field for field in member_fields if field not in member]
+                        
+                        if missing_member_fields:
+                            self.log_result(f"Expiring Memberships {days}d Member Structure", False, 
+                                          f"Missing member fields: {missing_member_fields}")
+                            return False
+                        
+                        # Verify days_until_expiry is calculated correctly
+                        if not isinstance(member["days_until_expiry"], int):
+                            self.log_result(f"Expiring Memberships {days}d Days Until Expiry Type", False, 
+                                          "Days until expiry should be an integer")
+                            return False
+                    
+                    self.log_result(f"Expiring Memberships {days}d API", True, 
+                                  f"Retrieved {data['total']} memberships expiring in {days} days")
+                else:
+                    self.log_result(f"Expiring Memberships {days}d API", False, 
+                                  f"Failed to get expiring memberships: {response.status_code}",
+                                  {"response": response.text})
+                    return False
+            
+            return True
+                
+        except Exception as e:
+            self.log_result("Expiring Memberships API", False, f"Error testing expiring memberships API: {str(e)}")
+            return False
+    
+    def test_dropoff_analytics_api(self):
+        """Test Dropoff Analytics API - GET /api/retention/dropoff-analytics"""
+        print("\n=== Testing Dropoff Analytics API ===")
+        
+        try:
+            response = requests.get(f"{API_BASE}/retention/dropoff-analytics", headers=self.headers)
+            
+            if response.status_code == 200:
+                data = response.json()
+                
+                # Verify required structure
+                required_fields = [
+                    "total_cancelled_members", "members_analyzed", 
+                    "average_days_inactive_before_cancel", "distribution", "recommendation"
+                ]
+                missing_fields = [field for field in required_fields if field not in data]
+                
+                if missing_fields:
+                    self.log_result("Dropoff Analytics Structure", False, 
+                                  f"Missing fields: {missing_fields}")
+                    return False
+                
+                # Verify data types
+                if not isinstance(data["total_cancelled_members"], int):
+                    self.log_result("Dropoff Analytics Total Cancelled Type", False, 
+                                  "Total cancelled members should be an integer")
+                    return False
+                
+                if not isinstance(data["members_analyzed"], int):
+                    self.log_result("Dropoff Analytics Members Analyzed Type", False, 
+                                  "Members analyzed should be an integer")
+                    return False
+                
+                if not isinstance(data["average_days_inactive_before_cancel"], (int, float)):
+                    self.log_result("Dropoff Analytics Average Days Type", False, 
+                                  "Average days should be a number")
+                    return False
+                
+                # Verify distribution structure
+                distribution = data["distribution"]
+                expected_distribution_keys = ["0-7_days", "8-14_days", "15-30_days", "31-60_days", "60+_days"]
+                missing_dist_keys = [key for key in expected_distribution_keys if key not in distribution]
+                
+                if missing_dist_keys:
+                    self.log_result("Dropoff Analytics Distribution Structure", False, 
+                                  f"Missing distribution keys: {missing_dist_keys}")
+                    return False
+                
+                # Verify all distribution values are integers
+                for key, value in distribution.items():
+                    if not isinstance(value, int):
+                        self.log_result("Dropoff Analytics Distribution Values", False, 
+                                      f"Distribution value for {key} should be integer, got {type(value)}")
+                        return False
+                
+                # Verify recommendation is a string
+                if not isinstance(data["recommendation"], str):
+                    self.log_result("Dropoff Analytics Recommendation Type", False, 
+                                  "Recommendation should be a string")
+                    return False
+                
+                self.log_result("Dropoff Analytics API", True, 
+                              f"Analyzed {data['members_analyzed']}/{data['total_cancelled_members']} cancelled members. "
+                              f"Average inactive days: {data['average_days_inactive_before_cancel']}")
+                return True
+                
+            else:
+                self.log_result("Dropoff Analytics API", False, 
+                              f"Failed to get dropoff analytics: {response.status_code}",
+                              {"response": response.text})
+                return False
+                
+        except Exception as e:
+            self.log_result("Dropoff Analytics API", False, f"Error testing dropoff analytics API: {str(e)}")
             return False
     
     def cleanup_test_data(self):
