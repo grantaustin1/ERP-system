@@ -487,7 +487,7 @@ class AccessOverrideTester:
                 result = response.json()
                 
                 # Verify access is granted
-                if result.get("access_granted") is True:
+                if result.get("success") is True:
                     member_id = result.get("member_id")
                     override_id = result.get("override_id")
                     
