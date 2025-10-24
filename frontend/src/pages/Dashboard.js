@@ -105,6 +105,33 @@ export default function Dashboard() {
     }
   };
 
+  // Phase 2A - Fetch dashboard enhancements data
+  const fetchPhase2AData = async () => {
+    try {
+      // Fetch snapshot data (Today/Yesterday/Growth)
+      const snapshotResponse = await axios.get(`${API}/dashboard/snapshot`);
+      setSnapshotData(snapshotResponse.data);
+      
+      // Fetch members added today
+      const todayMembersResponse = await axios.get(`${API}/dashboard/recent-members?period=today`);
+      setTodayMembers(todayMembersResponse.data);
+      
+      // Fetch members added yesterday
+      const yesterdayMembersResponse = await axios.get(`${API}/dashboard/recent-members?period=yesterday`);
+      setYesterdayMembers(yesterdayMembersResponse.data);
+      
+    } catch (error) {
+      console.error('Failed to fetch Phase 2A data:', error);
+      toast.error('Failed to load dashboard enhancements');
+    }
+  };
+
+  // Handle date range change from DateRangeSelector
+  const handleDateRangeChange = (range) => {
+    setDateRange(range);
+    // TODO: Update charts with new date range when we implement chart selector
+  };
+
   const fetchStatDetails = async (statType) => {
     try {
       setSelectedStat(statType);
