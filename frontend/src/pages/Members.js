@@ -1028,13 +1028,38 @@ export default function Members() {
                         <p className="text-sm text-slate-400 mt-1">{member.email}</p>
                         <p className="text-sm text-slate-400">{member.phone}</p>
                       </div>
-                      <div className="flex gap-2">
-                        <Badge variant={member.membership_status === 'active' ? 'default' : 'destructive'}>
+                      <div className="flex flex-col gap-2 items-end">
+                        <Badge variant={
+                          member.membership_status === 'active' ? 'default' : 
+                          member.membership_status === 'frozen' ? 'secondary' : 
+                          'destructive'
+                        }>
                           {member.membership_status}
                         </Badge>
                         {member.is_debtor && <Badge variant="destructive">Debtor</Badge>}
+                        {member.freeze_status && <Badge variant="secondary">Frozen</Badge>}
                       </div>
                     </div>
+                    {/* Phase 1 - Tags Display */}
+                    {member.tags && member.tags.length > 0 && (
+                      <div className="flex flex-wrap gap-1 mt-2">
+                        {member.tags.map((tagName) => {
+                          const tag = tags.find(t => t.name === tagName);
+                          return (
+                            <Badge 
+                              key={tagName}
+                              className="text-xs"
+                              style={{
+                                backgroundColor: tag?.color || '#3b82f6',
+                                color: 'white'
+                              }}
+                            >
+                              {tagName}
+                            </Badge>
+                          );
+                        })}
+                      </div>
+                    )}
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-2 text-sm">
@@ -1048,41 +1073,104 @@ export default function Members() {
                           <span className="text-white">{new Date(member.expiry_date).toLocaleDateString()}</span>
                         </div>
                       )}
-                    </div>
-                    <div className="flex gap-2 mt-4">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => showQRCode(member)}
-                        className="flex-1 border-emerald-500 text-emerald-400 hover:bg-emerald-500/10"
-                        data-testid={`view-qr-${member.id}`}
-                      >
-                        <QrCode className="w-4 h-4 mr-1" />
-                        QR
-                      </Button>
-                      {member.is_debtor ? (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => unblockMember(member.id)}
-                          className="flex-1 border-emerald-500 text-emerald-400 hover:bg-emerald-500/10"
-                          data-testid={`unblock-${member.id}`}
-                        >
-                          <CheckCircle className="w-4 h-4 mr-1" />
-                          Unblock
-                        </Button>
-                      ) : (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => blockMember(member.id)}
-                          className="flex-1 border-red-500 text-red-400 hover:bg-red-500/10"
-                          data-testid={`block-${member.id}`}
-                        >
-                          <Ban className="w-4 h-4 mr-1" />
-                          Block
-                        </Button>
+                      {/* Phase 1 - Enhanced Columns */}
+                      {member.sessions_remaining !== null && member.sessions_remaining !== undefined && (
+                        <div className="flex justify-between">
+                          <span className="text-slate-400">Sessions Left:</span>
+                          <Badge variant={member.sessions_remaining > 5 ? 'default' : 'destructive'}>
+                            {member.sessions_remaining}
+                          </Badge>
+                        </div>
                       )}
+                      {member.last_visit_date && (
+                        <div className="flex justify-between">
+                          <span className="text-slate-400">Last Visit:</span>
+                          <span className="text-white">{new Date(member.last_visit_date).toLocaleDateString()}</span>
+                        </div>
+                      )}
+                      {member.next_billing_date && (
+                        <div className="flex justify-between">
+                          <span className="text-slate-400">Next Billing:</span>
+                          <span className="text-white">{new Date(member.next_billing_date).toLocaleDateString()}</span>
+                        </div>
+                      )}
+                    </div>
+                    {/* Phase 1 - Quick Action Buttons */}
+                    <div className="flex flex-col gap-2 mt-4">
+                      <div className="flex gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            showQRCode(member);
+                          }}
+                          className="flex-1 border-emerald-500 text-emerald-400 hover:bg-emerald-500/10"
+                          data-testid={`view-qr-${member.id}`}
+                        >
+                          <QrCode className="w-4 h-4 mr-1" />
+                          QR
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedMembersForMessaging([member.id]);
+                            setMessagingDialogOpen(true);
+                          }}
+                          className="flex-1 border-blue-500 text-blue-400 hover:bg-blue-500/10"
+                        >
+                          <Send className="w-4 h-4 mr-1" />
+                          Message
+                        </Button>
+                      </div>
+                      <div className="flex gap-2">
+                        {member.freeze_status ? (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleUnfreezeMembership(member.id);
+                            }}
+                            className="flex-1 border-emerald-500 text-emerald-400 hover:bg-emerald-500/10"
+                          >
+                            <Activity className="w-4 h-4 mr-1" />
+                            Unfreeze
+                          </Button>
+                        ) : (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedMemberForAction(member);
+                              setFreezeDialogOpen(true);
+                            }}
+                            className="flex-1 border-yellow-500 text-yellow-400 hover:bg-yellow-500/10"
+                            disabled={member.membership_status === 'cancelled'}
+                          >
+                            <Activity className="w-4 h-4 mr-1" />
+                            Freeze
+                          </Button>
+                        )}
+                        {member.membership_status !== 'cancelled' && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedMemberForAction(member);
+                              setCancelDialogOpen(true);
+                            }}
+                            className="flex-1 border-red-500 text-red-400 hover:bg-red-500/10"
+                          >
+                            <XCircle className="w-4 h-4 mr-1" />
+                            Cancel
+                          </Button>
+                        )}
+                      </div>
                     </div>
                   </CardContent>
                 </Card>
