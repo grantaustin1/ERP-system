@@ -5403,15 +5403,18 @@ backend:
 
   - task: "Phase 2D - Member Lifetime Value API"
     implemented: true
-    working: "NA"
+    working: true
     file: "/app/backend/server.py"
     stuck_count: 0
     priority: "high"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
       - working: "NA"
         agent: "main"
         comment: "Phase 2D Advanced Analytics - Implemented GET /api/analytics/member-lifetime-value endpoint. Calculates LTV for all members (active, frozen, cancelled) by analyzing paid invoices. Provides LTV breakdown by membership type with averages (avg_ltv, avg_monthly_value, avg_duration_months). Returns top 10 highest LTV members and overall LTV summary. Ready for backend testing."
+      - working: true
+        agent: "testing"
+        comment: "✅ Member Lifetime Value Analytics API working perfectly: GET /api/analytics/member-lifetime-value returns 200 OK with proper structure. Summary contains total_members_analyzed, total_lifetime_value, avg_ltv_per_member with correct data types. by_membership_type array shows membership_type, member_count, avg_ltv, avg_monthly_value, avg_duration_months, total_ltv for each membership type. top_members array limited to top 10 members with member_id, member_name, membership_type, ltv, monthly_value, duration_months fields. All LTV calculations accurate and data properly formatted."
 
   - task: "Phase 2D - Churn Prediction API"
     implemented: true
