@@ -66,6 +66,11 @@ export default function Sidebar() {
         </div>
       </div>
 
+      {/* Global Search */}
+      <div className="mb-6">
+        <GlobalSearch />
+      </div>
+
       {/* Navigation */}
       <nav className="flex-1 space-y-2">
         {loading ? (
