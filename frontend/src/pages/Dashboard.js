@@ -1417,6 +1417,17 @@ export default function Dashboard() {
             </DialogContent>
           </Dialog>
         </div>
+
+        {/* Phase 3: Unified Messaging Dialog */}
+        <UnifiedMessagingDialog
+          open={messagingDialogOpen}
+          onOpenChange={setMessagingDialogOpen}
+          selectedMembers={selectedMembersForMessaging}
+          onSuccess={() => {
+            setSelectedMembersForMessaging([]);
+            toast.success('Messages sent successfully');
+          }}
+        />
       </div>
     </div>
   );
