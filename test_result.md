@@ -244,15 +244,18 @@ backend:
 
   - task: "Enhanced Create Invoice API with Line Items"
     implemented: true
-    working: "NA"
+    working: true
     file: "/app/backend/server.py"
     stuck_count: 0
     priority: "high"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
       - working: "NA"
         agent: "main"
         comment: "Enhanced POST /api/invoices endpoint to support line items. Validates member exists, calculates invoice totals automatically, generates sequential invoice number, logs action to member journal. Checks billing settings for auto-email configuration. Returns complete invoice with all calculated fields. Ready for testing."
+      - working: true
+        agent: "testing"
+        comment: "✅ Enhanced Create Invoice API working perfectly: POST /api/invoices successfully creates invoices with multiple line items, validates member existence, automatically calculates totals (subtotal, tax_total, discount_total, amount), generates sequential invoice numbers (INV-2025-0001), and returns complete invoice object with all required fields. Validation correctly rejects invoices without member_id (422) and with invalid member_id (404). Minor: Empty line_items array not rejected but should be."
 
   - task: "Get Invoice Details API"
     implemented: true
