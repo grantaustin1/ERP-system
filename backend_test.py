@@ -1097,7 +1097,7 @@ class EngagementFeaturesTestRunner:
             
             for endpoint in endpoints:
                 if endpoint == "/engagement/points/award":
-                    response = requests.post(f"{API_BASE}{endpoint}", json={"member_id": "test", "points": 5, "reason": "test"})
+                    response = requests.post(f"{API_BASE}{endpoint}", params={"member_id": "test", "points": 5, "reason": "test"})
                 else:
                     response = requests.get(f"{API_BASE}{endpoint}")
                 
