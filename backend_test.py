@@ -242,78 +242,130 @@ class ReportLibraryTestRunner:
             self.log_result("Incomplete Data Report API", False, f"Error testing incomplete data report API: {str(e)}")
             return False
     
-    def test_retention_alerts_api(self):
-        """Test Retention Alerts API - GET /api/retention/retention-alerts"""
-        print("\n=== Testing Retention Alerts API ===")
+    def test_birthday_report_api(self):
+        """Test Birthday Report API - GET /api/reports/birthdays"""
+        print("\n=== Testing Birthday Report API ===")
         
         try:
             # Test different day periods
-            test_periods = [7, 14, 28]
+            test_periods = [7, 14, 30, 60, 90]
             
             for days in test_periods:
-                response = requests.get(f"{API_BASE}/retention/retention-alerts?days={days}", headers=self.headers)
+                response = requests.get(f"{API_BASE}/reports/birthdays?days_ahead={days}", headers=self.headers)
                 
                 if response.status_code == 200:
                     data = response.json()
                     
                     # Verify required structure
-                    required_fields = ["alert_type", "days", "total", "members"]
+                    required_fields = ["summary", "birthdays"]
                     missing_fields = [field for field in required_fields if field not in data]
                     
                     if missing_fields:
-                        self.log_result(f"Retention Alerts {days}d Structure", False, 
+                        self.log_result(f"Birthday Report {days}d Structure", False, 
                                       f"Missing fields: {missing_fields}")
                         return False
                     
-                    # Verify data types
-                    if data["days"] != days:
-                        self.log_result(f"Retention Alerts {days}d Days Field", False, 
-                                      f"Days field mismatch: expected {days}, got {data['days']}")
+                    # Verify summary structure
+                    summary = data["summary"]
+                    summary_fields = ["total_upcoming", "date_range", "by_period"]
+                    missing_summary_fields = [field for field in summary_fields if field not in summary]
+                    
+                    if missing_summary_fields:
+                        self.log_result(f"Birthday Report {days}d Summary Structure", False, 
+                                      f"Missing summary fields: {missing_summary_fields}")
                         return False
                     
-                    if not isinstance(data["total"], int):
-                        self.log_result(f"Retention Alerts {days}d Total Type", False, 
-                                      "Total should be an integer")
+                    # Verify date_range structure
+                    date_range = summary["date_range"]
+                    date_range_fields = ["from", "to", "days"]
+                    missing_date_fields = [field for field in date_range_fields if field not in date_range]
+                    
+                    if missing_date_fields:
+                        self.log_result(f"Birthday Report {days}d Date Range Structure", False, 
+                                      f"Missing date range fields: {missing_date_fields}")
                         return False
                     
-                    if not isinstance(data["members"], list):
-                        self.log_result(f"Retention Alerts {days}d Members Type", False, 
-                                      "Members should be a list")
+                    # Verify days parameter matches
+                    if date_range["days"] != days:
+                        self.log_result(f"Birthday Report {days}d Days Parameter", False, 
+                                      f"Days parameter mismatch: expected {days}, got {date_range['days']}")
                         return False
                     
-                    # Verify alert_type format
-                    expected_alert_type = f"{days}_day_retention_alert"
-                    if data["alert_type"] != expected_alert_type:
-                        self.log_result(f"Retention Alerts {days}d Alert Type", False, 
-                                      f"Expected '{expected_alert_type}', got '{data['alert_type']}'")
+                    # Verify by_period structure
+                    by_period = summary["by_period"]
+                    period_fields = ["this_week", "next_week", "later"]
+                    missing_period_fields = [field for field in period_fields if field not in by_period]
+                    
+                    if missing_period_fields:
+                        self.log_result(f"Birthday Report {days}d Period Structure", False, 
+                                      f"Missing period fields: {missing_period_fields}")
                         return False
                     
-                    # Verify member structure if members exist
-                    if data["members"]:
-                        member = data["members"][0]
+                    # Verify birthdays structure
+                    birthdays = data["birthdays"]
+                    birthday_fields = ["this_week", "next_week", "later", "all"]
+                    missing_birthday_fields = [field for field in birthday_fields if field not in birthdays]
+                    
+                    if missing_birthday_fields:
+                        self.log_result(f"Birthday Report {days}d Birthdays Structure", False, 
+                                      f"Missing birthday fields: {missing_birthday_fields}")
+                        return False
+                    
+                    # Verify member structure if birthdays exist
+                    if birthdays["all"]:
+                        member = birthdays["all"][0]
                         member_fields = [
-                            "id", "first_name", "last_name", "full_name", "email", 
-                            "last_visit_date", "days_since_visit", "join_date"
+                            "id", "first_name", "last_name", "full_name", "email", "phone",
+                            "date_of_birth", "birthday_date", "age_turning", "days_until"
                         ]
                         missing_member_fields = [field for field in member_fields if field not in member]
                         
                         if missing_member_fields:
-                            self.log_result(f"Retention Alerts {days}d Member Structure", False, 
+                            self.log_result(f"Birthday Report {days}d Member Structure", False, 
                                           f"Missing member fields: {missing_member_fields}")
                             return False
+                        
+                        # Verify grouping logic
+                        days_until = member["days_until"]
+                        if days_until <= 7 and member not in birthdays["this_week"]:
+                            self.log_result(f"Birthday Report {days}d Grouping Logic", False, 
+                                          f"Member with {days_until} days should be in this_week")
+                            return False
                     
-                    self.log_result(f"Retention Alerts {days}d API", True, 
-                                  f"Retrieved {data['total']} members inactive for {days}+ days")
+                    # Verify totals match
+                    calculated_total = by_period["this_week"] + by_period["next_week"] + by_period["later"]
+                    if summary["total_upcoming"] != calculated_total:
+                        self.log_result(f"Birthday Report {days}d Total Calculation", False, 
+                                      f"Total mismatch: {summary['total_upcoming']} != {calculated_total}")
+                        return False
+                    
+                    self.log_result(f"Birthday Report {days}d API", True, 
+                                  f"Retrieved {summary['total_upcoming']} upcoming birthdays "
+                                  f"(This week: {by_period['this_week']}, Next week: {by_period['next_week']}, Later: {by_period['later']})")
                 else:
-                    self.log_result(f"Retention Alerts {days}d API", False, 
-                                  f"Failed to get retention alerts: {response.status_code}",
+                    self.log_result(f"Birthday Report {days}d API", False, 
+                                  f"Failed to get birthday report: {response.status_code}",
                                   {"response": response.text})
                     return False
+            
+            # Test default parameter (30 days)
+            response = requests.get(f"{API_BASE}/reports/birthdays", headers=self.headers)
+            if response.status_code == 200:
+                data = response.json()
+                if data["summary"]["date_range"]["days"] != 30:
+                    self.log_result("Birthday Report Default Parameter", False, 
+                                  f"Default days_ahead should be 30, got {data['summary']['date_range']['days']}")
+                    return False
+                self.log_result("Birthday Report Default Parameter", True, "Default days_ahead=30 working correctly")
+            else:
+                self.log_result("Birthday Report Default Parameter", False, 
+                              f"Failed to test default parameter: {response.status_code}")
+                return False
             
             return True
                 
         except Exception as e:
-            self.log_result("Retention Alerts API", False, f"Error testing retention alerts API: {str(e)}")
+            self.log_result("Birthday Report API", False, f"Error testing birthday report API: {str(e)}")
             return False
     
     def test_sleeping_members_api(self):
