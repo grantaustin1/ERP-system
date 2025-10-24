@@ -942,6 +942,21 @@ export default function Members() {
                     </SelectContent>
                   </Select>
 
+                  {/* Phase 1 - Tag Filter */}
+                  <Select value={tagFilter} onValueChange={setTagFilter}>
+                    <SelectTrigger className="w-[160px] bg-slate-700/50 border-slate-600 text-white">
+                      <SelectValue placeholder="All Tags" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-slate-800 border-slate-700">
+                      <SelectItem value="all" className="text-white">All Tags</SelectItem>
+                      {tags.map((tag) => (
+                        <SelectItem key={tag.id} value={tag.name} className="text-white">
+                          {tag.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+
                   {/* Clear Filters Button */}
                   {hasActiveFilters && (
                     <Button
