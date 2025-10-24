@@ -1,39 +1,50 @@
 import { useNavigate, useLocation } from 'react-router-dom';
 import { LayoutDashboard, Users, ScanLine, FileText, UserX, DollarSign, TrendingUp, Package, Settings, LogOut, Dumbbell, Zap, BarChart3, Calendar, Upload, Shield, UserCog, ShoppingCart, Tag, CreditCard, Activity, CheckSquare, Receipt } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { usePermissions } from '@/contexts/PermissionContext';
 
 export default function Sidebar() {
   const navigate = useNavigate();
   const location = useLocation();
+  const { canView, loading } = usePermissions();
 
   const handleLogout = () => {
     localStorage.removeItem('token');
     navigate('/login');
   };
 
+  // Map menu items to their required permission module
   const menuItems = [
-    { path: '/', icon: LayoutDashboard, label: 'Dashboard', testId: 'nav-dashboard' },
-    { path: '/members', icon: Users, label: 'Members', testId: 'nav-members' },
-    { path: '/access', icon: ScanLine, label: 'Access Control', testId: 'nav-access' },
-    { path: '/classes', icon: Calendar, label: 'Classes', testId: 'nav-classes' },
-    { path: '/pos', icon: ShoppingCart, label: 'Point of Sale', testId: 'nav-pos' },
-    { path: '/billing', icon: FileText, label: 'Billing', testId: 'nav-billing' },
-    { path: '/invoices', icon: Receipt, label: 'Invoices', testId: 'nav-invoices' },
-    { path: '/debit-orders', icon: CreditCard, label: 'Debit Orders', testId: 'nav-debit-orders' },
-    { path: '/reconciliation', icon: Activity, label: 'Reconciliation', testId: 'nav-reconciliation' },
-    { path: '/analytics', icon: BarChart3, label: 'Analytics', testId: 'nav-analytics' },
-    { path: '/levies', icon: DollarSign, label: 'Levies', testId: 'nav-levies' },
-    { path: '/cancellations', icon: UserX, label: 'Cancellations', testId: 'nav-cancellations' },
-    { path: '/packages', icon: Package, label: 'Package Setup', testId: 'nav-packages' },
-    { path: '/products', icon: Tag, label: 'Products', testId: 'nav-products' },
-    { path: '/marketing', icon: TrendingUp, label: 'Marketing', testId: 'nav-marketing' },
-    { path: '/automations', icon: Zap, label: 'Automations', testId: 'nav-automations' },
-    { path: '/tasks', icon: CheckSquare, label: 'Tasks', testId: 'nav-tasks' },
-    { path: '/import', icon: Upload, label: 'Import Data', testId: 'nav-import' },
-    { path: '/permission-matrix', icon: Shield, label: 'Permissions', testId: 'nav-permissions' },
-    { path: '/user-roles', icon: UserCog, label: 'User Roles', testId: 'nav-user-roles' },
-    { path: '/settings', icon: Settings, label: 'Settings', testId: 'nav-settings' },
+    { path: '/', icon: LayoutDashboard, label: 'Dashboard', testId: 'nav-dashboard', module: null }, // Always visible
+    { path: '/members', icon: Users, label: 'Members', testId: 'nav-members', module: 'members' },
+    { path: '/access', icon: ScanLine, label: 'Access Control', testId: 'nav-access', module: 'access' },
+    { path: '/classes', icon: Calendar, label: 'Classes', testId: 'nav-classes', module: 'classes' },
+    { path: '/pos', icon: ShoppingCart, label: 'Point of Sale', testId: 'nav-pos', module: 'billing' },
+    { path: '/billing', icon: FileText, label: 'Billing', testId: 'nav-billing', module: 'billing' },
+    { path: '/invoices', icon: Receipt, label: 'Invoices', testId: 'nav-invoices', module: 'billing' },
+    { path: '/debit-orders', icon: CreditCard, label: 'Debit Orders', testId: 'nav-debit-orders', module: 'billing' },
+    { path: '/reconciliation', icon: Activity, label: 'Reconciliation', testId: 'nav-reconciliation', module: 'billing' },
+    { path: '/analytics', icon: BarChart3, label: 'Analytics', testId: 'nav-analytics', module: 'reports' },
+    { path: '/levies', icon: DollarSign, label: 'Levies', testId: 'nav-levies', module: 'billing' },
+    { path: '/cancellations', icon: UserX, label: 'Cancellations', testId: 'nav-cancellations', module: 'members' },
+    { path: '/packages', icon: Package, label: 'Package Setup', testId: 'nav-packages', module: 'settings' },
+    { path: '/products', icon: Tag, label: 'Products', testId: 'nav-products', module: 'billing' },
+    { path: '/marketing', icon: TrendingUp, label: 'Marketing', testId: 'nav-marketing', module: 'marketing' },
+    { path: '/automations', icon: Zap, label: 'Automations', testId: 'nav-automations', module: 'settings' },
+    { path: '/tasks', icon: CheckSquare, label: 'Tasks', testId: 'nav-tasks', module: 'members' },
+    { path: '/import', icon: Upload, label: 'Import Data', testId: 'nav-import', module: 'import' },
+    { path: '/permission-matrix', icon: Shield, label: 'Permissions', testId: 'nav-permissions', module: 'settings' },
+    { path: '/user-roles', icon: UserCog, label: 'User Roles', testId: 'nav-user-roles', module: 'staff' },
+    { path: '/settings', icon: Settings, label: 'Settings', testId: 'nav-settings', module: 'settings' },
   ];
+
+  // Filter menu items based on permissions
+  const visibleMenuItems = menuItems.filter(item => {
+    // Dashboard is always visible
+    if (!item.module) return true;
+    // Check if user has view permission for this module
+    return canView(item.module);
+  });
 
   return (
     <div className="w-64 bg-slate-900/50 backdrop-blur-lg border-r border-slate-700 p-6 flex flex-col">
