@@ -5610,6 +5610,15 @@ backend:
     file: "/app/backend/server.py"
     stuck_count: 0
     priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "All engagement endpoints protected with JWT authentication using get_current_user dependency. Requires valid Bearer token for access."
+      - working: true
+        agent: "testing"
+        comment: "✅ Engagement API Authentication working correctly: All 8 engagement endpoints properly require authentication (403 Forbidden without token). Tested endpoints: points/balance, points/award, points/transactions, points/leaderboard, search, activity-feed, score, overview. Authentication enforced consistently across all engagement features."
+    priority: "high"
     needs_retesting: true
     status_history:
       - working: "NA"
