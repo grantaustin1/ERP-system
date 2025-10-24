@@ -316,6 +316,99 @@ class MemberJournalCreate(BaseModel):
     description: str
     metadata: Optional[dict] = None
 
+class TaskType(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    type_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    name: str
+    description: Optional[str] = None
+    color: str = "#3b82f6"  # Default blue color
+    icon: Optional[str] = None
+    is_active: bool = True
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+class TaskTypeCreate(BaseModel):
+    name: str
+    description: Optional[str] = None
+    color: str = "#3b82f6"
+    icon: Optional[str] = None
+
+class TaskTypeUpdate(BaseModel):
+    name: Optional[str] = None
+    description: Optional[str] = None
+    color: Optional[str] = None
+    icon: Optional[str] = None
+    is_active: Optional[bool] = None
+
+class Task(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    task_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    title: str
+    description: Optional[str] = None
+    task_type_id: str
+    task_type_name: Optional[str] = None  # Denormalized for display
+    priority: str = "medium"  # low, medium, high, urgent
+    status: str = "pending"  # pending, in_progress, completed, cancelled, on_hold, needs_review
+    assigned_to_user_id: Optional[str] = None
+    assigned_to_user_name: Optional[str] = None  # Denormalized for display
+    assigned_to_department: Optional[str] = None
+    related_member_id: Optional[str] = None
+    related_member_name: Optional[str] = None  # Denormalized for display
+    due_date: Optional[datetime] = None
+    created_by: str
+    created_by_name: Optional[str] = None
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: Optional[datetime] = None
+    completed_at: Optional[datetime] = None
+    completed_by: Optional[str] = None
+    completed_by_name: Optional[str] = None
+    comment_count: int = 0
+    attachment_count: int = 0
+
+class TaskCreate(BaseModel):
+    title: str
+    description: Optional[str] = None
+    task_type_id: str
+    priority: str = "medium"
+    assigned_to_user_id: Optional[str] = None
+    assigned_to_department: Optional[str] = None
+    related_member_id: Optional[str] = None
+    due_date: Optional[datetime] = None
+
+class TaskUpdate(BaseModel):
+    title: Optional[str] = None
+    description: Optional[str] = None
+    task_type_id: Optional[str] = None
+    priority: Optional[str] = None
+    status: Optional[str] = None
+    assigned_to_user_id: Optional[str] = None
+    assigned_to_department: Optional[str] = None
+    due_date: Optional[datetime] = None
+
+class TaskComment(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    comment_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    task_id: str
+    content: str
+    created_by: str
+    created_by_name: Optional[str] = None
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    attachments: List[str] = []  # List of attachment URLs
+
+class TaskCommentCreate(BaseModel):
+    content: str
+    attachments: List[str] = []
+
+class TaskAttachment(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    attachment_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    task_id: str
+    file_name: str
+    file_url: str
+    file_size: Optional[int] = None
+    uploaded_by: str
+    uploaded_by_name: Optional[str] = None
+    uploaded_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
 class Invoice(BaseModel):
     model_config = ConfigDict(extra="ignore")
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
