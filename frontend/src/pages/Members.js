@@ -1053,10 +1053,24 @@ export default function Members() {
                            profileData.member.membership_status}
                         </Badge>
                         {!isEditing && (
-                          <Button size="sm" variant="outline" onClick={handleEditMember}>
-                            <Edit2 className="w-4 h-4 mr-1" />
-                            Edit
-                          </Button>
+                          <>
+                            <Button size="sm" variant="outline" onClick={handleEditMember}>
+                              <Edit2 className="w-4 h-4 mr-1" />
+                              Edit
+                            </Button>
+                            <Button 
+                              size="sm" 
+                              variant="default"
+                              className="bg-emerald-600 hover:bg-emerald-700"
+                              onClick={() => {
+                                setSelectedMembersForMessaging([profileData.member.id]);
+                                setMessagingDialogOpen(true);
+                              }}
+                            >
+                              <Send className="w-4 h-4 mr-1" />
+                              Send Message
+                            </Button>
+                          </>
                         )}
                         {isEditing && (
                           <>
