@@ -55,6 +55,7 @@ function App() {
             <Route path="/login" element={<Login />} />
             <Route path="/member-portal" element={<MemberPortal />} />
             <Route path="/" element={<PrivateRoute><Dashboard /></PrivateRoute>} />
+            <Route path="/dashboard" element={<PrivateRoute><Dashboard /></PrivateRoute>} />
             <Route path="/members" element={<PrivateRoute><Members /></PrivateRoute>} />
             <Route path="/access" element={<PrivateRoute><AccessControl /></PrivateRoute>} />
             <Route path="/classes" element={<PrivateRoute><Classes /></PrivateRoute>} />
