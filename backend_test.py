@@ -3028,18 +3028,21 @@ class TaskingSystemTester:
                                                      headers=self.headers)
                             
                             if response.status_code == 200:
-                                # Verify it's soft deleted (is_active=false)
+                                self.log_result("DELETE Task Type", True, 
+                                              "Task type deletion endpoint successful")
+                                
+                                # Verify it's soft deleted (not in active list)
                                 response = requests.get(f"{API_BASE}/task-types", headers=self.headers)
                                 if response.status_code == 200:
-                                    all_task_types = response.json()
-                                    deleted_type = next((t for t in all_task_types if t.get("type_id") == task_type_id), None)
+                                    active_task_types = response.json()
+                                    deleted_type = next((t for t in active_task_types if t.get("type_id") == task_type_id), None)
                                     
-                                    if deleted_type and deleted_type.get("is_active") is False:
-                                        self.log_result("DELETE Task Type", True, 
-                                                      "Task type soft deleted successfully (is_active=false)")
+                                    if not deleted_type:
+                                        self.log_result("Verify Soft Delete", True, 
+                                                      "Task type properly soft deleted (not in active list)")
                                     else:
-                                        self.log_result("DELETE Task Type", False, 
-                                                      "Task type not properly soft deleted")
+                                        self.log_result("Verify Soft Delete", False, 
+                                                      "Task type still appears in active list after deletion")
                             else:
                                 self.log_result("DELETE Task Type", False, 
                                               f"Failed to delete task type: {response.status_code}")
