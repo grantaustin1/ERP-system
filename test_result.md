@@ -197,6 +197,103 @@ user_problem_statement: |
   - Blocked members report API with review workflow
   
 backend:
+  - task: "Invoice Line Item Model & Enhanced Invoice Model"
+    implemented: true
+    working: "NA"
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Created InvoiceLineItem model with fields: description, quantity, unit_price, discount_percent, tax_percent, subtotal, tax_amount, total. Enhanced Invoice model to include: line_items list, subtotal, tax_total, discount_total, notes, auto_generated flag. Added support for itemized billing. Ready for testing."
+
+  - task: "Billing Settings Model & API"
+    implemented: true
+    working: "NA"
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Created BillingSettings model with auto-email configuration (auto_email_invoices, email_on_invoice_created, email_on_invoice_overdue, email_reminder_days_before_due), tax settings (default_tax_rate, tax_enabled, tax_number), company details (company_name, address, phone, email), invoice numbering format, payment terms. Added GET /api/billing/settings and POST /api/billing/settings endpoints. Ready for testing."
+
+  - task: "Invoice Helper Functions - Calculate Totals & Generate Number"
+    implemented: true
+    working: "NA"
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Implemented calculate_invoice_totals() function that calculates subtotal, tax, discount, and total for all line items. Implemented generate_invoice_number() function that generates sequential invoice numbers based on billing settings with configurable format (prefix-year-sequence). Ready for testing."
+
+  - task: "Enhanced Create Invoice API with Line Items"
+    implemented: true
+    working: "NA"
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Enhanced POST /api/invoices endpoint to support line items. Validates member exists, calculates invoice totals automatically, generates sequential invoice number, logs action to member journal. Checks billing settings for auto-email configuration. Returns complete invoice with all calculated fields. Ready for testing."
+
+  - task: "Get Invoice Details API"
+    implemented: true
+    working: "NA"
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Created GET /api/invoices/{invoice_id} endpoint to retrieve detailed invoice information with line items. Handles date parsing for due_date, created_at, paid_date, batch_date. Returns complete invoice object. Ready for testing."
+
+  - task: "Update Invoice API"
+    implemented: true
+    working: "NA"
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Created PUT /api/invoices/{invoice_id} endpoint to update invoice details. Prevents editing of paid/void invoices. Supports updating description, due_date, notes, status, line_items. Recalculates totals when line items are updated. Ready for testing."
+
+  - task: "Void Invoice API"
+    implemented: true
+    working: "NA"
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Created DELETE /api/invoices/{invoice_id} endpoint to void invoices (soft delete). Prevents voiding paid invoices. Updates status to 'void' with optional reason. Logs action to member journal. Ready for testing."
+
+  - task: "Generate Invoice PDF API"
+    implemented: true
+    working: "NA"
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Created GET /api/invoices/{invoice_id}/pdf endpoint using ReportLab to generate professional PDF invoices. Includes company header (from billing settings), invoice info (number, date, due date, status), bill to section (member details), itemized line items table with quantity/price/discount/tax/total columns, subtotal/tax/discount/total summary, notes section, footer. Returns StreamingResponse with PDF download. Ready for testing."
+
+
   - task: "Enhanced Duplicate Detection - Check Duplicate Endpoint"
     implemented: true
     working: true
