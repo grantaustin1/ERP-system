@@ -670,38 +670,228 @@ class EngagementFeaturesTestRunner:
             self.log_result("Activity Feed API", False, f"Error testing activity feed API: {str(e)}")
             return False
     
-    def test_analytics_api_error_handling(self):
-        """Test error handling for analytics APIs"""
-        print("\n=== Testing Analytics API Error Handling ===")
+    def test_engagement_score_api(self):
+        """Test Engagement Score API - GET /api/engagement/score/{member_id}"""
+        print("\n=== Testing Engagement Score API ===")
         
         try:
-            # Test invalid parameters for revenue breakdown
-            response = requests.get(f"{API_BASE}/analytics/revenue-breakdown?period_months=-1", headers=self.headers)
-            # Should still work but with reasonable defaults or handle gracefully
+            response = requests.get(f"{API_BASE}/engagement/score/{self.test_member_id}", headers=self.headers)
             
-            # Test invalid parameters for attendance deep dive
-            response = requests.get(f"{API_BASE}/analytics/attendance-deep-dive?days_back=0", headers=self.headers)
-            # Should still work but with reasonable defaults or handle gracefully
-            
-            # Test very large parameters
-            response = requests.get(f"{API_BASE}/analytics/revenue-breakdown?period_months=1000", headers=self.headers)
             if response.status_code == 200:
-                self.log_result("Revenue Breakdown Large Parameter", True, "Handles large parameters gracefully")
+                data = response.json()
+                
+                # Verify required structure
+                required_fields = ["member_id", "engagement_score", "max_score", "percentage", "level", "color", "factors"]
+                missing_fields = [field for field in required_fields if field not in data]
+                
+                if missing_fields:
+                    self.log_result("Engagement Score Structure", False, 
+                                  f"Missing fields: {missing_fields}")
+                    return False
+                
+                # Verify score calculation (0-100)
+                score = data["engagement_score"]
+                max_score = data["max_score"]
+                percentage = data["percentage"]
+                
+                if not (0 <= score <= max_score):
+                    self.log_result("Engagement Score Range", False, 
+                                  f"Score {score} not in range 0-{max_score}")
+                    return False
+                
+                if max_score != 100:
+                    self.log_result("Engagement Score Max Score", False, 
+                                  f"Expected max_score 100, got {max_score}")
+                    return False
+                
+                # Verify percentage calculation
+                expected_percentage = round(score / max_score * 100, 1)
+                if abs(percentage - expected_percentage) > 0.1:
+                    self.log_result("Engagement Score Percentage", False, 
+                                  f"Expected {expected_percentage}%, got {percentage}%")
+                    return False
+                
+                # Verify 5 factors breakdown
+                factors = data["factors"]
+                if len(factors) != 5:
+                    self.log_result("Engagement Score Factors Count", False, 
+                                  f"Expected 5 factors, got {len(factors)}")
+                    return False
+                
+                expected_factors = [
+                    "Recent Attendance",
+                    "Payment History", 
+                    "Class Participation",
+                    "Membership Loyalty",
+                    "Rewards Engagement"
+                ]
+                
+                factor_names = [f["factor"] for f in factors]
+                missing_factors = [f for f in expected_factors if f not in factor_names]
+                
+                if missing_factors:
+                    self.log_result("Engagement Score Factor Names", False, 
+                                  f"Missing factors: {missing_factors}")
+                    return False
+                
+                # Verify factor structure and max scores
+                expected_max_scores = {
+                    "Recent Attendance": 30,
+                    "Payment History": 20,
+                    "Class Participation": 25,
+                    "Membership Loyalty": 15,
+                    "Rewards Engagement": 10
+                }
+                
+                for factor in factors:
+                    factor_fields = ["factor", "score", "max_score", "details"]
+                    missing_factor_fields = [field for field in factor_fields if field not in factor]
+                    
+                    if missing_factor_fields:
+                        self.log_result("Engagement Score Factor Structure", False, 
+                                      f"Missing factor fields: {missing_factor_fields}")
+                        return False
+                    
+                    expected_max = expected_max_scores.get(factor["factor"])
+                    if factor["max_score"] != expected_max:
+                        self.log_result("Engagement Score Factor Max Score", False, 
+                                      f"{factor['factor']} expected max {expected_max}, got {factor['max_score']}")
+                        return False
+                
+                # Verify level classification
+                level = data["level"]
+                color = data["color"]
+                
+                if percentage >= 80:
+                    expected_level = "Highly Engaged"
+                    expected_color = "green"
+                elif percentage >= 60:
+                    expected_level = "Engaged"
+                    expected_color = "blue"
+                elif percentage >= 40:
+                    expected_level = "Moderately Engaged"
+                    expected_color = "yellow"
+                elif percentage >= 20:
+                    expected_level = "Low Engagement"
+                    expected_color = "orange"
+                else:
+                    expected_level = "At Risk"
+                    expected_color = "red"
+                
+                if level != expected_level:
+                    self.log_result("Engagement Score Level Classification", False, 
+                                  f"Expected '{expected_level}', got '{level}' for {percentage}%")
+                    return False
+                
+                if color != expected_color:
+                    self.log_result("Engagement Score Color Assignment", False, 
+                                  f"Expected '{expected_color}', got '{color}' for level '{level}'")
+                    return False
+                
+                self.log_result("Engagement Score API", True, 
+                              f"Member engagement: {score}/100 ({percentage}%) - {level}")
+                return True
+                
             else:
-                self.log_result("Revenue Breakdown Large Parameter", False, f"Failed with large parameter: {response.status_code}")
+                self.log_result("Engagement Score API", False, 
+                              f"Failed to get engagement score: {response.status_code}",
+                              {"response": response.text})
                 return False
-            
-            response = requests.get(f"{API_BASE}/analytics/attendance-deep-dive?days_back=10000", headers=self.headers)
-            if response.status_code == 200:
-                self.log_result("Attendance Deep Dive Large Parameter", True, "Handles large parameters gracefully")
-            else:
-                self.log_result("Attendance Deep Dive Large Parameter", False, f"Failed with large parameter: {response.status_code}")
-                return False
-            
-            return True
                 
         except Exception as e:
-            self.log_result("Analytics API Error Handling", False, f"Error testing error handling: {str(e)}")
+            self.log_result("Engagement Score API", False, f"Error testing engagement score API: {str(e)}")
+            return False
+    
+    def test_engagement_overview_api(self):
+        """Test Engagement Overview API - GET /api/engagement/overview"""
+        print("\n=== Testing Engagement Overview API ===")
+        
+        try:
+            response = requests.get(f"{API_BASE}/engagement/overview", headers=self.headers)
+            
+            if response.status_code == 200:
+                data = response.json()
+                
+                # Verify required structure
+                required_fields = ["summary", "by_level", "top_engaged_members"]
+                missing_fields = [field for field in required_fields if field not in data]
+                
+                if missing_fields:
+                    self.log_result("Engagement Overview Structure", False, 
+                                  f"Missing fields: {missing_fields}")
+                    return False
+                
+                # Verify summary statistics
+                summary = data["summary"]
+                summary_fields = ["total_members", "members_analyzed", "avg_engagement_score"]
+                missing_summary_fields = [field for field in summary_fields if field not in summary]
+                
+                if missing_summary_fields:
+                    self.log_result("Engagement Overview Summary Structure", False, 
+                                  f"Missing summary fields: {missing_summary_fields}")
+                    return False
+                
+                # Verify engagement distribution by level (5 levels)
+                by_level = data["by_level"]
+                if len(by_level) != 5:
+                    self.log_result("Engagement Overview Level Count", False, 
+                                  f"Expected 5 engagement levels, got {len(by_level)}")
+                    return False
+                
+                expected_levels = ["Highly Engaged", "Engaged", "Moderately Engaged", "Low Engagement", "At Risk"]
+                level_names = [level["level"] for level in by_level]
+                missing_levels = [level for level in expected_levels if level not in level_names]
+                
+                if missing_levels:
+                    self.log_result("Engagement Overview Level Names", False, 
+                                  f"Missing engagement levels: {missing_levels}")
+                    return False
+                
+                # Verify level structure
+                for level in by_level:
+                    level_fields = ["level", "count"]
+                    missing_level_fields = [field for field in level_fields if field not in level]
+                    
+                    if missing_level_fields:
+                        self.log_result("Engagement Overview Level Structure", False, 
+                                      f"Missing level fields: {missing_level_fields}")
+                        return False
+                
+                # Verify top engaged members list
+                top_members = data["top_engaged_members"]
+                if top_members:
+                    member = top_members[0]
+                    member_fields = ["member_id", "member_name", "email", "score"]
+                    missing_member_fields = [field for field in member_fields if field not in member]
+                    
+                    if missing_member_fields:
+                        self.log_result("Engagement Overview Top Members Structure", False, 
+                                      f"Missing top member fields: {missing_member_fields}")
+                        return False
+                
+                # Test performance (should analyze 100 members max)
+                if summary["members_analyzed"] > 100:
+                    self.log_result("Engagement Overview Performance", False, 
+                                  f"Should analyze max 100 members, analyzed {summary['members_analyzed']}")
+                    return False
+                else:
+                    self.log_result("Engagement Overview Performance", True, 
+                                  f"Performance optimized: analyzed {summary['members_analyzed']} members")
+                
+                self.log_result("Engagement Overview API", True, 
+                              f"Organization engagement: {summary['total_members']} total members, "
+                              f"avg score {summary['avg_engagement_score']}, "
+                              f"{len(top_members)} top performers")
+                return True
+                
+            else:
+                self.log_result("Engagement Overview API", False, 
+                              f"Failed to get engagement overview: {response.status_code}",
+                              {"response": response.text})
+                return False
+                
+        except Exception as e:
+            self.log_result("Engagement Overview API", False, f"Error testing engagement overview API: {str(e)}")
             return False
     
     def cleanup_test_data(self):
