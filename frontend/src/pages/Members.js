@@ -1098,12 +1098,13 @@ export default function Members() {
 
                   {/* Tabs */}
                   <Tabs defaultValue="overview" className="mt-6">
-                    <TabsList className="grid w-full grid-cols-5 bg-slate-700">
+                    <TabsList className="grid w-full grid-cols-6 bg-slate-700">
                       <TabsTrigger value="overview">Overview</TabsTrigger>
                       <TabsTrigger value="access">Access Logs</TabsTrigger>
                       <TabsTrigger value="bookings">Bookings</TabsTrigger>
                       <TabsTrigger value="invoices">Invoices</TabsTrigger>
                       <TabsTrigger value="notes">Notes</TabsTrigger>
+                      <TabsTrigger value="journal">Journal</TabsTrigger>
                     </TabsList>
 
                     {/* Overview Tab */}
