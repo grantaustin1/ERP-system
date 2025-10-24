@@ -787,10 +787,10 @@ class AdvancedAnalyticsTestRunner:
             except Exception as e:
                 self.log_result(f"Cleanup Access Log {access_log_id[:8]}", False, f"Error: {str(e)}")
     
-    def run_report_library_tests(self):
-        """Run the report library API tests"""
+    def run_advanced_analytics_tests(self):
+        """Run the advanced analytics API tests"""
         print("=" * 80)
-        print("BACKEND TESTING - PHASE 2C REPORT LIBRARY APIs")
+        print("BACKEND TESTING - PHASE 2D ADVANCED ANALYTICS APIs")
         print("=" * 80)
         
         # Step 1: Authenticate
@@ -798,48 +798,56 @@ class AdvancedAnalyticsTestRunner:
             print("❌ Authentication failed. Cannot proceed with tests.")
             return False
         
-        # Step 2: Setup test members (for context, though report APIs work with existing data)
+        # Step 2: Setup test members (for context, though analytics APIs work with existing data)
         if not self.setup_test_members():
             print("❌ Failed to setup test members. Cannot proceed with tests.")
             return False
         
-        # Step 3: Run REPORT LIBRARY API TESTS
+        # Step 3: Run ADVANCED ANALYTICS API TESTS
         print("\n" + "=" * 60)
-        print("REPORT LIBRARY API TESTS")
+        print("ADVANCED ANALYTICS API TESTS")
         print("=" * 60)
         
-        report_results = []
+        analytics_results = []
         
         # 1. Authentication Tests
-        print("\n🔐 TEST 1: Report API Authentication")
-        report_results.append(self.test_report_api_authentication())
+        print("\n🔐 TEST 1: Analytics API Authentication")
+        analytics_results.append(self.test_analytics_api_authentication())
         
-        # 2. Incomplete Data Report API
-        print("\n📊 TEST 2: Incomplete Data Report API")
-        report_results.append(self.test_incomplete_data_report_api())
+        # 2. Revenue Breakdown Analytics API
+        print("\n💰 TEST 2: Revenue Breakdown Analytics API")
+        analytics_results.append(self.test_revenue_breakdown_analytics_api())
         
-        # 3. Birthday Report API (7, 14, 30, 60, 90 days)
-        print("\n🎂 TEST 3: Birthday Report API")
-        report_results.append(self.test_birthday_report_api())
+        # 3. Geographic Distribution Analytics API
+        print("\n🌍 TEST 3: Geographic Distribution Analytics API")
+        analytics_results.append(self.test_geographic_distribution_analytics_api())
         
-        # 4. Anniversary Report API (7, 14, 30, 60, 90 days)
-        print("\n🎉 TEST 4: Anniversary Report API")
-        report_results.append(self.test_anniversary_report_api())
+        # 4. Attendance Deep Dive Analytics API
+        print("\n📊 TEST 4: Attendance Deep Dive Analytics API")
+        analytics_results.append(self.test_attendance_deep_dive_analytics_api())
         
-        # 5. Error Handling Tests
-        print("\n⚠️ TEST 5: Report API Error Handling")
-        report_results.append(self.test_report_api_error_handling())
+        # 5. Member Lifetime Value Analytics API
+        print("\n💎 TEST 5: Member Lifetime Value Analytics API")
+        analytics_results.append(self.test_member_lifetime_value_analytics_api())
+        
+        # 6. Churn Prediction Analytics API
+        print("\n⚠️ TEST 6: Churn Prediction Analytics API")
+        analytics_results.append(self.test_churn_prediction_analytics_api())
+        
+        # 7. Error Handling Tests
+        print("\n🛠️ TEST 7: Analytics API Error Handling")
+        analytics_results.append(self.test_analytics_api_error_handling())
         
         # Step 4: Generate Summary
         print("\n" + "=" * 80)
         print("TEST RESULTS SUMMARY")
         print("=" * 80)
         
-        report_passed = sum(report_results)
-        report_total = len(report_results)
+        analytics_passed = sum(analytics_results)
+        analytics_total = len(analytics_results)
         
-        print(f"\n🎯 REPORT LIBRARY TESTS: {report_passed}/{report_total} PASSED")
-        print(f"📈 SUCCESS RATE: {(report_passed/report_total)*100:.1f}%")
+        print(f"\n🎯 ADVANCED ANALYTICS TESTS: {analytics_passed}/{analytics_total} PASSED")
+        print(f"📈 SUCCESS RATE: {(analytics_passed/analytics_total)*100:.1f}%")
         
         # Detailed results
         print(f"\n📋 DETAILED RESULTS:")
@@ -850,8 +858,8 @@ class AdvancedAnalyticsTestRunner:
         # Step 5: Cleanup
         self.cleanup_test_data()
         
-        # Return success if all report tests passed
-        return report_passed == report_total
+        # Return success if all analytics tests passed
+        return analytics_passed == analytics_total
 
 def main():
     """Main execution function"""
