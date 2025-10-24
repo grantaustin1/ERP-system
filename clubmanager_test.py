@@ -265,9 +265,9 @@ class ClubManagerTester:
             if response.status_code == 200:
                 data = response.json()
                 
-                # Check for 12-week array
-                kpi_data = data.get("kpi_data")
-                if kpi_data and isinstance(kpi_data, list):
+                # Check for 12-week array (API returns array directly, not wrapped in object)
+                if isinstance(data, list):
+                    kpi_data = data
                     if len(kpi_data) == 12:
                         # Verify KPI metrics structure
                         first_week = kpi_data[0]
