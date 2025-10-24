@@ -4330,6 +4330,245 @@ async def get_dashboard_stats(current_user: User = Depends(get_current_user)):
         "today_access_count": today_access
     }
 
+
+# Dashboard Enhancement APIs
+
+@api_router.get("/dashboard/sales-comparison")
+async def get_sales_comparison(current_user: User = Depends(get_current_user)):
+    """Get sales comparison data: current month vs target vs previous month vs last year"""
+    from datetime import datetime, timedelta
+    
+    now = datetime.now(timezone.utc)
+    current_month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    current_month_end = (current_month_start + timedelta(days=32)).replace(day=1) - timedelta(seconds=1)
+    
+    # Previous month
+    previous_month_end = current_month_start - timedelta(seconds=1)
+    previous_month_start = previous_month_end.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    
+    # Last year same month
+    last_year_month_start = current_month_start.replace(year=current_month_start.year - 1)
+    last_year_month_end = current_month_end.replace(year=current_month_end.year - 1)
+    
+    # Get daily sales for each period
+    days_in_month = (current_month_end - current_month_start).days + 1
+    
+    # Build daily data structure
+    daily_data = []
+    for day in range(1, days_in_month + 1):
+        date_obj = current_month_start.replace(day=day)
+        
+        # Current month sales up to today
+        if date_obj <= now:
+            current_sales = await db.invoices.aggregate([
+                {
+                    "$match": {
+                        "status": "paid",
+                        "created_at": {
+                            "$gte": current_month_start.isoformat(),
+                            "$lte": date_obj.replace(hour=23, minute=59, second=59).isoformat()
+                        }
+                    }
+                },
+                {"$group": {"_id": None, "total": {"$sum": "$amount"}}}
+            ]).to_list(1)
+            current_month_sales = current_sales[0]["total"] if current_sales else 0
+        else:
+            current_month_sales = None
+        
+        # Previous month sales (same day)
+        prev_month_date = previous_month_start.replace(day=day)
+        prev_sales = await db.invoices.aggregate([
+            {
+                "$match": {
+                    "status": "paid",
+                    "created_at": {
+                        "$gte": previous_month_start.isoformat(),
+                        "$lte": prev_month_date.replace(hour=23, minute=59, second=59).isoformat()
+                    }
+                }
+            },
+            {"$group": {"_id": None, "total": {"$sum": "$amount"}}}
+        ]).to_list(1)
+        prev_month_sales = prev_sales[0]["total"] if prev_sales else 0
+        
+        # Last year sales (same day)
+        last_year_date = last_year_month_start.replace(day=day)
+        last_year_sales_result = await db.invoices.aggregate([
+            {
+                "$match": {
+                    "status": "paid",
+                    "created_at": {
+                        "$gte": last_year_month_start.isoformat(),
+                        "$lte": last_year_date.replace(hour=23, minute=59, second=59).isoformat()
+                    }
+                }
+            },
+            {"$group": {"_id": None, "total": {"$sum": "$amount"}}}
+        ]).to_list(1)
+        last_year_sales = last_year_sales_result[0]["total"] if last_year_sales_result else 0
+        
+        # Target (linear progression throughout month)
+        # For now, using a simple calculation: get monthly target from settings or use 100k default
+        monthly_target = 100000  # This should come from settings
+        daily_target = (monthly_target / days_in_month) * day
+        
+        daily_data.append({
+            "DisplayDate": date_obj.isoformat(),
+            "day": day,
+            "MonthSales": current_month_sales,
+            "PrevMonthSales": prev_month_sales,
+            "LastYearSales": last_year_sales,
+            "Target": daily_target
+        })
+    
+    return {
+        "data": daily_data,
+        "monthly_target": monthly_target,
+        "current_month_name": current_month_start.strftime("%B %Y")
+    }
+
+@api_router.get("/dashboard/kpi-trends")
+async def get_kpi_trends(current_user: User = Depends(get_current_user)):
+    """Get 12-week KPI trends for sparklines"""
+    from datetime import datetime, timedelta
+    
+    now = datetime.now(timezone.utc)
+    weeks_data = []
+    
+    for week_offset in range(11, -1, -1):
+        week_start = now - timedelta(weeks=week_offset + 1)
+        week_end = now - timedelta(weeks=week_offset)
+        
+        # People Registered (new members)
+        new_members = await db.members.count_documents({
+            "created_at": {
+                "$gte": week_start.isoformat(),
+                "$lt": week_end.isoformat()
+            }
+        })
+        
+        # Memberships Started (new active memberships)
+        memberships_started = await db.members.count_documents({
+            "membership_start_date": {
+                "$gte": week_start.isoformat(),
+                "$lt": week_end.isoformat()
+            },
+            "membership_status": "active"
+        })
+        
+        # Attendance (access logs)
+        attendance = await db.access_logs.count_documents({
+            "timestamp": {
+                "$gte": week_start.isoformat(),
+                "$lt": week_end.isoformat()
+            }
+        })
+        
+        # Bookings
+        bookings = await db.bookings.count_documents({
+            "booking_date": {
+                "$gte": week_start.isoformat(),
+                "$lt": week_end.isoformat()
+            }
+        })
+        
+        # Booking Attendance
+        booking_attendance = await db.bookings.count_documents({
+            "booking_date": {
+                "$gte": week_start.isoformat(),
+                "$lt": week_end.isoformat()
+            },
+            "status": "attended"
+        })
+        
+        # Product Sales (from POS)
+        product_sales_result = await db.pos_transactions.aggregate([
+            {
+                "$match": {
+                    "transaction_type": "product_sale",
+                    "created_at": {
+                        "$gte": week_start.isoformat(),
+                        "$lt": week_end.isoformat()
+                    }
+                }
+            },
+            {"$group": {"_id": None, "total": {"$sum": "$total_amount"}}}
+        ]).to_list(1)
+        product_sales = product_sales_result[0]["total"] if product_sales_result else 0
+        
+        # Tasks Created
+        tasks_created = await db.tasks.count_documents({
+            "created_at": {
+                "$gte": week_start.isoformat(),
+                "$lt": week_end.isoformat()
+            }
+        })
+        
+        weeks_data.append({
+            "week_start": week_start.strftime("%Y-%m-%d"),
+            "week_end": week_end.strftime("%Y-%m-%d"),
+            "people_registered": new_members,
+            "memberships_started": memberships_started,
+            "attendance": attendance,
+            "bookings": bookings,
+            "booking_attendance": booking_attendance,
+            "product_sales": round(product_sales, 2),
+            "tasks": tasks_created
+        })
+    
+    return weeks_data
+
+@api_router.get("/dashboard/birthdays-today")
+async def get_birthdays_today(current_user: User = Depends(get_current_user)):
+    """Get members with birthdays today with photos"""
+    from datetime import datetime
+    
+    now = datetime.now(timezone.utc)
+    today_month_day = f"{now.month:02d}-{now.day:02d}"
+    
+    # Find members where date_of_birth matches today's month and day
+    # Note: We need to handle various date formats
+    all_members = await db.members.find({}, {"_id": 0}).to_list(10000)
+    
+    birthday_members = []
+    for member in all_members:
+        dob = member.get("date_of_birth")
+        if dob:
+            try:
+                # Parse various date formats
+                if isinstance(dob, str):
+                    # Try ISO format
+                    try:
+                        dob_date = datetime.fromisoformat(dob.replace('Z', '+00:00'))
+                    except:
+                        # Try other common formats
+                        from dateutil import parser
+                        dob_date = parser.parse(dob)
+                    
+                    member_month_day = f"{dob_date.month:02d}-{dob_date.day:02d}"
+                    
+                    if member_month_day == today_month_day:
+                        age = now.year - dob_date.year
+                        if now.month < dob_date.month or (now.month == dob_date.month and now.day < dob_date.day):
+                            age -= 1
+                        
+                        birthday_members.append({
+                            "id": member.get("id"),
+                            "first_name": member.get("first_name", ""),
+                            "last_name": member.get("last_name", ""),
+                            "full_name": f"{member.get('first_name', '')} {member.get('last_name', '')}".strip(),
+                            "age": age,
+                            "photo_url": member.get("photo_url", ""),
+                            "membership_status": member.get("membership_status", ""),
+                            "email": member.get("email", "")
+                        })
+            except:
+                continue
+    
+    return birthday_members
+
+
 # Levy Routes
 @api_router.get("/levies", response_model=List[Levy])
 async def get_levies(status: Optional[str] = None, current_user: User = Depends(get_current_user)):
