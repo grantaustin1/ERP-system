@@ -128,6 +128,15 @@ export default function Members() {
     }
   };
 
+  const fetchTags = async () => {
+    try {
+      const response = await axios.get(`${API}/tags`);
+      setTags(response.data);
+    } catch (error) {
+      console.error('Failed to fetch tags:', error);
+    }
+  };
+
   const fetchPaymentOptions = async (membershipTypeId) => {
     try {
       const response = await axios.get(`${API}/payment-options/${membershipTypeId}`);
