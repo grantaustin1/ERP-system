@@ -28,6 +28,8 @@ import ProductManagement from '@/pages/ProductManagement';
 import Tasks from '@/pages/Tasks';
 import Reports from '@/pages/Reports';
 import AdvancedAnalytics from '@/pages/AdvancedAnalytics';
+import PointsRewards from '@/pages/PointsRewards';
+import EngagementDashboard from '@/pages/EngagementDashboard';
 import { Toaster } from '@/components/ui/sonner';
 import { PermissionProvider } from '@/contexts/PermissionContext';
 
