@@ -372,7 +372,7 @@ class AccessOverrideTester:
                 result = response.json()
                 
                 # Verify access is granted
-                if result.get("access_granted") is True:
+                if result.get("success") is True:
                     override_id = result.get("override_id")
                     if override_id:
                         self.created_overrides.append(override_id)
