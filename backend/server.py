@@ -230,6 +230,13 @@ class Member(BaseModel):
     norm_phone: Optional[str] = None  # Normalized phone for duplicate checking
     norm_first_name: Optional[str] = None  # Normalized first name
     norm_last_name: Optional[str] = None  # Normalized last name
+    # Phase 1 - Quick Wins: Enhanced Grid Columns
+    tags: List[str] = []  # Member tags for categorization and filtering
+    sessions_remaining: Optional[int] = None  # Remaining sessions for session-based memberships
+    last_visit_date: Optional[datetime] = None  # Last attendance/check-in date
+    next_billing_date: Optional[datetime] = None  # Next billing date
+    cancellation_date: Optional[datetime] = None  # Date membership was cancelled
+    cancellation_reason: Optional[str] = None  # Reason for cancellation
 
 class MemberCreate(BaseModel):
     first_name: str
