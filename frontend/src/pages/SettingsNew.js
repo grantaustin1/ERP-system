@@ -124,9 +124,21 @@ export default function SettingsNew() {
     message: ''
   });
 
+  // Task Types state
+  const [taskTypes, setTaskTypes] = useState([]);
+  const [taskTypeDialogOpen, setTaskTypeDialogOpen] = useState(false);
+  const [editingTaskType, setEditingTaskType] = useState(null);
+  const [taskTypeForm, setTaskTypeForm] = useState({
+    name: '',
+    description: '',
+    color: '#3b82f6',
+    icon: 'clipboard'
+  });
+
   useEffect(() => {
     fetchData();
     fetchTemplates();
+    fetchTaskTypes();
   }, []);
 
   const fetchData = async () => {
