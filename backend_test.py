@@ -686,16 +686,16 @@ class DashboardTestRunner:
             except Exception as e:
                 self.log_result(f"Cleanup Member {member_id[:8]}", False, f"Error: {str(e)}")
         
-        # Clean up created tags
-        for tag_id in self.created_tags:
+        # Clean up created access logs
+        for access_log_id in self.created_access_logs:
             try:
-                response = requests.delete(f"{API_BASE}/tags/{tag_id}", headers=self.headers)
+                response = requests.delete(f"{API_BASE}/access-logs/{access_log_id}", headers=self.headers)
                 if response.status_code == 200:
-                    self.log_result(f"Cleanup Tag {tag_id[:8]}", True, "Tag deleted")
+                    self.log_result(f"Cleanup Access Log {access_log_id[:8]}", True, "Access log deleted")
                 else:
-                    self.log_result(f"Cleanup Tag {tag_id[:8]}", False, f"Failed to delete: {response.status_code}")
+                    self.log_result(f"Cleanup Access Log {access_log_id[:8]}", False, f"Failed to delete: {response.status_code}")
             except Exception as e:
-                self.log_result(f"Cleanup Tag {tag_id[:8]}", False, f"Error: {str(e)}")
+                self.log_result(f"Cleanup Access Log {access_log_id[:8]}", False, f"Error: {str(e)}")
     
     def run_priority_tests(self):
         """Run the priority tests focusing on previously failed items"""
