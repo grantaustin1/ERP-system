@@ -100,8 +100,8 @@ class ClubManagerTester:
             if response.status_code == 200:
                 profile = response.json()
                 
-                # Check for retention metrics
-                retention_metrics = profile.get("retention_metrics")
+                # Check for retention metrics (API returns "retention" not "retention_metrics")
+                retention_metrics = profile.get("retention")
                 if retention_metrics:
                     required_retention_fields = ["current_month_visits", "previous_month_visits", "percentage_change", "status"]
                     has_retention_fields = all(field in retention_metrics for field in required_retention_fields)
@@ -123,7 +123,7 @@ class ClubManagerTester:
                         self.log_result("Retention Metrics Structure", False, 
                                       f"Missing retention fields: {missing_fields}")
                 else:
-                    self.log_result("Retention Metrics Structure", False, "No retention_metrics found in profile")
+                    self.log_result("Retention Metrics Structure", False, "No retention metrics found in profile")
                 
                 # Check for payment progress
                 payment_progress = profile.get("payment_progress")
