@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-Backend Test Suite - Re-test Phase 1 Quick Wins - Priority Failed Tests
-Focus on Member Cancel API and Enhanced Profile Endpoint
+Backend Test Suite - Phase 2A Dashboard Enhancements
+Focus on Dashboard Snapshot API and Recent Members API
 """
 
 import requests
