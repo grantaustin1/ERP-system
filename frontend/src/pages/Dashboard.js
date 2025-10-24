@@ -60,9 +60,8 @@ export default function Dashboard() {
     fetchStats();
     fetchAlertData();
     fetchClassBookingStats();
-  }, []);
     fetchPhase2Data();
-
+  }, []);
 
   const fetchStats = async () => {
     try {
@@ -73,6 +72,7 @@ export default function Dashboard() {
     } finally {
       setLoading(false);
     }
+  };
 
   const fetchPhase2Data = async () => {
     try {
