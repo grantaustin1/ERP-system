@@ -2082,7 +2082,6 @@ if __name__ == "__main__":
     
     tester = EnhancedMemberManagementTester()
     tester.run_all_tests()
-    def __init__(self):
         self.token = None
         self.headers = {}
         self.test_results = []
