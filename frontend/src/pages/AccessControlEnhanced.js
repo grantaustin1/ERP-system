@@ -352,10 +352,14 @@ function AccessControlEnhanced() {
     <div className="p-6 max-w-7xl mx-auto">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold">Access Control & Check-ins</h1>
-        <Dialog open={showCheckinDialog} onOpenChange={setShowCheckinDialog}>
-          <Button onClick={() => setShowCheckinDialog(true)}>
-            <UserCheck className="mr-2 h-4 w-4" /> Manual Check-in
+        <div className="flex gap-2">
+          <Button onClick={openOverrideDialog} variant="outline">
+            <KeyRound className="mr-2 h-4 w-4" /> Manual Override
           </Button>
+          <Dialog open={showCheckinDialog} onOpenChange={setShowCheckinDialog}>
+            <Button onClick={() => setShowCheckinDialog(true)}>
+              <UserCheck className="mr-2 h-4 w-4" /> Manual Check-in
+            </Button>
           <DialogContent>
             <DialogHeader>
               <DialogTitle>Manual Check-in</DialogTitle>
