@@ -3133,7 +3133,7 @@ class TaskingSystemTester:
                         return None
                 else:
                     self.log_result("Task Creation Setup", False, 
-                                  "Missing required data (members, users, or task types)")
+                                  "Missing required data (members or task types)")
                     return None
             else:
                 self.log_result("Task Creation Setup", False, 
