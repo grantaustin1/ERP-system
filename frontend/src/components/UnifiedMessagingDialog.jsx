@@ -226,7 +226,7 @@ const UnifiedMessagingDialog = ({ open, onOpenChange, selectedMembers = [], onSu
                 <SelectValue placeholder={loadingTemplates ? "Loading templates..." : "Choose a template"} />
               </SelectTrigger>
               <SelectContent className="bg-slate-700 border-slate-600">
-                <SelectItem value="">No template</SelectItem>
+                <SelectItem value="none">No template</SelectItem>
                 {templates.map(template => (
                   <SelectItem key={template.value} value={template.value}>
                     {template.label}
