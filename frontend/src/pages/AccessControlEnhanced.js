@@ -43,6 +43,25 @@ function AccessControlEnhanced() {
   const [showCheckinDialog, setShowCheckinDialog] = useState(false);
   const [accessResult, setAccessResult] = useState(null);
   
+  // Manual Override state
+  const [showOverrideDialog, setShowOverrideDialog] = useState(false);
+  const [overrideReasons, setOverrideReasons] = useState([]);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState([]);
+  const [selectedMember, setSelectedMember] = useState(null);
+  const [overrideForm, setOverrideForm] = useState({
+    member_id: '',
+    first_name: '',
+    last_name: '',
+    phone: '',
+    email: '',
+    reason_id: '',
+    sub_reason_id: '',
+    access_pin: '',
+    location: 'Main Entrance',
+    notes: ''
+  });
+  
   const [checkinForm, setCheckinForm] = useState({
     member_id: '',
     access_method: 'manual_override',
