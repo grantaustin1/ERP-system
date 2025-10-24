@@ -556,8 +556,8 @@ class AdvancedAnalyticsTestRunner:
                 # Verify top_members structure (top 10)
                 if data["top_members"]:
                     top_member = data["top_members"][0]
-                    member_fields = ["id", "first_name", "last_name", "full_name", "membership_type", 
-                                   "lifetime_value", "total_paid", "duration_months", "avg_monthly_value"]
+                    member_fields = ["member_id", "member_name", "membership_type", 
+                                   "ltv", "monthly_value", "duration_months"]
                     missing_member_fields = [field for field in member_fields if field not in top_member]
                     
                     if missing_member_fields:
