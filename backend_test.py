@@ -127,119 +127,83 @@ class RetentionTestRunner:
             self.log_result("Setup Test Members", False, f"Error creating test members: {str(e)}")
             return False
     
-    def test_dashboard_snapshot_api(self):
-        """Test Dashboard Snapshot API - GET /api/dashboard/snapshot"""
-        print("\n=== Testing Dashboard Snapshot API ===")
+    def test_at_risk_members_api(self):
+        """Test At-Risk Members API - GET /api/retention/at-risk-members"""
+        print("\n=== Testing At-Risk Members API ===")
         
         try:
-            response = requests.get(f"{API_BASE}/dashboard/snapshot", headers=self.headers)
+            response = requests.get(f"{API_BASE}/retention/at-risk-members", headers=self.headers)
             
             if response.status_code == 200:
-                snapshot = response.json()
+                data = response.json()
                 
                 # Verify required structure
-                required_sections = ["today", "yesterday", "growth"]
-                missing_sections = [section for section in required_sections if section not in snapshot]
+                required_fields = ["total", "critical", "high", "medium", "members"]
+                missing_fields = [field for field in required_fields if field not in data]
                 
-                if missing_sections:
-                    self.log_result("Dashboard Snapshot Structure", False, 
-                                  f"Missing sections: {missing_sections}")
+                if missing_fields:
+                    self.log_result("At-Risk Members Structure", False, 
+                                  f"Missing fields: {missing_fields}")
                     return False
                 
-                # Verify today section
-                today_fields = ["registered", "commenced", "attendance"]
-                today_data = snapshot.get("today", {})
-                missing_today = [field for field in today_fields if field not in today_data]
-                
-                if missing_today:
-                    self.log_result("Dashboard Snapshot Today Fields", False, 
-                                  f"Missing today fields: {missing_today}")
+                # Verify data types
+                if not isinstance(data["total"], int) or not isinstance(data["critical"], int) or \
+                   not isinstance(data["high"], int) or not isinstance(data["medium"], int):
+                    self.log_result("At-Risk Members Data Types", False, 
+                                  "Count fields should be integers")
                     return False
                 
-                # Verify yesterday section
-                yesterday_data = snapshot.get("yesterday", {})
-                missing_yesterday = [field for field in today_fields if field not in yesterday_data]
-                
-                if missing_yesterday:
-                    self.log_result("Dashboard Snapshot Yesterday Fields", False, 
-                                  f"Missing yesterday fields: {missing_yesterday}")
+                if not isinstance(data["members"], list):
+                    self.log_result("At-Risk Members Members Type", False, 
+                                  "Members field should be a list")
                     return False
                 
-                # Verify growth section
-                growth_fields = [
-                    "memberships_sold_30d", "memberships_sold_last_year", "memberships_growth",
-                    "memberships_expired_30d", "memberships_expired_last_year", "expired_growth",
-                    "net_gain_30d", "net_gain_last_year", "net_gain_growth",
-                    "attendance_30d", "attendance_last_year", "attendance_growth"
-                ]
-                growth_data = snapshot.get("growth", {})
-                missing_growth = [field for field in growth_fields if field not in growth_data]
+                # Verify member structure if members exist
+                if data["members"]:
+                    member = data["members"][0]
+                    member_fields = [
+                        "id", "first_name", "last_name", "full_name", "email", 
+                        "risk_score", "risk_level", "risk_factors"
+                    ]
+                    missing_member_fields = [field for field in member_fields if field not in member]
+                    
+                    if missing_member_fields:
+                        self.log_result("At-Risk Members Member Structure", False, 
+                                      f"Missing member fields: {missing_member_fields}")
+                        return False
+                    
+                    # Verify risk_level categorization
+                    valid_risk_levels = ["critical", "high", "medium"]
+                    if member["risk_level"] not in valid_risk_levels:
+                        self.log_result("At-Risk Members Risk Level", False, 
+                                      f"Invalid risk level: {member['risk_level']}")
+                        return False
+                    
+                    # Verify risk_factors is a list
+                    if not isinstance(member["risk_factors"], list):
+                        self.log_result("At-Risk Members Risk Factors", False, 
+                                      "Risk factors should be a list")
+                        return False
                 
-                if missing_growth:
-                    self.log_result("Dashboard Snapshot Growth Fields", False, 
-                                  f"Missing growth fields: {missing_growth}")
+                # Verify totals match
+                calculated_total = data["critical"] + data["high"] + data["medium"]
+                if data["total"] != calculated_total:
+                    self.log_result("At-Risk Members Total Calculation", False, 
+                                  f"Total mismatch: {data['total']} != {calculated_total}")
                     return False
                 
-                # Verify data types are numeric
-                all_numeric = True
-                non_numeric_fields = []
-                
-                for section_name, section_data in snapshot.items():
-                    for field, value in section_data.items():
-                        if not isinstance(value, (int, float)):
-                            all_numeric = False
-                            non_numeric_fields.append(f"{section_name}.{field}")
-                
-                if not all_numeric:
-                    self.log_result("Dashboard Snapshot Data Types", False, 
-                                  f"Non-numeric fields: {non_numeric_fields}")
-                    return False
-                
-                # Verify growth percentages are calculated correctly
-                growth = snapshot["growth"]
-                
-                # Test growth calculation logic
-                def verify_growth_calc(current, previous, calculated):
-                    if previous == 0:
-                        expected = 100 if current > 0 else 0
-                    else:
-                        expected = round(((current - previous) / previous) * 100, 1)
-                    return abs(calculated - expected) < 0.1  # Allow small floating point differences
-                
-                memberships_growth_correct = verify_growth_calc(
-                    growth["memberships_sold_30d"], 
-                    growth["memberships_sold_last_year"], 
-                    growth["memberships_growth"]
-                )
-                
-                if not memberships_growth_correct:
-                    self.log_result("Dashboard Snapshot Growth Calculation", False, 
-                                  "Memberships growth percentage calculation incorrect")
-                    return False
-                
-                # Log sample data for verification
-                sample_data = {
-                    "today": today_data,
-                    "yesterday": yesterday_data,
-                    "growth_sample": {
-                        "memberships_growth": growth["memberships_growth"],
-                        "net_gain_growth": growth["net_gain_growth"],
-                        "attendance_growth": growth["attendance_growth"]
-                    }
-                }
-                
-                self.log_result("Dashboard Snapshot API", True, 
-                              f"All fields present and correctly structured. Sample data: {json.dumps(sample_data, indent=2)}")
+                self.log_result("At-Risk Members API", True, 
+                              f"Retrieved {data['total']} at-risk members (Critical: {data['critical']}, High: {data['high']}, Medium: {data['medium']})")
                 return True
                 
             else:
-                self.log_result("Dashboard Snapshot API", False, 
-                              f"Failed to get snapshot: {response.status_code}",
+                self.log_result("At-Risk Members API", False, 
+                              f"Failed to get at-risk members: {response.status_code}",
                               {"response": response.text})
                 return False
                 
         except Exception as e:
-            self.log_result("Dashboard Snapshot API", False, f"Error testing snapshot API: {str(e)}")
+            self.log_result("At-Risk Members API", False, f"Error testing at-risk members API: {str(e)}")
             return False
     
     def test_recent_members_api(self):
