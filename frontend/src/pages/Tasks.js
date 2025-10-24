@@ -457,12 +457,20 @@ export default function Tasks() {
                   </div>
                   <div className="space-y-2">
                     <Label>Assign to Department</Label>
-                    <Input
-                      value={formData.assigned_to_department}
-                      onChange={(e) => setFormData({...formData, assigned_to_department: e.target.value})}
-                      placeholder="e.g., Sales, Admin"
-                      className="bg-slate-700 border-slate-600"
-                    />
+                    <Select value={formData.assigned_to_department} onValueChange={(value) => setFormData({...formData, assigned_to_department: value})}>
+                      <SelectTrigger className="bg-slate-700 border-slate-600">
+                        <SelectValue placeholder="Select department" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">None</SelectItem>
+                        <SelectItem value="Admin">Admin</SelectItem>
+                        <SelectItem value="Reception">Reception</SelectItem>
+                        <SelectItem value="Fitness">Fitness</SelectItem>
+                        <SelectItem value="Sales">Sales</SelectItem>
+                        <SelectItem value="HOD">HOD</SelectItem>
+                        <SelectItem value="Maintenance">Maintenance</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
                   <div className="space-y-2">
                     <Label>Related Member</Label>
