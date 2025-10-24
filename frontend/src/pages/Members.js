@@ -1425,6 +1425,180 @@ export default function Members() {
                         )}
                       </div>
                     </TabsContent>
+
+                    {/* Journal Tab */}
+                    <TabsContent value="journal" className="space-y-4">
+                      {/* Filters */}
+                      <Card className="bg-slate-700/50 border-slate-600">
+                        <CardContent className="p-4">
+                          <div className="grid grid-cols-4 gap-4">
+                            <div className="space-y-2">
+                              <Label>Action Type</Label>
+                              <Select
+                                value={journalFilters.action_type}
+                                onValueChange={(value) => setJournalFilters({...journalFilters, action_type: value})}
+                              >
+                                <SelectTrigger className="bg-slate-700 border-slate-600">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="all">All Actions</SelectItem>
+                                  <SelectItem value="email_sent">Email Sent</SelectItem>
+                                  <SelectItem value="email_received">Email Received</SelectItem>
+                                  <SelectItem value="whatsapp_sent">WhatsApp Sent</SelectItem>
+                                  <SelectItem value="whatsapp_received">WhatsApp Received</SelectItem>
+                                  <SelectItem value="sms_sent">SMS Sent</SelectItem>
+                                  <SelectItem value="sms_received">SMS Received</SelectItem>
+                                  <SelectItem value="profile_updated">Profile Updated</SelectItem>
+                                  <SelectItem value="status_changed">Status Changed</SelectItem>
+                                  <SelectItem value="payment_received">Payment Received</SelectItem>
+                                  <SelectItem value="invoice_created">Invoice Created</SelectItem>
+                                  <SelectItem value="booking_created">Booking Created</SelectItem>
+                                  <SelectItem value="booking_cancelled">Booking Cancelled</SelectItem>
+                                  <SelectItem value="no_show_marked">No-Show Marked</SelectItem>
+                                  <SelectItem value="note_added">Note Added</SelectItem>
+                                  <SelectItem value="note_deleted">Note Deleted</SelectItem>
+                                  <SelectItem value="access_granted">Access Granted</SelectItem>
+                                  <SelectItem value="access_denied">Access Denied</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            <div className="space-y-2">
+                              <Label>Start Date</Label>
+                              <Input
+                                type="date"
+                                value={journalFilters.start_date}
+                                onChange={(e) => setJournalFilters({...journalFilters, start_date: e.target.value})}
+                                className="bg-slate-700 border-slate-600"
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <Label>End Date</Label>
+                              <Input
+                                type="date"
+                                value={journalFilters.end_date}
+                                onChange={(e) => setJournalFilters({...journalFilters, end_date: e.target.value})}
+                                className="bg-slate-700 border-slate-600"
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <Label>Search</Label>
+                              <Input
+                                type="text"
+                                placeholder="Search in descriptions..."
+                                value={journalFilters.search}
+                                onChange={(e) => setJournalFilters({...journalFilters, search: e.target.value})}
+                                className="bg-slate-700 border-slate-600"
+                              />
+                            </div>
+                          </div>
+                          <Button onClick={handleJournalFilterChange} size="sm" className="mt-4">
+                            Apply Filters
+                          </Button>
+                        </CardContent>
+                      </Card>
+
+                      {/* Journal Entries */}
+                      <div className="space-y-3 max-h-96 overflow-y-auto">
+                        {journal.length > 0 ? (
+                          journal.map((entry) => {
+                            // Determine badge color based on action type
+                            const getBadgeVariant = (actionType) => {
+                              if (actionType.includes('email')) return 'default';
+                              if (actionType.includes('whatsapp')) return 'default';
+                              if (actionType.includes('sms')) return 'default';
+                              if (actionType.includes('access_granted')) return 'default';
+                              if (actionType.includes('access_denied')) return 'destructive';
+                              if (actionType.includes('payment')) return 'default';
+                              if (actionType.includes('booking')) return 'secondary';
+                              if (actionType.includes('note')) return 'secondary';
+                              return 'secondary';
+                            };
+
+                            return (
+                              <Card key={entry.journal_id} className="bg-slate-700/50 border-slate-600">
+                                <CardContent className="p-4">
+                                  <div className="flex items-start justify-between">
+                                    <div className="flex-1">
+                                      <div className="flex items-center gap-2 mb-2">
+                                        <Badge variant={getBadgeVariant(entry.action_type)}>
+                                          {entry.action_type.replace(/_/g, ' ').toUpperCase()}
+                                        </Badge>
+                                        <span className="text-sm text-slate-400">
+                                          {new Date(entry.created_at).toLocaleString()}
+                                        </span>
+                                        {entry.created_by_name && (
+                                          <span className="text-sm text-slate-400">
+                                            • by {entry.created_by_name}
+                                          </span>
+                                        )}
+                                      </div>
+                                      <div className="text-white mb-2">{entry.description}</div>
+                                      {entry.metadata && Object.keys(entry.metadata).length > 0 && (
+                                        <details className="mt-2">
+                                          <summary className="text-sm text-emerald-400 cursor-pointer hover:text-emerald-300">
+                                            View Details
+                                          </summary>
+                                          <div className="mt-2 p-3 bg-slate-800/50 rounded text-sm text-slate-300 max-h-48 overflow-y-auto">
+                                            {entry.metadata.full_message && (
+                                              <div className="mb-2">
+                                                <strong>Message:</strong>
+                                                <div className="whitespace-pre-wrap mt-1">{entry.metadata.full_message}</div>
+                                              </div>
+                                            )}
+                                            {entry.metadata.full_body && (
+                                              <div className="mb-2">
+                                                <strong>Email Body:</strong>
+                                                <div className="whitespace-pre-wrap mt-1">{entry.metadata.full_body}</div>
+                                              </div>
+                                            )}
+                                            {entry.metadata.subject && (
+                                              <div className="mb-2">
+                                                <strong>Subject:</strong> {entry.metadata.subject}
+                                              </div>
+                                            )}
+                                            {entry.metadata.phone && (
+                                              <div className="mb-2">
+                                                <strong>Phone:</strong> {entry.metadata.phone}
+                                              </div>
+                                            )}
+                                            {entry.metadata.email && (
+                                              <div className="mb-2">
+                                                <strong>Email:</strong> {entry.metadata.email}
+                                              </div>
+                                            )}
+                                            {entry.metadata.changed_fields && (
+                                              <div className="mb-2">
+                                                <strong>Changed Fields:</strong> {entry.metadata.changed_fields.join(', ')}
+                                              </div>
+                                            )}
+                                            {entry.metadata.location && (
+                                              <div className="mb-2">
+                                                <strong>Location:</strong> {entry.metadata.location}
+                                              </div>
+                                            )}
+                                            {entry.metadata.reason && (
+                                              <div className="mb-2">
+                                                <strong>Reason:</strong> {entry.metadata.reason}
+                                              </div>
+                                            )}
+                                            <pre className="text-xs mt-2 opacity-50">
+                                              {JSON.stringify(entry.metadata, null, 2)}
+                                            </pre>
+                                          </div>
+                                        </details>
+                                      )}
+                                    </div>
+                                  </div>
+                                </CardContent>
+                              </Card>
+                            );
+                          })
+                        ) : (
+                          <div className="text-center text-slate-400 py-8">No journal entries found</div>
+                        )}
+                      </div>
+                    </TabsContent>
                   </Tabs>
                 </>
               ) : null}
