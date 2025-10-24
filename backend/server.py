@@ -10750,6 +10750,142 @@ async def seed_default_task_types(current_user: User = Depends(get_current_user)
     }
 
 
+# Messaging Enhancement APIs
+@api_router.get("/messaging/sms-credits")
+async def get_sms_credits(current_user: User = Depends(get_current_user)):
+    """Get available SMS credits for the organization"""
+    # For now, return mock data. In production, this would query actual SMS provider balance
+    return {
+        "credits_available": 2500,
+        "credits_used_this_month": 450,
+        "cost_per_credit": 0.05,
+        "currency": "USD"
+    }
+
+@api_router.post("/messaging/send-unified")
+async def send_unified_message(
+    request: dict,
+    current_user: User = Depends(get_current_user)
+):
+    """Unified endpoint to send SMS/Email/WhatsApp/Push notifications"""
+    member_ids = request.get("member_ids", [])
+    message_type = request.get("message_type", "sms")  # sms, email, whatsapp, push
+    subject = request.get("subject", "")
+    message_body = request.get("message_body", "")
+    template_id = request.get("template_id")
+    is_marketing = request.get("is_marketing", False)
+    save_as_template = request.get("save_as_template", False)
+    template_name = request.get("template_name", "")
+    show_on_checkin = request.get("show_on_checkin", False)  # For push notifications
+    
+    if not member_ids:
+        raise HTTPException(status_code=400, detail="No recipients specified")
+    
+    if not message_body:
+        raise HTTPException(status_code=400, detail="Message body is required")
+    
+    # Save as template if requested
+    if save_as_template and template_name:
+        new_template = NotificationTemplate(
+            name=template_name,
+            category="custom",
+            channels=[message_type],
+            subject=subject if message_type in ["email", "push"] else "",
+            message=message_body,
+            is_active=True
+        )
+        template_dict = new_template.model_dump()
+        template_dict["created_at"] = template_dict["created_at"].isoformat()
+        await db.notification_templates.insert_one(template_dict)
+    
+    # Send messages
+    sent_count = 0
+    failed_count = 0
+    
+    for member_id in member_ids:
+        member = await db.members.find_one({"id": member_id}, {"_id": 0})
+        if not member:
+            failed_count += 1
+            continue
+        
+        # Personalize message
+        personalized_message = message_body.replace("{first_name}", member.get("first_name", "Member"))
+        personalized_message = personalized_message.replace("{last_name}", member.get("last_name", ""))
+        personalized_message = personalized_message.replace("{email}", member.get("email", ""))
+        
+        try:
+            if message_type == "sms":
+                # Mock SMS sending - in production, integrate with SMS provider
+                print(f"Sending SMS to {member.get('phone')}: {personalized_message[:50]}...")
+                
+            elif message_type == "email":
+                # Mock email sending
+                print(f"Sending Email to {member.get('email')}: {subject}")
+                
+            elif message_type == "whatsapp":
+                # Mock WhatsApp sending
+                print(f"Sending WhatsApp to {member.get('phone')}: {personalized_message[:50]}...")
+                
+            elif message_type == "push":
+                # Mock push notification
+                print(f"Sending Push to member {member_id}: {subject}")
+            
+            # Log to member journal
+            await add_journal_entry(
+                member_id=member_id,
+                action_type="message_sent",
+                description=f"{message_type.upper()} sent: {subject if subject else personalized_message[:50]}",
+                metadata={
+                    "message_type": message_type,
+                    "is_marketing": is_marketing,
+                    "show_on_checkin": show_on_checkin
+                },
+                created_by=current_user.id,
+                created_by_name=current_user.full_name
+            )
+            
+            sent_count += 1
+            
+        except Exception as e:
+            print(f"Failed to send {message_type} to member {member_id}: {str(e)}")
+            failed_count += 1
+    
+    return {
+        "success": True,
+        "sent_count": sent_count,
+        "failed_count": failed_count,
+        "message": f"Successfully sent {sent_count} messages, {failed_count} failed"
+    }
+
+@api_router.get("/messaging/templates/dropdown")
+async def get_templates_for_dropdown(
+    message_type: str = "all",
+    current_user: User = Depends(get_current_user)
+):
+    """Get simplified template list for dropdown selection"""
+    query = {"is_active": True}
+    
+    if message_type != "all":
+        query["channels"] = message_type
+    
+    templates = await db.notification_templates.find(
+        query,
+        {"_id": 0, "id": 1, "name": 1, "subject": 1, "message": 1, "category": 1}
+    ).to_list(length=None)
+    
+    # Format for dropdown
+    dropdown_items = [{
+        "value": t["id"],
+        "label": t["name"],
+        "subject": t.get("subject", ""),
+        "message": t.get("message", ""),
+        "category": t.get("category", "custom")
+    } for t in templates]
+    
+    return dropdown_items
+
+
+
 @api_router.get("/notification-templates/by-channel/{channel}")
 async def get_templates_by_channel(
     channel: str,
