@@ -4483,16 +4483,28 @@ metadata:
 
 test_plan:
   current_focus:
-    - "Member Journal Tab Functionality"
-  stuck_tasks: []
-  test_all: false
-  test_priority: "high_first"
-    - "Members Tab Profile Drill-Down UI"
+    - "Invoice Line Item Model & Enhanced Invoice Model"
+    - "Billing Settings Model & API"
+    - "Invoice Helper Functions - Calculate Totals & Generate Number"
+    - "Enhanced Create Invoice API with Line Items"
+    - "Get Invoice Details API"
+    - "Update Invoice API"
+    - "Void Invoice API"
+    - "Generate Invoice PDF API"
+    - "Invoice Management UI - Create Invoice Dialog"
+    - "Invoice Management UI - Invoice List & Actions"
+    - "Invoice Management UI - Edit Invoice Dialog"
+    - "Invoice Management UI - Billing Settings Dialog"
+    - "Invoice Management UI - PDF Download"
+    - "Invoice Management Navigation - Sidebar & Routing"
   stuck_tasks: []
   test_all: false
   test_priority: "high_first"
 
 agent_communication:
+  - agent: "main"
+    message: "✅ BILLING AUTOMATION - INVOICE GENERATION SYSTEM IMPLEMENTED. Backend: Created enhanced Invoice model with line items support (InvoiceLineItem with quantity, price, discount, tax), BillingSettings model for configuration (auto-email, tax, company details), helper functions for invoice calculations and sequential number generation, complete invoice CRUD APIs (create, read, update, void), professional PDF generation with ReportLab. Frontend: Created comprehensive InvoiceManagement page with create/edit dialogs, line items management, billing settings configuration, invoice listing with download/edit/void actions, integrated with all backend APIs. Added navigation link to sidebar and routing. All changes implemented and ready for backend testing via deep_testing_backend_v2."
+
   - agent: "testing"
     message: "✅ MEMBER JOURNAL TAB UI TESTING COMPLETED - 100% SUCCESS RATE. All Journal tab functionality working perfectly in the Members page. **TAB INTEGRATION**: Journal tab successfully added as 6th tab in member profile dialog, loads correctly alongside Overview, Access Logs, Bookings, Invoices, and Notes tabs. **FILTER INTERFACE**: Complete filter UI with Action Type dropdown (All Actions, Email Sent, etc.), Start/End Date pickers, Search input, and Apply Filters button - all functional. **JOURNAL DISPLAY**: Entries display in timeline format with proper badges (NOTE DELETED, NOTE ADDED, PROFILE UPDATED), timestamps, creator names, and descriptions. **EXPANDABLE DETAILS**: View Details functionality working perfectly - expands to show full metadata and JSON, collapses on second click. **FILTERING**: All filter types working - Action Type selection, search text filtering, date range filtering. **INTEGRATION**: Journal integrates with Notes tab - adding/deleting notes creates corresponding journal entries. **MEMBER SWITCHING**: Data properly resets when switching between members. **PERFORMANCE**: No console errors affecting functionality, smooth loading and interactions. Journal tab is production-ready and meets all requirements."
 
