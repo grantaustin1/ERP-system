@@ -3828,11 +3828,10 @@ metadata:
 
 test_plan:
   current_focus:
-    - "Member Model Freeze Status Fields"
-    - "MemberNote Model and CRUD API"
-    - "Member Profile Consolidated Endpoint"
-    - "Member Data Paginated Endpoints"
-    - "Member Update Endpoint"
+    - "Member Journal Tab Functionality"
+  stuck_tasks: []
+  test_all: false
+  test_priority: "high_first"
     - "Members Tab Profile Drill-Down UI"
   stuck_tasks: []
   test_all: false
