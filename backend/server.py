@@ -3095,6 +3095,348 @@ async def delete_task_comment(
     
     return {"message": "Comment deleted successfully"}
 
+# Override Reason Routes
+@api_router.get("/override-reasons", response_model=List[OverrideReason])
+async def get_override_reasons(current_user: User = Depends(get_current_user)):
+    """Get all override reasons"""
+    reasons = await db.override_reasons.find(
+        {"is_active": True},
+        {"_id": 0}
+    ).sort("order", 1).to_list(length=None)
+    return reasons
+
+@api_router.get("/override-reasons/hierarchical")
+async def get_override_reasons_hierarchical(current_user: User = Depends(get_current_user)):
+    """Get override reasons in hierarchical structure"""
+    all_reasons = await db.override_reasons.find(
+        {"is_active": True},
+        {"_id": 0}
+    ).sort("order", 1).to_list(length=None)
+    
+    # Build hierarchy
+    main_reasons = [r for r in all_reasons if not r.get("parent_id")]
+    for main in main_reasons:
+        main["sub_reasons"] = [r for r in all_reasons if r.get("parent_id") == main["reason_id"]]
+    
+    return main_reasons
+
+@api_router.post("/override-reasons", response_model=OverrideReason)
+async def create_override_reason(
+    reason_data: OverrideReasonCreate,
+    current_user: User = Depends(get_current_user)
+):
+    """Create a new override reason"""
+    reason = OverrideReason(**reason_data.model_dump())
+    await db.override_reasons.insert_one(reason.model_dump())
+    return reason
+
+@api_router.put("/override-reasons/{reason_id}", response_model=OverrideReason)
+async def update_override_reason(
+    reason_id: str,
+    reason_data: OverrideReasonUpdate,
+    current_user: User = Depends(get_current_user)
+):
+    """Update an override reason"""
+    reason = await db.override_reasons.find_one({"reason_id": reason_id}, {"_id": 0})
+    if not reason:
+        raise HTTPException(status_code=404, detail="Override reason not found")
+    
+    updates = {k: v for k, v in reason_data.model_dump().items() if v is not None}
+    if updates:
+        await db.override_reasons.update_one(
+            {"reason_id": reason_id},
+            {"$set": updates}
+        )
+    
+    updated_reason = await db.override_reasons.find_one({"reason_id": reason_id}, {"_id": 0})
+    return updated_reason
+
+@api_router.delete("/override-reasons/{reason_id}")
+async def delete_override_reason(
+    reason_id: str,
+    current_user: User = Depends(get_current_user)
+):
+    """Soft delete an override reason"""
+    result = await db.override_reasons.update_one(
+        {"reason_id": reason_id},
+        {"$set": {"is_active": False}}
+    )
+    if result.modified_count == 0:
+        raise HTTPException(status_code=404, detail="Override reason not found")
+    return {"message": "Override reason deleted successfully"}
+
+@api_router.post("/override-reasons/seed-defaults")
+async def seed_default_override_reasons(current_user: User = Depends(get_current_user)):
+    """Seed default override reasons with hierarchy"""
+    default_reasons = [
+        # Main reasons
+        {"name": "Debt Arrangement", "description": "Member has arranged payment plan for debt", "parent_id": None, "requires_pin": True, "order": 1},
+        {"name": "Lost Access Card", "description": "Member lost their access card", "parent_id": None, "requires_pin": True, "order": 2},
+        {"name": "No App for QR Code", "description": "Member doesn't have app installed", "parent_id": None, "requires_pin": True, "order": 3},
+        {"name": "External Contractor", "description": "Service provider or contractor", "parent_id": None, "requires_pin": False, "order": 4},
+        {"name": "New Prospect", "description": "Potential new member", "parent_id": None, "requires_pin": False, "order": 5},
+    ]
+    
+    # Insert main reasons first
+    created_reasons = {}
+    for reason_data in default_reasons:
+        existing = await db.override_reasons.find_one({"name": reason_data["name"], "parent_id": None}, {"_id": 0})
+        if not existing:
+            reason = OverrideReason(**reason_data)
+            await db.override_reasons.insert_one(reason.model_dump())
+            created_reasons[reason_data["name"]] = reason.reason_id
+        else:
+            created_reasons[reason_data["name"]] = existing["reason_id"]
+    
+    # Sub-reasons for "New Prospect"
+    if "New Prospect" in created_reasons:
+        sub_reasons = [
+            {"name": "Walk In", "description": "Walked into the facility", "parent_id": created_reasons["New Prospect"], "requires_pin": False, "order": 1},
+            {"name": "Phone In", "description": "Called to inquire", "parent_id": created_reasons["New Prospect"], "requires_pin": False, "order": 2},
+            {"name": "Canvassing", "description": "Found through canvassing", "parent_id": created_reasons["New Prospect"], "requires_pin": False, "order": 3},
+            {"name": "Referral", "description": "Referred by existing member", "parent_id": created_reasons["New Prospect"], "requires_pin": False, "order": 4},
+            {"name": "Social Media Lead", "description": "From social media campaign", "parent_id": created_reasons["New Prospect"], "requires_pin": False, "order": 5},
+            {"name": "Flyer/Brochure", "description": "From marketing materials", "parent_id": created_reasons["New Prospect"], "requires_pin": False, "order": 6},
+        ]
+        
+        for sub_reason_data in sub_reasons:
+            existing = await db.override_reasons.find_one({
+                "name": sub_reason_data["name"],
+                "parent_id": sub_reason_data["parent_id"]
+            }, {"_id": 0})
+            if not existing:
+                sub_reason = OverrideReason(**sub_reason_data)
+                await db.override_reasons.insert_one(sub_reason.model_dump())
+    
+    return {
+        "success": True,
+        "message": "Seeded default override reasons with hierarchy"
+    }
+
+# Member Search for Override
+@api_router.get("/members/search")
+async def search_members(
+    q: str,
+    current_user: User = Depends(get_current_user)
+):
+    """Search members by name, email, phone, or ID"""
+    # Build search query
+    search_query = {
+        "$or": [
+            {"first_name": {"$regex": q, "$options": "i"}},
+            {"last_name": {"$regex": q, "$options": "i"}},
+            {"email": {"$regex": q, "$options": "i"}},
+            {"phone": {"$regex": q, "$options": "i"}},
+            {"id": {"$regex": q, "$options": "i"}}
+        ]
+    }
+    
+    members = await db.members.find(
+        search_query,
+        {"_id": 0, "first_name": 1, "last_name": 1, "email": 1, "phone": 1, "id": 1, "membership_status": 1, "expiry_date": 1, "access_pin": 1, "is_prospect": 1}
+    ).limit(10).to_list(length=10)
+    
+    # Enhance with status info
+    for member in members:
+        if member.get("is_prospect"):
+            member["status_label"] = "Prospect"
+        elif member.get("membership_status") == "cancelled":
+            member["status_label"] = "Cancelled"
+        elif member.get("membership_status") == "suspended":
+            member["status_label"] = "Suspended"
+        elif member.get("expiry_date") and datetime.fromisoformat(member["expiry_date"].replace('Z', '+00:00')) < datetime.now(timezone.utc):
+            member["status_label"] = "Expired"
+        else:
+            member["status_label"] = "Active"
+    
+    return members
+
+# Access Override Route
+@api_router.post("/access/override")
+async def create_access_override(
+    override_data: AccessOverrideCreate,
+    current_user: User = Depends(get_current_user)
+):
+    """Grant access override with reason and optional PIN verification"""
+    
+    # Get reason details
+    reason = await db.override_reasons.find_one({"reason_id": override_data.reason_id}, {"_id": 0})
+    if not reason:
+        raise HTTPException(status_code=404, detail="Override reason not found")
+    
+    sub_reason = None
+    if override_data.sub_reason_id:
+        sub_reason = await db.override_reasons.find_one({"reason_id": override_data.sub_reason_id}, {"_id": 0})
+    
+    # Check if this is a new prospect or existing member
+    member = None
+    member_id = override_data.member_id
+    pin_verified = False
+    
+    if member_id:
+        # Existing member - verify PIN if required
+        member = await db.members.find_one({"id": member_id}, {"_id": 0})
+        if not member:
+            raise HTTPException(status_code=404, detail="Member not found")
+        
+        if reason.get("requires_pin", True):
+            if not override_data.access_pin:
+                raise HTTPException(status_code=400, detail="PIN required for this override reason")
+            
+            if member.get("access_pin") != override_data.access_pin:
+                raise HTTPException(status_code=403, detail="Invalid PIN")
+            
+            pin_verified = True
+        
+        # Check daily override limit
+        today = datetime.now(timezone.utc).date()
+        last_override = member.get("last_override_date")
+        if last_override:
+            last_override_date = last_override.date() if isinstance(last_override, datetime) else datetime.fromisoformat(str(last_override).replace('Z', '+00:00')).date()
+            if last_override_date == today:
+                # Same day - check count
+                if member.get("daily_override_count", 0) >= 3:  # Default limit
+                    raise HTTPException(status_code=403, detail="Daily override limit reached for this member")
+                await db.members.update_one(
+                    {"id": member_id},
+                    {"$inc": {"daily_override_count": 1}}
+                )
+            else:
+                # New day - reset counter
+                await db.members.update_one(
+                    {"id": member_id},
+                    {"$set": {"daily_override_count": 1, "last_override_date": datetime.now(timezone.utc)}}
+                )
+        else:
+            # First override
+            await db.members.update_one(
+                {"id": member_id},
+                {"$set": {"daily_override_count": 1, "last_override_date": datetime.now(timezone.utc)}}
+            )
+        
+        member_name = f"{member['first_name']} {member['last_name']}"
+        member_status = member.get("membership_status", "active")
+    else:
+        # New prospect - create temporary member record
+        if not override_data.first_name or not override_data.last_name:
+            raise HTTPException(status_code=400, detail="First name and last name required for new prospects")
+        
+        new_member = Member(
+            first_name=override_data.first_name,
+            last_name=override_data.last_name,
+            phone=override_data.phone or "N/A",
+            email=override_data.email or f"{uuid.uuid4()}@prospect.temp",
+            membership_type_id="prospect",
+            membership_status="prospect",
+            is_prospect=True,
+            prospect_source=sub_reason.get("name") if sub_reason else reason.get("name"),
+            qr_code=str(uuid.uuid4())
+        )
+        
+        await db.members.insert_one(new_member.model_dump())
+        member_id = new_member.id
+        member_name = f"{new_member.first_name} {new_member.last_name}"
+        member_status = "prospect"
+    
+    # Create override record
+    override = AccessOverride(
+        member_id=member_id,
+        member_name=member_name,
+        member_status=member_status,
+        reason_id=override_data.reason_id,
+        reason_name=reason.get("name"),
+        sub_reason_id=override_data.sub_reason_id,
+        sub_reason_name=sub_reason.get("name") if sub_reason else None,
+        pin_verified=pin_verified,
+        pin_entered="***" if override_data.access_pin else None,
+        staff_id=current_user.id,
+        staff_name=current_user.full_name,
+        location=override_data.location,
+        notes=override_data.notes
+    )
+    
+    await db.access_overrides.insert_one(override.model_dump())
+    
+    # Log to access logs
+    access_log = AccessLog(
+        member_id=member_id,
+        access_method="manual_override",
+        status="granted",
+        reason=f"Override: {reason.get('name')}" + (f" - {sub_reason.get('name')}" if sub_reason else ""),
+        override_by=current_user.full_name,
+        location=override_data.location
+    )
+    log_doc = access_log.model_dump()
+    log_doc["timestamp"] = log_doc["timestamp"].isoformat()
+    await db.access_logs.insert_one(log_doc)
+    
+    # Log to member journal
+    await add_journal_entry(
+        member_id=member_id,
+        action_type="access_granted",
+        description=f"Manual override granted: {reason.get('name')}" + (f" - {sub_reason.get('name')}" if sub_reason else ""),
+        metadata={
+            "override_reason": reason.get("name"),
+            "sub_reason": sub_reason.get("name") if sub_reason else None,
+            "pin_verified": pin_verified,
+            "staff": current_user.full_name,
+            "location": override_data.location
+        },
+        created_by=current_user.id,
+        created_by_name=current_user.full_name
+    )
+    
+    return {
+        "success": True,
+        "message": "Access granted",
+        "override_id": override.override_id,
+        "member_id": member_id,
+        "member_name": member_name,
+        "is_new_prospect": not bool(override_data.member_id)
+    }
+
+# Convert Prospect to Member
+@api_router.post("/members/convert-prospect/{member_id}")
+async def convert_prospect_to_member(
+    member_id: str,
+    membership_type_id: str,
+    current_user: User = Depends(get_current_user)
+):
+    """Convert a prospect to a full member"""
+    member = await db.members.find_one({"id": member_id}, {"_id": 0})
+    if not member:
+        raise HTTPException(status_code=404, detail="Member not found")
+    
+    if not member.get("is_prospect"):
+        raise HTTPException(status_code=400, detail="Member is not a prospect")
+    
+    # Update member to full status
+    await db.members.update_one(
+        {"id": member_id},
+        {"$set": {
+            "is_prospect": False,
+            "membership_type_id": membership_type_id,
+            "membership_status": "active",
+            "join_date": datetime.now(timezone.utc)
+        }}
+    )
+    
+    # Log to journal
+    await add_journal_entry(
+        member_id=member_id,
+        action_type="status_changed",
+        description=f"Converted from prospect to member",
+        metadata={
+            "old_status": "prospect",
+            "new_status": "active",
+            "membership_type_id": membership_type_id
+        },
+        created_by=current_user.id,
+        created_by_name=current_user.full_name
+    )
+    
+    return {"success": True, "message": "Prospect converted to member successfully"}
+
 # Access Control Routes
 @api_router.post("/access/validate")
 async def validate_access(data: AccessLogCreate):
