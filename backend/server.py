@@ -668,6 +668,38 @@ class BlockedMemberAttempt(BaseModel):
     # Source of attempt
     source: str = "manual"  # manual, import, api
 
+# ===================== Tag Management Models =====================
+
+class Tag(BaseModel):
+    """Tag for member categorization"""
+    model_config = ConfigDict(extra="ignore")
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    name: str  # Tag name (e.g., "VIP", "Late Payer", "Personal Training")
+    color: str = "#3b82f6"  # Hex color for display
+    description: Optional[str] = None
+    category: Optional[str] = None  # Category for organization (e.g., "Status", "Program", "Payment")
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    created_by: Optional[str] = None
+    usage_count: int = 0  # Number of members with this tag
+
+class TagCreate(BaseModel):
+    name: str
+    color: Optional[str] = "#3b82f6"
+    description: Optional[str] = None
+    category: Optional[str] = None
+
+class TagUpdate(BaseModel):
+    name: Optional[str] = None
+    color: Optional[str] = None
+    description: Optional[str] = None
+    category: Optional[str] = None
+
+class MemberActionRequest(BaseModel):
+    """Request model for member actions (freeze, cancel)"""
+    reason: Optional[str] = None
+    notes: Optional[str] = None
+    end_date: Optional[datetime] = None  # For freeze actions
+
 class CancellationRequest(BaseModel):
     model_config = ConfigDict(extra="ignore")
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
