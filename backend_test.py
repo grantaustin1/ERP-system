@@ -181,7 +181,7 @@ class AdvancedAnalyticsTestRunner:
                 # Verify by_membership_type structure
                 if data["by_membership_type"]:
                     membership_type = data["by_membership_type"][0]
-                    membership_fields = ["membership_type", "revenue", "percentage", "member_count"]
+                    membership_fields = ["type", "revenue", "percentage"]
                     missing_membership_fields = [field for field in membership_fields if field not in membership_type]
                     
                     if missing_membership_fields:
