@@ -21,6 +21,10 @@ import UnifiedMessagingDialog from '@/components/UnifiedMessagingDialog';
 import DateRangeSelector from '@/components/DateRangeSelector';
 import DashboardSnapshotCards from '@/components/DashboardSnapshotCards';
 import RecentMembersWidget from '@/components/RecentMembersWidget';
+import AtRiskMembersWidget from '@/components/AtRiskMembersWidget';
+import RetentionAlertsWidget from '@/components/RetentionAlertsWidget';
+import ExpiringMembershipsTable from '@/components/ExpiringMembershipsTable';
+import DropoffAnalyticsCard from '@/components/DropoffAnalyticsCard';
 
 export default function Dashboard() {
   const [stats, setStats] = useState(null);
