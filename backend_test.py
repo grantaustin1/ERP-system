@@ -427,104 +427,176 @@ class EnhancedMemberManagementTester:
             self.log_result("Remove Tags from Member", False, f"Error removing tag from member: {str(e)}")
             return False
     
-    def test_member_freeze_actions(self):
-        """Test POST /api/invoices - Create invoice with line items"""
-        print("\n=== Testing Create Invoice with Line Items ===")
+        """Test POST /api/members/{member_id}/freeze - Freeze membership with reason and end date"""
+        print("\n=== Testing Member Freeze Actions ===")
         
-        if not self.test_member_id:
-            self.log_result("Create Invoice", False, "No test member available")
-            return None
+        if not self.test_member_id_2:
+            self.log_result("Member Freeze Actions", False, "No test member available")
+            return False
         
         try:
-            # Create invoice with multiple line items
-            invoice_data = {
-                "member_id": self.test_member_id,
-                "description": "Monthly Membership and Personal Training",
-                "due_date": (datetime.now(timezone.utc) + timedelta(days=30)).isoformat(),
-                "line_items": [
-                    {
-                        "description": "Monthly Gym Membership",
-                        "quantity": 1.0,
-                        "unit_price": 500.00,
-                        "discount_percent": 10.0,
-                        "tax_percent": 15.0
-                    },
-                    {
-                        "description": "Personal Training Sessions (4x)",
-                        "quantity": 4.0,
-                        "unit_price": 200.00,
-                        "discount_percent": 5.0,
-                        "tax_percent": 15.0
-                    },
-                    {
-                        "description": "Nutrition Consultation",
-                        "quantity": 1.0,
-                        "unit_price": 300.00,
-                        "discount_percent": 0.0,
-                        "tax_percent": 15.0
-                    }
-                ],
-                "notes": "Test invoice with multiple line items"
+            # Test freezing membership with end date
+            freeze_data = {
+                "reason": "Medical leave - surgery recovery",
+                "notes": "Member will be out for 6 weeks due to knee surgery",
+                "end_date": (datetime.now(timezone.utc) + timedelta(days=42)).isoformat()  # 6 weeks
             }
             
-            response = requests.post(f"{API_BASE}/invoices", 
-                                   json=invoice_data, headers=self.headers)
+            response = requests.post(f"{API_BASE}/members/{self.test_member_id_2}/freeze", 
+                                   json=freeze_data, headers=self.headers)
             
             if response.status_code == 200:
-                invoice = response.json()
-                invoice_id = invoice.get("id")
+                result = response.json()
                 
-                if invoice_id:
-                    self.created_invoices.append(invoice_id)
-                
-                # Verify invoice structure and calculations
-                required_fields = [
-                    "id", "invoice_number", "member_id", "description", "due_date",
-                    "line_items", "subtotal", "tax_total", "discount_total", "amount", "status"
-                ]
-                
-                has_all_fields = all(field in invoice for field in required_fields)
-                
-                # Verify calculations
-                expected_subtotal = (450.00 + 760.00 + 300.00)  # After discounts: 450 + 760 + 300
-                expected_tax = expected_subtotal * 0.15  # 15% tax
-                expected_total = expected_subtotal + expected_tax
-                
-                calculations_correct = (
-                    abs(invoice.get("subtotal", 0) - expected_subtotal) < 0.01 and
-                    abs(invoice.get("tax_total", 0) - expected_tax) < 0.01 and
-                    abs(invoice.get("amount", 0) - expected_total) < 0.01
-                )
-                
-                # Verify invoice number format
-                invoice_number = invoice.get("invoice_number", "")
-                number_format_correct = invoice_number.startswith("INV-") and len(invoice_number) >= 10
-                
-                if has_all_fields and calculations_correct and number_format_correct:
-                    self.log_result("Create Invoice with Line Items", True, 
-                                  f"Invoice created successfully: {invoice_number}, Total: R{invoice.get('amount', 0):.2f}")
-                    return invoice_id
-                else:
-                    issues = []
-                    if not has_all_fields:
-                        issues.append("missing required fields")
-                    if not calculations_correct:
-                        issues.append("incorrect calculations")
-                    if not number_format_correct:
-                        issues.append("incorrect invoice number format")
+                # Verify response indicates success
+                if "frozen" in result.get("message", "").lower() or result.get("success"):
+                    self.log_result("Freeze Membership", True, 
+                                  f"Membership frozen successfully: {result.get('message', '')}")
                     
-                    self.log_result("Create Invoice with Line Items", False, 
-                                  f"Invoice creation issues: {', '.join(issues)}")
-                    return None
+                    # Verify member freeze status updated
+                    member_response = requests.get(f"{API_BASE}/members/{self.test_member_id_2}", headers=self.headers)
+                    if member_response.status_code == 200:
+                        member = member_response.json()
+                        
+                        freeze_status_checks = [
+                            member.get("freeze_status") == True,
+                            member.get("freeze_reason") == freeze_data["reason"],
+                            member.get("freeze_start_date") is not None,
+                            member.get("freeze_end_date") is not None
+                        ]
+                        
+                        if all(freeze_status_checks):
+                            self.log_result("Verify Freeze Status Fields", True, 
+                                          "All freeze status fields updated correctly")
+                        else:
+                            self.log_result("Verify Freeze Status Fields", False, 
+                                          f"Freeze status fields not updated correctly: {member}")
+                    
+                    return True
+                else:
+                    self.log_result("Freeze Membership", False, 
+                                  f"Unexpected freeze response: {result}")
+                    return False
             else:
-                self.log_result("Create Invoice with Line Items", False, 
-                              f"Failed to create invoice: {response.status_code}",
+                self.log_result("Freeze Membership", False, 
+                              f"Failed to freeze membership: {response.status_code}",
                               {"response": response.text})
-                return None
+                return False
                 
         except Exception as e:
-            self.log_result("Create Invoice with Line Items", False, f"Error creating invoice: {str(e)}")
-            return None
+            self.log_result("Member Freeze Actions", False, f"Error freezing membership: {str(e)}")
+            return False
+    
+    def test_member_unfreeze_actions(self):
+        """Test POST /api/members/{member_id}/unfreeze - Unfreeze membership"""
+        print("\n=== Testing Member Unfreeze Actions ===")
+        
+        if not self.test_member_id_2:
+            self.log_result("Member Unfreeze Actions", False, "No test member available")
+            return False
+        
+        try:
+            response = requests.post(f"{API_BASE}/members/{self.test_member_id_2}/unfreeze", 
+                                   headers=self.headers)
+            
+            if response.status_code == 200:
+                result = response.json()
+                
+                # Verify response indicates success
+                if "unfrozen" in result.get("message", "").lower() or result.get("success"):
+                    self.log_result("Unfreeze Membership", True, 
+                                  f"Membership unfrozen successfully: {result.get('message', '')}")
+                    
+                    # Verify member freeze status cleared
+                    member_response = requests.get(f"{API_BASE}/members/{self.test_member_id_2}", headers=self.headers)
+                    if member_response.status_code == 200:
+                        member = member_response.json()
+                        
+                        unfreeze_status_checks = [
+                            member.get("freeze_status") == False,
+                            member.get("membership_status") == "active"
+                        ]
+                        
+                        if all(unfreeze_status_checks):
+                            self.log_result("Verify Unfreeze Status Fields", True, 
+                                          "Freeze status cleared and membership returned to active")
+                        else:
+                            self.log_result("Verify Unfreeze Status Fields", False, 
+                                          f"Unfreeze status not updated correctly: freeze_status={member.get('freeze_status')}, membership_status={member.get('membership_status')}")
+                    
+                    return True
+                else:
+                    self.log_result("Unfreeze Membership", False, 
+                                  f"Unexpected unfreeze response: {result}")
+                    return False
+            else:
+                self.log_result("Unfreeze Membership", False, 
+                              f"Failed to unfreeze membership: {response.status_code}",
+                              {"response": response.text})
+                return False
+                
+        except Exception as e:
+            self.log_result("Member Unfreeze Actions", False, f"Error unfreezing membership: {str(e)}")
+            return False
+    
+    def test_member_cancel_actions(self):
+        """Test POST /api/members/{member_id}/cancel - Cancel membership with reason and notes"""
+        print("\n=== Testing Member Cancel Actions ===")
+        
+        if not self.test_member_id:
+            self.log_result("Member Cancel Actions", False, "No test member available")
+            return False
+        
+        try:
+            # Test cancelling membership
+            cancel_data = {
+                "reason": "Relocating to another city",
+                "notes": "Member is moving to Johannesburg for work. Provided 30 days notice."
+            }
+            
+            response = requests.post(f"{API_BASE}/members/{self.test_member_id}/cancel", 
+                                   json=cancel_data, headers=self.headers)
+            
+            if response.status_code == 200:
+                result = response.json()
+                
+                # Verify response indicates success
+                if "cancelled" in result.get("message", "").lower() or result.get("success"):
+                    self.log_result("Cancel Membership", True, 
+                                  f"Membership cancelled successfully: {result.get('message', '')}")
+                    
+                    # Verify member cancellation status updated
+                    member_response = requests.get(f"{API_BASE}/members/{self.test_member_id}", headers=self.headers)
+                    if member_response.status_code == 200:
+                        member = member_response.json()
+                        
+                        cancel_status_checks = [
+                            member.get("membership_status") == "cancelled",
+                            member.get("cancellation_reason") == cancel_data["reason"],
+                            member.get("cancellation_date") is not None
+                        ]
+                        
+                        if all(cancel_status_checks):
+                            self.log_result("Verify Cancel Status Fields", True, 
+                                          "All cancellation fields updated correctly")
+                        else:
+                            self.log_result("Verify Cancel Status Fields", False, 
+                                          f"Cancellation fields not updated correctly: status={member.get('membership_status')}, reason={member.get('cancellation_reason')}")
+                    
+                    return True
+                else:
+                    self.log_result("Cancel Membership", False, 
+                                  f"Unexpected cancel response: {result}")
+                    return False
+            else:
+                self.log_result("Cancel Membership", False, 
+                              f"Failed to cancel membership: {response.status_code}",
+                              {"response": response.text})
+                return False
+                
+        except Exception as e:
+            self.log_result("Member Cancel Actions", False, f"Error cancelling membership: {str(e)}")
+            return False
     
     def test_get_invoices_list(self):
         """Test GET /api/invoices - List all invoices"""
