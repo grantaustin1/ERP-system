@@ -206,101 +206,78 @@ class RetentionTestRunner:
             self.log_result("At-Risk Members API", False, f"Error testing at-risk members API: {str(e)}")
             return False
     
-    def test_recent_members_api(self):
-        """Test Recent Members API - GET /api/dashboard/recent-members"""
-        print("\n=== Testing Recent Members API ===")
+    def test_retention_alerts_api(self):
+        """Test Retention Alerts API - GET /api/retention/retention-alerts"""
+        print("\n=== Testing Retention Alerts API ===")
         
         try:
-            # Test with period=today
-            response_today = requests.get(f"{API_BASE}/dashboard/recent-members?period=today", headers=self.headers)
+            # Test different day periods
+            test_periods = [7, 14, 28]
             
-            if response_today.status_code == 200:
-                members_today = response_today.json()
+            for days in test_periods:
+                response = requests.get(f"{API_BASE}/retention/retention-alerts?days={days}", headers=self.headers)
                 
-                # Verify response is a list
-                if not isinstance(members_today, list):
-                    self.log_result("Recent Members Today Response Type", False, 
-                                  f"Expected list, got {type(members_today)}")
-                    return False
-                
-                # If there are members, verify structure
-                if members_today:
-                    member = members_today[0]
-                    required_fields = [
-                        "id", "first_name", "last_name", "full_name", 
-                        "email", "phone", "membership_status", "join_date", "created_at"
-                    ]
-                    missing_fields = [field for field in required_fields if field not in member]
+                if response.status_code == 200:
+                    data = response.json()
+                    
+                    # Verify required structure
+                    required_fields = ["alert_type", "days", "total", "members"]
+                    missing_fields = [field for field in required_fields if field not in data]
                     
                     if missing_fields:
-                        self.log_result("Recent Members Today Fields", False, 
+                        self.log_result(f"Retention Alerts {days}d Structure", False, 
                                       f"Missing fields: {missing_fields}")
                         return False
                     
-                    # Verify full_name is constructed correctly
-                    expected_full_name = f"{member['first_name']} {member['last_name']}".strip()
-                    if member["full_name"] != expected_full_name:
-                        self.log_result("Recent Members Full Name Construction", False, 
-                                      f"Expected '{expected_full_name}', got '{member['full_name']}'")
-                        return False
-                
-                # Check if our test members are included in today's results
-                test_member_found = False
-                if members_today:
-                    for member in members_today:
-                        if member.get("id") in [self.test_member_id, self.test_member_id_2]:
-                            test_member_found = True
-                            break
-                
-                if test_member_found:
-                    self.log_result("Recent Members Today API", True, 
-                                  f"Retrieved {len(members_today)} members for today (including test members)")
-                else:
-                    self.log_result("Recent Members Today API", True, 
-                                  f"Retrieved {len(members_today)} members for today (test members may be filtered by date)")
-                
-                # Test with period=yesterday
-                response_yesterday = requests.get(f"{API_BASE}/dashboard/recent-members?period=yesterday", headers=self.headers)
-                
-                if response_yesterday.status_code == 200:
-                    members_yesterday = response_yesterday.json()
-                    
-                    if not isinstance(members_yesterday, list):
-                        self.log_result("Recent Members Yesterday Response Type", False, 
-                                      f"Expected list, got {type(members_yesterday)}")
+                    # Verify data types
+                    if data["days"] != days:
+                        self.log_result(f"Retention Alerts {days}d Days Field", False, 
+                                      f"Days field mismatch: expected {days}, got {data['days']}")
                         return False
                     
-                    self.log_result("Recent Members Yesterday API", True, 
-                                  f"Retrieved {len(members_yesterday)} members for yesterday")
+                    if not isinstance(data["total"], int):
+                        self.log_result(f"Retention Alerts {days}d Total Type", False, 
+                                      "Total should be an integer")
+                        return False
                     
-                    # Test sorting (should be by created_at descending)
-                    if len(members_today) > 1:
-                        for i in range(len(members_today) - 1):
-                            current_date = members_today[i]["created_at"]
-                            next_date = members_today[i + 1]["created_at"]
-                            
-                            if current_date < next_date:
-                                self.log_result("Recent Members Sorting", False, 
-                                              "Members not sorted by created_at descending")
-                                return False
+                    if not isinstance(data["members"], list):
+                        self.log_result(f"Retention Alerts {days}d Members Type", False, 
+                                      "Members should be a list")
+                        return False
+                    
+                    # Verify alert_type format
+                    expected_alert_type = f"{days}_day_retention_alert"
+                    if data["alert_type"] != expected_alert_type:
+                        self.log_result(f"Retention Alerts {days}d Alert Type", False, 
+                                      f"Expected '{expected_alert_type}', got '{data['alert_type']}'")
+                        return False
+                    
+                    # Verify member structure if members exist
+                    if data["members"]:
+                        member = data["members"][0]
+                        member_fields = [
+                            "id", "first_name", "last_name", "full_name", "email", 
+                            "last_visit_date", "days_since_visit", "join_date"
+                        ]
+                        missing_member_fields = [field for field in member_fields if field not in member]
                         
-                        self.log_result("Recent Members Sorting", True, 
-                                      "Members correctly sorted by created_at descending")
+                        if missing_member_fields:
+                            self.log_result(f"Retention Alerts {days}d Member Structure", False, 
+                                          f"Missing member fields: {missing_member_fields}")
+                            return False
                     
-                    return True
+                    self.log_result(f"Retention Alerts {days}d API", True, 
+                                  f"Retrieved {data['total']} members inactive for {days}+ days")
                 else:
-                    self.log_result("Recent Members Yesterday API", False, 
-                                  f"Failed to get yesterday members: {response_yesterday.status_code}")
+                    self.log_result(f"Retention Alerts {days}d API", False, 
+                                  f"Failed to get retention alerts: {response.status_code}",
+                                  {"response": response.text})
                     return False
-                
-            else:
-                self.log_result("Recent Members Today API", False, 
-                              f"Failed to get today members: {response_today.status_code}",
-                              {"response": response_today.text})
-                return False
+            
+            return True
                 
         except Exception as e:
-            self.log_result("Recent Members API", False, f"Error testing recent members API: {str(e)}")
+            self.log_result("Retention Alerts API", False, f"Error testing retention alerts API: {str(e)}")
             return False
     
     def create_test_access_logs(self):
