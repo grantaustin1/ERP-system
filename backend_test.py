@@ -125,42 +125,44 @@ class EnhancedMemberManagementTester:
             self.log_result("Setup Test Members", False, f"Error creating test members: {str(e)}")
             return False
     
-    def test_billing_settings_get_default(self):
-        """Test GET /api/billing/settings - Should return default settings if not configured"""
-        print("\n=== Testing Billing Settings GET (Default) ===")
+    def test_get_default_tags(self):
+        """Test GET /api/tags - Should return 7 default tags"""
+        print("\n=== Testing Get Default Tags ===")
         
         try:
-            response = requests.get(f"{API_BASE}/billing/settings", headers=self.headers)
+            response = requests.get(f"{API_BASE}/tags", headers=self.headers)
             
             if response.status_code == 200:
-                settings = response.json()
+                tags = response.json()
                 
-                # Verify default settings structure
-                expected_fields = [
-                    "auto_email_invoices", "email_on_invoice_created", "email_on_invoice_overdue",
-                    "default_tax_rate", "tax_enabled", "invoice_prefix", "invoice_number_format",
-                    "company_name", "default_payment_terms_days"
-                ]
+                # Verify we have the expected default tags
+                expected_default_tags = ["VIP", "New Member", "Late Payer", "Personal Training", "Group Classes", "High Risk", "Loyal"]
                 
-                has_all_fields = all(field in settings for field in expected_fields)
-                
-                if has_all_fields:
-                    self.log_result("Billing Settings GET Default", True, 
-                                  f"Retrieved default billing settings with all required fields")
-                    return settings
+                if isinstance(tags, list) and len(tags) >= 7:
+                    tag_names = [tag.get("name", "") for tag in tags]
+                    has_default_tags = all(default_tag in tag_names for default_tag in expected_default_tags)
+                    
+                    if has_default_tags:
+                        self.log_result("Get Default Tags", True, 
+                                      f"Retrieved {len(tags)} tags including all 7 default tags")
+                        return tags
+                    else:
+                        missing_tags = [tag for tag in expected_default_tags if tag not in tag_names]
+                        self.log_result("Get Default Tags", False, 
+                                      f"Missing default tags: {missing_tags}")
+                        return tags
                 else:
-                    missing_fields = [field for field in expected_fields if field not in settings]
-                    self.log_result("Billing Settings GET Default", False, 
-                                  f"Missing fields in billing settings: {missing_fields}")
+                    self.log_result("Get Default Tags", False, 
+                                  f"Expected at least 7 tags, got {len(tags) if isinstance(tags, list) else 'invalid response'}")
                     return None
             else:
-                self.log_result("Billing Settings GET Default", False, 
-                              f"Failed to get billing settings: {response.status_code}",
+                self.log_result("Get Default Tags", False, 
+                              f"Failed to get tags: {response.status_code}",
                               {"response": response.text})
                 return None
                 
         except Exception as e:
-            self.log_result("Billing Settings GET Default", False, f"Error getting billing settings: {str(e)}")
+            self.log_result("Get Default Tags", False, f"Error getting tags: {str(e)}")
             return None
     
     def test_billing_settings_create_update(self):
