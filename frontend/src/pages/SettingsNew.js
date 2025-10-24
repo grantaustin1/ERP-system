@@ -156,6 +156,13 @@ export default function SettingsNew() {
     fetchTaskTypes();
   }, []);
 
+  // Reset activeTab when mainCategory changes
+  useEffect(() => {
+    if (categories[mainCategory]?.tabs?.length > 0) {
+      setActiveTab(categories[mainCategory].tabs[0].id);
+    }
+  }, [mainCategory]);
+
   const fetchData = async () => {
     try {
       const [membershipsRes, sourcesRes, fieldConfigsRes, eftSettingsRes, avsSettingsRes, tiSettingsRes, alertConfigRes] = await Promise.all([
