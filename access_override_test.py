@@ -11,7 +11,7 @@ import os
 from datetime import datetime, timezone, timedelta
 
 # Configuration
-BASE_URL = os.getenv('REACT_APP_BACKEND_URL', 'https://fitness-ops-center.preview.emergentagent.com')
+BASE_URL = os.getenv('REACT_APP_BACKEND_URL', 'https://clubhub-erp.preview.emergentagent.com')
 API_BASE = f"{BASE_URL}/api"
 
 # Test credentials
