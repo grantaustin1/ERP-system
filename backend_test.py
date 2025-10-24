@@ -127,83 +127,119 @@ class ReportLibraryTestRunner:
             self.log_result("Setup Test Members", False, f"Error creating test members: {str(e)}")
             return False
     
-    def test_at_risk_members_api(self):
-        """Test At-Risk Members API - GET /api/retention/at-risk-members"""
-        print("\n=== Testing At-Risk Members API ===")
+    def test_incomplete_data_report_api(self):
+        """Test Incomplete Data Report API - GET /api/reports/incomplete-data"""
+        print("\n=== Testing Incomplete Data Report API ===")
         
         try:
-            response = requests.get(f"{API_BASE}/retention/at-risk-members", headers=self.headers)
+            response = requests.get(f"{API_BASE}/reports/incomplete-data", headers=self.headers)
             
             if response.status_code == 200:
                 data = response.json()
                 
                 # Verify required structure
-                required_fields = ["total", "critical", "high", "medium", "members"]
+                required_fields = ["summary", "members"]
                 missing_fields = [field for field in required_fields if field not in data]
                 
                 if missing_fields:
-                    self.log_result("At-Risk Members Structure", False, 
+                    self.log_result("Incomplete Data Report Structure", False, 
                                   f"Missing fields: {missing_fields}")
                     return False
                 
+                # Verify summary structure
+                summary = data["summary"]
+                summary_fields = [
+                    "total_members", "members_with_incomplete_data", "completion_rate", 
+                    "by_priority", "most_common_missing"
+                ]
+                missing_summary_fields = [field for field in summary_fields if field not in summary]
+                
+                if missing_summary_fields:
+                    self.log_result("Incomplete Data Summary Structure", False, 
+                                  f"Missing summary fields: {missing_summary_fields}")
+                    return False
+                
+                # Verify priority distribution
+                priority_dist = summary["by_priority"]
+                priority_fields = ["critical", "high", "medium", "low"]
+                missing_priority_fields = [field for field in priority_fields if field not in priority_dist]
+                
+                if missing_priority_fields:
+                    self.log_result("Incomplete Data Priority Structure", False, 
+                                  f"Missing priority fields: {missing_priority_fields}")
+                    return False
+                
                 # Verify data types
-                if not isinstance(data["total"], int) or not isinstance(data["critical"], int) or \
-                   not isinstance(data["high"], int) or not isinstance(data["medium"], int):
-                    self.log_result("At-Risk Members Data Types", False, 
-                                  "Count fields should be integers")
+                if not isinstance(summary["total_members"], int):
+                    self.log_result("Incomplete Data Total Members Type", False, 
+                                  "Total members should be integer")
                     return False
                 
-                if not isinstance(data["members"], list):
-                    self.log_result("At-Risk Members Members Type", False, 
-                                  "Members field should be a list")
+                if not isinstance(summary["members_with_incomplete_data"], int):
+                    self.log_result("Incomplete Data Incomplete Count Type", False, 
+                                  "Incomplete count should be integer")
                     return False
                 
-                # Verify member structure if members exist
+                if not isinstance(summary["completion_rate"], (int, float)):
+                    self.log_result("Incomplete Data Completion Rate Type", False, 
+                                  "Completion rate should be number")
+                    return False
+                
+                # Verify members structure if members exist
                 if data["members"]:
                     member = data["members"][0]
                     member_fields = [
-                        "id", "first_name", "last_name", "full_name", "email", 
-                        "risk_score", "risk_level", "risk_factors"
+                        "id", "first_name", "last_name", "full_name", "email", "phone",
+                        "membership_status", "missing_fields", "priority", "priority_score"
                     ]
                     missing_member_fields = [field for field in member_fields if field not in member]
                     
                     if missing_member_fields:
-                        self.log_result("At-Risk Members Member Structure", False, 
+                        self.log_result("Incomplete Data Member Structure", False, 
                                       f"Missing member fields: {missing_member_fields}")
                         return False
                     
-                    # Verify risk_level categorization
-                    valid_risk_levels = ["critical", "high", "medium"]
-                    if member["risk_level"] not in valid_risk_levels:
-                        self.log_result("At-Risk Members Risk Level", False, 
-                                      f"Invalid risk level: {member['risk_level']}")
+                    # Verify priority calculation logic
+                    priority = member["priority"]
+                    score = member["priority_score"]
+                    
+                    if priority == "Critical" and score < 20:
+                        self.log_result("Incomplete Data Priority Logic", False, 
+                                      f"Critical priority should have score ≥20, got {score}")
+                        return False
+                    elif priority == "High" and (score < 10 or score >= 20):
+                        self.log_result("Incomplete Data Priority Logic", False, 
+                                      f"High priority should have score 10-19, got {score}")
+                        return False
+                    elif priority == "Medium" and (score < 5 or score >= 10):
+                        self.log_result("Incomplete Data Priority Logic", False, 
+                                      f"Medium priority should have score 5-9, got {score}")
+                        return False
+                    elif priority == "Low" and score >= 5:
+                        self.log_result("Incomplete Data Priority Logic", False, 
+                                      f"Low priority should have score <5, got {score}")
                         return False
                     
-                    # Verify risk_factors is a list
-                    if not isinstance(member["risk_factors"], list):
-                        self.log_result("At-Risk Members Risk Factors", False, 
-                                      "Risk factors should be a list")
+                    # Verify missing_fields is a list
+                    if not isinstance(member["missing_fields"], list):
+                        self.log_result("Incomplete Data Missing Fields Type", False, 
+                                      "Missing fields should be a list")
                         return False
                 
-                # Verify totals match
-                calculated_total = data["critical"] + data["high"] + data["medium"]
-                if data["total"] != calculated_total:
-                    self.log_result("At-Risk Members Total Calculation", False, 
-                                  f"Total mismatch: {data['total']} != {calculated_total}")
-                    return False
-                
-                self.log_result("At-Risk Members API", True, 
-                              f"Retrieved {data['total']} at-risk members (Critical: {data['critical']}, High: {data['high']}, Medium: {data['medium']})")
+                self.log_result("Incomplete Data Report API", True, 
+                              f"Retrieved report: {summary['total_members']} total members, "
+                              f"{summary['members_with_incomplete_data']} with incomplete data "
+                              f"({summary['completion_rate']}% completion rate)")
                 return True
                 
             else:
-                self.log_result("At-Risk Members API", False, 
-                              f"Failed to get at-risk members: {response.status_code}",
+                self.log_result("Incomplete Data Report API", False, 
+                              f"Failed to get incomplete data report: {response.status_code}",
                               {"response": response.text})
                 return False
                 
         except Exception as e:
-            self.log_result("At-Risk Members API", False, f"Error testing at-risk members API: {str(e)}")
+            self.log_result("Incomplete Data Report API", False, f"Error testing incomplete data report API: {str(e)}")
             return False
     
     def test_retention_alerts_api(self):
