@@ -4058,6 +4058,272 @@ async def get_invoices(member_id: Optional[str] = None, current_user: User = Dep
             inv["paid_date"] = datetime.fromisoformat(inv["paid_date"])
     return invoices
 
+@api_router.get("/invoices/{invoice_id}", response_model=Invoice)
+async def get_invoice_details(invoice_id: str, current_user: User = Depends(get_current_user)):
+    """Get detailed invoice information with line items"""
+    invoice = await db.invoices.find_one({"id": invoice_id}, {"_id": 0})
+    if not invoice:
+        raise HTTPException(status_code=404, detail="Invoice not found")
+    
+    # Parse dates
+    if isinstance(invoice.get("due_date"), str):
+        invoice["due_date"] = datetime.fromisoformat(invoice["due_date"])
+    if isinstance(invoice.get("created_at"), str):
+        invoice["created_at"] = datetime.fromisoformat(invoice["created_at"])
+    if invoice.get("paid_date") and isinstance(invoice["paid_date"], str):
+        invoice["paid_date"] = datetime.fromisoformat(invoice["paid_date"])
+    if invoice.get("batch_date") and isinstance(invoice["batch_date"], str):
+        invoice["batch_date"] = datetime.fromisoformat(invoice["batch_date"])
+    
+    return invoice
+
+@api_router.put("/invoices/{invoice_id}", response_model=Invoice)
+async def update_invoice(invoice_id: str, data: InvoiceUpdate, current_user: User = Depends(get_current_user)):
+    """Update an existing invoice (only if not paid)"""
+    invoice = await db.invoices.find_one({"id": invoice_id})
+    if not invoice:
+        raise HTTPException(status_code=404, detail="Invoice not found")
+    
+    # Can't edit paid or void invoices
+    if invoice.get("status") in ["paid", "void"]:
+        raise HTTPException(status_code=400, detail=f"Cannot edit {invoice['status']} invoice")
+    
+    update_data = {}
+    
+    if data.description is not None:
+        update_data["description"] = data.description
+    if data.due_date is not None:
+        update_data["due_date"] = data.due_date.isoformat()
+    if data.notes is not None:
+        update_data["notes"] = data.notes
+    if data.status is not None:
+        update_data["status"] = data.status
+    
+    # If line items updated, recalculate totals
+    if data.line_items is not None:
+        totals = await calculate_invoice_totals(data.line_items)
+        update_data["line_items"] = [item.model_dump() for item in data.line_items]
+        update_data["subtotal"] = totals["subtotal"]
+        update_data["tax_total"] = totals["tax_total"]
+        update_data["discount_total"] = totals["discount_total"]
+        update_data["amount"] = totals["amount"]
+    
+    if update_data:
+        await db.invoices.update_one(
+            {"id": invoice_id},
+            {"$set": update_data}
+        )
+    
+    # Get updated invoice
+    updated_invoice = await db.invoices.find_one({"id": invoice_id}, {"_id": 0})
+    
+    # Parse dates
+    if isinstance(updated_invoice.get("due_date"), str):
+        updated_invoice["due_date"] = datetime.fromisoformat(updated_invoice["due_date"])
+    if isinstance(updated_invoice.get("created_at"), str):
+        updated_invoice["created_at"] = datetime.fromisoformat(updated_invoice["created_at"])
+    if updated_invoice.get("paid_date") and isinstance(updated_invoice["paid_date"], str):
+        updated_invoice["paid_date"] = datetime.fromisoformat(updated_invoice["paid_date"])
+    
+    return updated_invoice
+
+@api_router.delete("/invoices/{invoice_id}")
+async def void_invoice(invoice_id: str, reason: Optional[str] = None, current_user: User = Depends(get_current_user)):
+    """Void an invoice (soft delete)"""
+    invoice = await db.invoices.find_one({"id": invoice_id})
+    if not invoice:
+        raise HTTPException(status_code=404, detail="Invoice not found")
+    
+    # Can't void paid invoices
+    if invoice.get("status") == "paid":
+        raise HTTPException(status_code=400, detail="Cannot void paid invoice")
+    
+    await db.invoices.update_one(
+        {"id": invoice_id},
+        {"$set": {
+            "status": "void",
+            "status_message": reason or "Invoice voided"
+        }}
+    )
+    
+    # Log to member journal
+    await db.member_journal.insert_one({
+        "id": str(uuid.uuid4()),
+        "member_id": invoice["member_id"],
+        "action_type": "invoice_voided",
+        "title": f"Invoice {invoice['invoice_number']} voided",
+        "description": reason or "Invoice voided",
+        "performed_by": current_user.full_name,
+        "timestamp": datetime.now(timezone.utc).isoformat()
+    })
+    
+    return {"message": "Invoice voided successfully"}
+
+@api_router.get("/invoices/{invoice_id}/pdf")
+async def generate_invoice_pdf(invoice_id: str, current_user: User = Depends(get_current_user)):
+    """Generate PDF for an invoice"""
+    from io import BytesIO
+    from reportlab.lib.pagesizes import A4
+    from reportlab.lib import colors
+    from reportlab.lib.units import inch
+    from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.lib.enums import TA_LEFT, TA_RIGHT, TA_CENTER
+    from fastapi.responses import StreamingResponse
+    
+    # Get invoice
+    invoice = await db.invoices.find_one({"id": invoice_id}, {"_id": 0})
+    if not invoice:
+        raise HTTPException(status_code=404, detail="Invoice not found")
+    
+    # Get member details
+    member = await db.members.find_one({"id": invoice["member_id"]}, {"_id": 0})
+    if not member:
+        raise HTTPException(status_code=404, detail="Member not found")
+    
+    # Get billing settings for company info
+    billing_settings = await db.billing_settings.find_one({})
+    
+    # Create PDF buffer
+    buffer = BytesIO()
+    doc = SimpleDocTemplate(buffer, pagesize=A4, rightMargin=50, leftMargin=50, topMargin=50, bottomMargin=50)
+    
+    # Container for PDF elements
+    elements = []
+    styles = getSampleStyleSheet()
+    
+    # Custom styles
+    title_style = ParagraphStyle(
+        'CustomTitle',
+        parent=styles['Heading1'],
+        fontSize=24,
+        textColor=colors.HexColor('#1a56db'),
+        spaceAfter=30,
+        alignment=TA_CENTER
+    )
+    
+    heading_style = ParagraphStyle(
+        'CustomHeading',
+        parent=styles['Heading2'],
+        fontSize=14,
+        textColor=colors.HexColor('#1a56db'),
+        spaceAfter=12
+    )
+    
+    # Company header
+    if billing_settings and billing_settings.get("company_name"):
+        company_name = Paragraph(billing_settings.get("company_name", ""), title_style)
+        elements.append(company_name)
+        
+        if billing_settings.get("company_address"):
+            company_info = Paragraph(f"""
+                {billing_settings.get("company_address", "")}<br/>
+                Phone: {billing_settings.get("company_phone", "N/A")}<br/>
+                Email: {billing_settings.get("company_email", "N/A")}<br/>
+                Tax No: {billing_settings.get("tax_number", "N/A")}
+            """, styles['Normal'])
+            elements.append(company_info)
+        elements.append(Spacer(1, 20))
+    else:
+        elements.append(Paragraph("INVOICE", title_style))
+        elements.append(Spacer(1, 20))
+    
+    # Invoice info table
+    invoice_info_data = [
+        ['Invoice Number:', invoice.get("invoice_number", "")],
+        ['Invoice Date:', datetime.fromisoformat(invoice["created_at"]) if isinstance(invoice.get("created_at"), str) else invoice.get("created_at", "").strftime("%Y-%m-%d")],
+        ['Due Date:', datetime.fromisoformat(invoice["due_date"]) if isinstance(invoice.get("due_date"), str) else invoice.get("due_date", "").strftime("%Y-%m-%d")],
+        ['Status:', invoice.get("status", "").upper()]
+    ]
+    
+    invoice_info_table = Table(invoice_info_data, colWidths=[2*inch, 3*inch])
+    invoice_info_table.setStyle(TableStyle([
+        ('FONTNAME', (0, 0), (0, -1), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, -1), 10),
+        ('TEXTCOLOR', (0, 0), (0, -1), colors.HexColor('#1a56db')),
+        ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+        ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+    ]))
+    elements.append(invoice_info_table)
+    elements.append(Spacer(1, 20))
+    
+    # Bill to section
+    elements.append(Paragraph("BILL TO:", heading_style))
+    bill_to_text = f"""
+        {member.get("first_name", "")} {member.get("last_name", "")}<br/>
+        {member.get("email", "")}<br/>
+        {member.get("phone", "N/A")}<br/>
+        {member.get("address", "N/A")}
+    """
+    elements.append(Paragraph(bill_to_text, styles['Normal']))
+    elements.append(Spacer(1, 20))
+    
+    # Line items table
+    elements.append(Paragraph("ITEMS:", heading_style))
+    
+    line_items_data = [['Description', 'Qty', 'Unit Price', 'Discount', 'Tax', 'Total']]
+    
+    for item in invoice.get("line_items", []):
+        line_items_data.append([
+            item.get("description", ""),
+            str(item.get("quantity", 0)),
+            f"R{item.get('unit_price', 0):.2f}",
+            f"{item.get('discount_percent', 0)}%",
+            f"{item.get('tax_percent', 0)}%",
+            f"R{item.get('total', 0):.2f}"
+        ])
+    
+    # Add totals
+    line_items_data.append(['', '', '', '', 'Subtotal:', f"R{invoice.get('subtotal', 0):.2f}"])
+    line_items_data.append(['', '', '', '', 'Tax Total:', f"R{invoice.get('tax_total', 0):.2f}"])
+    if invoice.get('discount_total', 0) > 0:
+        line_items_data.append(['', '', '', '', 'Discount:', f"-R{invoice.get('discount_total', 0):.2f}"])
+    line_items_data.append(['', '', '', '', 'TOTAL:', f"R{invoice.get('amount', 0):.2f}"])
+    
+    line_items_table = Table(line_items_data, colWidths=[2.5*inch, 0.7*inch, 1*inch, 0.8*inch, 1*inch, 1*inch])
+    line_items_table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#1a56db')),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+        ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+        ('ALIGN', (1, 1), (-1, -1), 'RIGHT'),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, 0), 10),
+        ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+        ('BACKGROUND', (0, 1), (-1, -4), colors.beige),
+        ('GRID', (0, 0), (-1, -5), 1, colors.black),
+        ('LINEABOVE', (4, -4), (-1, -4), 1, colors.black),
+        ('LINEABOVE', (4, -1), (-1, -1), 2, colors.black),
+        ('FONTNAME', (4, -1), (-1, -1), 'Helvetica-Bold'),
+        ('FONTSIZE', (4, -1), (-1, -1), 12),
+    ]))
+    elements.append(line_items_table)
+    elements.append(Spacer(1, 20))
+    
+    # Notes
+    if invoice.get("notes"):
+        elements.append(Paragraph("NOTES:", heading_style))
+        elements.append(Paragraph(invoice.get("notes", ""), styles['Normal']))
+        elements.append(Spacer(1, 20))
+    
+    # Footer
+    footer_text = Paragraph(
+        "Thank you for your business!",
+        ParagraphStyle('Footer', parent=styles['Normal'], alignment=TA_CENTER, textColor=colors.grey)
+    )
+    elements.append(Spacer(1, 30))
+    elements.append(footer_text)
+    
+    # Build PDF
+    doc.build(elements)
+    buffer.seek(0)
+    
+    return StreamingResponse(
+        buffer,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f"attachment; filename=invoice_{invoice.get('invoice_number', 'unknown')}.pdf"}
+    )
+
+
 # Payment Routes
 @api_router.post("/payments", response_model=Payment)
 async def create_payment(data: PaymentCreate, current_user: User = Depends(get_current_user)):
