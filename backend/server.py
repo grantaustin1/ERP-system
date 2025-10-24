@@ -277,6 +277,22 @@ class MemberNoteCreate(BaseModel):
 class MemberNoteUpdate(BaseModel):
     content: str
 
+class MemberJournal(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    journal_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    member_id: str
+    action_type: str  # email_sent, email_received, whatsapp_sent, whatsapp_received, sms_sent, sms_received, profile_updated, status_changed, payment_received, invoice_created, booking_created, booking_cancelled, no_show_marked, note_added, note_deleted, access_granted, access_denied
+    description: str  # Summary of the action
+    metadata: Optional[dict] = None  # Full content, field changes, message body, etc.
+    created_by: Optional[str] = None  # Staff member ID or "system"
+    created_by_name: Optional[str] = None  # Staff member name for display
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+class MemberJournalCreate(BaseModel):
+    action_type: str
+    description: str
+    metadata: Optional[dict] = None
+
 class Invoice(BaseModel):
     model_config = ConfigDict(extra="ignore")
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
