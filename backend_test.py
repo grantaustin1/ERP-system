@@ -195,117 +195,102 @@ class EngagementFeaturesTestRunner:
             self.log_result("Points Balance API", False, f"Error testing points balance API: {str(e)}")
             return False
     
-    def test_geographic_distribution_analytics_api(self):
-        """Test Geographic Distribution Analytics API - GET /api/analytics/geographic-distribution"""
-        print("\n=== Testing Geographic Distribution Analytics API ===")
+    def test_points_award_api(self):
+        """Test Points Award API - POST /api/engagement/points/award"""
+        print("\n=== Testing Points Award API ===")
         
         try:
-            response = requests.get(f"{API_BASE}/analytics/geographic-distribution", headers=self.headers)
+            # Get initial balance
+            response = requests.get(f"{API_BASE}/engagement/points/balance/{self.test_member_id}", headers=self.headers)
+            if response.status_code != 200:
+                self.log_result("Points Award API - Get Initial Balance", False, "Failed to get initial balance")
+                return False
+            
+            initial_balance = response.json()["total_points"]
+            
+            # Award points
+            award_data = {
+                "member_id": self.test_member_id,
+                "points": 25,
+                "reason": "Test reward",
+                "reference_id": "test_ref_123"
+            }
+            
+            response = requests.post(f"{API_BASE}/engagement/points/award", json=award_data, headers=self.headers)
             
             if response.status_code == 200:
                 data = response.json()
                 
                 # Verify required structure
-                required_fields = ["summary", "by_postcode", "by_city", "by_state"]
+                required_fields = ["success", "new_balance", "points_awarded", "transaction_id"]
                 missing_fields = [field for field in required_fields if field not in data]
                 
                 if missing_fields:
-                    self.log_result("Geographic Distribution Structure", False, 
+                    self.log_result("Points Award Structure", False, 
                                   f"Missing fields: {missing_fields}")
                     return False
                 
-                # Verify summary structure
-                summary = data["summary"]
-                summary_fields = ["total_members", "with_postcode", "with_city", 
-                                "with_state", "coverage"]
-                missing_summary_fields = [field for field in summary_fields if field not in summary]
-                
-                if missing_summary_fields:
-                    self.log_result("Geographic Distribution Summary Structure", False, 
-                                  f"Missing summary fields: {missing_summary_fields}")
+                # Verify balance update
+                if data["new_balance"] != initial_balance + 25:
+                    self.log_result("Points Award Balance Update", False, 
+                                  f"Expected {initial_balance + 25}, got {data['new_balance']}")
                     return False
                 
-                # Verify coverage structure
-                coverage = summary["coverage"]
-                coverage_fields = ["postcode", "city", "state"]
-                missing_coverage_fields = [field for field in coverage_fields if field not in coverage]
-                
-                if missing_coverage_fields:
-                    self.log_result("Geographic Distribution Coverage Structure", False, 
-                                  f"Missing coverage fields: {missing_coverage_fields}")
+                if data["points_awarded"] != 25:
+                    self.log_result("Points Award Points Awarded", False, 
+                                  f"Expected 25, got {data['points_awarded']}")
                     return False
                 
-                # Verify data types
-                if not isinstance(summary["total_members"], int):
-                    self.log_result("Geographic Distribution Total Members Type", False, 
-                                  "Total members should be integer")
+                # Verify transaction was recorded
+                txn_response = requests.get(f"{API_BASE}/engagement/points/transactions/{self.test_member_id}?limit=1", headers=self.headers)
+                if txn_response.status_code == 200:
+                    txn_data = txn_response.json()
+                    if txn_data["transactions"]:
+                        latest_txn = txn_data["transactions"][0]
+                        if latest_txn["id"] == data["transaction_id"] and latest_txn["points"] == 25:
+                            self.log_result("Points Award Transaction Record", True, "Transaction recorded correctly")
+                        else:
+                            self.log_result("Points Award Transaction Record", False, "Transaction not recorded correctly")
+                            return False
+                    else:
+                        self.log_result("Points Award Transaction Record", False, "No transactions found")
+                        return False
+                else:
+                    self.log_result("Points Award Transaction Record", False, "Failed to get transactions")
                     return False
                 
-                if not isinstance(summary["coverage"]["postcode"], (int, float)):
-                    self.log_result("Geographic Distribution Postcode Coverage Type", False, 
-                                  "Postcode coverage should be number")
+                # Test with non-existent member (should initialize)
+                fake_member_id = "fake_member_123"
+                award_data_fake = {
+                    "member_id": fake_member_id,
+                    "points": 10,
+                    "reason": "Test for new member"
+                }
+                
+                response = requests.post(f"{API_BASE}/engagement/points/award", json=award_data_fake, headers=self.headers)
+                if response.status_code == 200:
+                    fake_data = response.json()
+                    if fake_data["new_balance"] == 10:
+                        self.log_result("Points Award Non-Existent Member", True, "Initialized new member correctly")
+                    else:
+                        self.log_result("Points Award Non-Existent Member", False, f"Expected 10, got {fake_data['new_balance']}")
+                        return False
+                else:
+                    self.log_result("Points Award Non-Existent Member", False, f"Failed to award to non-existent member: {response.status_code}")
                     return False
                 
-                # Verify by_postcode structure (top 20)
-                if data["by_postcode"]:
-                    postcode = data["by_postcode"][0]
-                    postcode_fields = ["postcode", "member_count", "percentage"]
-                    missing_postcode_fields = [field for field in postcode_fields if field not in postcode]
-                    
-                    if missing_postcode_fields:
-                        self.log_result("Geographic Distribution Postcode Structure", False, 
-                                      f"Missing postcode fields: {missing_postcode_fields}")
-                        return False
-                    
-                    # Verify top 20 limit
-                    if len(data["by_postcode"]) > 20:
-                        self.log_result("Geographic Distribution Postcode Limit", False, 
-                                      f"Should return top 20 postcodes, got {len(data['by_postcode'])}")
-                        return False
-                
-                # Verify by_city structure (top 10)
-                if data["by_city"]:
-                    city = data["by_city"][0]
-                    city_fields = ["city", "member_count", "percentage"]
-                    missing_city_fields = [field for field in city_fields if field not in city]
-                    
-                    if missing_city_fields:
-                        self.log_result("Geographic Distribution City Structure", False, 
-                                      f"Missing city fields: {missing_city_fields}")
-                        return False
-                    
-                    # Verify top 10 limit
-                    if len(data["by_city"]) > 10:
-                        self.log_result("Geographic Distribution City Limit", False, 
-                                      f"Should return top 10 cities, got {len(data['by_city'])}")
-                        return False
-                
-                # Verify by_state structure
-                if data["by_state"]:
-                    state = data["by_state"][0]
-                    state_fields = ["state", "member_count", "percentage"]
-                    missing_state_fields = [field for field in state_fields if field not in state]
-                    
-                    if missing_state_fields:
-                        self.log_result("Geographic Distribution State Structure", False, 
-                                      f"Missing state fields: {missing_state_fields}")
-                        return False
-                
-                self.log_result("Geographic Distribution Analytics API", True, 
-                              f"Retrieved geographic distribution: {summary['total_members']} total members, "
-                              f"Postcode coverage: {summary['coverage']['postcode']:.1f}%, "
-                              f"City coverage: {summary['coverage']['city']:.1f}%, "
-                              f"State coverage: {summary['coverage']['state']:.1f}%")
+                self.log_result("Points Award API", True, 
+                              f"Successfully awarded 25 points, new balance: {data['new_balance']}")
                 return True
                 
             else:
-                self.log_result("Geographic Distribution Analytics API", False, 
-                              f"Failed to get geographic distribution: {response.status_code}",
+                self.log_result("Points Award API", False, 
+                              f"Failed to award points: {response.status_code}",
                               {"response": response.text})
                 return False
                 
         except Exception as e:
-            self.log_result("Geographic Distribution Analytics API", False, f"Error testing geographic distribution API: {str(e)}")
+            self.log_result("Points Award API", False, f"Error testing points award API: {str(e)}")
             return False
     
     def test_attendance_deep_dive_analytics_api(self):
