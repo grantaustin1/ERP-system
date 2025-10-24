@@ -72,6 +72,8 @@ function App() {
             <Route path="/automations" element={<PrivateRoute><Automations /></PrivateRoute>} />
             <Route path="/analytics" element={<PrivateRoute><Analytics /></PrivateRoute>} />
             <Route path="/advanced-analytics" element={<PrivateRoute><AdvancedAnalytics /></PrivateRoute>} />
+            <Route path="/rewards" element={<PrivateRoute><PointsRewards /></PrivateRoute>} />
+            <Route path="/engagement" element={<PrivateRoute><EngagementDashboard /></PrivateRoute>} />
             <Route path="/reports" element={<PrivateRoute><Reports /></PrivateRoute>} />
             <Route path="/import" element={<PrivateRoute><DataImport /></PrivateRoute>} />
             <Route path="/permission-matrix" element={<PrivateRoute><PermissionMatrix /></PrivateRoute>} />
