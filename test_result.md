@@ -274,15 +274,18 @@ backend:
 
   - task: "Update Invoice API"
     implemented: true
-    working: "NA"
+    working: true
     file: "/app/backend/server.py"
     stuck_count: 0
     priority: "high"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
       - working: "NA"
         agent: "main"
         comment: "Created PUT /api/invoices/{invoice_id} endpoint to update invoice details. Prevents editing of paid/void invoices. Supports updating description, due_date, notes, status, line_items. Recalculates totals when line items are updated. Ready for testing."
+      - working: true
+        agent: "testing"
+        comment: "✅ Update Invoice API working correctly: PUT /api/invoices/{invoice_id} successfully updates invoice details including description (added 'UPDATED:' prefix), due_date (extended to 45 days), notes, and line_items (modified quantities and prices). Automatically recalculates totals when line items are updated (new total: R1779.62). All updates applied correctly and persisted in database."
 
   - task: "Void Invoice API"
     implemented: true
