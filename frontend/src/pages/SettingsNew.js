@@ -1422,18 +1422,273 @@ export default function SettingsNew() {
 
         {/* SYSTEM */}
         <TabsContent value="general">
-          <div className="text-center py-12">
-            <SettingsIcon className="h-16 w-16 mx-auto text-slate-600 mb-4" />
-            <h3 className="text-xl font-semibold text-white mb-2">General Settings</h3>
-            <p className="text-slate-400">System-wide configuration options</p>
+          <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-lg p-6">
+            <h3 className="text-xl font-bold text-blue-400 mb-6">General System Settings</h3>
+            
+            <div className="space-y-6">
+              <Card className="bg-slate-700/50 border-slate-600">
+                <CardHeader>
+                  <CardTitle className="text-white">Business Information</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="space-y-2">
+                    <Label className="text-white">Business Name</Label>
+                    <Input
+                      value={systemSettings.business_name}
+                      onChange={(e) => setSystemSettings({...systemSettings, business_name: e.target.value})}
+                      className="bg-slate-700 border-slate-600 text-white"
+                    />
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label className="text-white">Timezone</Label>
+                      <select
+                        value={systemSettings.timezone}
+                        onChange={(e) => setSystemSettings({...systemSettings, timezone: e.target.value})}
+                        className="w-full p-2 bg-slate-700 border border-slate-600 text-white rounded-md"
+                      >
+                        <option value="Africa/Johannesburg">South Africa (Johannesburg)</option>
+                        <option value="UTC">UTC</option>
+                        <option value="Europe/London">UK (London)</option>
+                        <option value="America/New_York">US (New York)</option>
+                      </select>
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label className="text-white">Currency</Label>
+                      <select
+                        value={systemSettings.currency}
+                        onChange={(e) => setSystemSettings({...systemSettings, currency: e.target.value})}
+                        className="w-full p-2 bg-slate-700 border border-slate-600 text-white rounded-md"
+                      >
+                        <option value="ZAR">ZAR (South African Rand)</option>
+                        <option value="USD">USD (US Dollar)</option>
+                        <option value="EUR">EUR (Euro)</option>
+                        <option value="GBP">GBP (British Pound)</option>
+                      </select>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="bg-slate-700/50 border-slate-600">
+                <CardHeader>
+                  <CardTitle className="text-white">Regional Settings</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label className="text-white">Date Format</Label>
+                      <select
+                        value={systemSettings.date_format}
+                        onChange={(e) => setSystemSettings({...systemSettings, date_format: e.target.value})}
+                        className="w-full p-2 bg-slate-700 border border-slate-600 text-white rounded-md"
+                      >
+                        <option value="DD/MM/YYYY">DD/MM/YYYY</option>
+                        <option value="MM/DD/YYYY">MM/DD/YYYY</option>
+                        <option value="YYYY-MM-DD">YYYY-MM-DD</option>
+                      </select>
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label className="text-white">Time Format</Label>
+                      <select
+                        value={systemSettings.time_format}
+                        onChange={(e) => setSystemSettings({...systemSettings, time_format: e.target.value})}
+                        className="w-full p-2 bg-slate-700 border border-slate-600 text-white rounded-md"
+                      >
+                        <option value="24h">24-hour</option>
+                        <option value="12h">12-hour (AM/PM)</option>
+                      </select>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="bg-slate-700/50 border-slate-600">
+                <CardHeader>
+                  <CardTitle className="text-white">Access Control Settings</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="space-y-2">
+                    <Label className="text-white">Max Daily Access Overrides per Member</Label>
+                    <Input
+                      type="number"
+                      value={systemSettings.max_daily_overrides}
+                      onChange={(e) => setSystemSettings({...systemSettings, max_daily_overrides: parseInt(e.target.value)})}
+                      className="bg-slate-700 border-slate-600 text-white"
+                      min="1"
+                      max="10"
+                    />
+                    <p className="text-xs text-slate-400">Number of times a member can use manual override per day</p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="text-white">Session Timeout (minutes)</Label>
+                    <Input
+                      type="number"
+                      value={systemSettings.session_timeout}
+                      onChange={(e) => setSystemSettings({...systemSettings, session_timeout: parseInt(e.target.value)})}
+                      className="bg-slate-700 border-slate-600 text-white"
+                      min="5"
+                      max="120"
+                    />
+                    <p className="text-xs text-slate-400">Automatically log out inactive users after this time</p>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="bg-slate-700/50 border-slate-600">
+                <CardHeader>
+                  <CardTitle className="text-white">Notification Preferences</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <Label className="text-white">Enable System Notifications</Label>
+                      <p className="text-xs text-slate-400">Show toast notifications for system events</p>
+                    </div>
+                    <Switch
+                      checked={systemSettings.enable_notifications}
+                      onCheckedChange={(checked) => setSystemSettings({...systemSettings, enable_notifications: checked})}
+                    />
+                  </div>
+
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <Label className="text-white">Enable Email Reports</Label>
+                      <p className="text-xs text-slate-400">Receive daily/weekly email reports</p>
+                    </div>
+                    <Switch
+                      checked={systemSettings.enable_email_reports}
+                      onCheckedChange={(checked) => setSystemSettings({...systemSettings, enable_email_reports: checked})}
+                    />
+                  </div>
+
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <Label className="text-white">Enable SMS Notifications</Label>
+                      <p className="text-xs text-slate-400">Send SMS for critical alerts</p>
+                    </div>
+                    <Switch
+                      checked={systemSettings.enable_sms_notifications}
+                      onCheckedChange={(checked) => setSystemSettings({...systemSettings, enable_sms_notifications: checked})}
+                    />
+                  </div>
+                </CardContent>
+              </Card>
+
+              <div className="flex justify-end">
+                <Button onClick={handleSaveSystemSettings} className="bg-blue-600 hover:bg-blue-700">
+                  <CheckCircle className="mr-2 h-4 w-4" />
+                  Save System Settings
+                </Button>
+              </div>
+            </div>
           </div>
         </TabsContent>
 
         <TabsContent value="analytics">
-          <div className="text-center py-12">
-            <BarChart3 className="h-16 w-16 mx-auto text-slate-600 mb-4" />
-            <h3 className="text-xl font-semibold text-white mb-2">Analytics Settings</h3>
-            <p className="text-slate-400">Configure analytics and reporting options</p>
+          <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-lg p-6">
+            <h3 className="text-xl font-bold text-blue-400 mb-6">Analytics & Reporting Settings</h3>
+            
+            <div className="space-y-6">
+              <Card className="bg-slate-700/50 border-slate-600">
+                <CardHeader>
+                  <CardTitle className="text-white">Dashboard Configuration</CardTitle>
+                  <CardDescription>Configure default dashboard view and metrics</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="space-y-2">
+                    <Label className="text-white">Default Date Range</Label>
+                    <select className="w-full p-2 bg-slate-700 border border-slate-600 text-white rounded-md">
+                      <option>Last 7 days</option>
+                      <option>Last 30 days</option>
+                      <option>Last 90 days</option>
+                      <option>This month</option>
+                      <option>This year</option>
+                    </select>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label className="text-white">Metrics Refresh Interval</Label>
+                    <select className="w-full p-2 bg-slate-700 border border-slate-600 text-white rounded-md">
+                      <option>Real-time</option>
+                      <option>Every 5 minutes</option>
+                      <option>Every 15 minutes</option>
+                      <option>Every hour</option>
+                      <option>Manual only</option>
+                    </select>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="bg-slate-700/50 border-slate-600">
+                <CardHeader>
+                  <CardTitle className="text-white">Report Generation</CardTitle>
+                  <CardDescription>Automated report settings</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <Label className="text-white">Daily Member Activity Report</Label>
+                      <p className="text-xs text-slate-400">Sent every morning at 8 AM</p>
+                    </div>
+                    <Switch defaultChecked />
+                  </div>
+
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <Label className="text-white">Weekly Revenue Summary</Label>
+                      <p className="text-xs text-slate-400">Sent every Monday</p>
+                    </div>
+                    <Switch defaultChecked />
+                  </div>
+
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <Label className="text-white">Monthly Performance Report</Label>
+                      <p className="text-xs text-slate-400">Sent on 1st of each month</p>
+                    </div>
+                    <Switch />
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="bg-slate-700/50 border-slate-600">
+                <CardHeader>
+                  <CardTitle className="text-white">Data Export</CardTitle>
+                  <CardDescription>Configure data export options</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="space-y-2">
+                    <Label className="text-white">Default Export Format</Label>
+                    <select className="w-full p-2 bg-slate-700 border border-slate-600 text-white rounded-md">
+                      <option>CSV</option>
+                      <option>Excel (XLSX)</option>
+                      <option>PDF</option>
+                      <option>JSON</option>
+                    </select>
+                  </div>
+
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <Label className="text-white">Include Member Photos in Exports</Label>
+                      <p className="text-xs text-slate-400">May increase export file size</p>
+                    </div>
+                    <Switch />
+                  </div>
+                </CardContent>
+              </Card>
+
+              <div className="flex justify-end">
+                <Button className="bg-blue-600 hover:bg-blue-700">
+                  <CheckCircle className="mr-2 h-4 w-4" />
+                  Save Analytics Settings
+                </Button>
+              </div>
+            </div>
           </div>
         </TabsContent>
       </>
