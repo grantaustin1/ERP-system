@@ -54,6 +54,12 @@ export default function Dashboard() {
   const [messagingDialogOpen, setMessagingDialogOpen] = useState(false);
   const [selectedMembersForMessaging, setSelectedMembersForMessaging] = useState([]);
   
+  // Phase 2A - Dashboard Enhancements
+  const [snapshotData, setSnapshotData] = useState(null);
+  const [todayMembers, setTodayMembers] = useState([]);
+  const [yesterdayMembers, setYesterdayMembers] = useState([]);
+  const [dateRange, setDateRange] = useState({ start: '', end: '', label: 'Last 30 Days' });
+  
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -61,6 +67,7 @@ export default function Dashboard() {
     fetchAlertData();
     fetchClassBookingStats();
     fetchPhase2Data();
+    fetchPhase2AData(); // New Phase 2A data
   }, []);
 
   const fetchStats = async () => {
