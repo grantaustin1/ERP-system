@@ -2436,6 +2436,48 @@ async def get_members(current_user: User = Depends(get_current_user)):
             m["expiry_date"] = datetime.fromisoformat(m["expiry_date"])
     return members
 
+# Member Search for Override - MUST be before {member_id} endpoint
+@api_router.get("/members/search")
+async def search_members(
+    q: str,
+    current_user: User = Depends(get_current_user)
+):
+    """Search members by name, email, phone, or ID"""
+    # Build search query
+    search_query = {
+        "$or": [
+            {"first_name": {"$regex": q, "$options": "i"}},
+            {"last_name": {"$regex": q, "$options": "i"}},
+            {"email": {"$regex": q, "$options": "i"}},
+            {"phone": {"$regex": q, "$options": "i"}},
+            {"id": {"$regex": q, "$options": "i"}}
+        ]
+    }
+    
+    members = await db.members.find(
+        search_query,
+        {"_id": 0, "first_name": 1, "last_name": 1, "email": 1, "phone": 1, "id": 1, "membership_status": 1, "expiry_date": 1, "access_pin": 1, "is_prospect": 1}
+    ).limit(10).to_list(length=10)
+    
+    # If no members found, return empty array instead of 404
+    if not members:
+        return []
+    
+    # Enhance with status info
+    for member in members:
+        if member.get("is_prospect"):
+            member["status_label"] = "Prospect"
+        elif member.get("membership_status") == "cancelled":
+            member["status_label"] = "Cancelled"
+        elif member.get("membership_status") == "suspended":
+            member["status_label"] = "Suspended"
+        elif member.get("expiry_date") and datetime.fromisoformat(member["expiry_date"].replace('Z', '+00:00')) < datetime.now(timezone.utc):
+            member["status_label"] = "Expired"
+        else:
+            member["status_label"] = "Active"
+    
+    return members
+
 @api_router.get("/members/{member_id}", response_model=Member)
 async def get_member(member_id: str):
     member = await db.members.find_one({"id": member_id}, {"_id": 0})
