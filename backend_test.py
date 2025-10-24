@@ -1,15 +1,13 @@
 #!/usr/bin/env python3
 """
-Backend Test Suite for Billing Automation & Invoice Generation System
-Comprehensive testing of billing settings, invoice CRUD, PDF generation, and validation
+Backend Test Suite for Enhanced Member Management System - Phase 1 Quick Wins
+Comprehensive testing of tag management, member tagging, member actions, and enhanced profile APIs
 """
 
 import requests
 import json
 import time
 import os
-import tempfile
-import csv
 from datetime import datetime, timezone, timedelta
 
 # Configuration
@@ -20,7 +18,7 @@ API_BASE = f"{BASE_URL}/api"
 TEST_EMAIL = "admin@gym.com"
 TEST_PASSWORD = "admin123"
 
-class BillingInvoiceTester:
+class EnhancedMemberManagementTester:
     def __init__(self):
         self.token = None
         self.headers = {}
