@@ -208,15 +208,15 @@ class EngagementFeaturesTestRunner:
             
             initial_balance = response.json()["total_points"]
             
-            # Award points
-            award_data = {
+            # Award points (using query parameters)
+            award_params = {
                 "member_id": self.test_member_id,
                 "points": 25,
                 "reason": "Test reward",
                 "reference_id": "test_ref_123"
             }
             
-            response = requests.post(f"{API_BASE}/engagement/points/award", json=award_data, headers=self.headers)
+            response = requests.post(f"{API_BASE}/engagement/points/award", params=award_params, headers=self.headers)
             
             if response.status_code == 200:
                 data = response.json()
