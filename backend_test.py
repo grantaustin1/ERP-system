@@ -446,84 +446,228 @@ class DashboardTestRunner:
             self.log_result("Add Tag to Member", False, f"Error adding tag to member: {str(e)}")
             return False
     
-    def test_freeze_unfreeze_quick(self):
-        """Quick test: Freeze and Unfreeze membership"""
-        print("\n=== Quick Test: Freeze/Unfreeze Membership ===")
+    def test_dashboard_snapshot_api(self):
+        """Test Dashboard Snapshot API - GET /api/dashboard/snapshot"""
+        print("\n=== Testing Dashboard Snapshot API ===")
         
-        if not self.test_member_id_2:
-            self.log_result("Freeze/Unfreeze Membership", False, "No test member available")
+        try:
+            response = requests.get(f"{API_BASE}/dashboard/snapshot", headers=self.headers)
+            
+            if response.status_code == 200:
+                snapshot = response.json()
+                
+                # Verify required structure
+                required_sections = ["today", "yesterday", "growth"]
+                missing_sections = [section for section in required_sections if section not in snapshot]
+                
+                if missing_sections:
+                    self.log_result("Dashboard Snapshot Structure", False, 
+                                  f"Missing sections: {missing_sections}")
+                    return False
+                
+                # Verify today section
+                today_fields = ["registered", "commenced", "attendance"]
+                today_data = snapshot.get("today", {})
+                missing_today = [field for field in today_fields if field not in today_data]
+                
+                if missing_today:
+                    self.log_result("Dashboard Snapshot Today Fields", False, 
+                                  f"Missing today fields: {missing_today}")
+                    return False
+                
+                # Verify yesterday section
+                yesterday_data = snapshot.get("yesterday", {})
+                missing_yesterday = [field for field in today_fields if field not in yesterday_data]
+                
+                if missing_yesterday:
+                    self.log_result("Dashboard Snapshot Yesterday Fields", False, 
+                                  f"Missing yesterday fields: {missing_yesterday}")
+                    return False
+                
+                # Verify growth section
+                growth_fields = [
+                    "memberships_sold_30d", "memberships_sold_last_year", "memberships_growth",
+                    "memberships_expired_30d", "memberships_expired_last_year", "expired_growth",
+                    "net_gain_30d", "net_gain_last_year", "net_gain_growth",
+                    "attendance_30d", "attendance_last_year", "attendance_growth"
+                ]
+                growth_data = snapshot.get("growth", {})
+                missing_growth = [field for field in growth_fields if field not in growth_data]
+                
+                if missing_growth:
+                    self.log_result("Dashboard Snapshot Growth Fields", False, 
+                                  f"Missing growth fields: {missing_growth}")
+                    return False
+                
+                # Verify data types are numeric
+                all_numeric = True
+                non_numeric_fields = []
+                
+                for section_name, section_data in snapshot.items():
+                    for field, value in section_data.items():
+                        if not isinstance(value, (int, float)):
+                            all_numeric = False
+                            non_numeric_fields.append(f"{section_name}.{field}")
+                
+                if not all_numeric:
+                    self.log_result("Dashboard Snapshot Data Types", False, 
+                                  f"Non-numeric fields: {non_numeric_fields}")
+                    return False
+                
+                # Verify growth percentages are calculated correctly
+                growth = snapshot["growth"]
+                
+                # Test growth calculation logic
+                def verify_growth_calc(current, previous, calculated):
+                    if previous == 0:
+                        expected = 100 if current > 0 else 0
+                    else:
+                        expected = round(((current - previous) / previous) * 100, 1)
+                    return abs(calculated - expected) < 0.1  # Allow small floating point differences
+                
+                memberships_growth_correct = verify_growth_calc(
+                    growth["memberships_sold_30d"], 
+                    growth["memberships_sold_last_year"], 
+                    growth["memberships_growth"]
+                )
+                
+                if not memberships_growth_correct:
+                    self.log_result("Dashboard Snapshot Growth Calculation", False, 
+                                  "Memberships growth percentage calculation incorrect")
+                    return False
+                
+                self.log_result("Dashboard Snapshot API", True, 
+                              f"All fields present and correctly structured. Today: {today_data}, Growth: {growth['memberships_growth']}%")
+                return True
+                
+            else:
+                self.log_result("Dashboard Snapshot API", False, 
+                              f"Failed to get snapshot: {response.status_code}",
+                              {"response": response.text})
+                return False
+                
+        except Exception as e:
+            self.log_result("Dashboard Snapshot API", False, f"Error testing snapshot API: {str(e)}")
+            return False
+    
+    def test_recent_members_api(self):
+        """Test Recent Members API - GET /api/dashboard/recent-members"""
+        print("\n=== Testing Recent Members API ===")
+        
+        try:
+            # Test with period=today
+            response_today = requests.get(f"{API_BASE}/dashboard/recent-members?period=today", headers=self.headers)
+            
+            if response_today.status_code == 200:
+                members_today = response_today.json()
+                
+                # Verify response is a list
+                if not isinstance(members_today, list):
+                    self.log_result("Recent Members Today Response Type", False, 
+                                  f"Expected list, got {type(members_today)}")
+                    return False
+                
+                # If there are members, verify structure
+                if members_today:
+                    member = members_today[0]
+                    required_fields = [
+                        "id", "first_name", "last_name", "full_name", 
+                        "email", "phone", "membership_status", "join_date", "created_at"
+                    ]
+                    missing_fields = [field for field in required_fields if field not in member]
+                    
+                    if missing_fields:
+                        self.log_result("Recent Members Today Fields", False, 
+                                      f"Missing fields: {missing_fields}")
+                        return False
+                    
+                    # Verify full_name is constructed correctly
+                    expected_full_name = f"{member['first_name']} {member['last_name']}".strip()
+                    if member["full_name"] != expected_full_name:
+                        self.log_result("Recent Members Full Name Construction", False, 
+                                      f"Expected '{expected_full_name}', got '{member['full_name']}'")
+                        return False
+                
+                self.log_result("Recent Members Today API", True, 
+                              f"Retrieved {len(members_today)} members for today")
+                
+                # Test with period=yesterday
+                response_yesterday = requests.get(f"{API_BASE}/dashboard/recent-members?period=yesterday", headers=self.headers)
+                
+                if response_yesterday.status_code == 200:
+                    members_yesterday = response_yesterday.json()
+                    
+                    if not isinstance(members_yesterday, list):
+                        self.log_result("Recent Members Yesterday Response Type", False, 
+                                      f"Expected list, got {type(members_yesterday)}")
+                        return False
+                    
+                    self.log_result("Recent Members Yesterday API", True, 
+                                  f"Retrieved {len(members_yesterday)} members for yesterday")
+                    
+                    # Test sorting (should be by created_at descending)
+                    if len(members_today) > 1:
+                        for i in range(len(members_today) - 1):
+                            current_date = members_today[i]["created_at"]
+                            next_date = members_today[i + 1]["created_at"]
+                            
+                            if current_date < next_date:
+                                self.log_result("Recent Members Sorting", False, 
+                                              "Members not sorted by created_at descending")
+                                return False
+                        
+                        self.log_result("Recent Members Sorting", True, 
+                                      "Members correctly sorted by created_at descending")
+                    
+                    return True
+                else:
+                    self.log_result("Recent Members Yesterday API", False, 
+                                  f"Failed to get yesterday members: {response_yesterday.status_code}")
+                    return False
+                
+            else:
+                self.log_result("Recent Members Today API", False, 
+                              f"Failed to get today members: {response_today.status_code}",
+                              {"response": response_today.text})
+                return False
+                
+        except Exception as e:
+            self.log_result("Recent Members API", False, f"Error testing recent members API: {str(e)}")
+            return False
+    
+    def create_test_access_logs(self):
+        """Create test access logs for dashboard testing"""
+        print("\n=== Creating Test Access Logs ===")
+        
+        if not self.test_member_id:
+            self.log_result("Create Test Access Logs", False, "No test member available")
             return False
         
         try:
-            # Test freeze
-            freeze_data = {
-                "reason": "Temporary medical leave",
-                "notes": "Member recovering from surgery",
-                "end_date": (datetime.now(timezone.utc) + timedelta(days=30)).isoformat()
+            # Create access log for today
+            access_log_data = {
+                "member_id": self.test_member_id,
+                "access_method": "qr_code",
+                "location": "Main Entrance",
+                "device_id": "device_001"
             }
             
-            freeze_response = requests.post(f"{API_BASE}/members/{self.test_member_id_2}/freeze", 
-                                          json=freeze_data, headers=self.headers)
+            response = requests.post(f"{API_BASE}/access-logs", json=access_log_data, headers=self.headers)
             
-            if freeze_response.status_code == 200:
-                freeze_result = freeze_response.json()
-                
-                if "frozen" in freeze_result.get("message", "").lower():
-                    self.log_result("Freeze Membership", True, 
-                                  f"Membership frozen successfully")
-                    
-                    # Verify freeze status
-                    member_response = requests.get(f"{API_BASE}/members/{self.test_member_id_2}", headers=self.headers)
-                    if member_response.status_code == 200:
-                        member = member_response.json()
-                        
-                        if member.get("freeze_status") == True:
-                            self.log_result("Verify Freeze Status", True, 
-                                          "Freeze status updated correctly")
-                        else:
-                            self.log_result("Verify Freeze Status", False, 
-                                          f"Freeze status not updated: {member.get('freeze_status')}")
-                    
-                    # Test unfreeze
-                    unfreeze_response = requests.post(f"{API_BASE}/members/{self.test_member_id_2}/unfreeze", 
-                                                    headers=self.headers)
-                    
-                    if unfreeze_response.status_code == 200:
-                        unfreeze_result = unfreeze_response.json()
-                        
-                        if "unfrozen" in unfreeze_result.get("message", "").lower():
-                            self.log_result("Unfreeze Membership", True, 
-                                          f"Membership unfrozen successfully")
-                            
-                            # Verify unfreeze status
-                            member_response = requests.get(f"{API_BASE}/members/{self.test_member_id_2}", headers=self.headers)
-                            if member_response.status_code == 200:
-                                member = member_response.json()
-                                
-                                if member.get("freeze_status") == False:
-                                    self.log_result("Verify Unfreeze Status", True, 
-                                                  "Freeze status cleared correctly")
-                                    return True
-                                else:
-                                    self.log_result("Verify Unfreeze Status", False, 
-                                                  f"Freeze status not cleared: {member.get('freeze_status')}")
-                        else:
-                            self.log_result("Unfreeze Membership", False, 
-                                          f"Unexpected unfreeze response: {unfreeze_result}")
-                    else:
-                        self.log_result("Unfreeze Membership", False, 
-                                      f"Failed to unfreeze: {unfreeze_response.status_code}")
-                else:
-                    self.log_result("Freeze Membership", False, 
-                                  f"Unexpected freeze response: {freeze_result}")
+            if response.status_code == 200:
+                access_log = response.json()
+                self.created_access_logs.append(access_log.get("id"))
+                self.log_result("Create Test Access Log", True, 
+                              f"Created access log for member {self.test_member_id[:8]}")
+                return True
             else:
-                self.log_result("Freeze Membership", False, 
-                              f"Failed to freeze: {freeze_response.status_code}")
-            
-            return False
+                self.log_result("Create Test Access Log", False, 
+                              f"Failed to create access log: {response.status_code}",
+                              {"response": response.text})
+                return False
                 
         except Exception as e:
-            self.log_result("Freeze/Unfreeze Membership", False, f"Error testing freeze/unfreeze: {str(e)}")
+            self.log_result("Create Test Access Logs", False, f"Error creating access logs: {str(e)}")
             return False
     
     
