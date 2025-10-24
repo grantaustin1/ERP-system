@@ -1469,6 +1469,79 @@ backend:
     description: "Created comprehensive UnifiedMessagingDialog component supporting SMS/Email/WhatsApp/Push with template selection, character counter, SMS credit display, save as template, marketing flag, show on check-in option, and member personalization. Integrated into Dashboard.js and Members.js with Send Message buttons."
 
 frontend:
+  - task: "Invoice Management UI - Create Invoice Dialog"
+    implemented: true
+    working: "NA"
+    file: "/app/frontend/src/pages/InvoiceManagement.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Created comprehensive Invoice Management page with Create Invoice dialog. Features: Member selection dropdown, due date picker, description input, line items management (add/remove), line item form with description/quantity/price/discount/tax fields, real-time total calculation, notes textarea. Displays added line items with calculated totals. Integrates with POST /api/invoices API. Ready for testing."
+
+  - task: "Invoice Management UI - Invoice List & Actions"
+    implemented: true
+    working: "NA"
+    file: "/app/frontend/src/pages/InvoiceManagement.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Implemented invoice listing table with columns: Invoice #, Member, Description, Amount, Due Date, Status. Status badges for paid/pending/overdue/failed/void. Action buttons: Download PDF, Edit (for non-paid/non-void), Void (for non-paid/non-void). Integrates with GET /api/invoices, GET /api/invoices/{id}/pdf, DELETE /api/invoices/{id} APIs. Ready for testing."
+
+  - task: "Invoice Management UI - Edit Invoice Dialog"
+    implemented: true
+    working: "NA"
+    file: "/app/frontend/src/pages/InvoiceManagement.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Created Edit Invoice dialog with pre-populated form data. Member field disabled (can't change member). Supports editing description, due date, line items, notes. Recalculates totals when line items change. Integrates with PUT /api/invoices/{id} API. Shows error messages from backend. Ready for testing."
+
+  - task: "Invoice Management UI - Billing Settings Dialog"
+    implemented: true
+    working: "NA"
+    file: "/app/frontend/src/pages/InvoiceManagement.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Created Billing Settings dialog with three sections: (1) Email Automation - checkboxes for auto_email_invoices, email_on_invoice_created, email_on_invoice_overdue. (2) Tax Configuration - tax_enabled checkbox, default_tax_rate input, tax_number input. (3) Company Information - company_name, company_address, company_phone, company_email inputs. Integrates with GET /api/billing/settings and POST /api/billing/settings APIs. Ready for testing."
+
+  - task: "Invoice Management UI - PDF Download"
+    implemented: true
+    working: "NA"
+    file: "/app/frontend/src/pages/InvoiceManagement.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Implemented PDF download functionality using axios blob response type. Creates download link, triggers download, and cleans up. Proper filename generation with invoice number. Integrates with GET /api/invoices/{id}/pdf API. Shows success/error toast notifications. Ready for testing."
+
+  - task: "Invoice Management Navigation - Sidebar & Routing"
+    implemented: true
+    working: "NA"
+    file: "/app/frontend/src/components/Sidebar.js, /app/frontend/src/App.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Added 'Invoices' link to sidebar with Receipt icon. Added route /invoices to App.js pointing to InvoiceManagement component. Imported InvoiceManagement component. Ready for testing."
+
+
   - task: "Member Profile Drill-Down Functionality"
     implemented: true
     working: true
