@@ -675,7 +675,7 @@ class AdvancedAnalyticsTestRunner:
                 # Verify common_risk_factors structure
                 if data["common_risk_factors"]:
                     risk_factor = data["common_risk_factors"][0]
-                    factor_fields = ["factor", "member_count", "percentage"]
+                    factor_fields = ["factor", "count"]
                     missing_factor_fields = [field for field in factor_fields if field not in risk_factor]
                     
                     if missing_factor_fields:
