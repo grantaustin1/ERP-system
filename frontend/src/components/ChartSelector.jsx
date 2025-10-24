@@ -30,7 +30,7 @@ ChartJS.register(
   Legend
 );
 
-const API = process.env.REACT_APP_BACKEND_URL || '';
+const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
 const ChartSelector = ({ dateRange }) => {
   const [selectedChart, setSelectedChart] = useState('age-distribution');
