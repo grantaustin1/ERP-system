@@ -26,6 +26,7 @@ import UserRoleManagement from '@/pages/UserRoleManagement';
 import POS from '@/pages/POS';
 import ProductManagement from '@/pages/ProductManagement';
 import Tasks from '@/pages/Tasks';
+import Reports from '@/pages/Reports';
 import { Toaster } from '@/components/ui/sonner';
 import { PermissionProvider } from '@/contexts/PermissionContext';
 
