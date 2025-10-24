@@ -8449,6 +8449,641 @@ async def get_conversion_funnel(current_user: User = Depends(get_current_user)):
 
 
 
+# ==================== SALES MANAGEMENT - PHASE 2 (ADVANCED) ====================
+
+# ==================== SALES AUTOMATION ====================
+
+@api_router.post("/sales/automation/score-lead/{lead_id}")
+async def auto_score_lead(lead_id: str, current_user: User = Depends(get_current_user)):
+    """
+    Automatically calculate and update lead score based on multiple factors
+    """
+    lead = await db.leads.find_one({"id": lead_id}, {"_id": 0})
+    if not lead:
+        raise HTTPException(status_code=404, detail="Lead not found")
+    
+    score = 0
+    scoring_factors = []
+    
+    # Factor 1: Contact information completeness (0-20 points)
+    contact_score = 0
+    if lead.get("email"):
+        contact_score += 10
+        scoring_factors.append("Has email (+10)")
+    if lead.get("phone"):
+        contact_score += 10
+        scoring_factors.append("Has phone (+10)")
+    score += contact_score
+    
+    # Factor 2: Company information (0-15 points)
+    if lead.get("company"):
+        score += 15
+        scoring_factors.append("Has company info (+15)")
+    
+    # Factor 3: Source quality (0-25 points)
+    source_scores = {
+        "referral": 25,
+        "website": 20,
+        "social_media": 15,
+        "walk_in": 10,
+        "other": 5
+    }
+    source = lead.get("source", "other")
+    source_score = source_scores.get(source, 5)
+    score += source_score
+    scoring_factors.append(f"Source: {source} (+{source_score})")
+    
+    # Factor 4: Recent activity (0-20 points)
+    if lead.get("last_contacted"):
+        from datetime import datetime, timedelta
+        try:
+            last_contacted = datetime.fromisoformat(lead["last_contacted"])
+            days_since = (datetime.now(timezone.utc) - last_contacted).days
+            if days_since <= 3:
+                score += 20
+                scoring_factors.append("Recently contacted (<3 days) (+20)")
+            elif days_since <= 7:
+                score += 15
+                scoring_factors.append("Contacted this week (+15)")
+            elif days_since <= 30:
+                score += 10
+                scoring_factors.append("Contacted this month (+10)")
+        except:
+            pass
+    
+    # Factor 5: Opportunities count (0-20 points)
+    opp_count = await db.opportunities.count_documents({"contact_id": lead_id})
+    if opp_count > 0:
+        opp_score = min(opp_count * 10, 20)
+        score += opp_score
+        scoring_factors.append(f"{opp_count} opportunities (+{opp_score})")
+    
+    # Clamp score to 0-100
+    score = min(max(score, 0), 100)
+    
+    # Update lead score
+    await db.leads.update_one(
+        {"id": lead_id},
+        {"$set": {"lead_score": score, "updated_at": datetime.now(timezone.utc).isoformat()}}
+    )
+    
+    return {
+        "success": True,
+        "lead_id": lead_id,
+        "new_score": score,
+        "scoring_factors": scoring_factors
+    }
+
+
+@api_router.post("/sales/automation/auto-assign-lead/{lead_id}")
+async def auto_assign_lead(
+    lead_id: str,
+    assignment_strategy: str = "round_robin",  # round_robin, least_loaded
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Automatically assign lead to a team member based on strategy
+    """
+    lead = await db.leads.find_one({"id": lead_id}, {"_id": 0})
+    if not lead:
+        raise HTTPException(status_code=404, detail="Lead not found")
+    
+    # Get all users (simplified - in production, filter by role/team)
+    users = await db.users.find({}, {"_id": 0, "id": 1, "email": 1}).to_list(None)
+    
+    if not users:
+        raise HTTPException(status_code=404, detail="No users available for assignment")
+    
+    assigned_user = None
+    
+    if assignment_strategy == "round_robin":
+        # Simple round-robin: assign to user with fewest leads
+        user_lead_counts = {}
+        for user in users:
+            count = await db.leads.count_documents({"assigned_to": user["id"]})
+            user_lead_counts[user["id"]] = count
+        
+        # Find user with minimum leads
+        assigned_user_id = min(user_lead_counts, key=user_lead_counts.get)
+        assigned_user = next(u for u in users if u["id"] == assigned_user_id)
+    
+    elif assignment_strategy == "least_loaded":
+        # Assign to user with fewest pending tasks
+        user_task_counts = {}
+        for user in users:
+            count = await db.sales_tasks.count_documents({
+                "assigned_to": user["id"],
+                "status": "pending"
+            })
+            user_task_counts[user["id"]] = count
+        
+        assigned_user_id = min(user_task_counts, key=user_task_counts.get)
+        assigned_user = next(u for u in users if u["id"] == assigned_user_id)
+    
+    if assigned_user:
+        await db.leads.update_one(
+            {"id": lead_id},
+            {"$set": {"assigned_to": assigned_user["id"], "updated_at": datetime.now(timezone.utc).isoformat()}}
+        )
+        
+        return {
+            "success": True,
+            "lead_id": lead_id,
+            "assigned_to": assigned_user["email"],
+            "strategy": assignment_strategy
+        }
+    
+    return {"success": False, "message": "Could not assign lead"}
+
+
+@api_router.post("/sales/automation/create-follow-up-tasks")
+async def create_auto_follow_up_tasks(
+    days_inactive: int = 7,
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Create automatic follow-up tasks for leads not contacted recently
+    """
+    from datetime import datetime, timedelta
+    import uuid
+    
+    cutoff_date = datetime.now(timezone.utc) - timedelta(days=days_inactive)
+    
+    # Find leads that haven't been contacted recently
+    leads = await db.leads.find({
+        "status": {"$in": ["new", "contacted", "qualified"]},
+        "$or": [
+            {"last_contacted": {"$lt": cutoff_date.isoformat()}},
+            {"last_contacted": None}
+        ]
+    }, {"_id": 0}).to_list(None)
+    
+    tasks_created = 0
+    
+    for lead in leads:
+        # Check if follow-up task already exists
+        existing_task = await db.sales_tasks.find_one({
+            "related_to_type": "lead",
+            "related_to_id": lead["id"],
+            "status": "pending",
+            "task_type": "follow_up"
+        })
+        
+        if not existing_task:
+            # Create follow-up task
+            task = {
+                "id": str(uuid.uuid4()),
+                "title": f"Follow up with {lead['first_name']} {lead['last_name']}",
+                "description": f"Lead has been inactive for {days_inactive}+ days. Time to reach out!",
+                "task_type": "follow_up",
+                "related_to_type": "lead",
+                "related_to_id": lead["id"],
+                "assigned_to": lead.get("assigned_to") or current_user.id,
+                "due_date": (datetime.now(timezone.utc) + timedelta(days=1)).isoformat(),
+                "priority": "medium",
+                "status": "pending",
+                "created_at": datetime.now(timezone.utc).isoformat(),
+                "completed_at": None
+            }
+            
+            await db.sales_tasks.insert_one(task)
+            tasks_created += 1
+    
+    return {
+        "success": True,
+        "tasks_created": tasks_created,
+        "leads_processed": len(leads),
+        "days_inactive_threshold": days_inactive
+    }
+
+
+# ==================== WORKFLOW AUTOMATION ====================
+
+class WorkflowRule(BaseModel):
+    id: str
+    name: str
+    trigger_object: str  # lead, opportunity, task
+    trigger_event: str  # created, updated, status_changed
+    conditions: dict  # e.g., {"status": "qualified"}
+    actions: List[dict]  # e.g., [{"type": "create_task", "params": {...}}]
+    is_active: bool
+    created_at: str
+
+
+@api_router.get("/sales/workflows")
+async def get_workflows(current_user: User = Depends(get_current_user)):
+    """Get all workflow automation rules"""
+    workflows = await db.workflow_rules.find({}, {"_id": 0}).to_list(None)
+    return {"workflows": workflows, "total": len(workflows)}
+
+
+@api_router.post("/sales/workflows")
+async def create_workflow(
+    name: str,
+    trigger_object: str,
+    trigger_event: str,
+    conditions: dict,
+    actions: List[dict],
+    current_user: User = Depends(get_current_user)
+):
+    """Create a new workflow automation rule"""
+    import uuid
+    
+    workflow = {
+        "id": str(uuid.uuid4()),
+        "name": name,
+        "trigger_object": trigger_object,
+        "trigger_event": trigger_event,
+        "conditions": conditions,
+        "actions": actions,
+        "is_active": True,
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    
+    await db.workflow_rules.insert_one(workflow.copy())
+    
+    return {"success": True, "workflow": workflow}
+
+
+@api_router.put("/sales/workflows/{workflow_id}")
+async def update_workflow(
+    workflow_id: str,
+    is_active: Optional[bool] = None,
+    current_user: User = Depends(get_current_user)
+):
+    """Update workflow rule (e.g., activate/deactivate)"""
+    update_data = {}
+    
+    if is_active is not None:
+        update_data["is_active"] = is_active
+    
+    result = await db.workflow_rules.update_one(
+        {"id": workflow_id},
+        {"$set": update_data}
+    )
+    
+    if result.modified_count == 0:
+        raise HTTPException(status_code=404, detail="Workflow not found")
+    
+    return {"success": True, "workflow_id": workflow_id}
+
+
+@api_router.delete("/sales/workflows/{workflow_id}")
+async def delete_workflow(workflow_id: str, current_user: User = Depends(get_current_user)):
+    """Delete a workflow rule"""
+    result = await db.workflow_rules.delete_one({"id": workflow_id})
+    
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Workflow not found")
+    
+    return {"success": True, "message": "Workflow deleted"}
+
+
+@api_router.post("/sales/workflows/execute")
+async def execute_workflow_rules(
+    trigger_object: str,
+    trigger_event: str,
+    object_id: str,
+    object_data: dict,
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Execute matching workflow rules for a given trigger
+    (This would typically be called internally after create/update operations)
+    """
+    import uuid
+    
+    # Find matching active workflows
+    workflows = await db.workflow_rules.find({
+        "trigger_object": trigger_object,
+        "trigger_event": trigger_event,
+        "is_active": True
+    }, {"_id": 0}).to_list(None)
+    
+    executed_actions = []
+    
+    for workflow in workflows:
+        # Check if conditions match
+        conditions_met = True
+        for field, expected_value in workflow.get("conditions", {}).items():
+            if object_data.get(field) != expected_value:
+                conditions_met = False
+                break
+        
+        if conditions_met:
+            # Execute actions
+            for action in workflow.get("actions", []):
+                action_type = action.get("type")
+                
+                if action_type == "create_task":
+                    # Create a task
+                    task = {
+                        "id": str(uuid.uuid4()),
+                        "title": action.get("params", {}).get("title", "Automated Task"),
+                        "description": action.get("params", {}).get("description"),
+                        "task_type": action.get("params", {}).get("task_type", "follow_up"),
+                        "related_to_type": trigger_object,
+                        "related_to_id": object_id,
+                        "assigned_to": object_data.get("assigned_to") or current_user.id,
+                        "due_date": (datetime.now(timezone.utc) + timedelta(days=1)).isoformat(),
+                        "priority": action.get("params", {}).get("priority", "medium"),
+                        "status": "pending",
+                        "created_at": datetime.now(timezone.utc).isoformat(),
+                        "completed_at": None
+                    }
+                    await db.sales_tasks.insert_one(task)
+                    executed_actions.append({"action": "create_task", "task_id": task["id"]})
+                
+                elif action_type == "update_field":
+                    # Update a field (example: auto-update lead score)
+                    field_name = action.get("params", {}).get("field")
+                    field_value = action.get("params", {}).get("value")
+                    
+                    if trigger_object == "lead":
+                        await db.leads.update_one(
+                            {"id": object_id},
+                            {"$set": {field_name: field_value}}
+                        )
+                    elif trigger_object == "opportunity":
+                        await db.opportunities.update_one(
+                            {"id": object_id},
+                            {"$set": {field_name: field_value}}
+                        )
+                    
+                    executed_actions.append({"action": "update_field", "field": field_name})
+                
+                elif action_type == "create_opportunity":
+                    # Auto-create opportunity when lead becomes qualified
+                    opp = {
+                        "id": str(uuid.uuid4()),
+                        "title": action.get("params", {}).get("title", f"Opportunity for {object_data.get('first_name', 'Lead')}"),
+                        "contact_id": object_id,
+                        "value": action.get("params", {}).get("value", 0),
+                        "currency": "ZAR",
+                        "stage": "new_lead",
+                        "probability": 10,
+                        "expected_close_date": None,
+                        "assigned_to": object_data.get("assigned_to"),
+                        "created_at": datetime.now(timezone.utc).isoformat(),
+                        "updated_at": datetime.now(timezone.utc).isoformat(),
+                        "notes": "Auto-created by workflow automation"
+                    }
+                    await db.opportunities.insert_one(opp)
+                    executed_actions.append({"action": "create_opportunity", "opp_id": opp["id"]})
+    
+    return {
+        "success": True,
+        "workflows_matched": len(workflows),
+        "actions_executed": executed_actions
+    }
+
+
+# ==================== ADVANCED ANALYTICS ====================
+
+@api_router.get("/sales/analytics/forecasting")
+async def get_sales_forecast(
+    period_months: int = 3,
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Sales forecasting based on pipeline stages and probabilities
+    """
+    # Get all open opportunities (not closed_lost)
+    opportunities = await db.opportunities.find(
+        {"stage": {"$nin": ["closed_lost", "closed_won"]}},
+        {"_id": 0}
+    ).to_list(None)
+    
+    # Calculate weighted forecast by stage
+    stage_forecast = {}
+    stages = ["new_lead", "contacted", "qualified", "proposal", "negotiation"]
+    
+    for stage in stages:
+        stage_opps = [o for o in opportunities if o.get("stage") == stage]
+        total_value = sum(o.get("value", 0) for o in stage_opps)
+        weighted_value = sum(o.get("value", 0) * (o.get("probability", 0) / 100) for o in stage_opps)
+        
+        stage_forecast[stage] = {
+            "count": len(stage_opps),
+            "total_value": round(total_value, 2),
+            "weighted_value": round(weighted_value, 2),
+            "avg_probability": round(sum(o.get("probability", 0) for o in stage_opps) / len(stage_opps), 1) if stage_opps else 0
+        }
+    
+    # Calculate total forecast
+    total_forecast = sum(sf["weighted_value"] for sf in stage_forecast.values())
+    
+    # Get closed won opportunities for historical comparison
+    closed_won = await db.opportunities.find(
+        {"stage": "closed_won"},
+        {"_id": 0, "value": 1, "updated_at": 1}
+    ).to_list(None)
+    
+    historical_revenue = sum(o.get("value", 0) for o in closed_won)
+    
+    return {
+        "forecast_period_months": period_months,
+        "total_forecast": round(total_forecast, 2),
+        "historical_revenue": round(historical_revenue, 2),
+        "by_stage": stage_forecast,
+        "confidence_level": "medium"  # Could be calculated based on historical accuracy
+    }
+
+
+@api_router.get("/sales/analytics/team-performance")
+async def get_team_performance(current_user: User = Depends(get_current_user)):
+    """
+    Team performance metrics by assigned user
+    """
+    from collections import defaultdict
+    
+    # Get all users
+    users = await db.users.find({}, {"_id": 0, "id": 1, "email": 1, "first_name": 1, "last_name": 1}).to_list(None)
+    
+    team_metrics = []
+    
+    for user in users:
+        user_id = user["id"]
+        
+        # Count leads assigned
+        total_leads = await db.leads.count_documents({"assigned_to": user_id})
+        qualified_leads = await db.leads.count_documents({"assigned_to": user_id, "status": "qualified"})
+        converted_leads = await db.leads.count_documents({"assigned_to": user_id, "status": "converted"})
+        
+        # Count opportunities
+        total_opps = await db.opportunities.count_documents({"assigned_to": user_id})
+        won_opps = await db.opportunities.count_documents({"assigned_to": user_id, "stage": "closed_won"})
+        
+        # Calculate won opportunity value
+        won_opp_docs = await db.opportunities.find(
+            {"assigned_to": user_id, "stage": "closed_won"},
+            {"_id": 0, "value": 1}
+        ).to_list(None)
+        total_won_value = sum(o.get("value", 0) for o in won_opp_docs)
+        
+        # Count tasks
+        total_tasks = await db.sales_tasks.count_documents({"assigned_to": user_id})
+        completed_tasks = await db.sales_tasks.count_documents({"assigned_to": user_id, "status": "completed"})
+        
+        # Calculate conversion rate
+        conversion_rate = (converted_leads / total_leads * 100) if total_leads > 0 else 0
+        win_rate = (won_opps / total_opps * 100) if total_opps > 0 else 0
+        task_completion_rate = (completed_tasks / total_tasks * 100) if total_tasks > 0 else 0
+        
+        team_metrics.append({
+            "user_id": user_id,
+            "user_name": f"{user.get('first_name', '')} {user.get('last_name', '')}".strip() or user["email"],
+            "leads": {
+                "total": total_leads,
+                "qualified": qualified_leads,
+                "converted": converted_leads,
+                "conversion_rate": round(conversion_rate, 1)
+            },
+            "opportunities": {
+                "total": total_opps,
+                "won": won_opps,
+                "total_value": round(total_won_value, 2),
+                "win_rate": round(win_rate, 1)
+            },
+            "tasks": {
+                "total": total_tasks,
+                "completed": completed_tasks,
+                "completion_rate": round(task_completion_rate, 1)
+            }
+        })
+    
+    # Sort by total won value
+    team_metrics.sort(key=lambda x: x["opportunities"]["total_value"], reverse=True)
+    
+    return {
+        "team_metrics": team_metrics,
+        "total_team_members": len(team_metrics)
+    }
+
+
+@api_router.get("/sales/analytics/conversion-rates")
+async def get_conversion_rates(current_user: User = Depends(get_current_user)):
+    """
+    Stage-to-stage conversion rates for leads and opportunities
+    """
+    # Lead conversion rates
+    total_leads = await db.leads.count_documents({})
+    new_leads = await db.leads.count_documents({"status": "new"})
+    contacted = await db.leads.count_documents({"status": "contacted"})
+    qualified = await db.leads.count_documents({"status": "qualified"})
+    converted = await db.leads.count_documents({"status": "converted"})
+    
+    lead_funnel = {
+        "new": new_leads,
+        "contacted": contacted,
+        "qualified": qualified,
+        "converted": converted
+    }
+    
+    # Calculate conversion rates
+    lead_conversion_rates = {}
+    if new_leads > 0:
+        lead_conversion_rates["new_to_contacted"] = round(contacted / new_leads * 100, 1)
+    if contacted > 0:
+        lead_conversion_rates["contacted_to_qualified"] = round(qualified / contacted * 100, 1)
+    if qualified > 0:
+        lead_conversion_rates["qualified_to_converted"] = round(converted / qualified * 100, 1)
+    
+    # Opportunity conversion rates
+    total_opps = await db.opportunities.count_documents({})
+    new_lead_stage = await db.opportunities.count_documents({"stage": "new_lead"})
+    contacted_stage = await db.opportunities.count_documents({"stage": "contacted"})
+    qualified_stage = await db.opportunities.count_documents({"stage": "qualified"})
+    proposal_stage = await db.opportunities.count_documents({"stage": "proposal"})
+    negotiation_stage = await db.opportunities.count_documents({"stage": "negotiation"})
+    closed_won = await db.opportunities.count_documents({"stage": "closed_won"})
+    closed_lost = await db.opportunities.count_documents({"stage": "closed_lost"})
+    
+    opp_funnel = {
+        "new_lead": new_lead_stage,
+        "contacted": contacted_stage,
+        "qualified": qualified_stage,
+        "proposal": proposal_stage,
+        "negotiation": negotiation_stage,
+        "closed_won": closed_won,
+        "closed_lost": closed_lost
+    }
+    
+    # Calculate opportunity conversion rates
+    opp_conversion_rates = {}
+    total_closed = closed_won + closed_lost
+    if total_closed > 0:
+        opp_conversion_rates["overall_win_rate"] = round(closed_won / total_closed * 100, 1)
+    
+    if new_lead_stage > 0:
+        opp_conversion_rates["new_to_contacted"] = round(contacted_stage / new_lead_stage * 100, 1)
+    if contacted_stage > 0:
+        opp_conversion_rates["contacted_to_qualified"] = round(qualified_stage / contacted_stage * 100, 1)
+    if qualified_stage > 0:
+        opp_conversion_rates["qualified_to_proposal"] = round(proposal_stage / qualified_stage * 100, 1)
+    
+    return {
+        "leads": {
+            "funnel": lead_funnel,
+            "conversion_rates": lead_conversion_rates
+        },
+        "opportunities": {
+            "funnel": opp_funnel,
+            "conversion_rates": opp_conversion_rates
+        }
+    }
+
+
+@api_router.get("/sales/analytics/activity-metrics")
+async def get_activity_metrics(
+    days_back: int = 30,
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Activity metrics: tasks by type, completion trends
+    """
+    from datetime import datetime, timedelta
+    from collections import Counter
+    
+    cutoff_date = datetime.now(timezone.utc) - timedelta(days=days_back)
+    
+    # Get tasks created in period
+    tasks = await db.sales_tasks.find(
+        {"created_at": {"$gte": cutoff_date.isoformat()}},
+        {"_id": 0}
+    ).to_list(None)
+    
+    # Count by type
+    task_types = Counter(t.get("task_type") for t in tasks)
+    
+    # Count by status
+    task_status = Counter(t.get("status") for t in tasks)
+    
+    # Count by priority
+    task_priority = Counter(t.get("priority") for t in tasks)
+    
+    # Activities created per day
+    daily_activity = {}
+    for task in tasks:
+        created_date = task.get("created_at", "")[:10]  # Get YYYY-MM-DD
+        daily_activity[created_date] = daily_activity.get(created_date, 0) + 1
+    
+    return {
+        "period_days": days_back,
+        "total_tasks": len(tasks),
+        "by_type": dict(task_types),
+        "by_status": dict(task_status),
+        "by_priority": dict(task_priority),
+        "daily_activity": [
+            {"date": date, "count": count}
+            for date, count in sorted(daily_activity.items())
+        ]
+    }
+
+
+
+
+
 
 
 # Levy Routes
