@@ -3660,15 +3660,18 @@ backend:
 
   - task: "Task Comments System"
     implemented: true
-    working: "NA"
+    working: true
     file: "/app/backend/server.py"
     stuck_count: 0
     priority: "high"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
       - working: "NA"
         agent: "main"
         comment: "Created TaskComment model with comment_id, task_id, content, created_by, created_at, attachments fields. Implemented comment CRUD: GET /api/tasks/{task_id}/comments, POST /api/tasks/{task_id}/comments, DELETE /api/tasks/{task_id}/comments/{comment_id}. Comments support threaded discussion with automatic comment_count tracking on tasks."
+      - working: true
+        agent: "testing"
+        comment: "✅ Task Comments System fully functional: POST /api/tasks/{task_id}/comments creates comments with proper created_by_name population from JWT. GET /api/tasks/{task_id}/comments retrieves all comments for a task. DELETE /api/tasks/{task_id}/comments/{comment_id} removes comments. Automatic comment_count tracking works correctly - increments when comments are added and decrements when deleted. All comment operations properly update the parent task's comment_count field."
 
   - task: "Task Journal Integration"
     implemented: true
