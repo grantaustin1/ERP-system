@@ -623,6 +623,44 @@ export default function Dashboard() {
           {/* Class Booking Overview */}
           <div className="mt-8">
 
+          {/* Phase 2A - Dashboard Enhancements: Date Range Selector */}
+          <div className="mb-8">
+            <Card className="bg-slate-800/50 border-slate-700">
+              <CardHeader>
+                <CardTitle className="text-white">Dashboard Period</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <DateRangeSelector 
+                  onRangeChange={handleDateRangeChange}
+                  initialRange="last_30_days"
+                />
+                {dateRange.label && (
+                  <p className="text-sm text-slate-400 mt-3">
+                    Viewing data for: <span className="font-semibold text-white">{dateRange.label}</span>
+                    {dateRange.start && dateRange.end && (
+                      <span className="ml-2">
+                        ({new Date(dateRange.start).toLocaleDateString()} - {new Date(dateRange.end).toLocaleDateString()})
+                      </span>
+                    )}
+                  </p>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Phase 2A - Dashboard Snapshot Cards */}
+          <div className="mb-8">
+            <DashboardSnapshotCards snapshotData={snapshotData} />
+          </div>
+
+          {/* Phase 2A - Recent Members Widget */}
+          <div className="mb-8">
+            <RecentMembersWidget 
+              todayMembers={todayMembers}
+              yesterdayMembers={yesterdayMembers}
+            />
+          </div>
+
           {/* Phase 2: Sales Comparison Chart */}
           {!loadingPhase2 && salesComparisonData && (
             <div className="mt-8">
