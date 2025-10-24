@@ -4727,6 +4727,20 @@ backend:
         agent: "testing"
         comment: "✅ Recent Members API working correctly: Both period=today and period=yesterday parameters working. Returns properly formatted member arrays with all required fields (id, first_name, last_name, full_name, email, phone, membership_status, join_date, created_at). Full name construction verified correct (first_name + last_name). Date filtering accurate for both today and yesterday periods. Sorting by created_at descending confirmed. Response format matches frontend expectations. API handles empty results gracefully."
 
+  - task: "Phase 2A Chart Selector Component"
+    implemented: true
+    working: false
+    file: "/app/frontend/src/components/ChartSelector.jsx"
+    stuck_count: 1
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Created ChartSelector component for Phase 2A Dashboard Enhancements. Implemented dropdown selector with 5 chart options (Age Distribution Analysis, Average Membership Duration, Attendance by Day of Week, Top Referring Members, Member Acquisition Sources). Integrated Chart.js for rendering bar charts and pie chart. Added loading states, error handling, and proper API integration. Component positioned after Birthday Gallery on Dashboard with Analytics & Charts title and TrendingUp icon."
+      - working: false
+        agent: "testing"
+        comment: "❌ CRITICAL ISSUES IDENTIFIED: Chart Selector component found and positioned correctly but core functionality broken. **DROPDOWN ISSUES**: Only 1/5 expected chart options found, missing 4 options (Average Membership Duration, Attendance by Day of Week, Top Referring Members, Member Acquisition Sources). Dropdown click interactions failing with timeout errors. **CHART RENDERING BROKEN**: Charts not rendering despite API data being available, canvas elements not found/displaying. **API INTEGRATION**: Fixed API URL configuration (added /api prefix), backend endpoints working and returning 200 OK. **ROOT CAUSE**: ChartSelector dropdown implementation issues, chart options array not properly configured, Chart.js integration problems. **IMMEDIATE FIXES NEEDED**: 1) Fix dropdown to show all 5 chart options, 2) Resolve chart rendering (Chart.js canvas), 3) Fix chart selection/switching, 4) Component state management, 5) Test all chart types (4 bar + 1 pie). Component partially functional but core features broken - HIGH PRIORITY."
 frontend:
   - task: "Phase 1 Quick Wins - Enhanced Member Management"
     implemented: true
