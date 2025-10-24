@@ -640,8 +640,8 @@ class AdvancedAnalyticsTestRunner:
                 # Verify at_risk_members structure
                 if data["at_risk_members"]:
                     at_risk_member = data["at_risk_members"][0]
-                    member_fields = ["id", "first_name", "last_name", "full_name", "membership_type", 
-                                   "risk_score", "risk_level", "risk_reasons", "last_visit_date"]
+                    member_fields = ["member_id", "member_name", "email", "phone", "membership_type", 
+                                   "risk_score", "risk_level", "risk_reasons", "last_visit"]
                     missing_member_fields = [field for field in member_fields if field not in at_risk_member]
                     
                     if missing_member_fields:
