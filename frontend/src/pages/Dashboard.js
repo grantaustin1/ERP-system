@@ -25,6 +25,7 @@ import AtRiskMembersWidget from '@/components/AtRiskMembersWidget';
 import RetentionAlertsWidget from '@/components/RetentionAlertsWidget';
 import ExpiringMembershipsTable from '@/components/ExpiringMembershipsTable';
 import DropoffAnalyticsCard from '@/components/DropoffAnalyticsCard';
+import ChartSelector from '@/components/ChartSelector';
 
 export default function Dashboard() {
   const [stats, setStats] = useState(null);
