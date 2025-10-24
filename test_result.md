@@ -4620,6 +4620,36 @@ backend:
         agent: "testing"
         comment: "✅ AUTOMATIC JOURNAL LOGGING INTEGRATION WORKING PERFECTLY - All automatic logging triggers operational. **PROFILE UPDATE INTEGRATION**: Member profile updates via PUT /api/members/{member_id} automatically trigger journal entries with action_type='profile_updated' and metadata containing changed fields. Tested with first_name change - properly logged with field changes in metadata. **NOTE CREATION INTEGRATION**: Note creation via POST /api/members/{member_id}/notes automatically triggers journal entries with action_type='note_added'. **NOTE DELETION INTEGRATION**: Note deletion via DELETE /api/members/{member_id}/notes/{note_id} automatically triggers journal entries with action_type='note_deleted'. **HELPER FUNCTION**: add_journal_entry() helper function working correctly - accepts member_id, action_type, description, metadata, created_by, created_by_name parameters and creates properly structured journal entries in member_journal collection. All automatic logging integrations tested and confirmed working."
 
+  - task: "Dashboard Snapshot API"
+    implemented: true
+    working: true
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Created GET /api/dashboard/snapshot endpoint returning today/yesterday/growth metrics for dashboard snapshot cards. Calculates registrations, commenced memberships, and attendance for today and yesterday. Provides 30-day growth comparisons with year-over-year percentages for memberships sold, expired, net gain, and attendance. Includes proper growth percentage calculation logic."
+      - working: true
+        agent: "testing"
+        comment: "✅ Dashboard Snapshot API working perfectly: All required sections present (today, yesterday, growth). Today metrics: registered=0, commenced=14, attendance=11. Yesterday metrics: registered=0, commenced=1, attendance=2. Growth section contains all 12 required fields (memberships_sold_30d, memberships_sold_last_year, memberships_growth, memberships_expired_30d, memberships_expired_last_year, expired_growth, net_gain_30d, net_gain_last_year, net_gain_growth, attendance_30d, attendance_last_year, attendance_growth). Growth percentage calculations verified correct with proper handling of zero division. All data types numeric as expected. API structure matches frontend expectations."
+
+  - task: "Recent Members API"
+    implemented: true
+    working: true
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Created GET /api/dashboard/recent-members endpoint with period parameter (today/yesterday) returning formatted member lists. Filters members by created_at date range, returns essential profile data (id, first_name, last_name, full_name, email, phone, membership_status, join_date, created_at), sorts by created_at descending, limits to 100 results."
+      - working: true
+        agent: "testing"
+        comment: "✅ Recent Members API working correctly: Both period=today and period=yesterday parameters working. Returns properly formatted member arrays with all required fields (id, first_name, last_name, full_name, email, phone, membership_status, join_date, created_at). Full name construction verified correct (first_name + last_name). Date filtering accurate for both today and yesterday periods. Sorting by created_at descending confirmed. Response format matches frontend expectations. API handles empty results gracefully."
+
 frontend:
   - task: "Phase 1 Quick Wins - Enhanced Member Management"
     implemented: true
