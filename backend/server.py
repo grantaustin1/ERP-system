@@ -218,6 +218,13 @@ class Member(BaseModel):
     freeze_reason: Optional[str] = None
     # No-show tracking
     no_show_count: int = 0
+    # Access PIN (using access card number)
+    access_pin: Optional[str] = None
+    # Override tracking
+    daily_override_count: int = 0
+    last_override_date: Optional[datetime] = None
+    is_prospect: bool = False  # True for temporary prospect records
+    prospect_source: Optional[str] = None  # For new prospects
     # Normalized fields for duplicate detection (auto-populated)
     norm_email: Optional[str] = None  # Normalized email for duplicate checking
     norm_phone: Optional[str] = None  # Normalized phone for duplicate checking
