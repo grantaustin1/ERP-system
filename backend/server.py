@@ -6024,7 +6024,7 @@ async def get_all_staff_users(current_user: User = Depends(get_current_user)):
     from permissions import ROLES, DEFAULT_ROLE_PERMISSIONS
     
     # Get all users
-    users = await db.users.find().to_list(length=None)
+    users = await db.users.find({}, {"_id": 0, "password": 0}).to_list(length=None)
     
     # Get custom permissions
     custom_matrices = await db.role_permissions.find().to_list(length=None)
@@ -6051,6 +6051,12 @@ async def get_all_staff_users(current_user: User = Depends(get_current_user)):
         "users": staff_users,
         "total_users": len(staff_users)
     }
+
+@api_router.get("/users/list")
+async def get_users_list(current_user: User = Depends(get_current_user)):
+    """Get simple list of all users (for dropdowns)"""
+    users = await db.users.find({}, {"_id": 0, "password": 0}).to_list(length=None)
+    return [{"id": user['id'], "full_name": user.get('full_name', user['email']), "email": user['email']} for user in users]
 
 @api_router.put("/rbac/users/{user_id}/role")
 async def update_user_role(
