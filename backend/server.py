@@ -3849,6 +3849,12 @@ async def validate_access(data: AccessLogCreate):
     log_doc["timestamp"] = log_doc["timestamp"].isoformat()
     await db.access_logs.insert_one(log_doc)
     
+    # Update member's last_visit_date
+    await db.members.update_one(
+        {"id": member_obj.id},
+        {"$set": {"last_visit_date": datetime.now(timezone.utc).isoformat()}}
+    )
+    
     # Log to journal
     class_info = f" for {access_log_data.get('class_name')}" if access_log_data.get('class_name') else ""
     await add_journal_entry(
