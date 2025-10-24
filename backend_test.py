@@ -1386,9 +1386,30 @@ class BillingInvoiceTester:
         if self.created_members:
             self.log_result("Cleanup Test Data", True, f"Attempted cleanup of {len(self.created_members)} test members")
     
+    def cleanup_test_data(self):
+        """Clean up test data created during testing"""
+        print("\n=== Cleaning Up Test Data ===")
+        
+        # Clean up created invoices (void them)
+        for invoice_id in self.created_invoices:
+            try:
+                response = requests.delete(f"{API_BASE}/invoices/{invoice_id}?reason=Test cleanup", 
+                                         headers=self.headers)
+                if response.status_code == 200:
+                    self.log_result("Cleanup Invoice", True, f"Voided test invoice {invoice_id}")
+                else:
+                    self.log_result("Cleanup Invoice", False, f"Failed to void invoice {invoice_id}")
+            except Exception as e:
+                self.log_result("Cleanup Invoice", False, f"Error cleaning up invoice {invoice_id}: {str(e)}")
+        
+        # Note: We don't delete members as they might be referenced elsewhere
+        if self.created_invoices or self.created_members:
+            self.log_result("Cleanup Test Data", True, 
+                          f"Attempted cleanup of {len(self.created_invoices)} invoices and {len(self.created_members)} members")
+    
     def run_all_tests(self):
-        """Run all member import tests"""
-        print("🚀 Starting Member/Prospects Import Functionality Tests")
+        """Run all billing and invoice tests"""
+        print("🚀 Starting Billing Automation & Invoice Generation System Tests")
         print(f"Testing against: {API_BASE}")
         print("=" * 80)
         
@@ -1397,27 +1418,52 @@ class BillingInvoiceTester:
             print("❌ Authentication failed. Cannot proceed with tests.")
             return
         
+        # Setup test data
+        if not self.setup_test_member():
+            print("❌ Failed to setup test member. Cannot proceed with invoice tests.")
+            return
+        
         # Run all test phases
-        print("\n📋 COMPREHENSIVE MEMBER IMPORT TESTING")
+        print("\n📋 COMPREHENSIVE BILLING & INVOICE TESTING")
         print("Testing Requirements:")
         print("- Authentication: admin@gym.com / admin123")
-        print("- CSV Parsing with various member data formats")
-        print("- Duplicate detection with normalization")
-        print("- Import with skip/update/create duplicate actions")
-        print("- Name splitting and field mapping")
-        print("- Import logs and blocked attempts tracking")
-        print("- Edge cases and error handling")
-        print("- Leads import functionality")
+        print("- Billing Settings API (GET/POST)")
+        print("- Invoice CRUD operations with line items")
+        print("- Invoice calculations (subtotal, tax, discount, total)")
+        print("- Invoice number generation (sequential)")
+        print("- PDF generation")
+        print("- Validation scenarios")
+        print("- Invoice status management (void)")
         
         # Execute all test phases
-        self.test_phase1_csv_parsing()
-        self.test_phase2_duplicate_detection()
-        self.test_phase3_import_skip_duplicates()
-        self.test_phase4_import_update_duplicates()
-        self.test_phase5_import_create_anyway()
-        self.test_phase6_import_logs_verification()
-        self.test_phase7_edge_cases()
-        self.test_phase8_leads_import()
+        print("\n" + "="*60)
+        print("PHASE 1: BILLING SETTINGS TESTING")
+        print("="*60)
+        self.test_billing_settings_get_default()
+        self.test_billing_settings_create_update()
+        
+        print("\n" + "="*60)
+        print("PHASE 2: INVOICE CRUD TESTING")
+        print("="*60)
+        invoice_id = self.test_create_invoice_with_line_items()
+        self.test_get_invoices_list()
+        
+        if invoice_id:
+            self.test_get_invoice_details(invoice_id)
+            self.test_update_invoice(invoice_id)
+            self.test_invoice_pdf_generation(invoice_id)
+            # Note: We'll test void at the end so we don't break other tests
+        
+        print("\n" + "="*60)
+        print("PHASE 3: VALIDATION TESTING")
+        print("="*60)
+        self.test_validation_scenarios()
+        
+        print("\n" + "="*60)
+        print("PHASE 4: INVOICE STATUS MANAGEMENT")
+        print("="*60)
+        if invoice_id:
+            self.test_void_invoice(invoice_id)
         
         # Cleanup
         self.cleanup_test_data()
