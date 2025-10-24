@@ -1592,15 +1592,18 @@ backend:
 
   - task: "Member Action APIs - Freeze/Unfreeze/Cancel"
     implemented: true
-    working: "NA"
+    working: false
     file: "/app/backend/server.py"
-    stuck_count: 0
+    stuck_count: 1
     priority: "high"
     needs_retesting: true
     status_history:
       - working: "NA"
         agent: "main"
         comment: "Implemented Member Action APIs: POST /api/members/{id}/freeze (freeze membership with reason, optional end_date, sets freeze_status=true, membership_status='frozen'), POST /api/members/{id}/unfreeze (unfreeze membership, resets freeze fields, sets membership_status='active'), POST /api/members/{id}/cancel (cancel membership permanently with reason, notes, sets membership_status='cancelled', cancellation_date). All actions create journal entries. MemberActionRequest Pydantic model for request validation. Ready for testing."
+      - working: false
+        agent: "testing"
+        comment: "❌ MEMBER ACTION APIs PARTIALLY WORKING: POST /api/members/{id}/freeze and POST /api/members/{id}/unfreeze working correctly - freeze status fields updated properly, membership status changes correctly. **CRITICAL ISSUE**: POST /api/members/{id}/cancel FAILING with 500 error - TypeError: unsupported operand type(s) for +: 'NoneType' and 'str' in line 4287. Issue in cancel_membership function when member.notes is None and trying to concatenate with cancellation notes. Freeze/unfreeze functionality operational, cancel needs bug fix."
 
   - task: "Enhanced Member Profile Endpoint - Phase 1 Fields"
     implemented: true
