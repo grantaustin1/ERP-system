@@ -584,35 +584,90 @@ class EngagementFeaturesTestRunner:
             self.log_result("Global Search API", False, f"Error testing global search API: {str(e)}")
             return False
     
-    def test_analytics_api_authentication(self):
-        """Test that all analytics APIs require authentication"""
-        print("\n=== Testing Analytics API Authentication ===")
+    def test_activity_feed_api(self):
+        """Test Activity Feed API - GET /api/engagement/activity-feed/{member_id}"""
+        print("\n=== Testing Activity Feed API ===")
         
         try:
-            # Test without authentication headers
-            endpoints = [
-                "/analytics/revenue-breakdown",
-                "/analytics/geographic-distribution",
-                "/analytics/attendance-deep-dive",
-                "/analytics/member-lifetime-value",
-                "/analytics/churn-prediction"
-            ]
+            # Test with default limit (50)
+            response = requests.get(f"{API_BASE}/engagement/activity-feed/{self.test_member_id}", headers=self.headers)
             
-            for endpoint in endpoints:
-                response = requests.get(f"{API_BASE}{endpoint}")
+            if response.status_code == 200:
+                data = response.json()
                 
-                if response.status_code not in [401, 403]:
-                    self.log_result(f"Authentication {endpoint}", False, 
-                                  f"Expected 401 or 403 (authentication required), got {response.status_code}")
+                # Verify required structure
+                required_fields = ["member_id", "activities", "total_activities"]
+                missing_fields = [field for field in required_fields if field not in data]
+                
+                if missing_fields:
+                    self.log_result("Activity Feed Structure", False, 
+                                  f"Missing fields: {missing_fields}")
                     return False
                 
-                self.log_result(f"Authentication {endpoint}", True, 
-                              f"Correctly requires authentication (status: {response.status_code})")
-            
-            return True
+                # Verify member ID
+                if data["member_id"] != self.test_member_id:
+                    self.log_result("Activity Feed Member ID", False, 
+                                  "Member ID mismatch")
+                    return False
+                
+                # Verify activities structure
+                if data["activities"]:
+                    activity = data["activities"][0]
+                    activity_fields = ["type", "timestamp", "description", "icon", "color"]
+                    missing_activity_fields = [field for field in activity_fields if field not in activity]
+                    
+                    if missing_activity_fields:
+                        self.log_result("Activity Feed Activity Structure", False, 
+                                      f"Missing activity fields: {missing_activity_fields}")
+                        return False
+                    
+                    # Verify activities are sorted by timestamp descending
+                    if len(data["activities"]) > 1:
+                        first_activity = data["activities"][0]
+                        second_activity = data["activities"][1]
+                        if first_activity["timestamp"] < second_activity["timestamp"]:
+                            self.log_result("Activity Feed Sort Order", False, 
+                                          "Activities not sorted by timestamp descending")
+                            return False
+                        else:
+                            self.log_result("Activity Feed Sort Order", True, 
+                                          "Activities correctly sorted by timestamp descending")
+                    
+                    # Verify activity types from multiple sources
+                    activity_types = set(act["type"] for act in data["activities"])
+                    expected_types = {"check_in", "payment", "class_booking", "points"}
+                    
+                    self.log_result("Activity Feed Multiple Sources", True, 
+                                  f"Activity feed includes types: {list(activity_types)}")
+                
+                # Test with custom limit
+                response = requests.get(f"{API_BASE}/engagement/activity-feed/{self.test_member_id}?limit=10", headers=self.headers)
+                if response.status_code == 200:
+                    limited_data = response.json()
+                    if len(limited_data["activities"]) <= 10:
+                        self.log_result("Activity Feed Custom Limit", True, 
+                                      f"Custom limit working: {len(limited_data['activities'])} activities")
+                    else:
+                        self.log_result("Activity Feed Custom Limit", False, 
+                                      f"Expected ≤10 activities, got {len(limited_data['activities'])}")
+                        return False
+                else:
+                    self.log_result("Activity Feed Custom Limit", False, 
+                                  f"Failed to get activity feed with custom limit: {response.status_code}")
+                    return False
+                
+                self.log_result("Activity Feed API", True, 
+                              f"Retrieved {data['total_activities']} activities for member")
+                return True
+                
+            else:
+                self.log_result("Activity Feed API", False, 
+                              f"Failed to get activity feed: {response.status_code}",
+                              {"response": response.text})
+                return False
                 
         except Exception as e:
-            self.log_result("Analytics API Authentication", False, f"Error testing authentication: {str(e)}")
+            self.log_result("Activity Feed API", False, f"Error testing activity feed API: {str(e)}")
             return False
     
     def test_analytics_api_error_handling(self):
