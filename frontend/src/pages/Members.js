@@ -96,6 +96,7 @@ export default function Members() {
     fetchMembers();
     fetchMembershipTypes();
     fetchPaymentSources();
+    fetchTags();
   }, []);
 
   const fetchMembers = async () => {
