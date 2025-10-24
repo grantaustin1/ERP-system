@@ -339,9 +339,9 @@ class AdvancedAnalyticsTestRunner:
                 
                 self.log_result("Geographic Distribution Analytics API", True, 
                               f"Retrieved geographic distribution: {summary['total_members']} total members, "
-                              f"Postcode coverage: {summary['postcode_coverage']:.1f}%, "
-                              f"City coverage: {summary['city_coverage']:.1f}%, "
-                              f"State coverage: {summary['state_coverage']:.1f}%")
+                              f"Postcode coverage: {summary['coverage']['postcode']:.1f}%, "
+                              f"City coverage: {summary['coverage']['city']:.1f}%, "
+                              f"State coverage: {summary['coverage']['state']:.1f}%")
                 return True
                 
             else:
