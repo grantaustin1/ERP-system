@@ -9,8 +9,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs'
 import { Badge } from '../components/ui/badge';
 import { 
   Scan, Fingerprint, ScanFace, UserCheck, UserX, Clock, 
-  TrendingUp, Activity, BarChart3, MapPin, Shield, CheckCircle2, XCircle, Search
+  TrendingUp, Activity, BarChart3, MapPin, Shield, CheckCircle2, XCircle, Search, KeyRound
 } from 'lucide-react';
+import { toast } from 'sonner';
 
 const ACCESS_METHODS = [
   { value: 'qr_code', label: 'QR Code', icon: Scan },
