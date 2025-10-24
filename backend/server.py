@@ -4284,7 +4284,8 @@ async def cancel_membership(member_id: str, data: MemberActionRequest, current_u
     }
     
     if data.notes:
-        cancellation_data["notes"] = (member.get("notes", "") + f"\n\nCancellation Notes: {data.notes}").strip()
+        existing_notes = member.get("notes") or ""
+        cancellation_data["notes"] = (existing_notes + f"\n\nCancellation Notes: {data.notes}").strip()
     
     await db.members.update_one(
         {"id": member_id},
