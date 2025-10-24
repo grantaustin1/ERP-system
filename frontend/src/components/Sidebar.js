@@ -25,6 +25,7 @@ export default function Sidebar() {
     { path: '/debit-orders', icon: CreditCard, label: 'Debit Orders', testId: 'nav-debit-orders', module: 'billing' },
     { path: '/reconciliation', icon: Activity, label: 'Reconciliation', testId: 'nav-reconciliation', module: 'billing' },
     { path: '/analytics', icon: BarChart3, label: 'Analytics', testId: 'nav-analytics', module: 'reports' },
+    { path: '/reports', icon: FileBarChart, label: 'Reports', testId: 'nav-reports', module: 'reports' },
     { path: '/levies', icon: DollarSign, label: 'Levies', testId: 'nav-levies', module: 'billing' },
     { path: '/cancellations', icon: UserX, label: 'Cancellations', testId: 'nav-cancellations', module: 'members' },
     { path: '/packages', icon: Package, label: 'Package Setup', testId: 'nav-packages', module: 'settings' },
