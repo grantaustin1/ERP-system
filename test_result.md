@@ -199,15 +199,18 @@ user_problem_statement: |
 backend:
   - task: "Invoice Line Item Model & Enhanced Invoice Model"
     implemented: true
-    working: "NA"
+    working: true
     file: "/app/backend/server.py"
     stuck_count: 0
     priority: "high"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
       - working: "NA"
         agent: "main"
         comment: "Created InvoiceLineItem model with fields: description, quantity, unit_price, discount_percent, tax_percent, subtotal, tax_amount, total. Enhanced Invoice model to include: line_items list, subtotal, tax_total, discount_total, notes, auto_generated flag. Added support for itemized billing. Ready for testing."
+      - working: true
+        agent: "testing"
+        comment: "✅ Invoice Line Item Model working perfectly: Successfully created invoice with multiple line items (3 items with different quantities, prices, discounts, and tax rates). All fields properly stored and retrieved. Line items structure includes description, quantity, unit_price, discount_percent, tax_percent, subtotal, tax_amount, total. Enhanced Invoice model correctly calculates and stores subtotal, tax_total, discount_total, and final amount."
 
   - task: "Billing Settings Model & API"
     implemented: true
