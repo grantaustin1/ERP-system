@@ -259,15 +259,18 @@ backend:
 
   - task: "Get Invoice Details API"
     implemented: true
-    working: "NA"
+    working: true
     file: "/app/backend/server.py"
     stuck_count: 0
     priority: "high"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
       - working: "NA"
         agent: "main"
         comment: "Created GET /api/invoices/{invoice_id} endpoint to retrieve detailed invoice information with line items. Handles date parsing for due_date, created_at, paid_date, batch_date. Returns complete invoice object. Ready for testing."
+      - working: true
+        agent: "testing"
+        comment: "✅ Get Invoice Details API working correctly: GET /api/invoices/{invoice_id} successfully retrieves detailed invoice information with all required fields (id, invoice_number, member_id, description, due_date, line_items, subtotal, tax_total, discount_total, amount, status, created_at). Line items structure is valid with all necessary fields (description, quantity, unit_price, total). Retrieved invoice with 3 line items correctly."
 
   - task: "Update Invoice API"
     implemented: true
