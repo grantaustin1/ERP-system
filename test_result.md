@@ -3675,15 +3675,18 @@ backend:
 
   - task: "Task Journal Integration"
     implemented: true
-    working: "NA"
+    working: true
     file: "/app/backend/server.py"
     stuck_count: 0
     priority: "high"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
       - working: "NA"
         agent: "main"
         comment: "Integrated task creation with member journal. When a task is created with related_member_id, automatically logs to member journal with action_type='task_created', description, and metadata including task_id, task_type, priority, assigned_to. Provides complete audit trail of member-related tasks in member profile journal."
+      - working: true
+        agent: "testing"
+        comment: "✅ Task Journal Integration working correctly: When tasks are created with related_member_id, they are automatically logged in the member's journal with action_type='task_created'. Journal entries include proper metadata with task_id, task_type, priority, and assignment details. GET /api/members/{member_id}/journal successfully retrieves task creation entries, providing complete audit trail of member-related tasks."
 
 frontend:
   - task: "Tasks Page with Tabs"
