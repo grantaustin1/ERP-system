@@ -229,15 +229,18 @@ backend:
 
   - task: "Invoice Helper Functions - Calculate Totals & Generate Number"
     implemented: true
-    working: "NA"
+    working: true
     file: "/app/backend/server.py"
     stuck_count: 0
     priority: "high"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
       - working: "NA"
         agent: "main"
         comment: "Implemented calculate_invoice_totals() function that calculates subtotal, tax, discount, and total for all line items. Implemented generate_invoice_number() function that generates sequential invoice numbers based on billing settings with configurable format (prefix-year-sequence). Ready for testing."
+      - working: true
+        agent: "testing"
+        comment: "✅ Invoice Helper Functions working correctly: calculate_invoice_totals() accurately calculates complex multi-line invoices with different discount and tax rates per item (tested with 3 items: R450+R760+R300=R1510 subtotal, R226.50 tax, R1736.50 total). generate_invoice_number() creates sequential numbers in correct format 'INV-2025-0001' following the configured pattern {prefix}-{year}-{sequence}."
 
   - task: "Enhanced Create Invoice API with Line Items"
     implemented: true
