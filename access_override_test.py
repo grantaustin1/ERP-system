@@ -291,6 +291,9 @@ class AccessOverrideTester:
                 else:
                     self.log_result("Member Search by First Name", False, 
                                   f"Member not found in search results for '{first_name}'")
+            elif response.status_code == 404:
+                self.log_result("Member Search by First Name", False, 
+                              f"No members found for search term '{first_name}' (404 - this may be expected if no matches)")
             else:
                 self.log_result("Member Search by First Name", False, 
                               f"Search by first name failed: {response.status_code}")
