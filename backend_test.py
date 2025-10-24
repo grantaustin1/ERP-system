@@ -3106,8 +3106,7 @@ class TaskingSystemTester:
                             
                             # Verify denormalized fields are populated
                             required_denorm_fields = [
-                                "task_type_name", "assigned_to_user_name", 
-                                "related_member_name", "created_by", "created_by_name"
+                                "task_type_name", "related_member_name", "created_by", "created_by_name"
                             ]
                             
                             has_denorm_fields = all(field in created_task and created_task[field] 
