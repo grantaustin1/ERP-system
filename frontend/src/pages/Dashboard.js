@@ -67,6 +67,15 @@ export default function Dashboard() {
   const [yesterdayMembers, setYesterdayMembers] = useState([]);
   const [dateRange, setDateRange] = useState({ start: '', end: '', label: 'Last 30 Days' });
   
+  // Phase 2B - Retention Intelligence
+  const [atRiskMembers, setAtRiskMembers] = useState(null);
+  const [alerts7Days, setAlerts7Days] = useState(null);
+  const [alerts14Days, setAlerts14Days] = useState(null);
+  const [alerts28Days, setAlerts28Days] = useState(null);
+  const [expiringMemberships, setExpiringMemberships] = useState(null);
+  const [dropoffAnalytics, setDropoffAnalytics] = useState(null);
+  const [loadingRetention, setLoadingRetention] = useState(false);
+  
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -74,7 +83,8 @@ export default function Dashboard() {
     fetchAlertData();
     fetchClassBookingStats();
     fetchPhase2Data();
-    fetchPhase2AData(); // New Phase 2A data
+    fetchPhase2AData(); // Phase 2A data
+    fetchPhase2BData(); // New Phase 2B data
   }, []);
 
   const fetchStats = async () => {
