@@ -617,22 +617,26 @@ export default function InvoiceManagement() {
                               </Button>
                               {invoice.status !== 'paid' && invoice.status !== 'void' && (
                                 <>
-                                  <Button
-                                    size="sm"
-                                    variant="ghost"
-                                    onClick={() => openEditDialog(invoice)}
-                                    className="h-8 w-8 p-0 text-slate-400 hover:text-white hover:bg-slate-800"
-                                  >
-                                    <Edit className="h-4 w-4" />
-                                  </Button>
-                                  <Button
-                                    size="sm"
-                                    variant="ghost"
-                                    onClick={() => handleVoidInvoice(invoice.id)}
-                                    className="h-8 w-8 p-0 text-red-400 hover:text-red-300 hover:bg-red-900/20"
-                                  >
-                                    <Trash2 className="h-4 w-4" />
-                                  </Button>
+                                  <PermissionGuard permission="billing:edit">
+                                    <Button
+                                      size="sm"
+                                      variant="ghost"
+                                      onClick={() => openEditDialog(invoice)}
+                                      className="h-8 w-8 p-0 text-slate-400 hover:text-white hover:bg-slate-800"
+                                    >
+                                      <Edit className="h-4 w-4" />
+                                    </Button>
+                                  </PermissionGuard>
+                                  <PermissionGuard permission="billing:delete">
+                                    <Button
+                                      size="sm"
+                                      variant="ghost"
+                                      onClick={() => handleVoidInvoice(invoice.id)}
+                                      className="h-8 w-8 p-0 text-red-400 hover:text-red-300 hover:bg-red-900/20"
+                                    >
+                                      <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                  </PermissionGuard>
                                 </>
                               )}
                             </div>
