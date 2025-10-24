@@ -499,8 +499,13 @@ export default function Members() {
       debtorFilter === 'all' ||
       (debtorFilter === 'yes' && member.is_debtor) ||
       (debtorFilter === 'no' && !member.is_debtor);
+    
+    // Phase 1 - Tag filter
+    const matchesTag = 
+      tagFilter === 'all' ||
+      (member.tags && member.tags.includes(tagFilter));
 
-    return matchesSearch && matchesStatus && matchesType && matchesDebtor;
+    return matchesSearch && matchesStatus && matchesType && matchesDebtor && matchesTag;
   });
 
   const clearFilters = () => {
@@ -508,9 +513,10 @@ export default function Members() {
     setStatusFilter('all');
     setTypeFilter('all');
     setDebtorFilter('all');
+    setTagFilter('all');
   };
 
-  const hasActiveFilters = searchQuery !== '' || statusFilter !== 'all' || typeFilter !== 'all' || debtorFilter !== 'all';
+  const hasActiveFilters = searchQuery !== '' || statusFilter !== 'all' || typeFilter !== 'all' || debtorFilter !== 'all' || tagFilter !== 'all';
 
   return (
     <div className="flex min-h-screen">
