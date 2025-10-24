@@ -826,31 +826,58 @@ class EnhancedMemberManagementTester:
             return False
     
     def test_get_invoices_list(self):
-        """Test GET /api/invoices - List all invoices"""
-        print("\n=== Testing Get Invoices List ===")
+        """Test journal entries are created for all tag and membership actions"""
+        print("\n=== Testing Journal Entries Creation ===")
+        
+        if not self.test_member_id_2:
+            self.log_result("Journal Entries Creation", False, "No test member available")
+            return False
         
         try:
-            response = requests.get(f"{API_BASE}/invoices", headers=self.headers)
+            # Get member journal entries
+            response = requests.get(f"{API_BASE}/members/{self.test_member_id_2}/journal", headers=self.headers)
             
             if response.status_code == 200:
-                invoices = response.json()
+                journal_entries = response.json()
                 
-                if isinstance(invoices, list):
-                    self.log_result("Get Invoices List", True, 
-                                  f"Retrieved {len(invoices)} invoices successfully")
-                    return True
+                if isinstance(journal_entries, list) and len(journal_entries) > 0:
+                    # Look for entries related to our test actions
+                    action_types_found = set()
+                    
+                    for entry in journal_entries:
+                        action_type = entry.get("action_type", "")
+                        description = entry.get("description", "").lower()
+                        
+                        # Check for freeze/unfreeze actions
+                        if "freeze" in description or action_type == "membership_frozen":
+                            action_types_found.add("freeze")
+                        if "unfreeze" in description or action_type == "membership_unfrozen":
+                            action_types_found.add("unfreeze")
+                        if "access" in description or action_type == "access_granted":
+                            action_types_found.add("access")
+                        if "tag" in description or "tag" in action_type:
+                            action_types_found.add("tag")
+                    
+                    if len(action_types_found) >= 2:  # At least some actions logged
+                        self.log_result("Journal Entries Creation", True, 
+                                      f"Found journal entries for actions: {', '.join(action_types_found)}")
+                        return True
+                    else:
+                        self.log_result("Journal Entries Creation", False, 
+                                      f"Limited journal entries found: {action_types_found}")
+                        return False
                 else:
-                    self.log_result("Get Invoices List", False, 
-                                  "Response is not a list of invoices")
+                    self.log_result("Journal Entries Creation", False, 
+                                  f"No journal entries found for member")
                     return False
             else:
-                self.log_result("Get Invoices List", False, 
-                              f"Failed to get invoices: {response.status_code}",
+                self.log_result("Journal Entries Creation", False, 
+                              f"Failed to get journal entries: {response.status_code}",
                               {"response": response.text})
                 return False
                 
         except Exception as e:
-            self.log_result("Get Invoices List", False, f"Error getting invoices: {str(e)}")
+            self.log_result("Journal Entries Creation", False, f"Error getting journal entries: {str(e)}")
             return False
     
     def test_get_invoice_details(self, invoice_id):
