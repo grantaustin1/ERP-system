@@ -23,9 +23,10 @@ class EnhancedMemberManagementTester:
         self.token = None
         self.headers = {}
         self.test_results = []
-        self.created_invoices = []  # Track created invoices for cleanup
         self.created_members = []  # Track created members for cleanup
+        self.created_tags = []  # Track created tags for cleanup
         self.test_member_id = None
+        self.test_member_id_2 = None
         
     def log_result(self, test_name, success, message, details=None):
         """Log test result"""
