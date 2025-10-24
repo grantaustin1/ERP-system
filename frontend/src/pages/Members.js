@@ -80,6 +80,17 @@ export default function Members() {
   const [messagingDialogOpen, setMessagingDialogOpen] = useState(false);
   const [selectedMembersForMessaging, setSelectedMembersForMessaging] = useState([]);
 
+  // Phase 1 - Quick Wins: Tags and Actions
+  const [tags, setTags] = useState([]);
+  const [tagFilter, setTagFilter] = useState('all');
+  const [freezeDialogOpen, setFreezeDialogOpen] = useState(false);
+  const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
+  const [selectedMemberForAction, setSelectedMemberForAction] = useState(null);
+  const [actionReason, setActionReason] = useState('');
+  const [actionNotes, setActionNotes] = useState('');
+  const [freezeEndDate, setFreezeEndDate] = useState('');
+  const [actionLoading, setActionLoading] = useState(false);
+
 
   useEffect(() => {
     fetchMembers();
