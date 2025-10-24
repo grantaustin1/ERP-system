@@ -184,7 +184,7 @@ const UnifiedMessagingDialog = ({ open, onOpenChange, selectedMembers = [], onSu
             Send {config.label}
           </DialogTitle>
           <DialogDescription className="text-slate-400">
-            Sending to {selectedMembers.length} member{selectedMembers.length !== 1 ? 's' : ''}
+            Compose and send {config.label.toLowerCase()} messages to {selectedMembers.length} member{selectedMembers.length !== 1 ? 's' : ''}
           </DialogDescription>
         </DialogHeader>
 
