@@ -25,7 +25,9 @@ class BillingInvoiceTester:
         self.token = None
         self.headers = {}
         self.test_results = []
+        self.created_invoices = []  # Track created invoices for cleanup
         self.created_members = []  # Track created members for cleanup
+        self.test_member_id = None
         
     def log_result(self, test_name, success, message, details=None):
         """Log test result"""
@@ -62,6 +64,47 @@ class BillingInvoiceTester:
                 return False
         except Exception as e:
             self.log_result("Authentication", False, f"Authentication error: {str(e)}")
+            return False
+    
+    def setup_test_member(self):
+        """Create a test member for invoice testing"""
+        try:
+            # Get membership types
+            response = requests.get(f"{API_BASE}/membership-types", headers=self.headers)
+            if response.status_code != 200:
+                self.log_result("Get Membership Types", False, "Failed to get membership types")
+                return False
+            
+            membership_types = response.json()
+            if not membership_types:
+                self.log_result("Get Membership Types", False, "No membership types found")
+                return False
+            
+            membership_type_id = membership_types[0]["id"]
+            
+            # Create test member
+            timestamp = int(time.time())
+            member_data = {
+                "first_name": "John",
+                "last_name": "TestBilling",
+                "email": f"john.testbilling.{timestamp}@example.com",
+                "phone": f"082555{timestamp % 10000:04d}",
+                "membership_type_id": membership_type_id
+            }
+            
+            response = requests.post(f"{API_BASE}/members", json=member_data, headers=self.headers)
+            if response.status_code == 200:
+                member = response.json()
+                self.test_member_id = member["id"]
+                self.created_members.append(member["id"])
+                self.log_result("Setup Test Member", True, f"Created test member: {self.test_member_id}")
+                return True
+            else:
+                self.log_result("Setup Test Member", False, f"Failed to create test member: {response.status_code}")
+                return False
+                
+        except Exception as e:
+            self.log_result("Setup Test Member", False, f"Error creating test member: {str(e)}")
             return False
     
     def create_test_csv(self, filename, data):
