@@ -220,10 +220,9 @@ class AccessOverrideTester:
             member_data = {
                 "first_name": "Test",
                 "last_name": "Member",
-                "email": f"test.member.{timestamp}@override.test",
+                "email": f"test.member.{timestamp}@example.com",
                 "phone": f"082555{timestamp % 10000:04d}",
-                "membership_type_id": membership_type_id,
-                "access_pin": "1234"  # Set access PIN for testing
+                "membership_type_id": membership_type_id
             }
             
             response = requests.post(f"{API_BASE}/members", json=member_data, headers=self.headers)
