@@ -78,6 +78,10 @@ function App() {
             <Route path="/advanced-analytics" element={<PrivateRoute><AdvancedAnalytics /></PrivateRoute>} />
             <Route path="/rewards" element={<PrivateRoute><PointsRewards /></PrivateRoute>} />
             <Route path="/engagement" element={<PrivateRoute><EngagementDashboard /></PrivateRoute>} />
+            <Route path="/sales" element={<PrivateRoute><SalesDashboard /></PrivateRoute>} />
+            <Route path="/sales/leads" element={<PrivateRoute><LeadsContacts /></PrivateRoute>} />
+            <Route path="/sales/pipeline" element={<PrivateRoute><SalesPipeline /></PrivateRoute>} />
+            <Route path="/sales/tasks" element={<PrivateRoute><SalesTasks /></PrivateRoute>} />
             <Route path="/reports" element={<PrivateRoute><Reports /></PrivateRoute>} />
             <Route path="/import" element={<PrivateRoute><DataImport /></PrivateRoute>} />
             <Route path="/permission-matrix" element={<PrivateRoute><PermissionMatrix /></PrivateRoute>} />
