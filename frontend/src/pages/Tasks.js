@@ -436,7 +436,7 @@ export default function Tasks() {
                         <SelectValue placeholder="Select user" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">None</SelectItem>
+                        <SelectItem value="none">None</SelectItem>
                         {users.map((user) => (
                           <SelectItem key={user.id} value={user.id}>{user.full_name}</SelectItem>
                         ))}
