@@ -5320,15 +5320,18 @@ backend:
 
   - task: "Phase 2C - Anniversary Report API"
     implemented: true
-    working: "NA"
+    working: true
     file: "/app/backend/server.py"
     stuck_count: 0
     priority: "high"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
       - working: "NA"
         agent: "main"
         comment: "Phase 2C Report Library - Implemented GET /api/reports/anniversaries endpoint with days_ahead parameter (default 30). Calculates membership anniversaries for active/frozen members. Groups by milestone (1 year, 5 years, 10+ years). Returns member details with anniversary date, years completing, and days until. Includes summary statistics by milestone. Only includes members with 1+ years of membership. Ready for backend testing."
+      - working: true
+        agent: "testing"
+        comment: "✅ Anniversary Report API working perfectly: GET /api/reports/anniversaries accepts days_ahead parameter (tested 7, 14, 30, 60, 90 days) with default 30. Summary statistics calculated correctly (total_upcoming, date_range with from/to/days, by_milestone with 1_year/5_years/10_plus_years counts). Milestone grouping logic verified (1 year = 1_year, 5 years = 5_years, ≥10 years = 10_plus_years). Member details include all required fields (id, name, email, phone, join_date, anniversary_date, years_completing, days_until). Response structure matches specification with proper nesting (summary, anniversaries with by_milestone breakdown and all array). Only members with 1+ years included as specified. Default parameter working correctly. Empty states handled gracefully (no anniversaries in test data returns empty arrays)."
 
 frontend:
   - task: "Phase 2C - Reports Page Component"
