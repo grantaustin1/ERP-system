@@ -894,6 +894,227 @@ class EngagementFeaturesTestRunner:
             self.log_result("Engagement Overview API", False, f"Error testing engagement overview API: {str(e)}")
             return False
     
+    def test_auto_award_checkin(self):
+        """Test Auto-Award System - Check-in (5 points)"""
+        print("\n=== Testing Auto-Award Check-in System ===")
+        
+        try:
+            # Get initial points balance
+            response = requests.get(f"{API_BASE}/engagement/points/balance/{self.test_member_id}", headers=self.headers)
+            if response.status_code != 200:
+                self.log_result("Auto-Award Check-in - Get Initial Balance", False, "Failed to get initial balance")
+                return False
+            
+            initial_balance = response.json()["total_points"]
+            
+            # Perform check-in via access validation
+            checkin_data = {
+                "member_id": self.test_member_id,
+                "access_method": "qr_code",
+                "location": "Main Entrance"
+            }
+            
+            response = requests.post(f"{API_BASE}/access/validate", json=checkin_data, headers=self.headers)
+            
+            if response.status_code == 200:
+                access_data = response.json()
+                
+                # Verify check-in succeeded
+                if not access_data.get("access_granted"):
+                    self.log_result("Auto-Award Check-in - Access Granted", False, "Check-in was not granted")
+                    return False
+                
+                # Wait a moment for points to be awarded
+                time.sleep(1)
+                
+                # Verify balance increased by 5 points
+                response = requests.get(f"{API_BASE}/engagement/points/balance/{self.test_member_id}", headers=self.headers)
+                if response.status_code == 200:
+                    new_balance_data = response.json()
+                    new_balance = new_balance_data["total_points"]
+                    
+                    if new_balance == initial_balance + 5:
+                        self.log_result("Auto-Award Check-in Balance Update", True, 
+                                      f"Balance increased from {initial_balance} to {new_balance}")
+                    else:
+                        self.log_result("Auto-Award Check-in Balance Update", False, 
+                                      f"Expected {initial_balance + 5}, got {new_balance}")
+                        return False
+                else:
+                    self.log_result("Auto-Award Check-in Balance Update", False, "Failed to get updated balance")
+                    return False
+                
+                # Verify transaction recorded with reason "Check-in reward"
+                response = requests.get(f"{API_BASE}/engagement/points/transactions/{self.test_member_id}?limit=1", headers=self.headers)
+                if response.status_code == 200:
+                    txn_data = response.json()
+                    if txn_data["transactions"]:
+                        latest_txn = txn_data["transactions"][0]
+                        if latest_txn["points"] == 5 and latest_txn["reason"] == "Check-in reward":
+                            self.log_result("Auto-Award Check-in Transaction", True, 
+                                          "Check-in reward transaction recorded correctly")
+                        else:
+                            self.log_result("Auto-Award Check-in Transaction", False, 
+                                          f"Transaction not correct: {latest_txn}")
+                            return False
+                    else:
+                        self.log_result("Auto-Award Check-in Transaction", False, "No transactions found")
+                        return False
+                else:
+                    self.log_result("Auto-Award Check-in Transaction", False, "Failed to get transactions")
+                    return False
+                
+                self.log_result("Auto-Award Check-in System", True, 
+                              "Check-in auto-award working: 5 points awarded")
+                return True
+                
+            else:
+                self.log_result("Auto-Award Check-in System", False, 
+                              f"Check-in failed: {response.status_code}",
+                              {"response": response.text})
+                return False
+                
+        except Exception as e:
+            self.log_result("Auto-Award Check-in System", False, f"Error testing check-in auto-award: {str(e)}")
+            return False
+    
+    def test_auto_award_payment(self):
+        """Test Auto-Award System - Payment (10 points)"""
+        print("\n=== Testing Auto-Award Payment System ===")
+        
+        try:
+            # Create a test invoice first
+            invoice_data = {
+                "member_id": self.test_member_id,
+                "description": "Test invoice for auto-award",
+                "due_date": (datetime.now() + timedelta(days=30)).isoformat(),
+                "line_items": [
+                    {
+                        "description": "Test item",
+                        "quantity": 1,
+                        "unit_price": 100.0,
+                        "discount_percent": 0.0,
+                        "tax_percent": 15.0
+                    }
+                ]
+            }
+            
+            response = requests.post(f"{API_BASE}/invoices", json=invoice_data, headers=self.headers)
+            if response.status_code != 200:
+                self.log_result("Auto-Award Payment - Create Invoice", False, "Failed to create test invoice")
+                return False
+            
+            invoice = response.json()
+            self.test_invoice_id = invoice["id"]
+            self.created_invoices.append(invoice["id"])
+            
+            # Get initial points balance
+            response = requests.get(f"{API_BASE}/engagement/points/balance/{self.test_member_id}", headers=self.headers)
+            if response.status_code != 200:
+                self.log_result("Auto-Award Payment - Get Initial Balance", False, "Failed to get initial balance")
+                return False
+            
+            initial_balance = response.json()["total_points"]
+            
+            # Mark invoice as paid
+            payment_data = {
+                "status": "paid"
+            }
+            
+            response = requests.put(f"{API_BASE}/invoices/{self.test_invoice_id}", json=payment_data, headers=self.headers)
+            
+            if response.status_code == 200:
+                # Wait a moment for points to be awarded
+                time.sleep(1)
+                
+                # Verify balance increased by 10 points
+                response = requests.get(f"{API_BASE}/engagement/points/balance/{self.test_member_id}", headers=self.headers)
+                if response.status_code == 200:
+                    new_balance_data = response.json()
+                    new_balance = new_balance_data["total_points"]
+                    
+                    if new_balance == initial_balance + 10:
+                        self.log_result("Auto-Award Payment Balance Update", True, 
+                                      f"Balance increased from {initial_balance} to {new_balance}")
+                    else:
+                        self.log_result("Auto-Award Payment Balance Update", False, 
+                                      f"Expected {initial_balance + 10}, got {new_balance}")
+                        return False
+                else:
+                    self.log_result("Auto-Award Payment Balance Update", False, "Failed to get updated balance")
+                    return False
+                
+                # Verify transaction recorded with reason "Payment completed"
+                response = requests.get(f"{API_BASE}/engagement/points/transactions/{self.test_member_id}?limit=1", headers=self.headers)
+                if response.status_code == 200:
+                    txn_data = response.json()
+                    if txn_data["transactions"]:
+                        latest_txn = txn_data["transactions"][0]
+                        if latest_txn["points"] == 10 and latest_txn["reason"] == "Payment completed":
+                            self.log_result("Auto-Award Payment Transaction", True, 
+                                          "Payment reward transaction recorded correctly")
+                        else:
+                            self.log_result("Auto-Award Payment Transaction", False, 
+                                          f"Transaction not correct: {latest_txn}")
+                            return False
+                    else:
+                        self.log_result("Auto-Award Payment Transaction", False, "No transactions found")
+                        return False
+                else:
+                    self.log_result("Auto-Award Payment Transaction", False, "Failed to get transactions")
+                    return False
+                
+                self.log_result("Auto-Award Payment System", True, 
+                              "Payment auto-award working: 10 points awarded")
+                return True
+                
+            else:
+                self.log_result("Auto-Award Payment System", False, 
+                              f"Payment update failed: {response.status_code}",
+                              {"response": response.text})
+                return False
+                
+        except Exception as e:
+            self.log_result("Auto-Award Payment System", False, f"Error testing payment auto-award: {str(e)}")
+            return False
+    
+    def test_engagement_api_authentication(self):
+        """Test that all engagement APIs require authentication"""
+        print("\n=== Testing Engagement API Authentication ===")
+        
+        try:
+            # Test without authentication headers
+            endpoints = [
+                f"/engagement/points/balance/{self.test_member_id}",
+                "/engagement/points/award",
+                f"/engagement/points/transactions/{self.test_member_id}",
+                "/engagement/points/leaderboard",
+                "/engagement/search?query=test",
+                f"/engagement/activity-feed/{self.test_member_id}",
+                f"/engagement/score/{self.test_member_id}",
+                "/engagement/overview"
+            ]
+            
+            for endpoint in endpoints:
+                if endpoint == "/engagement/points/award":
+                    response = requests.post(f"{API_BASE}{endpoint}", json={"member_id": "test", "points": 5, "reason": "test"})
+                else:
+                    response = requests.get(f"{API_BASE}{endpoint}")
+                
+                if response.status_code not in [401, 403]:
+                    self.log_result(f"Authentication {endpoint}", False, 
+                                  f"Expected 401 or 403 (authentication required), got {response.status_code}")
+                    return False
+                
+                self.log_result(f"Authentication {endpoint}", True, 
+                              f"Correctly requires authentication (status: {response.status_code})")
+            
+            return True
+                
+        except Exception as e:
+            self.log_result("Engagement API Authentication", False, f"Error testing authentication: {str(e)}")
+            return False
+    
     def cleanup_test_data(self):
         """Clean up test data created during testing"""
         print("\n=== Cleaning Up Test Data ===")
@@ -909,16 +1130,16 @@ class EngagementFeaturesTestRunner:
             except Exception as e:
                 self.log_result(f"Cleanup Member {member_id[:8]}", False, f"Error: {str(e)}")
         
-        # Clean up created access logs
-        for access_log_id in self.created_access_logs:
+        # Clean up created invoices
+        for invoice_id in self.created_invoices:
             try:
-                response = requests.delete(f"{API_BASE}/access-logs/{access_log_id}", headers=self.headers)
+                response = requests.delete(f"{API_BASE}/invoices/{invoice_id}", headers=self.headers)
                 if response.status_code == 200:
-                    self.log_result(f"Cleanup Access Log {access_log_id[:8]}", True, "Access log deleted")
+                    self.log_result(f"Cleanup Invoice {invoice_id[:8]}", True, "Invoice deleted")
                 else:
-                    self.log_result(f"Cleanup Access Log {access_log_id[:8]}", False, f"Failed to delete: {response.status_code}")
+                    self.log_result(f"Cleanup Invoice {invoice_id[:8]}", False, f"Failed to delete: {response.status_code}")
             except Exception as e:
-                self.log_result(f"Cleanup Access Log {access_log_id[:8]}", False, f"Error: {str(e)}")
+                self.log_result(f"Cleanup Invoice {invoice_id[:8]}", False, f"Error: {str(e)}")
     
     def run_advanced_analytics_tests(self):
         """Run the advanced analytics API tests"""
