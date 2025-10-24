@@ -3930,21 +3930,119 @@ async def quick_checkin(member_id: str, current_user: User = Depends(get_current
     result = await validate_access(access_data)
     return result
 
-# Invoice Routes
+# ===================== Invoice Helper Functions =====================
+
+async def calculate_invoice_totals(line_items: List[InvoiceLineItem]) -> dict:
+    """Calculate invoice totals from line items"""
+    subtotal = 0.0
+    tax_total = 0.0
+    discount_total = 0.0
+    
+    for item in line_items:
+        # Calculate line item values
+        line_subtotal = item.quantity * item.unit_price
+        line_discount = line_subtotal * (item.discount_percent / 100)
+        line_subtotal_after_discount = line_subtotal - line_discount
+        line_tax = line_subtotal_after_discount * (item.tax_percent / 100)
+        line_total = line_subtotal_after_discount + line_tax
+        
+        # Update item values
+        item.subtotal = round(line_subtotal_after_discount, 2)
+        item.tax_amount = round(line_tax, 2)
+        item.total = round(line_total, 2)
+        
+        # Add to totals
+        subtotal += item.subtotal
+        tax_total += item.tax_amount
+        discount_total += line_discount
+    
+    return {
+        "subtotal": round(subtotal, 2),
+        "tax_total": round(tax_total, 2),
+        "discount_total": round(discount_total, 2),
+        "amount": round(subtotal + tax_total, 2)
+    }
+
+async def generate_invoice_number() -> str:
+    """Generate next sequential invoice number based on settings"""
+    settings = await db.billing_settings.find_one({})
+    if not settings:
+        # Default settings if not configured
+        prefix = "INV"
+        year = datetime.now(timezone.utc).year
+        sequence = await db.invoices.count_documents({}) + 1
+    else:
+        prefix = settings.get("invoice_prefix", "INV")
+        year = datetime.now(timezone.utc).year
+        sequence = settings.get("next_invoice_number", 1)
+        
+        # Update next invoice number
+        await db.billing_settings.update_one(
+            {"id": settings["id"]},
+            {"$set": {"next_invoice_number": sequence + 1}}
+        )
+    
+    return f"{prefix}-{year}-{str(sequence).zfill(4)}"
+
+# ===================== Invoice Routes =====================
+
 @api_router.post("/invoices", response_model=Invoice)
 async def create_invoice(data: InvoiceCreate, current_user: User = Depends(get_current_user)):
-    # Get invoice count for member
-    count = await db.invoices.count_documents({"member_id": data.member_id})
-    invoice_number = f"INV-{data.member_id[:8]}-{str(count + 1).zfill(3)}"
+    """Create a new invoice with line items"""
+    # Validate member exists
+    member = await db.members.find_one({"id": data.member_id})
+    if not member:
+        raise HTTPException(status_code=404, detail="Member not found")
     
+    # Calculate invoice totals
+    totals = await calculate_invoice_totals(data.line_items)
+    
+    # Generate invoice number
+    invoice_number = await generate_invoice_number()
+    
+    # Create invoice
     invoice = Invoice(
         invoice_number=invoice_number,
-        **data.model_dump()
+        member_id=data.member_id,
+        description=data.description,
+        due_date=data.due_date,
+        line_items=data.line_items,
+        subtotal=totals["subtotal"],
+        tax_total=totals["tax_total"],
+        discount_total=totals["discount_total"],
+        amount=totals["amount"],
+        notes=data.notes,
+        auto_generated=data.auto_generated,
+        generated_from=data.generated_from
     )
+    
+    # Prepare for database
     doc = invoice.model_dump()
     doc["due_date"] = doc["due_date"].isoformat()
     doc["created_at"] = doc["created_at"].isoformat()
+    
+    # Convert line items properly
+    doc["line_items"] = [item.model_dump() for item in invoice.line_items]
+    
     await db.invoices.insert_one(doc)
+    
+    # Log to member journal
+    await db.member_journal.insert_one({
+        "id": str(uuid.uuid4()),
+        "member_id": data.member_id,
+        "action_type": "invoice_created",
+        "title": f"Invoice {invoice_number} created",
+        "description": f"Invoice for {data.description} - Amount: R{totals['amount']:.2f}",
+        "performed_by": current_user.full_name,
+        "timestamp": datetime.now(timezone.utc).isoformat()
+    })
+    
+    # Check if we should auto-email invoice
+    billing_settings = await db.billing_settings.find_one({})
+    if billing_settings and billing_settings.get("auto_email_invoices") and billing_settings.get("email_on_invoice_created"):
+        # TODO: Send email notification (placeholder for now)
+        print(f"Would send invoice email to member {data.member_id}")
+    
     return invoice
 
 @api_router.get("/invoices", response_model=List[Invoice])
