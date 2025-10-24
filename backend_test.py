@@ -1228,14 +1228,14 @@ class EngagementFeaturesTestRunner:
 
 def main():
     """Main execution function"""
-    tester = AdvancedAnalyticsTestRunner()
-    success = tester.run_advanced_analytics_tests()
+    tester = EngagementFeaturesTestRunner()
+    success = tester.run_engagement_features_tests()
     
     if success:
-        print("\n🎉 ALL ADVANCED ANALYTICS TESTS PASSED!")
+        print("\n🎉 ALL ENGAGEMENT FEATURES TESTS PASSED!")
         exit(0)
     else:
-        print("\n💥 SOME ADVANCED ANALYTICS TESTS FAILED!")
+        print("\n💥 SOME ENGAGEMENT FEATURES TESTS FAILED!")
         exit(1)
 
 if __name__ == "__main__":
