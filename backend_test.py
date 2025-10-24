@@ -1,15 +1,12 @@
 #!/usr/bin/env python3
 """
-Backend Test Suite for Member/Prospects Import Functionality
-Comprehensive testing of CSV import, duplicate detection, and field mapping
+Backend Test Suite for Access Override System
+Comprehensive testing of override reasons, member search, access overrides, and prospect conversion
 """
 
 import requests
 import json
 import time
-import csv
-import io
-import tempfile
 import os
 from datetime import datetime, timezone, timedelta
 
