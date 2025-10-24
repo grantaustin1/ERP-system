@@ -1546,6 +1546,80 @@ backend:
     status_history: []
     description: "Created comprehensive UnifiedMessagingDialog component supporting SMS/Email/WhatsApp/Push with template selection, character counter, SMS credit display, save as template, marketing flag, show on check-in option, and member personalization. Integrated into Dashboard.js and Members.js with Send Message buttons."
 
+  # ===================== PHASE 1 - QUICK WINS: Enhanced Member Management =====================
+
+  - task: "Member Model Enhancement - Phase 1 Fields"
+    implemented: true
+    working: "NA"
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Updated Member model to include Phase 1 Quick Wins fields: tags (List[str]) for member categorization, sessions_remaining (Optional[int]) for session-based memberships, last_visit_date (Optional[datetime]) for tracking last check-in, next_billing_date (Optional[datetime]) for billing tracking, cancellation_date and cancellation_reason for cancelled memberships. Ready for testing."
+
+  - task: "Tag Management Model & APIs"
+    implemented: true
+    working: "NA"
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Created Tag model with fields: name, color (hex), description, category, usage_count. Implemented Tag Management APIs: GET /api/tags (list all tags), POST /api/tags (create tag), PUT /api/tags/{id} (update tag), DELETE /api/tags/{id} (delete tag and remove from all members). TagCreate and TagUpdate Pydantic models included. Startup event seeds 7 default tags (VIP, New Member, Late Payer, Personal Training, Group Classes, High Risk, Loyal). Ready for testing."
+
+  - task: "Member Tagging APIs"
+    implemented: true
+    working: "NA"
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Implemented Member Tagging APIs: POST /api/members/{member_id}/tags/{tag_name} (add tag to member with usage count increment and journal entry), DELETE /api/members/{member_id}/tags/{tag_name} (remove tag from member with usage count decrement and journal entry). Validates member and tag existence, prevents duplicate tags, updates tag usage count. Ready for testing."
+
+  - task: "Member Action APIs - Freeze/Unfreeze/Cancel"
+    implemented: true
+    working: "NA"
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Implemented Member Action APIs: POST /api/members/{id}/freeze (freeze membership with reason, optional end_date, sets freeze_status=true, membership_status='frozen'), POST /api/members/{id}/unfreeze (unfreeze membership, resets freeze fields, sets membership_status='active'), POST /api/members/{id}/cancel (cancel membership permanently with reason, notes, sets membership_status='cancelled', cancellation_date). All actions create journal entries. MemberActionRequest Pydantic model for request validation. Ready for testing."
+
+  - task: "Enhanced Member Profile Endpoint - Phase 1 Fields"
+    implemented: true
+    working: "NA"
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Enhanced GET /api/members/{member_id}/profile endpoint to include Phase 1 fields: sessions_remaining (from member data), last_visit_date (from last access log timestamp), next_billing_date (calculated from join_date + duration_months or from member data), tags (list of tag names). Returns in profile response alongside existing retention, payment_progress, and missing_data fields. Ready for testing."
+
+  - task: "Auto-Update Last Visit Date on Access Grant"
+    implemented: true
+    working: "NA"
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Updated POST /api/access/validate endpoint to automatically set member's last_visit_date when access is granted. Updates member document with current timestamp after successful access log creation. Provides accurate last visit tracking for member cards. Ready for testing."
+
 frontend:
   - task: "Invoice Management UI - Create Invoice Dialog"
     implemented: true
