@@ -8116,6 +8116,52 @@ from debicheck_utils import (
 # Setup EFT folders on startup
 EFT_FOLDERS = setup_eft_folders()
 
+
+# ===================== Billing Settings Routes =====================
+
+@api_router.get("/billing/settings")
+async def get_billing_settings(current_user: User = Depends(get_current_user)):
+    """Get billing and invoice settings"""
+    settings = await db.billing_settings.find_one({}, {"_id": 0})
+    
+    if not settings:
+        # Return default settings if not configured
+        default_settings = BillingSettings()
+        return default_settings.model_dump()
+    
+    return settings
+
+@api_router.post("/billing/settings")
+async def create_or_update_billing_settings(
+    data: BillingSettingsUpdate,
+    current_user: User = Depends(get_current_user)
+):
+    """Create or update billing settings"""
+    existing = await db.billing_settings.find_one({})
+    
+    if existing:
+        # Update existing settings
+        update_data = {k: v for k, v in data.model_dump(exclude_unset=True).items() if v is not None}
+        update_data["updated_at"] = datetime.now(timezone.utc).isoformat()
+        
+        await db.billing_settings.update_one(
+            {"id": existing["id"]},
+            {"$set": update_data}
+        )
+        
+        updated = await db.billing_settings.find_one({"id": existing["id"]}, {"_id": 0})
+        return updated
+    else:
+        # Create new settings
+        settings = BillingSettings(**data.model_dump(exclude_unset=True))
+        settings_doc = settings.model_dump()
+        settings_doc["created_at"] = settings_doc["created_at"].isoformat()
+        
+        await db.billing_settings.insert_one(settings_doc)
+        settings_doc.pop("_id", None)
+        return settings_doc
+
+
 @api_router.get("/eft/settings")
 async def get_eft_settings(current_user: User = Depends(get_current_user)):
     """Get EFT configuration settings"""
