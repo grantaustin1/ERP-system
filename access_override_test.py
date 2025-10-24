@@ -312,6 +312,9 @@ class AccessOverrideTester:
                 else:
                     self.log_result("Member Search by Email", False, 
                                   f"Member not found in search results for '{email}'")
+            elif response.status_code == 404:
+                self.log_result("Member Search by Email", False, 
+                              f"No members found for email '{email}' (404)")
             else:
                 self.log_result("Member Search by Email", False, 
                               f"Search by email failed: {response.status_code}")
@@ -332,6 +335,10 @@ class AccessOverrideTester:
                     self.log_result("Member Search by Phone", False, 
                                   f"Member not found in search results for '{phone}'")
                     return False
+            elif response.status_code == 404:
+                self.log_result("Member Search by Phone", False, 
+                              f"No members found for phone '{phone}' (404)")
+                return False
             else:
                 self.log_result("Member Search by Phone", False, 
                               f"Search by phone failed: {response.status_code}")
