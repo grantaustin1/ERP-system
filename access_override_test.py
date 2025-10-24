@@ -469,7 +469,7 @@ class AccessOverrideTester:
                 "first_name": "Test",
                 "last_name": "Prospect",
                 "phone": f"083444{timestamp % 10000:04d}",
-                "email": f"test.prospect.{timestamp}@override.test",
+                "email": f"test.prospect.{timestamp}@example.com",
                 "reason_id": self.reason_ids["new_prospect"],
                 "sub_reason_id": self.reason_ids["new_prospect_sub"],
                 "location": "Main Entrance"
