@@ -1333,8 +1333,6 @@ metadata:
 
 test_plan:
   current_focus:
-    - "Enhanced Member Portal & Notification System - Backend APIs"
-    - "App Settings Model & API"
     - "Enhanced Sidebar with Category Organization"
     - "App Settings UI in Settings Page"
   stuck_tasks: []
