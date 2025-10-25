@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-Backend Test Suite - Lead Assignment APIs Testing
-Focus on testing the new Lead Assignment APIs with role-based access control
+Backend Test Suite - Complimentary Membership Tracking System Testing
+Focus on testing the Complimentary Membership APIs with role-based access control
 """
 
 import requests
@@ -15,10 +15,10 @@ BASE_URL = os.getenv('REACT_APP_BACKEND_URL', 'https://gym-lead-tracker.preview.
 API_BASE = f"{BASE_URL}/api"
 
 # Test credentials
-MANAGER_EMAIL = "admin@gym.com"
-MANAGER_PASSWORD = "admin123"
+ADMIN_EMAIL = "admin@gym.com"
+ADMIN_PASSWORD = "admin123"
 
-class LeadAssignmentTestRunner:
+class ComplimentaryMembershipTestRunner:
     def __init__(self):
         self.manager_token = None
         self.consultant_token = None
