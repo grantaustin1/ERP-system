@@ -8516,6 +8516,208 @@ async def delete_lead(lead_id: str, current_user: User = Depends(get_current_use
     return {"success": True, "message": "Lead deleted"}
 
 
+# ==================== LEAD ASSIGNMENT ENDPOINTS ====================
+
+@api_router.post("/sales/leads/{lead_id}/assign")
+async def assign_lead(
+    lead_id: str,
+    assigned_to: str,
+    assignment_notes: Optional[str] = None,
+    current_user: User = Depends(get_current_user)
+):
+    """Assign or reassign a lead to a consultant (managers only)"""
+    from datetime import datetime, timezone
+    
+    # Check if current user is a manager
+    manager_roles = ["business_owner", "head_admin", "sales_head", "sales_manager"]
+    if current_user.role not in manager_roles:
+        raise HTTPException(status_code=403, detail="Only managers can assign leads")
+    
+    # Get the lead
+    lead = await db.leads.find_one({"id": lead_id}, {"_id": 0})
+    if not lead:
+        raise HTTPException(status_code=404, detail="Lead not found")
+    
+    # Get the consultant user to verify they exist
+    consultant = await db.users.find_one({"id": assigned_to}, {"_id": 0, "id": 1, "email": 1, "name": 1})
+    if not consultant:
+        raise HTTPException(status_code=404, detail="Consultant not found")
+    
+    # Get previous assignment info
+    previous_assigned_to = lead.get("assigned_to")
+    previous_assigned_to_name = None
+    if previous_assigned_to:
+        prev_user = await db.users.find_one({"id": previous_assigned_to}, {"_id": 0, "email": 1, "name": 1})
+        if prev_user:
+            previous_assigned_to_name = prev_user.get("name") or prev_user.get("email")
+    
+    now = datetime.now(timezone.utc).isoformat()
+    
+    # Create assignment history entry
+    assignment_record = {
+        "assigned_to": assigned_to,
+        "assigned_to_name": consultant.get("name") or consultant.get("email"),
+        "assigned_by": current_user.id,
+        "assigned_by_name": current_user.name or current_user.email,
+        "assigned_at": now,
+        "notes": assignment_notes,
+        "previous_assigned_to": previous_assigned_to,
+        "previous_assigned_to_name": previous_assigned_to_name
+    }
+    
+    # Update lead with new assignment
+    assignment_history = lead.get("assignment_history", [])
+    assignment_history.append(assignment_record)
+    
+    update_data = {
+        "assigned_to": assigned_to,
+        "assigned_by": current_user.id,
+        "assigned_at": now,
+        "assignment_history": assignment_history,
+        "updated_at": now
+    }
+    
+    await db.leads.update_one(
+        {"id": lead_id},
+        {"$set": update_data}
+    )
+    
+    # Create a notification/task for the consultant (simple implementation)
+    # In production, you'd integrate with a notification system
+    task_id = str(uuid.uuid4())
+    notification_task = {
+        "id": task_id,
+        "title": f"New Lead Assigned: {lead['first_name']} {lead['last_name']}",
+        "description": f"You have been assigned a new lead by {current_user.name or current_user.email}. {assignment_notes or ''}",
+        "task_type": "follow_up",
+        "related_to_type": "lead",
+        "related_to_id": lead_id,
+        "assigned_to": assigned_to,
+        "due_date": (datetime.now(timezone.utc) + timedelta(days=1)).isoformat(),
+        "priority": "high",
+        "status": "pending",
+        "created_at": now,
+        "completed_at": None
+    }
+    
+    await db.sales_tasks.insert_one(notification_task)
+    
+    action_text = "reassigned" if previous_assigned_to else "assigned"
+    
+    return {
+        "success": True,
+        "message": f"Lead {action_text} successfully",
+        "lead_id": lead_id,
+        "assigned_to": assigned_to,
+        "assigned_to_name": consultant.get("name") or consultant.get("email"),
+        "assigned_by": current_user.id,
+        "assigned_at": now,
+        "notification_task_created": True
+    }
+
+
+@api_router.get("/sales/leads/unassigned")
+async def get_unassigned_leads(current_user: User = Depends(get_current_user)):
+    """Get all unassigned leads (managers only)"""
+    # Check if current user is a manager
+    manager_roles = ["business_owner", "head_admin", "sales_head", "sales_manager"]
+    if current_user.role not in manager_roles:
+        raise HTTPException(status_code=403, detail="Only managers can view unassigned leads")
+    
+    # Get leads where assigned_to is null or empty
+    leads = await db.leads.find(
+        {"$or": [{"assigned_to": None}, {"assigned_to": ""}]},
+        {"_id": 0}
+    ).sort("created_at", -1).to_list(None)
+    
+    # Enrich with source and status info
+    for lead in leads:
+        # Get source info
+        if lead.get("source_id"):
+            source = await db.lead_sources.find_one({"id": lead["source_id"]}, {"_id": 0, "name": 1, "icon": 1})
+            if source:
+                lead["source_name"] = source.get("name")
+                lead["source_icon"] = source.get("icon")
+        
+        # Get status info
+        if lead.get("status_id"):
+            status = await db.lead_statuses.find_one({"id": lead["status_id"]}, {"_id": 0, "name": 1, "color": 1, "category": 1})
+            if status:
+                lead["status_name"] = status.get("name")
+                lead["status_color"] = status.get("color")
+                lead["status_category"] = status.get("category")
+    
+    return {
+        "total": len(leads),
+        "leads": leads
+    }
+
+
+@api_router.get("/sales/leads/my-leads")
+async def get_my_assigned_leads(current_user: User = Depends(get_current_user)):
+    """Get leads assigned to current user (consultants)"""
+    # Get leads assigned to the current user
+    leads = await db.leads.find(
+        {"assigned_to": current_user.id},
+        {"_id": 0}
+    ).sort("created_at", -1).to_list(None)
+    
+    # Enrich with source and status info
+    for lead in leads:
+        # Get source info
+        if lead.get("source_id"):
+            source = await db.lead_sources.find_one({"id": lead["source_id"]}, {"_id": 0, "name": 1, "icon": 1})
+            if source:
+                lead["source_name"] = source.get("name")
+                lead["source_icon"] = source.get("icon")
+        
+        # Get status info
+        if lead.get("status_id"):
+            status = await db.lead_statuses.find_one({"id": lead["status_id"]}, {"_id": 0, "name": 1, "color": 1, "category": 1})
+            if status:
+                lead["status_name"] = status.get("name")
+                lead["status_color"] = status.get("color")
+                lead["status_category"] = status.get("category")
+        
+        # Get assigned by info
+        if lead.get("assigned_by"):
+            assigner = await db.users.find_one({"id": lead["assigned_by"]}, {"_id": 0, "email": 1, "name": 1})
+            if assigner:
+                lead["assigned_by_name"] = assigner.get("name") or assigner.get("email")
+    
+    return {
+        "total": len(leads),
+        "leads": leads
+    }
+
+
+@api_router.get("/sales/consultants")
+async def get_sales_consultants(current_user: User = Depends(get_current_user)):
+    """Get list of sales consultants for assignment (managers only)"""
+    # Check if current user is a manager
+    manager_roles = ["business_owner", "head_admin", "sales_head", "sales_manager"]
+    if current_user.role not in manager_roles:
+        raise HTTPException(status_code=403, detail="Only managers can view consultants list")
+    
+    # Get users with sales-related roles
+    consultant_roles = ["sales_manager", "sales_head", "personal_trainer", "fitness_manager"]
+    
+    consultants = await db.users.find(
+        {"role": {"$in": consultant_roles}},
+        {"_id": 0, "id": 1, "email": 1, "name": 1, "role": 1}
+    ).to_list(None)
+    
+    # Get lead counts for each consultant
+    for consultant in consultants:
+        assigned_count = await db.leads.count_documents({"assigned_to": consultant["id"]})
+        consultant["assigned_leads_count"] = assigned_count
+    
+    return {
+        "total": len(consultants),
+        "consultants": consultants
+    }
+
+
 # ==================== OPPORTUNITIES/PIPELINE ENDPOINTS ====================
 
 @api_router.get("/sales/opportunities")
