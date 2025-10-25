@@ -65,112 +65,61 @@ class MemberPortalNotificationTestRunner:
     # ===================== APP SETTINGS API TESTS =====================
     
     def test_app_settings_get_api(self):
-        """Test GET /api/reports/sales-funnel endpoint"""
-        print("\n=== Testing Sales Funnel API ===")
+        """Test GET /api/settings/app endpoint"""
+        print("\n=== Testing App Settings GET API ===")
         
         try:
-            # Test 1: Default parameters (last 90 days)
-            response = requests.get(f"{API_BASE}/reports/sales-funnel", headers=self.admin_headers)
+            # Test 1: Get app settings (should return defaults if none exist)
+            response = requests.get(f"{API_BASE}/settings/app", headers=self.admin_headers)
             
             if response.status_code == 200:
                 data = response.json()
                 
-                # Verify response structure
-                required_fields = ["period", "funnel_stages", "summary"]
+                # Verify response structure - all required fields should be present
+                required_fields = [
+                    "member_portal_enabled", 
+                    "member_portal_require_active_status",
+                    "enable_email_notifications",
+                    "enable_sms_notifications", 
+                    "enable_whatsapp_notifications",
+                    "enable_inapp_notifications"
+                ]
                 
                 for field in required_fields:
                     if field not in data:
-                        self.log_result("Sales Funnel Structure", False, f"Missing field: {field}")
+                        self.log_result("App Settings Structure", False, f"Missing field: {field}")
                         return False
                 
-                # Verify period structure
-                period = data["period"]
-                period_fields = ["start_date", "end_date"]
-                for field in period_fields:
-                    if field not in period:
-                        self.log_result("Sales Funnel Period", False, f"Missing period field: {field}")
+                # Verify default values are boolean
+                for field in required_fields:
+                    if not isinstance(data[field], bool):
+                        self.log_result("App Settings Data Types", False, f"Field {field} should be boolean, got {type(data[field])}")
                         return False
                 
-                # Verify funnel_stages structure
-                stages = data["funnel_stages"]
-                if not isinstance(stages, list):
-                    self.log_result("Sales Funnel Stages", False, "funnel_stages should be array")
-                    return False
+                # Verify default values match expected defaults
+                expected_defaults = {
+                    "member_portal_enabled": True,
+                    "member_portal_require_active_status": True,
+                    "enable_email_notifications": True,
+                    "enable_sms_notifications": True,
+                    "enable_whatsapp_notifications": False,
+                    "enable_inapp_notifications": True
+                }
                 
-                # Verify stages are in correct order
-                expected_stages = ["lead", "qualified", "proposal", "negotiation", "closed_won"]
-                if len(stages) >= len(expected_stages):
-                    for i, expected_stage in enumerate(expected_stages):
-                        if i < len(stages) and stages[i]["stage"] != expected_stage:
-                            self.log_result("Sales Funnel Stage Order", False, f"Stage {i} should be '{expected_stage}', got '{stages[i]['stage']}'")
-                            return False
-                
-                # Verify stage structure
-                if stages:
-                    stage = stages[0]
-                    stage_fields = ["stage", "label", "count", "conversion_rate", "drop_off", "drop_off_rate"]
-                    for field in stage_fields:
-                        if field not in stage:
-                            self.log_result("Sales Funnel Stage Fields", False, f"Missing stage field: {field}")
-                            return False
-                    
-                    # Verify first stage has 100% conversion rate
-                    if stage["conversion_rate"] != 100.0:
-                        self.log_result("Sales Funnel First Stage Conversion", False, f"First stage should have 100% conversion rate, got {stage['conversion_rate']}")
+                for field, expected_value in expected_defaults.items():
+                    if data[field] != expected_value:
+                        self.log_result("App Settings Default Values", False, f"Field {field} should default to {expected_value}, got {data[field]}")
                         return False
                 
-                # Verify summary structure
-                summary = data["summary"]
-                summary_fields = ["total_leads", "total_won", "overall_conversion_rate", "biggest_drop_off_stage"]
-                for field in summary_fields:
-                    if field not in summary:
-                        self.log_result("Sales Funnel Summary", False, f"Missing summary field: {field}")
-                        return False
-                
-                # Verify conversion rates are calculated correctly
-                for stage in stages:
-                    conversion_rate = stage["conversion_rate"]
-                    if not (0 <= conversion_rate <= 100):
-                        self.log_result("Sales Funnel Conversion Rate Range", False, f"Conversion rate should be 0-100%, got {conversion_rate}")
-                        return False
-                
-                self.log_result("Sales Funnel Default", True, f"Total leads: {summary['total_leads']}, Overall conversion: {summary['overall_conversion_rate']}%")
+                self.log_result("App Settings GET", True, f"Retrieved settings with all required fields and correct defaults")
+                return True
                 
             else:
-                self.log_result("Sales Funnel Default", False, f"Failed: {response.status_code}")
+                self.log_result("App Settings GET", False, f"Failed: {response.status_code}")
                 return False
-            
-            # Test 2: Custom date range
-            end_date = "2024-12-31T23:59:59Z"
-            start_date = "2024-01-01T00:00:00Z"
-            
-            response = requests.get(
-                f"{API_BASE}/reports/sales-funnel",
-                params={"start_date": start_date, "end_date": end_date},
-                headers=self.admin_headers
-            )
-            
-            if response.status_code == 200:
-                data = response.json()
-                period = data["period"]
-                
-                # Verify date range is respected
-                start_check = "2024-01-01" in period["start_date"]
-                end_check = "2024-12-31" in period["end_date"]
-                if not start_check or not end_check:
-                    self.log_result("Sales Funnel Custom Dates", False, "Date range not respected")
-                    return False
-                
-                self.log_result("Sales Funnel Custom Dates", True, f"Custom range: {data['summary']['total_leads']} leads")
-                
-            else:
-                self.log_result("Sales Funnel Custom Dates", False, f"Failed: {response.status_code}")
-                return False
-            
-            return True
             
         except Exception as e:
-            self.log_result("Sales Funnel API", False, f"Error: {str(e)}")
+            self.log_result("App Settings GET API", False, f"Error: {str(e)}")
             return False
     
     def test_pipeline_forecast_api(self):
