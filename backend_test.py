@@ -854,7 +854,7 @@ class SalesModulePhase2TestRunner:
                     response = requests.get(f"{API_BASE}/sales/analytics/forecasting?period_months={period}", headers=self.headers)
                     if response.status_code == 200:
                         period_data = response.json()
-                        if period_data["period_months"] == period:
+                        if period_data["forecast_period_months"] == period:
                             self.log_result(f"Sales Forecasting API ({period} months)", True, 
                                           f"Forecast for {period} months: ${period_data['total_forecast']:.2f}")
                         else:
