@@ -6564,11 +6564,7 @@ metadata:
   run_ui: false
 
 test_plan:
-  current_focus:
-    - "Attendance Heatmap Component"
-    - "Attendance Heatmap Integration in Members Page"
-    - "Sales Dashboard - Comprehensive Analytics Enhancement"
-    - "Sales Dashboard - Drill-down Modal Dialogs"
+  current_focus: []
   stuck_tasks: []
   test_all: false
   test_priority: "high_first"
