@@ -59,8 +59,6 @@ export default function LeadsContacts() {
     referred_by_member_id: null,
     notes: ''
   });
-    notes: ''
-  });
   
   // Detail Modal
   const [detailModalOpen, setDetailModalOpen] = useState(false);
