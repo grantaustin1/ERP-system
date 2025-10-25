@@ -89,9 +89,9 @@ class ConfigurableLeadSystemTestRunner:
             response = requests.get(f"{API_BASE}/members", headers=self.headers)
             if response.status_code == 200:
                 members_data = response.json()
-                if "members" in members_data and members_data["members"]:
+                if isinstance(members_data, list) and members_data:
                     # Find an active member
-                    for member in members_data["members"]:
+                    for member in members_data:
                         if member.get("membership_status") == "active":
                             self.test_member_id = member["id"]
                             self.log_result("Get Test Member", True, f"Found active member: {member['first_name']} {member['last_name']}")
