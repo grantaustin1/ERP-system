@@ -9789,7 +9789,16 @@ async def get_retention_dashboard(
         inactive_members = [m for m in all_members if m.get("status") in ["inactive", "cancelled", "suspended"]]
         
         # Members who joined in the period
-        new_members_period = [m for m in all_members if m.get("join_date") and m.get("join_date") >= start_iso]
+        new_members_period = []
+        for m in all_members:
+            join_date_str = m.get("join_date")
+            if join_date_str:
+                try:
+                    join_date = datetime.fromisoformat(join_date_str.replace('Z', '+00:00'))
+                    if join_date >= period_start:
+                        new_members_period.append(m)
+                except:
+                    continue
         
         # Calculate churn rate
         total_members = len(all_members)
