@@ -6553,14 +6553,13 @@ metadata:
 
 test_plan:
   current_focus:
-    - "Sales CRM Setup - Lead Sources Tab"
-    - "Sales CRM Setup - Lead Statuses Tab"
-    - "Sales CRM Setup - Loss Reasons Tab"
-    - "Sales CRM Setup - Navigation & Page Loading"
-    - "Sales CRM Setup - Form Validation & UI/UX"
+    - "Attendance Heatmap Component"
+    - "Attendance Heatmap Integration in Members Page"
+    - "Sales Dashboard - Comprehensive Analytics Enhancement"
+    - "Sales Dashboard - Drill-down Modal Dialogs"
   stuck_tasks: []
   test_all: false
-  test_priority: "stuck_first"
+  test_priority: "high_first"
 
 agent_communication:
   - agent: "main"
