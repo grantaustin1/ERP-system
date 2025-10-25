@@ -1438,9 +1438,9 @@ class ConfigurableLeadSystemTestRunner:
                         self.log_result("Data Integrity UUID", False, f"Invalid UUID format for source: {source_id}")
                         return False
                     
-                    # Verify timestamps are ISO format
+                    # Verify timestamps are ISO format (allow both Z and +00:00 timezone formats)
                     created_at = source["created_at"]
-                    if 'T' not in created_at or 'Z' not in created_at:
+                    if 'T' not in created_at or ('+' not in created_at and 'Z' not in created_at):
                         self.log_result("Data Integrity Timestamp", False, f"Invalid timestamp format: {created_at}")
                         return False
                 
