@@ -1309,15 +1309,18 @@ backend:
 
   - task: "Enhanced Lead Update API with Loss Validation"
     implemented: true
-    working: false
+    working: true
     file: "/app/backend/server.py"
-    stuck_count: 1
+    stuck_count: 0
     priority: "high"
     needs_retesting: false
     status_history:
       - working: false
         agent: "testing"
         comment: "❌ BLOCKED: Cannot test enhanced lead update due to no test lead available (creation blocked by seeding issues)."
+      - working: true
+        agent: "testing"
+        comment: "✅ FIXED - Enhanced Lead Update API WORKING PERFECTLY: Loss status validation working correctly - attempting to update lead to 'Lost' status without loss_reason_id correctly returns 400 error. When loss_reason_id and loss_notes provided, update succeeds and fields are properly saved. Referral reward auto-approval working correctly - when referred lead is updated to 'Joined' (converted) status, the referral reward status automatically changes from 'pending' to 'approved'. All enhanced validation and automation features functioning as designed."
 
   - task: "Referral Rewards Management APIs"
     implemented: true
