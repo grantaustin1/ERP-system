@@ -34,6 +34,7 @@ import SalesDashboard from '@/pages/SalesDashboard';
 import LeadsContacts from '@/pages/LeadsContacts';
 import SalesPipeline from '@/pages/SalesPipeline';
 import SalesTasks from '@/pages/SalesTasks';
+import WorkflowAutomation from '@/pages/WorkflowAutomation';
 import { Toaster } from '@/components/ui/sonner';
 import { PermissionProvider } from '@/contexts/PermissionContext';
 
