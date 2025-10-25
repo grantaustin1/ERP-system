@@ -17,6 +17,7 @@ import RetentionIndicator from '@/components/RetentionIndicator';
 import PaymentProgressBar from '@/components/PaymentProgressBar';
 import MissingDataWarnings from '@/components/MissingDataWarnings';
 import UnifiedMessagingDialog from '@/components/UnifiedMessagingDialog';
+import AttendanceHeatmap from '@/components/AttendanceHeatmap';
 
 export default function Members() {
   const [members, setMembers] = useState([]);
