@@ -566,9 +566,69 @@ class FinancialReportingTestRunner:
             self.log_result("Error Handling", False, f"Error: {str(e)}")
             return False
     
-    # ===================== COMPLIMENTARY MEMBERSHIP API TESTS =====================
+    def run_all_tests(self):
+        """Run all financial reporting API tests"""
+        print("🚀 Starting Financial Reporting API Tests...")
+        print(f"📍 Testing against: {BASE_URL}")
+        
+        # Authenticate first
+        if not self.authenticate():
+            print("❌ Authentication failed - cannot proceed with tests")
+            return False
+        
+        # Run all tests
+        tests = [
+            self.test_revenue_report_api,
+            self.test_commissions_report_api,
+            self.test_financial_summary_api,
+            self.test_payment_analysis_api,
+            self.test_response_times,
+            self.test_error_handling
+        ]
+        
+        passed = 0
+        failed = 0
+        
+        for test in tests:
+            try:
+                if test():
+                    passed += 1
+                else:
+                    failed += 1
+            except Exception as e:
+                print(f"❌ Test {test.__name__} crashed: {str(e)}")
+                failed += 1
+        
+        # Print summary
+        print(f"\n📊 TEST SUMMARY")
+        print(f"✅ Passed: {passed}")
+        print(f"❌ Failed: {failed}")
+        print(f"📈 Success Rate: {(passed/(passed+failed)*100):.1f}%")
+        
+        # Print detailed results
+        print(f"\n📋 DETAILED RESULTS:")
+        for result in self.test_results:
+            status = "✅" if result["success"] else "❌"
+            print(f"{status} {result['test']}: {result['message']}")
+        
+        return failed == 0
+
+
+def main():
+    """Main test execution"""
+    runner = FinancialReportingTestRunner()
+    success = runner.run_all_tests()
     
-    def test_get_complimentary_types(self):
+    if success:
+        print("\n🎉 All Financial Reporting API tests passed!")
+        exit(0)
+    else:
+        print("\n💥 Some tests failed!")
+        exit(1)
+
+
+if __name__ == "__main__":
+    main()
         """Test that default lead sources, statuses, and loss reasons are seeded correctly"""
         print("\n=== Testing Startup Seeding Verification ===")
         
