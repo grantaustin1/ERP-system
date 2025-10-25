@@ -467,6 +467,30 @@ export default function LeadsContacts() {
             </Dialog>
           </div>
 
+          {/* Filter Tabs (Managers Only) */}
+          {isManager && (
+            <div className="mb-6 flex gap-2">
+              <Button
+                onClick={() => setFilterType('all')}
+                className={filterType === 'all' ? 'bg-blue-600' : 'bg-slate-700 hover:bg-slate-600'}
+              >
+                All Leads ({leads.length})
+              </Button>
+              <Button
+                onClick={() => setFilterType('my_leads')}
+                className={filterType === 'my_leads' ? 'bg-blue-600' : 'bg-slate-700 hover:bg-slate-600'}
+              >
+                Assigned to Me
+              </Button>
+              <Button
+                onClick={() => setFilterType('unassigned')}
+                className={filterType === 'unassigned' ? 'bg-orange-600' : 'bg-slate-700 hover:bg-slate-600'}
+              >
+                Unassigned Pool
+              </Button>
+            </div>
+          )}
+
           {/* Filters and Search */}
           <Card className="bg-slate-800 border-slate-700 mb-6">
             <CardContent className="p-6">
