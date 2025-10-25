@@ -10944,6 +10944,583 @@ async def get_salesperson_performance_detailed(
         raise HTTPException(status_code=500, detail=f"Error generating salesperson performance: {str(e)}")
 
 
+
+
+# ==================== MEMBER PORTAL & NOTIFICATION SYSTEM ====================
+
+# Notification Model
+class Notification(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    member_id: str
+    type: str  # class_booking, membership_expiry, payment_due, announcement, milestone
+    channel: str  # email, sms, whatsapp, in_app
+    subject: str
+    message: str
+    status: str = "pending"  # pending, sent, failed, read
+    sent_at: Optional[str] = None
+    read_at: Optional[str] = None
+    created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+
+class NotificationPreferences(BaseModel):
+    member_id: str
+    email_enabled: bool = True
+    sms_enabled: bool = True
+    whatsapp_enabled: bool = True
+    in_app_enabled: bool = True
+    class_notifications: bool = True
+    payment_notifications: bool = True
+    membership_notifications: bool = True
+    announcement_notifications: bool = True
+    milestone_notifications: bool = True
+
+class BroadcastMessage(BaseModel):
+    subject: str
+    message: str
+    target_audience: str = "all"  # all, active, inactive, specific_ids
+    member_ids: Optional[List[str]] = None
+    channels: List[str] = ["email", "in_app"]
+
+# Mock Notification Services
+class MockEmailService:
+    @staticmethod
+    async def send(to: str, subject: str, body: str):
+        """Mock email sending - logs to database instead"""
+        print(f"[MOCK EMAIL] To: {to}, Subject: {subject}")
+        return {"status": "mocked", "message": "Email logged (not actually sent)"}
+
+class MockSMSService:
+    @staticmethod
+    async def send(to: str, message: str):
+        """Mock SMS sending - logs to database instead"""
+        print(f"[MOCK SMS] To: {to}, Message: {message[:50]}...")
+        return {"status": "mocked", "message": "SMS logged (not actually sent)"}
+
+class MockWhatsAppService:
+    @staticmethod
+    async def send(to: str, message: str):
+        """Mock WhatsApp sending - logs to database instead"""
+        print(f"[MOCK WHATSAPP] To: {to}, Message: {message[:50]}...")
+        return {"status": "mocked", "message": "WhatsApp logged (not actually sent)"}
+
+
+@api_router.post("/notifications/send")
+async def send_notification(
+    member_id: str,
+    notification_type: str,
+    subject: str,
+    message: str,
+    channels: List[str] = ["email", "in_app"],
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Send notification to a member via specified channels
+    Channels: email, sms, whatsapp, in_app
+    """
+    try:
+        # Get member details
+        member = await db.members.find_one({"id": member_id}, {"_id": 0})
+        if not member:
+            raise HTTPException(status_code=404, detail="Member not found")
+        
+        # Get notification preferences
+        prefs = await db.notification_preferences.find_one({"member_id": member_id}, {"_id": 0})
+        if not prefs:
+            # Create default preferences
+            prefs = {
+                "member_id": member_id,
+                "email_enabled": True,
+                "sms_enabled": True,
+                "whatsapp_enabled": True,
+                "in_app_enabled": True,
+                "class_notifications": True,
+                "payment_notifications": True,
+                "membership_notifications": True,
+                "announcement_notifications": True,
+                "milestone_notifications": True
+            }
+            await db.notification_preferences.insert_one(prefs)
+        
+        sent_channels = []
+        
+        for channel in channels:
+            # Check if channel is enabled in preferences
+            channel_enabled = prefs.get(f"{channel}_enabled", True)
+            if not channel_enabled and channel != "in_app":
+                continue
+            
+            # Create notification record
+            notification = {
+                "id": str(uuid.uuid4()),
+                "member_id": member_id,
+                "type": notification_type,
+                "channel": channel,
+                "subject": subject,
+                "message": message,
+                "status": "pending",
+                "created_at": datetime.now(timezone.utc).isoformat()
+            }
+            
+            # Send via appropriate channel (mocked)
+            if channel == "email":
+                result = await MockEmailService.send(
+                    member.get("email", ""),
+                    subject,
+                    message
+                )
+                notification["status"] = "sent"
+                notification["sent_at"] = datetime.now(timezone.utc).isoformat()
+                sent_channels.append("email")
+                
+            elif channel == "sms":
+                result = await MockSMSService.send(
+                    member.get("phone", ""),
+                    f"{subject}: {message}"
+                )
+                notification["status"] = "sent"
+                notification["sent_at"] = datetime.now(timezone.utc).isoformat()
+                sent_channels.append("sms")
+                
+            elif channel == "whatsapp":
+                result = await MockWhatsAppService.send(
+                    member.get("phone", ""),
+                    f"*{subject}*\n\n{message}"
+                )
+                notification["status"] = "sent"
+                notification["sent_at"] = datetime.now(timezone.utc).isoformat()
+                sent_channels.append("whatsapp")
+                
+            elif channel == "in_app":
+                notification["status"] = "sent"
+                notification["sent_at"] = datetime.now(timezone.utc).isoformat()
+                sent_channels.append("in_app")
+            
+            # Save notification to database
+            await db.notifications.insert_one(notification)
+        
+        return {
+            "success": True,
+            "message": f"Notification sent via {', '.join(sent_channels)}",
+            "channels": sent_channels,
+            "mock_mode": True
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error sending notification: {str(e)}")
+
+
+@api_router.get("/notifications/member/{member_id}")
+async def get_member_notifications(
+    member_id: str,
+    unread_only: bool = False,
+    limit: int = 50,
+    current_user: User = Depends(get_current_user)
+):
+    """Get notifications for a specific member"""
+    try:
+        query = {"member_id": member_id}
+        if unread_only:
+            query["read_at"] = None
+        
+        notifications = await db.notifications.find(
+            query,
+            {"_id": 0}
+        ).sort("created_at", -1).limit(limit).to_list(None)
+        
+        unread_count = await db.notifications.count_documents({
+            "member_id": member_id,
+            "read_at": None
+        })
+        
+        return {
+            "notifications": notifications,
+            "total": len(notifications),
+            "unread_count": unread_count
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error fetching notifications: {str(e)}")
+
+
+@api_router.put("/notifications/{notification_id}/read")
+async def mark_notification_read(
+    notification_id: str,
+    current_user: User = Depends(get_current_user)
+):
+    """Mark a notification as read"""
+    try:
+        result = await db.notifications.update_one(
+            {"id": notification_id},
+            {"$set": {
+                "status": "read",
+                "read_at": datetime.now(timezone.utc).isoformat()
+            }}
+        )
+        
+        if result.modified_count == 0:
+            raise HTTPException(status_code=404, detail="Notification not found")
+        
+        return {"success": True, "message": "Notification marked as read"}
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error marking notification: {str(e)}")
+
+
+@api_router.post("/notifications/broadcast")
+async def broadcast_message(
+    broadcast: BroadcastMessage,
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Send broadcast message to multiple members
+    Admin/Manager only
+    """
+    try:
+        # Check permission (managers only)
+        if current_user.role not in ["sales_head", "sales_manager", "business_owner"]:
+            raise HTTPException(status_code=403, detail="Only managers can send broadcasts")
+        
+        # Determine target members
+        query = {}
+        if broadcast.target_audience == "active":
+            query["status"] = "active"
+        elif broadcast.target_audience == "inactive":
+            query["status"] = {"$in": ["inactive", "cancelled", "suspended"]}
+        elif broadcast.target_audience == "specific_ids" and broadcast.member_ids:
+            query["id"] = {"$in": broadcast.member_ids}
+        
+        members = await db.members.find(query, {"_id": 0, "id": 1}).to_list(None)
+        
+        # Send notifications to all target members
+        sent_count = 0
+        for member in members:
+            try:
+                await send_notification(
+                    member_id=member["id"],
+                    notification_type="announcement",
+                    subject=broadcast.subject,
+                    message=broadcast.message,
+                    channels=broadcast.channels,
+                    current_user=current_user
+                )
+                sent_count += 1
+            except:
+                continue
+        
+        return {
+            "success": True,
+            "message": f"Broadcast sent to {sent_count} members",
+            "target_count": len(members),
+            "sent_count": sent_count
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error broadcasting message: {str(e)}")
+
+
+@api_router.get("/notifications/preferences/{member_id}")
+async def get_notification_preferences(
+    member_id: str,
+    current_user: User = Depends(get_current_user)
+):
+    """Get notification preferences for a member"""
+    try:
+        prefs = await db.notification_preferences.find_one(
+            {"member_id": member_id},
+            {"_id": 0}
+        )
+        
+        if not prefs:
+            # Return defaults
+            prefs = {
+                "member_id": member_id,
+                "email_enabled": True,
+                "sms_enabled": True,
+                "whatsapp_enabled": True,
+                "in_app_enabled": True,
+                "class_notifications": True,
+                "payment_notifications": True,
+                "membership_notifications": True,
+                "announcement_notifications": True,
+                "milestone_notifications": True
+            }
+        
+        return prefs
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error fetching preferences: {str(e)}")
+
+
+@api_router.put("/notifications/preferences/{member_id}")
+async def update_notification_preferences(
+    member_id: str,
+    preferences: NotificationPreferences,
+    current_user: User = Depends(get_current_user)
+):
+    """Update notification preferences for a member"""
+    try:
+        prefs_dict = preferences.dict()
+        
+        result = await db.notification_preferences.update_one(
+            {"member_id": member_id},
+            {"$set": prefs_dict},
+            upsert=True
+        )
+        
+        return {
+            "success": True,
+            "message": "Preferences updated successfully"
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error updating preferences: {str(e)}")
+
+
+# Enhanced Member Portal Dashboard APIs
+
+@api_router.get("/member-portal/dashboard/{member_id}")
+async def get_member_dashboard(
+    member_id: str,
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Get complete dashboard data for a member
+    Includes: membership info, recent activity, upcoming payments, notifications
+    """
+    try:
+        # Get member info
+        member = await db.members.find_one({"id": member_id}, {"_id": 0})
+        if not member:
+            raise HTTPException(status_code=404, detail="Member not found")
+        
+        # Get membership details
+        membership_info = {
+            "member_name": member.get("full_name", ""),
+            "email": member.get("email", ""),
+            "phone": member.get("phone", ""),
+            "status": member.get("status", "active"),
+            "membership_type": member.get("membership_type", "Standard"),
+            "join_date": member.get("join_date"),
+            "last_visit": member.get("last_visit")
+        }
+        
+        # Get attendance stats
+        # Count total visits (simplified - you may have attendance records)
+        total_visits = member.get("total_visits", 0)
+        
+        # Get recent invoices
+        recent_invoices = await db.invoices.find(
+            {"member_id": member_id},
+            {"_id": 0}
+        ).sort("created_at", -1).limit(5).to_list(None)
+        
+        # Get upcoming payments (pending/overdue invoices)
+        upcoming_payments = await db.invoices.find(
+            {"member_id": member_id, "status": {"$in": ["pending", "overdue"]}},
+            {"_id": 0}
+        ).limit(3).to_list(None)
+        
+        # Get unread notifications
+        unread_notifications = await db.notifications.count_documents({
+            "member_id": member_id,
+            "read_at": None
+        })
+        
+        # Calculate days since last visit
+        days_since_visit = 0
+        if member.get("last_visit"):
+            try:
+                last_visit = datetime.fromisoformat(member["last_visit"].replace('Z', '+00:00'))
+                days_since_visit = (datetime.now(timezone.utc) - last_visit).days
+            except:
+                pass
+        
+        return {
+            "member": membership_info,
+            "stats": {
+                "total_visits": total_visits,
+                "days_since_last_visit": days_since_visit,
+                "unread_notifications": unread_notifications,
+                "pending_payments": len(upcoming_payments)
+            },
+            "recent_invoices": recent_invoices,
+            "upcoming_payments": upcoming_payments
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error fetching dashboard: {str(e)}")
+
+
+@api_router.get("/member-portal/workout-history/{member_id}")
+async def get_workout_history(
+    member_id: str,
+    limit: int = 30,
+    current_user: User = Depends(get_current_user)
+):
+    """Get workout/class attendance history for a member"""
+    try:
+        # Get class bookings (if you have a bookings collection)
+        # For now, return attendance records based on check-ins
+        
+        # Simplified: Get recent check-ins/visits
+        # You may want to expand this with actual class bookings
+        
+        workout_history = []
+        
+        # Get member's last visits (you might track this separately)
+        member = await db.members.find_one({"id": member_id}, {"_id": 0})
+        
+        if member and member.get("last_visit"):
+            workout_history.append({
+                "date": member.get("last_visit"),
+                "type": "Gym Visit",
+                "duration": "N/A",
+                "notes": "Check-in recorded"
+            })
+        
+        return {
+            "workout_history": workout_history,
+            "total": len(workout_history)
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error fetching workout history: {str(e)}")
+
+
+@api_router.get("/member-portal/attendance-stats/{member_id}")
+async def get_attendance_stats(
+    member_id: str,
+    period_days: int = 30,
+    current_user: User = Depends(get_current_user)
+):
+    """Get attendance statistics for a member"""
+    try:
+        member = await db.members.find_one({"id": member_id}, {"_id": 0})
+        if not member:
+            raise HTTPException(status_code=404, detail="Member not found")
+        
+        # Calculate stats (simplified - expand with actual attendance tracking)
+        total_visits = member.get("total_visits", 0)
+        
+        # Days since last visit
+        days_since_visit = 0
+        if member.get("last_visit"):
+            try:
+                last_visit = datetime.fromisoformat(member["last_visit"].replace('Z', '+00:00'))
+                days_since_visit = (datetime.now(timezone.utc) - last_visit).days
+            except:
+                pass
+        
+        # Calculate average visits per week (simplified)
+        avg_visits_per_week = round(total_visits / 4, 1) if total_visits > 0 else 0
+        
+        return {
+            "period_days": period_days,
+            "total_visits": total_visits,
+            "avg_visits_per_week": avg_visits_per_week,
+            "days_since_last_visit": days_since_visit,
+            "current_streak": 0,  # Implement streak logic if needed
+            "longest_streak": 0
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error fetching attendance stats: {str(e)}")
+
+
+@api_router.get("/member-portal/payment-history/{member_id}")
+async def get_payment_history(
+    member_id: str,
+    limit: int = 12,
+    current_user: User = Depends(get_current_user)
+):
+    """Get payment history for a member"""
+    try:
+        invoices = await db.invoices.find(
+            {"member_id": member_id},
+            {"_id": 0}
+        ).sort("created_at", -1).limit(limit).to_list(None)
+        
+        # Calculate totals
+        total_paid = sum(inv.get("amount", 0) for inv in invoices if inv.get("status") == "paid")
+        total_pending = sum(inv.get("amount", 0) for inv in invoices if inv.get("status") in ["pending", "overdue"])
+        
+        return {
+            "invoices": invoices,
+            "total": len(invoices),
+            "summary": {
+                "total_paid": round(total_paid, 2),
+                "total_pending": round(total_pending, 2)
+            }
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error fetching payment history: {str(e)}")
+
+
+@api_router.get("/member-portal/milestones/{member_id}")
+async def get_member_milestones(
+    member_id: str,
+    current_user: User = Depends(get_current_user)
+):
+    """Get personal milestones and achievements for a member"""
+    try:
+        member = await db.members.find_one({"id": member_id}, {"_id": 0})
+        if not member:
+            raise HTTPException(status_code=404, detail="Member not found")
+        
+        milestones = []
+        
+        # Calculate membership duration
+        if member.get("join_date"):
+            try:
+                join_date = datetime.fromisoformat(member["join_date"].replace('Z', '+00:00'))
+                days_member = (datetime.now(timezone.utc) - join_date).days
+                years = days_member // 365
+                months = (days_member % 365) // 30
+                
+                if years > 0:
+                    milestones.append({
+                        "type": "anniversary",
+                        "title": f"{years} Year{'s' if years > 1 else ''} Membership",
+                        "description": f"Member since {join_date.strftime('%B %Y')}",
+                        "date": join_date.isoformat(),
+                        "icon": "🎉"
+                    })
+                elif months >= 6:
+                    milestones.append({
+                        "type": "anniversary",
+                        "title": f"{months} Months Membership",
+                        "description": f"Member since {join_date.strftime('%B %Y')}",
+                        "date": join_date.isoformat(),
+                        "icon": "🎊"
+                    })
+            except:
+                pass
+        
+        # Visit milestones
+        total_visits = member.get("total_visits", 0)
+        if total_visits >= 100:
+            milestones.append({
+                "type": "visits",
+                "title": "100+ Visits",
+                "description": f"{total_visits} total gym visits",
+                "icon": "💪"
+            })
+        elif total_visits >= 50:
+            milestones.append({
+                "type": "visits",
+                "title": "50+ Visits",
+                "description": f"{total_visits} total gym visits",
+                "icon": "🏋️"
+            })
+        
+        return {
+            "milestones": milestones,
+            "total": len(milestones)
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error fetching milestones: {str(e)}")
+
 # ==================== OPPORTUNITIES/PIPELINE ENDPOINTS ====================
 
 @api_router.get("/sales/opportunities")
