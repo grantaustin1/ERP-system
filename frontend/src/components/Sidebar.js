@@ -1,5 +1,5 @@
 import { useNavigate, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Users, ScanLine, FileText, UserX, DollarSign, TrendingUp, Package, Settings, LogOut, Dumbbell, Zap, BarChart3, Calendar, Upload, Shield, UserCog, ShoppingCart, Tag, CreditCard, Activity, CheckSquare, Receipt, FileBarChart, LineChart, Award, Target, Briefcase, Workflow } from 'lucide-react';
+import { LayoutDashboard, Users, ScanLine, FileText, UserX, DollarSign, TrendingUp, Package, Settings, LogOut, Dumbbell, Zap, BarChart3, Calendar, Upload, Shield, UserCog, ShoppingCart, Tag, CreditCard, Activity, CheckSquare, Receipt, FileBarChart, LineChart, Award, Target, Briefcase, Workflow, Gift } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { usePermissions } from '@/contexts/PermissionContext';
 import GlobalSearch from '@/components/GlobalSearch';
