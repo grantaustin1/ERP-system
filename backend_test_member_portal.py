@@ -165,21 +165,24 @@ class MemberPortalNotificationTestRunner:
             if response.status_code == 200:
                 data = response.json()
                 
-                # Verify response contains success message
-                if "message" not in data:
-                    self.log_result("App Settings POST Create Response", False, "Missing success message")
-                    return False
+                # The API returns the updated settings object, not a success message
+                # Verify all fields were saved correctly in the response
+                for field, expected_value in settings_data.items():
+                    if data.get(field) != expected_value:
+                        self.log_result("App Settings POST Create Response", False, 
+                                      f"Field {field} not saved correctly: expected {expected_value}, got {data.get(field)}")
+                        return False
                 
-                # Verify settings were saved by retrieving them
+                # Verify settings persist by retrieving them again
                 get_response = requests.get(f"{API_BASE}/settings/app", headers=self.admin_headers)
                 if get_response.status_code == 200:
                     saved_data = get_response.json()
                     
-                    # Verify all fields were saved correctly
+                    # Verify all fields persist correctly
                     for field, expected_value in settings_data.items():
                         if saved_data.get(field) != expected_value:
                             self.log_result("App Settings POST Create Persistence", False, 
-                                          f"Field {field} not saved correctly: expected {expected_value}, got {saved_data.get(field)}")
+                                          f"Field {field} not persistent: expected {expected_value}, got {saved_data.get(field)}")
                             return False
                     
                     self.log_result("App Settings POST Create", True, "Successfully created initial settings with all fields")
