@@ -732,8 +732,8 @@ class SalesPerformanceTestRunner:
             return False
     
     def run_all_tests(self):
-        """Run all member analytics & retention API tests"""
-        print("🚀 Starting Member Analytics & Retention API Tests...")
+        """Run all sales performance & forecasting API tests"""
+        print("🚀 Starting Sales Performance & Forecasting API Tests...")
         print(f"📍 Testing against: {BASE_URL}")
         
         # Authenticate first
@@ -743,11 +743,11 @@ class SalesPerformanceTestRunner:
         
         # Run all tests
         tests = [
-            self.test_retention_dashboard_api,
-            self.test_member_ltv_api,
-            self.test_at_risk_members_api,
-            self.test_member_demographics_api,
-            self.test_acquisition_cost_api,
+            self.test_sales_funnel_api,
+            self.test_pipeline_forecast_api,
+            self.test_lead_source_roi_api,
+            self.test_win_loss_analysis_api,
+            self.test_salesperson_performance_api,
             self.test_response_times,
             self.test_error_handling
         ]
@@ -782,11 +782,11 @@ class SalesPerformanceTestRunner:
 
 def main():
     """Main test execution"""
-    runner = MemberAnalyticsTestRunner()
+    runner = SalesPerformanceTestRunner()
     success = runner.run_all_tests()
     
     if success:
-        print("\n🎉 All Member Analytics & Retention API tests passed!")
+        print("\n🎉 All Sales Performance & Forecasting API tests passed!")
         exit(0)
     else:
         print("\n💥 Some tests failed!")
