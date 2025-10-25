@@ -70,6 +70,16 @@ export default function Settings() {
     enable_auto_generation: false
   });
 
+  const [appSettings, setAppSettings] = useState({
+    member_portal_enabled: true,
+    member_portal_require_active_status: true,
+    enable_email_notifications: true,
+    enable_sms_notifications: true,
+    enable_whatsapp_notifications: false,
+    enable_inapp_notifications: true
+  });
+
+
   useEffect(() => {
     fetchData();
   }, []);
