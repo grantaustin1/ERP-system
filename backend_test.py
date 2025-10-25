@@ -90,9 +90,9 @@ class ComplimentaryMembershipTestRunner:
             self.log_result("Get Consultant ID", False, f"Error getting consultant: {str(e)}")
             return False
     
-    # ===================== LEAD ASSIGNMENT API TESTS =====================
+    # ===================== COMPLIMENTARY MEMBERSHIP API TESTS =====================
     
-    def test_get_sales_consultants(self):
+    def test_get_complimentary_types(self):
         """Test that default lead sources, statuses, and loss reasons are seeded correctly"""
         print("\n=== Testing Startup Seeding Verification ===")
         
