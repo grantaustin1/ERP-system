@@ -8702,11 +8702,11 @@ async def create_workflow(
     
     workflow = {
         "id": str(uuid.uuid4()),
-        "name": name,
-        "trigger_object": trigger_object,
-        "trigger_event": trigger_event,
-        "conditions": conditions,
-        "actions": actions,
+        "name": workflow_data.name,
+        "trigger_object": workflow_data.trigger_object,
+        "trigger_event": workflow_data.trigger_event,
+        "conditions": workflow_data.conditions,
+        "actions": workflow_data.actions,
         "is_active": True,
         "created_at": datetime.now(timezone.utc).isoformat()
     }
