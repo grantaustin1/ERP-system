@@ -268,14 +268,14 @@ class SalesModulePhase2TestRunner:
                                   f"Expected 'round_robin', got '{data['strategy']}'")
                     return False
                 
-                # Verify assigned user has email
-                if not data["assigned_to_email"]:
-                    self.log_result("Auto-Assign User Email", False, 
-                                  "Assigned user email is missing")
+                # Verify assigned user is provided
+                if not data["assigned_to"]:
+                    self.log_result("Auto-Assign User", False, 
+                                  "Assigned user is missing")
                     return False
                 
                 self.log_result("Auto-Assign API (Round Robin)", True, 
-                              f"Lead assigned to {data['assigned_to_email']} using {data['strategy']}")
+                              f"Lead assigned to {data['assigned_to']} using {data['strategy']}")
                 
                 # Test least_loaded strategy
                 response = requests.post(f"{API_BASE}/sales/automation/auto-assign-lead/{self.test_lead_id}?assignment_strategy=least_loaded", headers=self.headers)
