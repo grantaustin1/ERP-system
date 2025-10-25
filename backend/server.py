@@ -8694,11 +8694,7 @@ async def get_workflows(current_user: User = Depends(get_current_user)):
 
 @api_router.post("/sales/workflows")
 async def create_workflow(
-    name: str,
-    trigger_object: str,
-    trigger_event: str,
-    conditions: dict,
-    actions: List[dict],
+    workflow_data: WorkflowCreate,
     current_user: User = Depends(get_current_user)
 ):
     """Create a new workflow automation rule"""
