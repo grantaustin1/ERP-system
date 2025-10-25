@@ -14,42 +14,82 @@ export default function Sidebar() {
     navigate('/login');
   };
 
-  // Map menu items to their required permission module
-  const menuItems = [
-    { path: '/', icon: LayoutDashboard, label: 'Dashboard', testId: 'nav-dashboard', module: null }, // Always visible
-    { path: '/members', icon: Users, label: 'Members', testId: 'nav-members', module: 'members' },
-    { path: '/access', icon: ScanLine, label: 'Access Control', testId: 'nav-access', module: 'access' },
-    { path: '/classes', icon: Calendar, label: 'Classes', testId: 'nav-classes', module: 'classes' },
-    { path: '/pos', icon: ShoppingCart, label: 'Point of Sale', testId: 'nav-pos', module: 'billing' },
-    { path: '/billing', icon: FileText, label: 'Billing', testId: 'nav-billing', module: 'billing' },
-    { path: '/invoices', icon: Receipt, label: 'Invoices', testId: 'nav-invoices', module: 'billing' },
-    { path: '/debit-orders', icon: CreditCard, label: 'Debit Orders', testId: 'nav-debit-orders', module: 'billing' },
-    { path: '/reconciliation', icon: Activity, label: 'Reconciliation', testId: 'nav-reconciliation', module: 'billing' },
-    { path: '/analytics', icon: BarChart3, label: 'Analytics', testId: 'nav-analytics', module: 'reports' },
-    { path: '/advanced-analytics', icon: LineChart, label: 'Advanced Analytics', testId: 'nav-advanced-analytics', module: 'reports' },
-    { path: '/reports', icon: FileBarChart, label: 'Reports', testId: 'nav-reports', module: 'reports' },
-    { path: '/reports/financial', icon: DollarSign, label: 'Financial Reports', testId: 'nav-financial-reports', module: 'reports' },
-    { path: '/reports/members', icon: Users, label: 'Member Analytics', testId: 'nav-member-analytics', module: 'reports' },
-    { path: '/reports/sales', icon: Target, label: 'Sales Performance', testId: 'nav-sales-performance', module: 'reports' },
-    { path: '/member-portal', icon: Bell, label: 'Member Portal', testId: 'nav-member-portal', module: null },
-    { path: '/admin/broadcast', icon: Send, label: 'Broadcast Messages', testId: 'nav-broadcast', module: null },
-    { path: '/engagement', icon: Target, label: 'Engagement', testId: 'nav-engagement', module: null },
-    { path: '/rewards', icon: Award, label: 'Points & Rewards', testId: 'nav-rewards', module: null },
-    { path: '/sales', icon: Briefcase, label: 'Sales CRM', testId: 'nav-sales', module: null },
-    { path: '/sales/complimentary', icon: Gift, label: 'Complimentary Passes', testId: 'nav-complimentary', module: null },
-    { path: '/sales/workflows', icon: Workflow, label: 'Sales Workflows', testId: 'nav-sales-workflows', module: null },
-    { path: '/sales/setup', icon: Settings, label: 'Sales Setup', testId: 'nav-sales-setup', module: null },
-    { path: '/levies', icon: DollarSign, label: 'Levies', testId: 'nav-levies', module: 'billing' },
-    { path: '/cancellations', icon: UserX, label: 'Cancellations', testId: 'nav-cancellations', module: 'members' },
-    { path: '/packages', icon: Package, label: 'Package Setup', testId: 'nav-packages', module: 'settings' },
-    { path: '/products', icon: Tag, label: 'Products', testId: 'nav-products', module: 'billing' },
-    { path: '/marketing', icon: TrendingUp, label: 'Marketing', testId: 'nav-marketing', module: 'marketing' },
-    { path: '/automations', icon: Zap, label: 'Automations', testId: 'nav-automations', module: 'settings' },
-    { path: '/tasks', icon: CheckSquare, label: 'Tasks', testId: 'nav-tasks', module: 'members' },
-    { path: '/import', icon: Upload, label: 'Import Data', testId: 'nav-import', module: 'import' },
-    { path: '/permission-matrix', icon: Shield, label: 'Permissions', testId: 'nav-permissions', module: 'settings' },
-    { path: '/user-roles', icon: UserCog, label: 'User Roles', testId: 'nav-user-roles', module: 'staff' },
-    { path: '/settings', icon: Settings, label: 'Settings', testId: 'nav-settings', module: 'settings' },
+  // Organized menu items by category with their required permission modules
+  const menuCategories = [
+    {
+      name: 'Core',
+      items: [
+        { path: '/', icon: LayoutDashboard, label: 'Dashboard', testId: 'nav-dashboard', module: null },
+        { path: '/members', icon: Users, label: 'Members', testId: 'nav-members', module: 'members' },
+        { path: '/access', icon: ScanLine, label: 'Access Control', testId: 'nav-access', module: 'access' },
+        { path: '/classes', icon: Calendar, label: 'Classes', testId: 'nav-classes', module: 'classes' },
+      ]
+    },
+    {
+      name: 'Sales & CRM',
+      items: [
+        { path: '/sales', icon: Briefcase, label: 'Sales CRM', testId: 'nav-sales', module: null },
+        { path: '/sales/complimentary', icon: Gift, label: 'Complimentary Passes', testId: 'nav-complimentary', module: null },
+        { path: '/sales/workflows', icon: Workflow, label: 'Sales Workflows', testId: 'nav-sales-workflows', module: null },
+        { path: '/sales/setup', icon: Settings, label: 'Sales Setup', testId: 'nav-sales-setup', module: null },
+      ]
+    },
+    {
+      name: 'Financial',
+      items: [
+        { path: '/pos', icon: ShoppingCart, label: 'Point of Sale', testId: 'nav-pos', module: 'billing' },
+        { path: '/billing', icon: FileText, label: 'Billing', testId: 'nav-billing', module: 'billing' },
+        { path: '/invoices', icon: Receipt, label: 'Invoices', testId: 'nav-invoices', module: 'billing' },
+        { path: '/debit-orders', icon: CreditCard, label: 'Debit Orders', testId: 'nav-debit-orders', module: 'billing' },
+        { path: '/levies', icon: DollarSign, label: 'Levies', testId: 'nav-levies', module: 'billing' },
+        { path: '/reconciliation', icon: Activity, label: 'Reconciliation', testId: 'nav-reconciliation', module: 'billing' },
+      ]
+    },
+    {
+      name: 'Analytics & Reports',
+      items: [
+        { path: '/analytics', icon: BarChart3, label: 'Analytics', testId: 'nav-analytics', module: 'reports' },
+        { path: '/advanced-analytics', icon: LineChart, label: 'Advanced Analytics', testId: 'nav-advanced-analytics', module: 'reports' },
+        { path: '/reports', icon: FileBarChart, label: 'Reports', testId: 'nav-reports', module: 'reports' },
+        { path: '/reports/financial', icon: DollarSign, label: 'Financial Reports', testId: 'nav-financial-reports', module: 'reports' },
+        { path: '/reports/members', icon: Users, label: 'Member Analytics', testId: 'nav-member-analytics', module: 'reports' },
+        { path: '/reports/sales', icon: Target, label: 'Sales Performance', testId: 'nav-sales-performance', module: 'reports' },
+      ]
+    },
+    {
+      name: 'Retention & Engagement',
+      items: [
+        { path: '/engagement', icon: Target, label: 'Engagement', testId: 'nav-engagement', module: null },
+        { path: '/rewards', icon: Award, label: 'Points & Rewards', testId: 'nav-rewards', module: null },
+        { path: '/member-portal', icon: Bell, label: 'Member Portal', testId: 'nav-member-portal', module: null, requireActiveMember: true },
+        { path: '/admin/broadcast', icon: Send, label: 'Broadcast', testId: 'nav-broadcast', module: null, requireAdmin: true },
+      ]
+    },
+    {
+      name: 'Operations',
+      items: [
+        { path: '/tasks', icon: CheckSquare, label: 'Tasks', testId: 'nav-tasks', module: 'members' },
+        { path: '/packages', icon: Package, label: 'Packages', testId: 'nav-packages', module: 'settings' },
+        { path: '/products', icon: Tag, label: 'Products', testId: 'nav-products', module: 'billing' },
+        { path: '/cancellations', icon: UserX, label: 'Cancellations', testId: 'nav-cancellations', module: 'members' },
+      ]
+    },
+    {
+      name: 'Marketing',
+      items: [
+        { path: '/marketing', icon: TrendingUp, label: 'Marketing', testId: 'nav-marketing', module: 'marketing' },
+        { path: '/automations', icon: Zap, label: 'Automations', testId: 'nav-automations', module: 'settings' },
+      ]
+    },
+    {
+      name: 'System',
+      items: [
+        { path: '/import', icon: Upload, label: 'Import Data', testId: 'nav-import', module: 'import' },
+        { path: '/permission-matrix', icon: Shield, label: 'Permissions', testId: 'nav-permissions', module: 'settings' },
+        { path: '/user-roles', icon: UserCog, label: 'User Roles', testId: 'nav-user-roles', module: 'staff' },
+        { path: '/settings', icon: Settings, label: 'Settings', testId: 'nav-settings', module: 'settings' },
+      ]
+    },
   ];
 
   // Filter menu items based on permissions
