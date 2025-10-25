@@ -306,7 +306,7 @@ export default function SalesCRMSetup() {
           <Tabs value={activeTab} onValueChange={setActiveTab}>
             <TabsList className="grid w-full grid-cols-3 bg-slate-800">
               <TabsTrigger value="sources" className="data-[state=active]:bg-blue-600">
-                <Source className="w-4 h-4 mr-2" />
+                <Users className="w-4 h-4 mr-2" />
                 Lead Sources
               </TabsTrigger>
               <TabsTrigger value="statuses" className="data-[state=active]:bg-purple-600">
