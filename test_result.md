@@ -6416,15 +6416,12 @@ metadata:
 
 test_plan:
   current_focus:
-    - "Configurable Lead Sources - Startup Seeding"
-    - "Configurable Lead Sources - CRUD APIs"
-    - "Configurable Lead Statuses - CRUD APIs"
-    - "Configurable Loss Reasons - CRUD APIs"
-  stuck_tasks:
-    - "Configurable Lead Sources - Startup Seeding"
-    - "Configurable Lead Sources - CRUD APIs"
-    - "Configurable Lead Statuses - CRUD APIs"
-    - "Configurable Loss Reasons - CRUD APIs"
+    - "Sales CRM Setup - Lead Sources Tab"
+    - "Sales CRM Setup - Lead Statuses Tab"
+    - "Sales CRM Setup - Loss Reasons Tab"
+    - "Sales CRM Setup - Navigation & Page Loading"
+    - "Sales CRM Setup - Form Validation & UI/UX"
+  stuck_tasks: []
   test_all: false
   test_priority: "stuck_first"
 
