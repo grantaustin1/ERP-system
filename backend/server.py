@@ -1014,6 +1014,33 @@ class BillingSettingsUpdate(BaseModel):
     days_before_renewal_to_invoice: Optional[int] = None
 
 
+class AppSettings(BaseModel):
+    """General application settings including member portal configuration"""
+    model_config = ConfigDict(extra="ignore")
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    # Member Portal Settings
+    member_portal_enabled: bool = True  # Global toggle for member portal
+    member_portal_require_active_status: bool = True  # Only active members can access
+    # Notification Settings
+    enable_email_notifications: bool = True
+    enable_sms_notifications: bool = True
+    enable_whatsapp_notifications: bool = False
+    enable_inapp_notifications: bool = True
+    # Created/Updated timestamps
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: Optional[datetime] = None
+
+class AppSettingsUpdate(BaseModel):
+    """Update model for app settings"""
+    member_portal_enabled: Optional[bool] = None
+    member_portal_require_active_status: Optional[bool] = None
+    enable_email_notifications: Optional[bool] = None
+    enable_sms_notifications: Optional[bool] = None
+    enable_whatsapp_notifications: Optional[bool] = None
+    enable_inapp_notifications: Optional[bool] = None
+
+
+
 
 class EFTTransaction(BaseModel):
     """EFT transaction record for tracking generated files and responses"""
