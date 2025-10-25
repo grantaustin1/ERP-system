@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-Backend Test Suite - Sales Module Phase 2 Advanced APIs
-Focus on Sales Automation, Workflow Automation, and Advanced Analytics
+Backend Test Suite - Configurable Lead Source/Status/Loss Reason System
+Focus on Configuration APIs, Enhanced Lead Management, Referral Rewards, Member Search, and Comprehensive Dashboard Analytics
 """
 
 import requests
