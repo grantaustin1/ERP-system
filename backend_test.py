@@ -199,17 +199,15 @@ class SalesModulePhase2TestRunner:
                                   "Lead ID mismatch")
                     return False
                 
-                # Verify scoring calculation logic
-                contact_score = factors["contact_completeness"]
-                if contact_score < 0 or contact_score > 20:  # Max 20 points for contact info
-                    self.log_result("Lead Scoring Contact Calculation", False, 
-                                  f"Contact score {contact_score} out of expected range 0-20")
-                    return False
+                # Verify scoring calculation logic by checking individual factor scores
+                has_email = any("email" in factor and "+10" in factor for factor in factors)
+                has_phone = any("phone" in factor and "+10" in factor for factor in factors)
+                has_company = any("company" in factor and "+15" in factor for factor in factors)
+                has_source = any("Source:" in factor for factor in factors)
                 
-                source_score = factors["source_quality"]
-                if source_score < 0 or source_score > 25:  # Max 25 points for source
-                    self.log_result("Lead Scoring Source Calculation", False, 
-                                  f"Source score {source_score} out of expected range 0-25")
+                if not (has_email and has_phone and has_company and has_source):
+                    self.log_result("Lead Scoring Factor Validation", False, 
+                                  f"Missing expected scoring factors in: {factors}")
                     return False
                 
                 self.log_result("Lead Scoring API (Valid Lead)", True, 
