@@ -96,10 +96,15 @@ class SalesModulePhase2TestRunner:
             
             response = requests.post(f"{API_BASE}/sales/leads", params=lead_params, headers=self.headers)
             if response.status_code == 200:
-                lead = response.json()
-                self.test_lead_id = lead["id"]
-                self.created_leads.append(lead["id"])
-                self.log_result("Setup Test Lead", True, f"Created test lead: {self.test_lead_id}")
+                lead_response = response.json()
+                if "lead" in lead_response:
+                    lead = lead_response["lead"]
+                    self.test_lead_id = lead["id"]
+                    self.created_leads.append(lead["id"])
+                    self.log_result("Setup Test Lead", True, f"Created test lead: {self.test_lead_id}")
+                else:
+                    self.log_result("Setup Test Lead", False, f"Unexpected response structure: {lead_response}")
+                    return False
             else:
                 self.log_result("Setup Test Lead", False, f"Failed to create test lead: {response.status_code}",
                               {"response": response.text})
