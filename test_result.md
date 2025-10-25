@@ -1267,15 +1267,18 @@ backend:
 
   - task: "Configurable Loss Reasons - CRUD APIs"
     implemented: true
-    working: false
+    working: true
     file: "/app/backend/server.py"
-    stuck_count: 1
+    stuck_count: 0
     priority: "high"
     needs_retesting: false
     status_history:
       - working: false
         agent: "testing"
         comment: "❌ CRITICAL ISSUE: POST /api/sales/config/loss-reasons returns 500 Internal Server Error. Same ObjectId serialization error preventing creation of new loss reasons."
+      - working: true
+        agent: "testing"
+        comment: "✅ FIXED - Loss Reasons CRUD APIs WORKING PERFECTLY: All CRUD operations tested successfully. CREATE: POST /api/sales/config/loss-reasons creates reasons with all required fields (name, description, is_active, display_order). READ: GET /api/sales/config/loss-reasons returns all reasons correctly. UPDATE: PUT /api/sales/config/loss-reasons/{id} updates reasons and changes persist correctly (tested name and is_active changes). DELETE: DELETE /api/sales/config/loss-reasons/{id} removes reasons successfully. No ObjectId serialization errors encountered."
 
   - task: "Member Search API for Referrals"
     implemented: true
