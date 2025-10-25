@@ -9853,7 +9853,16 @@ async def get_retention_dashboard(
             month_end_iso = month_end.isoformat()
             
             # Members who were active at start of month
-            active_at_start = [m for m in all_members if m.get("join_date") and m.get("join_date") < month_start_iso and m.get("status") == "active"]
+            active_at_start = []
+            for m in all_members:
+                join_date_str = m.get("join_date")
+                if join_date_str and m.get("status") == "active":
+                    try:
+                        join_date = datetime.fromisoformat(join_date_str.replace('Z', '+00:00'))
+                        if join_date < month_start:
+                            active_at_start.append(m)
+                    except:
+                        continue
             
             # Members still active at end of month
             still_active = [m for m in active_at_start if m.get("status") == "active"]
