@@ -8002,6 +8002,8 @@ async def create_loss_reason(
         "updated_at": datetime.now(timezone.utc).isoformat()
     }
     await db.loss_reasons.insert_one(reason)
+    # Remove MongoDB's _id before returning
+    reason.pop("_id", None)
     return {"success": True, "reason": reason}
 
 @api_router.put("/sales/config/loss-reasons/{reason_id}")
