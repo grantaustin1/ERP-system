@@ -506,23 +506,23 @@ class SalesPerformanceTestRunner:
             self.log_result("Win-Loss Analysis API", False, f"Error: {str(e)}")
             return False
     
-    def test_acquisition_cost_api(self):
-        """Test GET /api/reports/acquisition-cost endpoint"""
-        print("\n=== Testing Acquisition Cost API ===")
+    def test_salesperson_performance_api(self):
+        """Test GET /api/reports/salesperson-performance endpoint"""
+        print("\n=== Testing Salesperson Performance API ===")
         
         try:
-            # Test 1: Default parameters (last 90 days)
-            response = requests.get(f"{API_BASE}/reports/acquisition-cost", headers=self.admin_headers)
+            # Test 1: Default parameters (last 30 days, all salespeople)
+            response = requests.get(f"{API_BASE}/reports/salesperson-performance", headers=self.admin_headers)
             
             if response.status_code == 200:
                 data = response.json()
                 
                 # Verify response structure
-                required_fields = ["period", "summary", "by_source", "best_performing_source", "worst_performing_source"]
+                required_fields = ["period", "team_summary", "salesperson_performance", "top_performer"]
                 
                 for field in required_fields:
                     if field not in data:
-                        self.log_result("Acquisition Cost Structure", False, f"Missing field: {field}")
+                        self.log_result("Salesperson Performance Structure", False, f"Missing field: {field}")
                         return False
                 
                 # Verify period structure
@@ -530,74 +530,58 @@ class SalesPerformanceTestRunner:
                 period_fields = ["start_date", "end_date"]
                 for field in period_fields:
                     if field not in period:
-                        self.log_result("Acquisition Cost Period", False, f"Missing period field: {field}")
+                        self.log_result("Salesperson Performance Period", False, f"Missing period field: {field}")
                         return False
                 
-                # Verify summary structure
-                summary = data["summary"]
-                summary_fields = ["total_leads", "total_converted", "overall_conversion_rate", "total_estimated_cost", "average_cost_per_lead", "average_cost_per_acquisition"]
-                for field in summary_fields:
-                    if field not in summary:
-                        self.log_result("Acquisition Cost Summary", False, f"Missing summary field: {field}")
+                # Verify team_summary structure
+                team_summary = data["team_summary"]
+                team_fields = ["total_leads", "total_opportunities", "total_won", "total_revenue", "total_pipeline_value"]
+                for field in team_fields:
+                    if field not in team_summary:
+                        self.log_result("Salesperson Performance Team Summary", False, f"Missing team summary field: {field}")
                         return False
                 
-                # Verify conversion rate calculation
-                total_leads = summary["total_leads"]
-                total_converted = summary["total_converted"]
-                conversion_rate = summary["overall_conversion_rate"]
-                expected_rate = round((total_converted / total_leads) * 100, 2) if total_leads > 0 else 0
-                if abs(conversion_rate - expected_rate) > 0.01:
-                    self.log_result("Acquisition Cost Conversion Rate", False, f"Conversion rate calculation incorrect: {conversion_rate} vs expected {expected_rate}")
+                # Verify salesperson_performance structure
+                salesperson_perf = data["salesperson_performance"]
+                if not isinstance(salesperson_perf, list):
+                    self.log_result("Salesperson Performance Array", False, "salesperson_performance should be array")
                     return False
                 
-                # Verify by_source structure
-                by_source = data["by_source"]
-                if not isinstance(by_source, list):
-                    self.log_result("Acquisition Cost By Source", False, "by_source should be array")
-                    return False
-                
-                # Verify source structure if any exist
-                if by_source:
-                    source = by_source[0]
-                    source_fields = ["source", "total_leads", "converted_leads", "conversion_rate", "estimated_cost", "cost_per_lead", "cost_per_acquisition", "roi", "revenue_generated"]
-                    for field in source_fields:
-                        if field not in source:
-                            self.log_result("Acquisition Cost Source Fields", False, f"Missing source field: {field}")
+                # Verify salesperson structure if any exist
+                if salesperson_perf:
+                    salesperson = salesperson_perf[0]
+                    salesperson_fields = ["salesperson_id", "salesperson_name", "email", "role", "total_leads", "qualified_leads", "converted_leads", "lead_conversion_rate", "total_opportunities", "won_opportunities", "lost_opportunities", "opp_win_rate", "open_opportunities", "pipeline_value", "won_revenue", "avg_deal_size"]
+                    for field in salesperson_fields:
+                        if field not in salesperson:
+                            self.log_result("Salesperson Performance Fields", False, f"Missing salesperson field: {field}")
                             return False
                     
-                    # Verify sorting (highest conversion_rate first)
-                    if len(by_source) > 1:
-                        for i in range(1, len(by_source)):
-                            if by_source[i]["conversion_rate"] > by_source[i-1]["conversion_rate"]:
-                                self.log_result("Acquisition Cost Sorting", False, "Sources not sorted by conversion_rate")
+                    # Verify conversion rates are calculated correctly
+                    total_leads = salesperson["total_leads"]
+                    converted_leads = salesperson["converted_leads"]
+                    lead_conversion_rate = salesperson["lead_conversion_rate"]
+                    expected_lead_rate = round((converted_leads / total_leads) * 100, 2) if total_leads > 0 else 0
+                    if abs(lead_conversion_rate - expected_lead_rate) > 0.01:
+                        self.log_result("Salesperson Performance Lead Conversion", False, f"Lead conversion rate incorrect: {lead_conversion_rate} vs expected {expected_lead_rate}")
+                        return False
+                    
+                    # Verify salesperson_performance is sorted by won_revenue (highest first)
+                    if len(salesperson_perf) > 1:
+                        for i in range(1, len(salesperson_perf)):
+                            if salesperson_perf[i]["won_revenue"] > salesperson_perf[i-1]["won_revenue"]:
+                                self.log_result("Salesperson Performance Sorting", False, "Salesperson performance not sorted by won_revenue (highest first)")
                                 return False
-                    
-                    # Verify cost calculations
-                    total_cost = source["estimated_cost"]
-                    converted = source["converted_leads"]
-                    cost_per_acq = source["cost_per_acquisition"]
-                    expected_cost_per_acq = round(total_cost / converted, 2) if converted > 0 else 0
-                    if abs(cost_per_acq - expected_cost_per_acq) > 0.01:
-                        self.log_result("Acquisition Cost Per Acquisition", False, f"Cost per acquisition calculation incorrect: {cost_per_acq} vs expected {expected_cost_per_acq}")
-                        return False
                 
-                # Verify best/worst performing sources
-                best_source = data["best_performing_source"]
-                worst_source = data["worst_performing_source"]
+                # Verify top_performer
+                top_performer = data["top_performer"]
+                if salesperson_perf and top_performer and top_performer != salesperson_perf[0]:
+                    self.log_result("Salesperson Performance Top Performer", False, "Top performer should be first in sorted list")
+                    return False
                 
-                if by_source:
-                    if best_source and best_source != by_source[0]:
-                        self.log_result("Acquisition Cost Best Source", False, "Best performing source should be first in sorted list")
-                        return False
-                    
-                    if worst_source and worst_source != by_source[-1]:
-                        self.log_result("Acquisition Cost Worst Source", False, "Worst performing source should be last in sorted list")
-                        return False
-                
-                self.log_result("Acquisition Cost Default", True, f"Total leads: {total_leads}, Conversion rate: {conversion_rate}%")
+                self.log_result("Salesperson Performance Default", True, f"Team revenue: R{team_summary['total_revenue']:.2f}, {len(salesperson_perf)} salespeople")
                 
             else:
-                self.log_result("Acquisition Cost Default", False, f"Failed: {response.status_code}")
+                self.log_result("Salesperson Performance Default", False, f"Failed: {response.status_code}")
                 return False
             
             # Test 2: Custom date range
@@ -605,7 +589,7 @@ class SalesPerformanceTestRunner:
             start_date = "2024-01-01T00:00:00Z"
             
             response = requests.get(
-                f"{API_BASE}/reports/acquisition-cost",
+                f"{API_BASE}/reports/salesperson-performance",
                 params={"start_date": start_date, "end_date": end_date},
                 headers=self.admin_headers
             )
@@ -614,23 +598,48 @@ class SalesPerformanceTestRunner:
                 data = response.json()
                 period = data["period"]
                 
-                # Verify date range is respected (handle timezone format differences)
+                # Verify date range is respected
                 start_check = "2024-01-01" in period["start_date"]
                 end_check = "2024-12-31" in period["end_date"]
                 if not start_check or not end_check:
-                    self.log_result("Acquisition Cost Custom Dates", False, "Date range not respected")
+                    self.log_result("Salesperson Performance Custom Dates", False, "Date range not respected")
                     return False
                 
-                self.log_result("Acquisition Cost Custom Dates", True, f"Custom range: {data['summary']['total_leads']} leads")
+                self.log_result("Salesperson Performance Custom Dates", True, f"Custom range: R{data['team_summary']['total_revenue']:.2f} revenue")
                 
             else:
-                self.log_result("Acquisition Cost Custom Dates", False, f"Failed: {response.status_code}")
+                self.log_result("Salesperson Performance Custom Dates", False, f"Failed: {response.status_code}")
                 return False
+            
+            # Test 3: Specific salesperson (if we have any)
+            if salesperson_perf:
+                salesperson_id = salesperson_perf[0]["salesperson_id"]
+                response = requests.get(
+                    f"{API_BASE}/reports/salesperson-performance",
+                    params={"salesperson_id": salesperson_id},
+                    headers=self.admin_headers
+                )
+                
+                if response.status_code == 200:
+                    data = response.json()
+                    # Should only return data for the specific salesperson
+                    if len(data["salesperson_performance"]) > 1:
+                        # Check if all returned salespeople have the same ID
+                        all_same_id = all(sp["salesperson_id"] == salesperson_id for sp in data["salesperson_performance"])
+                        if not all_same_id:
+                            self.log_result("Salesperson Performance Specific ID", False, "Should only return data for specified salesperson")
+                            return False
+                    
+                    self.log_result("Salesperson Performance Specific ID", True, f"Specific salesperson: {data['salesperson_performance'][0]['salesperson_name']}")
+                    
+                else:
+                    self.log_result("Salesperson Performance Specific ID", False, f"Failed: {response.status_code}")
+                    return False
             
             return True
             
         except Exception as e:
-            self.log_result("Acquisition Cost API", False, f"Error: {str(e)}")
+            self.log_result("Salesperson Performance API", False, f"Error: {str(e)}")
             return False
     
     def test_response_times(self):
