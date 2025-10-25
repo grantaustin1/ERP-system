@@ -67,38 +67,27 @@ class ComplimentaryMembershipTestRunner:
             self.log_result("Authentication", False, f"Authentication error: {str(e)}")
             return False
     
-    def setup_test_data(self):
-        """Setup test data - create a test lead for assignment testing"""
+    def get_consultant_id(self):
+        """Get a consultant ID for testing"""
         try:
-            # Create a test lead for assignment testing
-            timestamp = int(time.time() * 1000)
-            lead_data = {
-                "first_name": "Test",
-                "last_name": f"Lead{timestamp}",
-                "email": f"testlead{timestamp}@test.com",
-                "phone": f"+1234567{timestamp % 1000:03d}",
-                "company": "Test Company"
-            }
-            
-            response = requests.post(f"{API_BASE}/sales/leads", params=lead_data, headers=self.manager_headers)
+            response = requests.get(f"{API_BASE}/sales/consultants", headers=self.admin_headers)
             
             if response.status_code == 200:
                 data = response.json()
-                if data.get("success") and "lead" in data:
-                    created_lead = data["lead"]
-                    self.test_lead_id = created_lead["id"]
-                    self.created_leads.append(self.test_lead_id)
-                    self.log_result("Create Test Lead", True, f"Created test lead: {created_lead['first_name']} {created_lead['last_name']}")
+                consultants = data.get("consultants", [])
+                if consultants:
+                    self.test_consultant_id = consultants[0]["id"]
+                    self.log_result("Get Consultant ID", True, f"Found consultant: {consultants[0]['full_name']}")
                     return True
                 else:
-                    self.log_result("Create Test Lead", False, "Invalid response structure")
+                    self.log_result("Get Consultant ID", False, "No consultants found")
                     return False
             else:
-                self.log_result("Create Test Lead", False, f"Failed to create test lead: {response.status_code}")
+                self.log_result("Get Consultant ID", False, f"Failed to get consultants: {response.status_code}")
                 return False
                 
         except Exception as e:
-            self.log_result("Setup Test Data", False, f"Error setting up test data: {str(e)}")
+            self.log_result("Get Consultant ID", False, f"Error getting consultant: {str(e)}")
             return False
     
     # ===================== LEAD ASSIGNMENT API TESTS =====================
