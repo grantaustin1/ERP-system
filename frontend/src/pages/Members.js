@@ -719,8 +719,12 @@ export default function Members() {
                         <Input
                           id="account_holder_name"
                           value={formData.account_holder_name}
-                          onChange={(e) => setFormData({ ...formData, account_holder_name: e.target.value })}
+                          onChange={(e) => {
+                            setFormData({ ...formData, account_holder_name: e.target.value });
+                            setAccountHolderManuallyEdited(true);
+                          }}
                           className="bg-slate-700/50 border-slate-600"
+                          placeholder="Auto-filled from member name"
                         />
                       </div>
                       <div className="grid grid-cols-2 gap-3">
