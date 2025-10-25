@@ -36,6 +36,7 @@ import SalesPipeline from '@/pages/SalesPipeline';
 import SalesTasks from '@/pages/SalesTasks';
 import WorkflowAutomation from '@/pages/WorkflowAutomation';
 import SalesCRMSetup from '@/pages/SalesCRMSetup';
+import ComplimentaryMembership from '@/pages/ComplimentaryMembership';
 import { Toaster } from '@/components/ui/sonner';
 import { PermissionProvider } from '@/contexts/PermissionContext';
 
