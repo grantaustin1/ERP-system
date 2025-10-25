@@ -6557,6 +6557,83 @@ agent_communication:
         agent: "testing"
         comment: "✅ DRILL-DOWN MODAL DIALOGS FULLY FUNCTIONAL: Comprehensive testing of all modal interactions completed successfully. **SOURCE PERFORMANCE MODAL**: 'View Details' button opens 'Lead Source Performance Details' modal, displays detailed breakdown cards with conversion rate badges (bg-blue-600/50), shows metrics for Total Leads/Converted/Lost/In Progress, includes additional metrics (Loss Rate, Avg Days to Convert), modal closes correctly with Escape key. **SALESPERSON PERFORMANCE MODAL**: 'View All' button opens 'Salesperson Performance Details' modal, displays complete team rankings with conversion rate badges (bg-green-600/50), shows medal rankings (#1, #2, #3), includes detailed metrics cards for each salesperson, modal close functionality working. **MODAL FUNCTIONALITY**: All modals open with correct content and proper titles, detailed breakdowns and insights displayed accurately, modal close functionality working (Escape key and outside click), no modal overlay issues blocking interactions, responsive design of modals verified. **USER EXPERIENCE**: Smooth modal transitions, professional styling consistent with dark theme, detailed data provides valuable insights for sales analysis. All drill-down modal interactions working as designed and ready for production use."
 
+  # ===================== LEAD ASSIGNMENT APIS =====================
+
+  - task: "Get Sales Consultants API"
+    implemented: true
+    working: true
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Implemented GET /api/sales/consultants endpoint for managers to view available consultants for lead assignment. Returns list of consultants with their roles and assigned_leads_count. Includes role-based access control (managers only)."
+      - working: true
+        agent: "testing"
+        comment: "✅ Get Sales Consultants API working perfectly: Returns list of 4 consultants with required fields (id, email, role, assigned_leads_count). Role-based access control verified - managers can access, consultants get 403. Each consultant has proper assigned leads count tracking."
+
+  - task: "Assign Lead API"
+    implemented: true
+    working: true
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Implemented POST /api/sales/leads/{lead_id}/assign endpoint for assigning/reassigning leads to consultants. Tracks assignment history, creates notification tasks, supports assignment notes. Includes role-based access control (managers only)."
+      - working: true
+        agent: "testing"
+        comment: "✅ Assign Lead API working perfectly: Successfully assigns leads to consultants with proper assignment history tracking. Creates notification tasks for assigned consultants. Handles reassignment correctly. Role-based access control verified. Returns complete assignment details including assigned_to_name, assigned_by, assigned_at, and notification_task_created status. Fixed User model attribute issues (name → full_name)."
+
+  - task: "Get Unassigned Leads API"
+    implemented: true
+    working: true
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Implemented GET /api/sales/leads/unassigned endpoint for managers to view leads with no assigned consultant. Returns only leads where assigned_to is null or empty. Includes enriched data with source and status information."
+      - working: true
+        agent: "testing"
+        comment: "✅ Get Unassigned Leads API working correctly: Returns 7 unassigned leads with proper filtering (only leads with no assigned_to). Enriched data includes source_name, source_icon, status_name, status_color, status_category. Role-based access control verified. Fixed route ordering issue to prevent conflicts with parameterized routes."
+
+  - task: "Get My Leads API"
+    implemented: true
+    working: true
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Implemented GET /api/sales/leads/my-leads endpoint for consultants to view their assigned leads. Returns only leads assigned to current user with enriched data including assigned_by_name information."
+      - working: true
+        agent: "testing"
+        comment: "✅ Get My Leads API working correctly: Returns leads assigned to current user with enriched data including assigned_by_name. Proper filtering ensures consultants only see their assigned leads. Enriched data includes source and status information. Fixed route ordering issue."
+
+  - task: "Enhanced Get Leads API with filter_type"
+    implemented: true
+    working: true
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Enhanced GET /api/sales/leads endpoint with filter_type parameter supporting 'all', 'my_leads', 'unassigned' filters. Implements role-based visibility - managers see all leads based on filter, consultants only see their assigned leads regardless of filter. Includes enriched data with assigned_to_name, assigned_by_name."
+      - working: true
+        agent: "testing"
+        comment: "✅ Enhanced Get Leads API working perfectly: filter_type=all shows 9 leads for managers, filter_type=my_leads shows 0 leads (manager has no assigned leads), filter_type=unassigned shows 7 unassigned leads. Role-based filtering verified - managers see filtered results, consultants only see their leads. Enriched data includes assigned_to_name and assigned_by_name for assigned leads. Returns proper is_manager flag and filter_type in response."
+
 metadata:
   created_by: "main_agent"
   version: "3.0"
