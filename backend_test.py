@@ -93,7 +93,7 @@ class SalesModulePhase2TestRunner:
                 "status": "new"
             }
             
-            response = requests.post(f"{API_BASE}/leads", json=lead_data, headers=self.headers)
+            response = requests.post(f"{API_BASE}/sales/leads", json=lead_data, headers=self.headers)
             if response.status_code == 200:
                 lead = response.json()
                 self.test_lead_id = lead["id"]
