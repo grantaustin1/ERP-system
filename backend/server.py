@@ -8846,22 +8846,37 @@ async def create_complimentary_type(
     current_user: User = Depends(get_current_user)
 ):
     """Create a new complimentary membership type (managers only)"""
-    manager_roles = ["business_owner", "head_admin", "sales_head", "sales_manager"]
-    if current_user.role not in manager_roles:
-        raise HTTPException(status_code=403, detail="Only managers can create complimentary types")
-    
-    type_id = str(uuid.uuid4())
-    now = datetime.now(timezone.utc).isoformat()
-    
-    comp_type = {
-        "id": type_id,
-        **type_data.model_dump(),
-        "created_at": now,
-        "updated_at": now
-    }
-    
-    await db.complimentary_types.insert_one(comp_type)
-    return {"success": True, "complimentary_type": comp_type}
+    try:
+        manager_roles = ["business_owner", "head_admin", "sales_head", "sales_manager"]
+        if current_user.role not in manager_roles:
+            raise HTTPException(status_code=403, detail="Only managers can create complimentary types")
+        
+        type_id = str(uuid.uuid4())
+        now = datetime.now(timezone.utc).isoformat()
+        
+        # Convert Pydantic model to dict
+        type_dict = type_data.model_dump()
+        
+        comp_type = {
+            "id": type_id,
+            "name": type_dict["name"],
+            "description": type_dict.get("description"),
+            "time_limit_days": type_dict["time_limit_days"],
+            "visit_limit": type_dict["visit_limit"],
+            "no_access_alert_days": type_dict["no_access_alert_days"],
+            "notification_on_visits": type_dict.get("notification_on_visits", [1, 2, 3]),
+            "is_active": type_dict.get("is_active", True),
+            "color": type_dict.get("color", "#3b82f6"),
+            "icon": type_dict.get("icon", "🎁"),
+            "created_at": now,
+            "updated_at": now
+        }
+        
+        await db.complimentary_types.insert_one(comp_type)
+        return {"success": True, "complimentary_type": comp_type}
+    except Exception as e:
+        print(f"Error creating complimentary type: {e}")
+        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
 
 
 @api_router.get("/complimentary-types")
