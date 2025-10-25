@@ -3574,7 +3574,7 @@ agent_communication:
       All configurable lead system functionality is fully operational with comprehensive CRUD operations, enhanced lead management with referral tracking, automatic reward processing, sophisticated dashboard analytics, and robust data integrity. The system successfully handles complex lead workflows with proper validation, automation, and reporting capabilities.
       
       **AUTHENTICATION**: Successfully tested with admin@gym.com/admin123
-      **BACKEND URL**: https://fitmanage-system.preview.emergentagent.com/api
+      **BACKEND URL**: https://fitness-erp-app.preview.emergentagent.com/api
       **TEST COVERAGE**: 100% of requested functionality verified and working
       **PERFORMANCE**: All API endpoints responding within acceptable timeframes
       **DATA QUALITY**: All seeded data properly structured and accessible
@@ -5176,7 +5176,7 @@ agent_communication:
       9. API data integration and error handling
       
       **AUTHENTICATION**: admin@gym.com / admin123
-      **APPLICATION URL**: https://fitmanage-system.preview.emergentagent.com
+      **APPLICATION URL**: https://fitness-erp-app.preview.emergentagent.com
 
   - agent: "testing"
     message: |
@@ -5501,7 +5501,7 @@ agent_communication:
       - Dashboard Integration: ✅ WORKING
       
       **AUTHENTICATION**: admin@gym.com / admin123
-      **APPLICATION URL**: https://fitmanage-system.preview.emergentagent.com
+      **APPLICATION URL**: https://fitness-erp-app.preview.emergentagent.com
 
 frontend:
   - task: "Phase 2B - At-Risk Members Widget"
@@ -6506,6 +6506,6 @@ agent_communication:
   - agent: "testing"
     message: "COMPREHENSIVE BACKEND TESTING COMPLETED - CRITICAL ISSUES FOUND: ❌ **STARTUP SEEDING FAILURE**: All 3 configuration types (lead sources, lead statuses, loss reasons) have 0 seeded records instead of expected 8 each. Startup event may not be triggering or seeding code has bugs. ❌ **CRUD API 500 ERRORS**: All POST endpoints for configuration management return 500 Internal Server Error with ObjectId serialization issues ('ObjectId' object is not iterable). This completely blocks configuration management. ✅ **WORKING COMPONENTS**: Member Search API (13 active members found), Comprehensive Dashboard Analytics (proper structure, calculations accurate), Data Integrity Checks (existing data valid). ❌ **BLOCKED COMPONENTS**: Enhanced Lead Create/Update APIs cannot be tested due to missing seeded IDs. Referral Rewards partially working but blocked by lead creation issues. **ROOT CAUSE**: ObjectId serialization error in response handling prevents all configuration CRUD operations. **IMMEDIATE ACTION REQUIRED**: Fix ObjectId serialization in lead sources/statuses/loss reasons POST endpoints and investigate startup seeding failure."
   - agent: "testing"
-    message: "COMPREHENSIVE FRONTEND TESTING REQUIRED for Sales CRM Setup page (/sales/setup). Need to test: 1) Navigation & page loading, 2) All 3 tabs (Lead Sources, Statuses, Loss Reasons), 3) Full CRUD operations for each tab, 4) Form validation and UI/UX, 5) Seeded data verification, 6) Dialog management, 7) Toast notifications, 8) Responsive design. Backend Phase 1 complete (100% pass rate). Focus on high-priority functionality first. Authentication: admin@gym.com / admin123. Application URL: https://fitmanage-system.preview.emergentagent.com"
+    message: "COMPREHENSIVE FRONTEND TESTING REQUIRED for Sales CRM Setup page (/sales/setup). Need to test: 1) Navigation & page loading, 2) All 3 tabs (Lead Sources, Statuses, Loss Reasons), 3) Full CRUD operations for each tab, 4) Form validation and UI/UX, 5) Seeded data verification, 6) Dialog management, 7) Toast notifications, 8) Responsive design. Backend Phase 1 complete (100% pass rate). Focus on high-priority functionality first. Authentication: admin@gym.com / admin123. Application URL: https://fitness-erp-app.preview.emergentagent.com"
   - agent: "testing"
     message: "✅ SALES CRM SETUP FRONTEND TESTING COMPLETE - 100% SUCCESS RATE: All 5 high-priority tasks PASSED comprehensive testing. 🎯 **NAVIGATION**: Direct URL access, page loading, sidebar menu integration working perfectly. 🎯 **TAB FUNCTIONALITY**: All 3 tabs (Lead Sources/Statuses/Loss Reasons) with proper color coding and smooth switching. 🎯 **SEEDED DATA**: All 24 items verified (8 sources, 8 statuses, 8 reasons) with proper icons, colors, and descriptions. 🎯 **CRUD OPERATIONS**: CREATE tested successfully across all tabs with proper form validation and toast notifications. 🎯 **UI/UX EXCELLENCE**: Responsive design verified across desktop/tablet/mobile, color picker functional, dropdown menus working, toggle switches responsive, professional styling consistent. 🎯 **DIALOG MANAGEMENT**: All forms open/close correctly with proper field validation. Minor: Console hydration errors from Dashboard component (unrelated to Sales CRM functionality). **RECOMMENDATION**: Sales CRM Setup ready for production use - all core functionality working flawlessly."
