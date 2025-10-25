@@ -323,6 +323,238 @@ export default function SalesDashboard() {
                 <AdvancedSalesAnalytics />
               </div>
 
+              {/* Comprehensive Analytics - Lead Source Performance */}
+              {comprehensiveAnalytics && (
+                <>
+                  <div className="mt-8">
+                    <Card className="bg-slate-800 border-slate-700">
+                      <CardHeader>
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <CardTitle className="text-white flex items-center gap-2">
+                              <Target className="w-5 h-5 text-blue-400" />
+                              Lead Source Performance
+                            </CardTitle>
+                            <CardDescription className="text-slate-400">
+                              Conversion rates and performance by lead source
+                            </CardDescription>
+                          </div>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="border-slate-600"
+                            onClick={() => openDrillDown('source_performance', comprehensiveAnalytics.source_performance)}
+                          >
+                            <Eye className="w-4 h-4 mr-2" />
+                            View Details
+                          </Button>
+                        </div>
+                      </CardHeader>
+                      <CardContent>
+                        <ResponsiveContainer width="100%" height={300}>
+                          <BarChart
+                            data={comprehensiveAnalytics.source_performance.slice(0, 8)}
+                          >
+                            <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+                            <XAxis 
+                              dataKey="source" 
+                              stroke="#94a3b8"
+                              angle={-20}
+                              textAnchor="end"
+                              height={80}
+                            />
+                            <YAxis stroke="#94a3b8" />
+                            <Tooltip
+                              contentStyle={{
+                                backgroundColor: '#1e293b',
+                                border: '1px solid #475569',
+                                borderRadius: '8px',
+                                color: '#f1f5f9'
+                              }}
+                            />
+                            <Legend />
+                            <Bar dataKey="total_leads" fill="#3b82f6" name="Total Leads" />
+                            <Bar dataKey="converted_leads" fill="#10b981" name="Converted" />
+                            <Bar dataKey="lost_leads" fill="#ef4444" name="Lost" />
+                          </BarChart>
+                        </ResponsiveContainer>
+                      </CardContent>
+                    </Card>
+                  </div>
+
+                  {/* Daily Trends */}
+                  <div className="mt-8">
+                    <Card className="bg-slate-800 border-slate-700">
+                      <CardHeader>
+                        <CardTitle className="text-white flex items-center gap-2">
+                          <TrendingUp className="w-5 h-5 text-green-400" />
+                          Daily Activity Trends
+                        </CardTitle>
+                        <CardDescription className="text-slate-400">
+                          New leads, conversions, and losses over time
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent>
+                        <ResponsiveContainer width="100%" height={300}>
+                          <AreaChart data={comprehensiveAnalytics.daily_trends}>
+                            <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+                            <XAxis 
+                              dataKey="date" 
+                              stroke="#94a3b8"
+                              tickFormatter={(date) => new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                            />
+                            <YAxis stroke="#94a3b8" />
+                            <Tooltip
+                              contentStyle={{
+                                backgroundColor: '#1e293b',
+                                border: '1px solid #475569',
+                                borderRadius: '8px',
+                                color: '#f1f5f9'
+                              }}
+                              labelFormatter={(date) => new Date(date).toLocaleDateString()}
+                            />
+                            <Legend />
+                            <Area type="monotone" dataKey="new_leads" stackId="1" stroke="#3b82f6" fill="#3b82f6" fillOpacity={0.6} name="New Leads" />
+                            <Area type="monotone" dataKey="converted" stackId="2" stroke="#10b981" fill="#10b981" fillOpacity={0.6} name="Converted" />
+                            <Area type="monotone" dataKey="lost" stackId="3" stroke="#ef4444" fill="#ef4444" fillOpacity={0.6} name="Lost" />
+                          </AreaChart>
+                        </ResponsiveContainer>
+                      </CardContent>
+                    </Card>
+                  </div>
+
+                  {/* Loss Analysis */}
+                  {comprehensiveAnalytics.loss_analysis.length > 0 && (
+                    <div className="mt-8">
+                      <Card className="bg-slate-800 border-slate-700">
+                        <CardHeader>
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <CardTitle className="text-white flex items-center gap-2">
+                                <AlertCircle className="w-5 h-5 text-red-400" />
+                                Loss Reason Analysis
+                              </CardTitle>
+                              <CardDescription className="text-slate-400">
+                                Top reasons why leads are lost
+                              </CardDescription>
+                            </div>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="border-slate-600"
+                              onClick={() => openDrillDown('loss_analysis', comprehensiveAnalytics.loss_analysis)}
+                            >
+                              <Eye className="w-4 h-4 mr-2" />
+                              View Details
+                            </Button>
+                          </div>
+                        </CardHeader>
+                        <CardContent>
+                          <ResponsiveContainer width="100%" height={300}>
+                            <PieChart>
+                              <Pie
+                                data={comprehensiveAnalytics.loss_analysis.slice(0, 6)}
+                                cx="50%"
+                                cy="50%"
+                                labelLine={false}
+                                label={({ reason, percentage }) => `${reason}: ${percentage}%`}
+                                outerRadius={100}
+                                fill="#8884d8"
+                                dataKey="count"
+                              >
+                                {comprehensiveAnalytics.loss_analysis.slice(0, 6).map((entry, index) => (
+                                  <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                ))}
+                              </Pie>
+                              <Tooltip
+                                contentStyle={{
+                                  backgroundColor: '#1e293b',
+                                  border: '1px solid #475569',
+                                  borderRadius: '8px',
+                                  color: '#f1f5f9'
+                                }}
+                              />
+                            </PieChart>
+                          </ResponsiveContainer>
+                        </CardContent>
+                      </Card>
+                    </div>
+                  )}
+
+                  {/* Salesperson Performance */}
+                  {comprehensiveAnalytics.salesperson_performance.length > 0 && (
+                    <div className="mt-8">
+                      <Card className="bg-slate-800 border-slate-700">
+                        <CardHeader>
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <CardTitle className="text-white flex items-center gap-2">
+                                <Award className="w-5 h-5 text-yellow-400" />
+                                Salesperson Leaderboard
+                              </CardTitle>
+                              <CardDescription className="text-slate-400">
+                                Performance ranked by conversion rate
+                              </CardDescription>
+                            </div>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="border-slate-600"
+                              onClick={() => openDrillDown('salesperson_performance', comprehensiveAnalytics.salesperson_performance)}
+                            >
+                              <Eye className="w-4 h-4 mr-2" />
+                              View All
+                            </Button>
+                          </div>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="space-y-3">
+                            {comprehensiveAnalytics.salesperson_performance.slice(0, 5).map((person, index) => (
+                              <div key={index} className="p-4 bg-slate-700/50 rounded-lg border border-slate-600">
+                                <div className="flex items-center justify-between mb-2">
+                                  <div className="flex items-center gap-3">
+                                    <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold ${
+                                      index === 0 ? 'bg-yellow-500 text-yellow-900' :
+                                      index === 1 ? 'bg-slate-400 text-slate-900' :
+                                      index === 2 ? 'bg-orange-600 text-orange-100' :
+                                      'bg-slate-600 text-slate-200'
+                                    }`}>
+                                      #{index + 1}
+                                    </div>
+                                    <div>
+                                      <p className="text-white font-semibold">{person.salesperson}</p>
+                                      <p className="text-slate-400 text-sm">{person.total_leads} leads</p>
+                                    </div>
+                                  </div>
+                                  <div className="text-right">
+                                    <p className="text-2xl font-bold text-white">{person.conversion_rate}%</p>
+                                    <p className="text-slate-400 text-xs">conversion rate</p>
+                                  </div>
+                                </div>
+                                <div className="grid grid-cols-3 gap-2 mt-3 pt-3 border-t border-slate-600">
+                                  <div>
+                                    <p className="text-xs text-slate-400">Converted</p>
+                                    <p className="text-sm font-semibold text-green-400">{person.converted}</p>
+                                  </div>
+                                  <div>
+                                    <p className="text-xs text-slate-400">In Progress</p>
+                                    <p className="text-sm font-semibold text-blue-400">{person.in_progress}</p>
+                                  </div>
+                                  <div>
+                                    <p className="text-xs text-slate-400">Lost</p>
+                                    <p className="text-sm font-semibold text-red-400">{person.lost}</p>
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </div>
+                  )}
+                </>
+              )}
+
               {/* Quick Actions */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <Card 
