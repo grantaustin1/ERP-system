@@ -8296,9 +8296,9 @@ async def get_leads(
     for lead in leads:
         # Get assigned to info
         if lead.get("assigned_to"):
-            assignee = await db.users.find_one({"id": lead["assigned_to"]}, {"_id": 0, "email": 1, "name": 1, "role": 1})
+            assignee = await db.users.find_one({"id": lead["assigned_to"]}, {"_id": 0, "email": 1, "full_name": 1, "role": 1})
             if assignee:
-                lead["assigned_to_name"] = assignee.get("name") or assignee.get("email")
+                lead["assigned_to_name"] = assignee.get("full_name") or assignee.get("email")
                 lead["assigned_to_role"] = assignee.get("role")
         
         # Get assigned by info
