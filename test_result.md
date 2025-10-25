@@ -5963,9 +5963,8 @@ metadata:
 
 test_plan:
   current_focus:
-    - "Phase 2E - Sidebar Navigation Links"
-  stuck_tasks:
-    - "Phase 2E - Sidebar Navigation Links"
+    - "Attendance Heatmap API"
+  stuck_tasks: []
   test_all: false
   test_priority: "high_first"
 
