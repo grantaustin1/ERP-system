@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-Backend Test Suite - Configurable Lead Source/Status/Loss Reason System
-Focus on Configuration APIs, Enhanced Lead Management, Referral Rewards, Member Search, and Comprehensive Dashboard Analytics
+Backend Test Suite - Attendance Heatmap API Testing
+Focus on testing the new attendance heatmap endpoint with various parameters and validation
 """
 
 import requests
