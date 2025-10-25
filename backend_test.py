@@ -838,11 +838,12 @@ class SalesModulePhase2TestRunner:
                                       f"Missing stage fields for {stage}: {missing_stage_fields}")
                         return False
                 
-                # Verify confidence level is between 0-100
+                # Verify confidence level is a valid string
                 confidence = data["confidence_level"]
-                if not (0 <= confidence <= 100):
-                    self.log_result("Sales Forecasting Confidence Range", False, 
-                                  f"Confidence level {confidence} not in range 0-100")
+                valid_confidence_levels = ["low", "medium", "high"]
+                if confidence not in valid_confidence_levels:
+                    self.log_result("Sales Forecasting Confidence Level", False, 
+                                  f"Confidence level '{confidence}' not in {valid_confidence_levels}")
                     return False
                 
                 self.log_result("Sales Forecasting API (Default Period)", True, 
