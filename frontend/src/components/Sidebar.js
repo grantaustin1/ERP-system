@@ -11,13 +11,15 @@ export default function Sidebar() {
   const { canView, loading } = usePermissions();
   const [userRole, setUserRole] = useState(null);
   const [memberStatus, setMemberStatus] = useState(null);
+  const [appSettings, setAppSettings] = useState(null);
 
-  // Get user role and member status from token/API
+  // Get user role, member status, and app settings
   useEffect(() => {
     const fetchUserInfo = async () => {
       try {
         const token = localStorage.getItem('token');
         if (token) {
+          // Fetch user info
           const response = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/auth/me`, {
             headers: { Authorization: `Bearer ${token}` }
           });
@@ -34,6 +36,15 @@ export default function Sidebar() {
                 setMemberStatus(memberData.membership_status);
               }
             }
+          }
+          
+          // Fetch app settings
+          const settingsResponse = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/settings/app`, {
+            headers: { Authorization: `Bearer ${token}` }
+          });
+          if (settingsResponse.ok) {
+            const settingsData = await settingsResponse.json();
+            setAppSettings(settingsData);
           }
         }
       } catch (error) {
