@@ -4037,6 +4037,107 @@ async def quick_checkin(member_id: str, current_user: User = Depends(get_current
     result = await validate_access(access_data)
     return result
 
+@api_router.get("/attendance/heatmap")
+async def get_attendance_heatmap(
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+    current_user: User = Depends(get_current_user)
+):
+    """Get attendance heatmap data with hourly granularity by day of week"""
+    from datetime import datetime, timedelta, timezone
+    
+    # Default to last 30 days if no dates provided
+    if not end_date:
+        end_date = datetime.now(timezone.utc).isoformat()
+    if not start_date:
+        start_dt = datetime.now(timezone.utc) - timedelta(days=30)
+        start_date = start_dt.isoformat()
+    
+    # Build filter for granted access only
+    date_filter = {
+        "status": "granted",
+        "timestamp": {
+            "$gte": start_date,
+            "$lte": end_date
+        }
+    }
+    
+    # Aggregate by day of week and hour
+    pipeline = [
+        {"$match": date_filter},
+        {"$project": {
+            "timestamp_parsed": {"$dateFromString": {"dateString": "$timestamp"}},
+        }},
+        {"$project": {
+            "dayOfWeek": {"$dayOfWeek": "$timestamp_parsed"},  # 1=Sunday, 2=Monday, ... 7=Saturday
+            "hour": {"$hour": "$timestamp_parsed"}
+        }},
+        {"$group": {
+            "_id": {
+                "day": "$dayOfWeek",
+                "hour": "$hour"
+            },
+            "count": {"$sum": 1}
+        }}
+    ]
+    
+    results = await db.access_logs.aggregate(pipeline).to_list(None)
+    
+    # Convert to day-of-week format (Monday=0, Sunday=6)
+    day_mapping = {
+        1: 6,  # Sunday -> 6
+        2: 0,  # Monday -> 0
+        3: 1,  # Tuesday -> 1
+        4: 2,  # Wednesday -> 2
+        5: 3,  # Thursday -> 3
+        6: 4,  # Friday -> 4
+        7: 5   # Saturday -> 5
+    }
+    
+    day_names = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+    
+    # Initialize heatmap data structure
+    heatmap_data = []
+    for i, day_name in enumerate(day_names):
+        day_data = {
+            "day": day_name,
+            "day_index": i
+        }
+        # Initialize all hours to 0
+        for hour in range(24):
+            day_data[f"hour_{hour}"] = 0
+        heatmap_data.append(day_data)
+    
+    # Populate with actual data
+    for result in results:
+        mongo_day = result["_id"]["day"]
+        day_index = day_mapping.get(mongo_day, 0)
+        hour = result["_id"]["hour"]
+        count = result["count"]
+        
+        heatmap_data[day_index][f"hour_{hour}"] = count
+    
+    # Calculate statistics
+    max_count = 0
+    total_visits = 0
+    for day_data in heatmap_data:
+        for hour in range(24):
+            count = day_data[f"hour_{hour}"]
+            max_count = max(max_count, count)
+            total_visits += count
+    
+    return {
+        "heatmap": heatmap_data,
+        "stats": {
+            "total_visits": total_visits,
+            "max_hourly_count": max_count,
+            "date_range": {
+                "start": start_date,
+                "end": end_date
+            }
+        }
+    }
+
 # ===================== Invoice Helper Functions =====================
 
 async def calculate_invoice_totals(line_items: List[InvoiceLineItem]) -> dict:
