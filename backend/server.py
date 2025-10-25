@@ -7947,6 +7947,8 @@ async def create_lead_status(
         "updated_at": datetime.now(timezone.utc).isoformat()
     }
     await db.lead_statuses.insert_one(status)
+    # Remove MongoDB's _id before returning
+    status.pop("_id", None)
     return {"success": True, "status": status}
 
 @api_router.put("/sales/config/lead-statuses/{status_id}")
