@@ -8855,7 +8855,7 @@ async def create_complimentary_type(
     
     comp_type = {
         "id": type_id,
-        **type_data.dict(),
+        **type_data.model_dump(),
         "created_at": now,
         "updated_at": now
     }
