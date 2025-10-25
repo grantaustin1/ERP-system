@@ -5,6 +5,9 @@ import { API } from '@/App';
 import Sidebar from '@/components/Sidebar';
 import AdvancedSalesAnalytics from '@/components/AdvancedSalesAnalytics';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { 
   Users, 
   TrendingUp, 
@@ -15,7 +18,11 @@ import {
   Target,
   Calendar,
   Phone,
-  Mail
+  Mail,
+  Eye,
+  ExternalLink,
+  Filter,
+  X
 } from 'lucide-react';
 import { 
   BarChart, 
@@ -28,7 +35,11 @@ import {
   CartesianGrid, 
   Tooltip, 
   Legend, 
-  ResponsiveContainer 
+  ResponsiveContainer,
+  LineChart,
+  Line,
+  Area,
+  AreaChart
 } from 'recharts';
 import { toast } from 'sonner';
 
@@ -37,7 +48,11 @@ const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'
 export default function SalesDashboard() {
   const [overview, setOverview] = useState(null);
   const [funnel, setFunnel] = useState(null);
+  const [comprehensiveAnalytics, setComprehensiveAnalytics] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [drillDownOpen, setDrillDownOpen] = useState(false);
+  const [drillDownData, setDrillDownData] = useState(null);
+  const [drillDownType, setDrillDownType] = useState(null);
   const navigate = useNavigate();
 
   useEffect(() => {
