@@ -22,7 +22,8 @@ import {
   Eye,
   ExternalLink,
   Filter,
-  X
+  X,
+  Gift
 } from 'lucide-react';
 import { 
   BarChart, 
