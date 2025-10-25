@@ -158,9 +158,9 @@ class ConfigurableLeadSystemTestRunner:
             self.log_result("Setup Test Data", False, f"Error setting up test data: {str(e)}")
             return False
     
-    # ===================== SALES AUTOMATION TESTS =====================
+    # ===================== STARTUP SEEDING VERIFICATION TESTS =====================
     
-    def test_lead_scoring_api(self):
+    def test_startup_seeding_verification(self):
         """Test Lead Scoring API - POST /api/sales/automation/score-lead/{lead_id}"""
         print("\n=== Testing Lead Scoring API ===")
         
