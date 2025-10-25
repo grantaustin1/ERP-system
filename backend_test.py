@@ -618,10 +618,11 @@ class MemberAnalyticsTestRunner:
         
         try:
             endpoints = [
-                "/reports/revenue",
-                "/reports/commissions", 
-                "/reports/financial-summary",
-                "/reports/payment-analysis"
+                "/reports/retention-dashboard",
+                "/reports/member-ltv", 
+                "/reports/at-risk-members",
+                "/reports/member-demographics",
+                "/reports/acquisition-cost"
             ]
             
             for endpoint in endpoints:
