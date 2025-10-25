@@ -97,6 +97,8 @@ function App() {
             <Route path="/reports/financial" element={<PrivateRoute><FinancialReports /></PrivateRoute>} />
             <Route path="/reports/members" element={<PrivateRoute><MemberAnalytics /></PrivateRoute>} />
             <Route path="/reports/sales" element={<PrivateRoute><SalesPerformance /></PrivateRoute>} />
+            <Route path="/member-portal" element={<PrivateRoute><MemberPortalDashboard /></PrivateRoute>} />
+            <Route path="/admin/broadcast" element={<PrivateRoute><AdminBroadcast /></PrivateRoute>} />
             <Route path="/import" element={<PrivateRoute><DataImport /></PrivateRoute>} />
             <Route path="/permission-matrix" element={<PrivateRoute><PermissionMatrix /></PrivateRoute>} />
             <Route path="/user-roles" element={<PrivateRoute><UserRoleManagement /></PrivateRoute>} />
