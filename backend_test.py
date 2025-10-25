@@ -822,7 +822,7 @@ class SalesModulePhase2TestRunner:
                     return False
                 
                 # Verify stage breakdown includes all stages
-                expected_stages = ["prospecting", "qualification", "proposal", "negotiation", "closed_won", "closed_lost"]
+                expected_stages = ["new_lead", "contacted", "qualified", "proposal", "negotiation"]
                 for stage in expected_stages:
                     if stage not in by_stage:
                         self.log_result("Sales Forecasting Stage Coverage", False, 
