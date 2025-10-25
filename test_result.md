@@ -1333,6 +1333,9 @@ backend:
       - working: true
         agent: "testing"
         comment: "✅ Referral Rewards Management partially working: GET /api/sales/referral-rewards returns correct structure with empty rewards array (expected when no rewards exist). Cannot test full CRUD functionality due to missing test member/lead IDs from blocked lead creation."
+      - working: true
+        agent: "testing"
+        comment: "✅ ENHANCED - Referral Rewards Management FULLY WORKING: All CRUD operations tested successfully. GET /api/sales/referral-rewards returns rewards with proper structure and enriched member/lead names. POST /api/sales/referral-rewards creates manual rewards with status='pending' by default. PUT /api/sales/referral-rewards/{id}/status updates reward status correctly (tested approved and delivered transitions). Delivered status includes delivered_at timestamp. All referral reward management functionality working as designed."
 
   - task: "Comprehensive Dashboard Analytics API"
     implemented: true
