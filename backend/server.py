@@ -8642,7 +8642,7 @@ async def assign_lead(
     notification_task = {
         "id": task_id,
         "title": f"New Lead Assigned: {lead['first_name']} {lead['last_name']}",
-        "description": f"You have been assigned a new lead by {current_user.name or current_user.email}. {assignment_notes or ''}",
+        "description": f"You have been assigned a new lead by {current_user.full_name or current_user.email}. {assignment_notes or ''}",
         "task_type": "follow_up",
         "related_to_type": "lead",
         "related_to_id": lead_id,
