@@ -90,6 +90,7 @@ function App() {
             <Route path="/sales/setup" element={<PrivateRoute><SalesCRMSetup /></PrivateRoute>} />
             <Route path="/sales/complimentary" element={<PrivateRoute><ComplimentaryMembership /></PrivateRoute>} />
             <Route path="/reports" element={<PrivateRoute><Reports /></PrivateRoute>} />
+            <Route path="/reports/financial" element={<PrivateRoute><FinancialReports /></PrivateRoute>} />
             <Route path="/import" element={<PrivateRoute><DataImport /></PrivateRoute>} />
             <Route path="/permission-matrix" element={<PrivateRoute><PermissionMatrix /></PrivateRoute>} />
             <Route path="/user-roles" element={<PrivateRoute><UserRoleManagement /></PrivateRoute>} />
