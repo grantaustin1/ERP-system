@@ -1255,6 +1255,69 @@ backend:
     working: true
     file: "/app/backend/server.py"
     stuck_count: 0
+
+
+  - task: "Enhanced Member Portal & Notification System - Backend APIs"
+    implemented: true
+    working: "NA"
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Backend APIs completed for Member Portal Dashboard and Notification System. Created endpoints: GET /api/member-portal/dashboard (member dashboard data with membership, bookings, notifications), POST /api/notifications/send (send notifications to members), GET /api/notifications (get member notifications), PATCH /api/notifications/{id}/read (mark as read). Ready for backend testing."
+
+  - task: "Enhanced Member Portal & Notification System - Frontend Pages"
+    implemented: true
+    working: "NA"
+    file: "/app/frontend/src/pages/MemberPortalDashboard.js, /app/frontend/src/pages/AdminBroadcast.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Created two new pages: MemberPortalDashboard.js (member self-service portal with dashboard stats, workout history, notifications) and AdminBroadcast.js (admin interface for sending notifications to members with multi-channel support). Both pages include comprehensive UI components with charts, tables, and forms. Added routes to App.js for /member-portal and /admin/broadcast."
+
+  - task: "Enhanced Sidebar with Category Organization"
+    implemented: true
+    working: "NA"
+    file: "/app/frontend/src/components/Sidebar.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Reorganized Sidebar.js with 8 category groups: Core, Sales & CRM, Financial, Analytics & Reports, Retention & Engagement, Operations, Marketing, System. Each category displays as a header with grouped menu items below. Added RBAC logic for Member Portal (requires active member status) and Admin Broadcast (requires admin/manager role). Member Portal visibility controlled by new app settings (member_portal_enabled, member_portal_require_active_status). Ready for testing."
+
+  - task: "App Settings Model & API"
+    implemented: true
+    working: "NA"
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Created AppSettings model with configurable options: member_portal_enabled (global toggle), member_portal_require_active_status (only active members can access), enable_email_notifications, enable_sms_notifications, enable_whatsapp_notifications, enable_inapp_notifications. Added two endpoints: GET /api/settings/app (retrieve settings with defaults), POST /api/settings/app (create/update settings). Settings control member portal visibility and notification channels. Ready for backend testing."
+
+  - task: "App Settings UI in Settings Page"
+    implemented: true
+    working: "NA"
+    file: "/app/frontend/src/pages/Settings.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Added new 'App Settings' tab to Settings page with two sections: 1) Member Portal Settings (enable/disable portal, require active status toggle), 2) Notification Channels (toggles for Email, SMS, WhatsApp, In-App notifications). All settings use Switch components with proper state management. Added handleSaveAppSettings function to persist changes via API. Settings fetch on page load and update app_settings state. Ready for frontend testing."
+
+
     priority: "high"
     needs_retesting: false
     status_history:
