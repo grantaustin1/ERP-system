@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-Backend Test Suite - Complimentary Membership Tracking System Testing
-Focus on testing the Complimentary Membership APIs with role-based access control
+Backend Test Suite - Financial Reporting APIs Testing
+Focus on testing the Financial Reporting APIs with comprehensive validation
 """
 
 import requests
@@ -18,7 +18,7 @@ API_BASE = f"{BASE_URL}/api"
 ADMIN_EMAIL = "admin@gym.com"
 ADMIN_PASSWORD = "admin123"
 
-class ComplimentaryMembershipTestRunner:
+class FinancialReportingTestRunner:
     def __init__(self):
         self.admin_token = None
         self.admin_headers = {}
