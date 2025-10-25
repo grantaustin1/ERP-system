@@ -100,16 +100,16 @@ export default function Members() {
     fetchTags();
   }, []);
 
+  // Track if user has manually edited account holder name
+  const [accountHolderManuallyEdited, setAccountHolderManuallyEdited] = useState(false);
+
   // Auto-populate account holder name with member's full name
   useEffect(() => {
-    if (formData.first_name || formData.last_name) {
+    if ((formData.first_name || formData.last_name) && !accountHolderManuallyEdited) {
       const fullName = `${formData.first_name} ${formData.last_name}`.trim();
-      // Only update if account_holder_name is empty (to preserve manual edits)
-      if (!formData.account_holder_name || formData.account_holder_name === '') {
-        setFormData(prev => ({ ...prev, account_holder_name: fullName }));
-      }
+      setFormData(prev => ({ ...prev, account_holder_name: fullName }));
     }
-  }, [formData.first_name, formData.last_name]);
+  }, [formData.first_name, formData.last_name, accountHolderManuallyEdited]);
 
 
   const fetchMembers = async () => {
