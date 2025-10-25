@@ -8261,19 +8261,73 @@ async def get_leads(
     status: Optional[str] = None,
     assigned_to: Optional[str] = None,
     source: Optional[str] = None,
+    filter_type: Optional[str] = None,  # NEW: "all", "my_leads", "unassigned"
     current_user: User = Depends(get_current_user)
 ):
-    """Get all leads with optional filters"""
+    """Get all leads with optional filters and role-based visibility"""
     query = {}
+    
+    # Role-based filtering
+    manager_roles = ["business_owner", "head_admin", "sales_head", "sales_manager"]
+    is_manager = current_user.role in manager_roles
+    
+    # If user is NOT a manager (consultant), only show their assigned leads
+    if not is_manager:
+        query["assigned_to"] = current_user.id
+    else:
+        # Managers can use filter_type to filter leads
+        if filter_type == "my_leads":
+            query["assigned_to"] = current_user.id
+        elif filter_type == "unassigned":
+            query["$or"] = [{"assigned_to": None}, {"assigned_to": ""}]
+        # "all" or no filter_type means all leads for managers
+    
+    # Apply additional filters
     if status:
         query["status"] = status
-    if assigned_to:
+    if assigned_to and is_manager:  # Only managers can filter by assigned_to
         query["assigned_to"] = assigned_to
     if source:
         query["source"] = source
     
     leads = await db.leads.find(query, {"_id": 0}).sort("created_at", -1).to_list(None)
-    return {"leads": leads, "total": len(leads)}
+    
+    # Enrich leads with assignment info
+    for lead in leads:
+        # Get assigned to info
+        if lead.get("assigned_to"):
+            assignee = await db.users.find_one({"id": lead["assigned_to"]}, {"_id": 0, "email": 1, "name": 1, "role": 1})
+            if assignee:
+                lead["assigned_to_name"] = assignee.get("name") or assignee.get("email")
+                lead["assigned_to_role"] = assignee.get("role")
+        
+        # Get assigned by info
+        if lead.get("assigned_by"):
+            assigner = await db.users.find_one({"id": lead["assigned_by"]}, {"_id": 0, "email": 1, "name": 1})
+            if assigner:
+                lead["assigned_by_name"] = assigner.get("name") or assigner.get("email")
+        
+        # Get source info
+        if lead.get("source_id"):
+            source = await db.lead_sources.find_one({"id": lead["source_id"]}, {"_id": 0, "name": 1, "icon": 1})
+            if source:
+                lead["source_name"] = source.get("name")
+                lead["source_icon"] = source.get("icon")
+        
+        # Get status info
+        if lead.get("status_id"):
+            status_obj = await db.lead_statuses.find_one({"id": lead["status_id"]}, {"_id": 0, "name": 1, "color": 1, "category": 1})
+            if status_obj:
+                lead["status_name"] = status_obj.get("name")
+                lead["status_color"] = status_obj.get("color")
+                lead["status_category"] = status_obj.get("category")
+    
+    return {
+        "leads": leads,
+        "total": len(leads),
+        "is_manager": is_manager,
+        "filter_type": filter_type or "all"
+    }
 
 
 @api_router.post("/sales/leads")
