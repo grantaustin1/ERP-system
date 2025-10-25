@@ -815,6 +815,86 @@ export default function LeadsContacts() {
               )}
             </DialogContent>
           </Dialog>
+
+          {/* Assignment Dialog */}
+          <Dialog open={assignModalOpen} onOpenChange={setAssignModalOpen}>
+            <DialogContent className="bg-slate-800 border-slate-700 text-white max-w-md">
+              <DialogHeader>
+                <DialogTitle>
+                  {leadToAssign?.assigned_to ? 'Reassign Lead' : 'Assign Lead'}
+                </DialogTitle>
+                <DialogDescription className="text-slate-400">
+                  {leadToAssign && `Assign ${leadToAssign.first_name} ${leadToAssign.last_name} to a sales consultant`}
+                </DialogDescription>
+              </DialogHeader>
+
+              <div className="space-y-4 mt-4">
+                {leadToAssign?.assigned_to && (
+                  <div className="p-3 bg-blue-900/20 rounded border border-blue-500/30">
+                    <p className="text-sm text-blue-300">
+                      Currently assigned to: <span className="font-semibold">{leadToAssign.assigned_to_name}</span>
+                    </p>
+                    {leadToAssign.assigned_at && (
+                      <p className="text-xs text-slate-400 mt-1">
+                        Assigned on {new Date(leadToAssign.assigned_at).toLocaleString()}
+                      </p>
+                    )}
+                  </div>
+                )}
+
+                <div>
+                  <label className="text-sm text-slate-400 mb-2 block">Select Consultant *</label>
+                  <Select value={selectedConsultant} onValueChange={setSelectedConsultant}>
+                    <SelectTrigger className="bg-slate-700 border-slate-600 text-white">
+                      <SelectValue placeholder="Choose a consultant..." />
+                    </SelectTrigger>
+                    <SelectContent className="bg-slate-800 border-slate-700">
+                      {consultants.map((consultant) => (
+                        <SelectItem key={consultant.id} value={consultant.id} className="text-white">
+                          {consultant.name || consultant.email} 
+                          <span className="text-slate-400 text-xs ml-2">
+                            ({consultant.assigned_leads_count} leads)
+                          </span>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div>
+                  <label className="text-sm text-slate-400 mb-2 block">Assignment Notes (Optional)</label>
+                  <textarea
+                    value={assignmentNotes}
+                    onChange={(e) => setAssignmentNotes(e.target.value)}
+                    placeholder="Add any notes about this assignment..."
+                    className="w-full bg-slate-700 border-slate-600 text-white rounded px-3 py-2 text-sm"
+                    rows={3}
+                  />
+                </div>
+
+                <div className="flex gap-2 justify-end mt-6">
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setAssignModalOpen(false);
+                      setLeadToAssign(null);
+                      setSelectedConsultant('');
+                      setAssignmentNotes('');
+                    }}
+                    className="border-slate-600 text-white hover:bg-slate-700"
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    onClick={handleAssignLead}
+                    className="bg-green-600 hover:bg-green-700"
+                  >
+                    {leadToAssign?.assigned_to ? 'Reassign Lead' : 'Assign Lead'}
+                  </Button>
+                </div>
+              </div>
+            </DialogContent>
+          </Dialog>
         </div>
       </div>
     </div>
