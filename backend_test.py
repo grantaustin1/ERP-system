@@ -683,9 +683,9 @@ class SalesPerformanceTestRunner:
         print("\n=== Testing Error Handling ===")
         
         try:
-            # Test invalid date format for acquisition cost
+            # Test invalid date format for sales funnel
             response = requests.get(
-                f"{API_BASE}/reports/acquisition-cost",
+                f"{API_BASE}/reports/sales-funnel",
                 params={"start_date": "invalid-date"},
                 headers=self.admin_headers
             )
@@ -697,32 +697,32 @@ class SalesPerformanceTestRunner:
                 self.log_result("Error Handling Invalid Date", False, f"Unexpected status: {response.status_code}")
                 return False
             
-            # Test invalid risk threshold parameter
+            # Test invalid salesperson_id parameter
             response = requests.get(
-                f"{API_BASE}/reports/at-risk-members",
-                params={"risk_threshold": "invalid_threshold"},
+                f"{API_BASE}/reports/salesperson-performance",
+                params={"salesperson_id": "invalid_id"},
                 headers=self.admin_headers
             )
             
             # Should handle gracefully
             if response.status_code in [200, 400, 422, 500]:
-                self.log_result("Error Handling Invalid Threshold", True, f"Handled gracefully: {response.status_code}")
+                self.log_result("Error Handling Invalid Salesperson ID", True, f"Handled gracefully: {response.status_code}")
             else:
-                self.log_result("Error Handling Invalid Threshold", False, f"Unexpected status: {response.status_code}")
+                self.log_result("Error Handling Invalid Salesperson ID", False, f"Unexpected status: {response.status_code}")
                 return False
             
-            # Test invalid period_months parameter
+            # Test invalid date range (end before start)
             response = requests.get(
-                f"{API_BASE}/reports/retention-dashboard",
-                params={"period_months": "invalid_period"},
+                f"{API_BASE}/reports/lead-source-roi",
+                params={"start_date": "2024-12-31T23:59:59Z", "end_date": "2024-01-01T00:00:00Z"},
                 headers=self.admin_headers
             )
             
             # Should handle gracefully
             if response.status_code in [200, 400, 422, 500]:
-                self.log_result("Error Handling Invalid Period", True, f"Handled gracefully: {response.status_code}")
+                self.log_result("Error Handling Invalid Date Range", True, f"Handled gracefully: {response.status_code}")
             else:
-                self.log_result("Error Handling Invalid Period", False, f"Unexpected status: {response.status_code}")
+                self.log_result("Error Handling Invalid Date Range", False, f"Unexpected status: {response.status_code}")
                 return False
             
             return True
