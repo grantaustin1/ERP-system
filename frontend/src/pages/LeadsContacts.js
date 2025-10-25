@@ -3,6 +3,7 @@ import axios from 'axios';
 import { API } from '@/App';
 import Sidebar from '@/components/Sidebar';
 import SalesAutomationPanel from '@/components/SalesAutomationPanel';
+import MemberSearchAutocomplete from '@/components/MemberSearchAutocomplete';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
