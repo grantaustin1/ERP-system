@@ -579,7 +579,7 @@ class SalesModulePhase2TestRunner:
                 "is_active": False
             }
             
-            response = requests.put(f"{API_BASE}/sales/workflows/{self.test_workflow_id}", json=update_data, headers=self.headers)
+            response = requests.put(f"{API_BASE}/sales/workflows/{update_workflow_id}", json=update_data, headers=self.headers)
             
             if response.status_code == 200:
                 data = response.json()
