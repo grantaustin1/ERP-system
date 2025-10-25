@@ -248,6 +248,17 @@ export default function Settings() {
     }
   };
 
+  const handleSaveAppSettings = async () => {
+    try {
+      await axios.post(`${API}/settings/app`, appSettings);
+      toast.success('App settings saved successfully!');
+      fetchData();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Failed to save app settings');
+    }
+  };
+
+
 
   return (
     <div className="flex min-h-screen">
