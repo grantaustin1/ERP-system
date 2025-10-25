@@ -4489,6 +4489,14 @@ async def unfreeze_membership(member_id: str, current_user: User = Depends(get_c
     if not member.get("freeze_status"):
         raise HTTPException(status_code=400, detail="Membership is not frozen")
     
+    # Update the last freeze record with actual unfreeze date
+    freeze_history = member.get("freeze_history", [])
+    if freeze_history:
+        last_freeze = freeze_history[-1]
+        last_freeze["actual_unfreeze_date"] = datetime.now(timezone.utc).isoformat()
+        last_freeze["unfrozen_by"] = current_user.full_name
+        last_freeze["unfrozen_by_id"] = current_user.id
+    
     # Update member freeze status
     await db.members.update_one(
         {"id": member_id},
@@ -4497,7 +4505,8 @@ async def unfreeze_membership(member_id: str, current_user: User = Depends(get_c
             "freeze_start_date": None,
             "freeze_end_date": None,
             "freeze_reason": None,
-            "membership_status": "active"
+            "membership_status": "active",
+            "freeze_history": freeze_history
         }}
     )
     
@@ -4505,7 +4514,7 @@ async def unfreeze_membership(member_id: str, current_user: User = Depends(get_c
     await add_journal_entry(
         member_id=member_id,
         action_type="membership_unfrozen",
-        description="Membership unfrozen",
+        description="Membership unfrozen and reactivated",
         created_by=current_user.id,
         created_by_name=current_user.full_name
     )
