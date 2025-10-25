@@ -16,7 +16,7 @@ import {
   Plus, 
   Edit, 
   Trash2,
-  Source,
+  Users,
   GitBranch,
   XCircle,
   Check,
