@@ -8601,7 +8601,7 @@ async def assign_lead(
     previous_assigned_to = lead.get("assigned_to")
     previous_assigned_to_name = None
     if previous_assigned_to:
-        prev_user = await db.users.find_one({"id": previous_assigned_to}, {"_id": 0, "email": 1, "name": 1})
+        prev_user = await db.users.find_one({"id": previous_assigned_to}, {"_id": 0, "email": 1, "full_name": 1})
         if prev_user:
             previous_assigned_to_name = prev_user.get("name") or prev_user.get("email")
     
