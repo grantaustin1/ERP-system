@@ -720,17 +720,18 @@ class SalesModulePhase2TestRunner:
             self.created_workflows.append(execution_workflow_id)
             
             # Test workflow execution with matching conditions
-            execution_data = {
+            import json
+            execution_params = {
                 "trigger_object": "lead",
                 "trigger_event": "status_changed",
                 "object_id": self.test_lead_id,
-                "object_data": {
+                "object_data": json.dumps({
                     "status": "qualified",
                     "assigned_to": self.test_user_id
-                }
+                })
             }
             
-            response = requests.post(f"{API_BASE}/sales/workflows/execute", json=execution_data, headers=self.headers)
+            response = requests.post(f"{API_BASE}/sales/workflows/execute", params=execution_params, headers=self.headers)
             
             if response.status_code == 200:
                 data = response.json()
