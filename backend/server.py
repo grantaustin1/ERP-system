@@ -8883,7 +8883,7 @@ async def update_complimentary_type(
         raise HTTPException(status_code=403, detail="Only managers can update complimentary types")
     
     update_data = {
-        **type_data.dict(),
+        **type_data.model_dump(),
         "updated_at": datetime.now(timezone.utc).isoformat()
     }
     
