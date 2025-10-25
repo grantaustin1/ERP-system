@@ -126,13 +126,38 @@ export default function Sidebar() {
     },
   ];
 
-  // Filter menu items based on permissions
-  const visibleMenuItems = menuItems.filter(item => {
-    // Dashboard is always visible
-    if (!item.module) return true;
-    // Check if user has view permission for this module
-    return canView(item.module);
-  });
+  // Filter menu items based on permissions and role requirements
+  const isItemVisible = (item) => {
+    // Check module-based permissions
+    if (item.module && !canView(item.module)) {
+      return false;
+    }
+    
+    // Check if item requires admin role
+    if (item.requireAdmin) {
+      const adminRoles = ['business_owner', 'head_admin', 'admin_manager', 'sales_manager', 'fitness_manager'];
+      if (!userRole || !adminRoles.includes(userRole)) {
+        return false;
+      }
+    }
+    
+    // Check if item requires active member status
+    if (item.requireActiveMember) {
+      if (memberStatus !== 'active') {
+        return false;
+      }
+    }
+    
+    return true;
+  };
+
+  // Filter categories to only show those with visible items
+  const visibleCategories = menuCategories
+    .map(category => ({
+      ...category,
+      items: category.items.filter(isItemVisible)
+    }))
+    .filter(category => category.items.length > 0);
 
   return (
     <div className="w-64 bg-slate-900/50 backdrop-blur-lg border-r border-slate-700 p-6 flex flex-col">
