@@ -1294,15 +1294,18 @@ backend:
 
   - task: "Enhanced Lead Create API with Referrals"
     implemented: true
-    working: false
+    working: true
     file: "/app/backend/server.py"
-    stuck_count: 1
+    stuck_count: 0
     priority: "high"
     needs_retesting: false
     status_history:
       - working: false
         agent: "testing"
         comment: "❌ BLOCKED: Cannot test enhanced lead creation due to missing seeded source and status IDs. Requires working startup seeding and CRUD APIs to function properly."
+      - working: true
+        agent: "testing"
+        comment: "✅ FIXED - Enhanced Lead Create API WORKING PERFECTLY: Successfully tested lead creation with new fields including referral tracking. POST /api/sales/leads creates leads with source_id, status_id, and referred_by_member_id properly populated. Referral reward auto-creation working correctly - when lead created with referral, system automatically creates referral reward with status='pending' and reward_type='pending_selection'. Default behavior working - leads without source_id/status_id default to 'Other' source and 'New Lead' status. All new enhanced fields functioning as designed."
 
   - task: "Enhanced Lead Update API with Loss Validation"
     implemented: true
