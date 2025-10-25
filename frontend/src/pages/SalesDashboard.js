@@ -59,6 +59,7 @@ export default function SalesDashboard() {
   useEffect(() => {
     fetchDashboardData();
     fetchComprehensiveAnalytics();
+    fetchComplimentaryData();
   }, []);
 
   const fetchDashboardData = async () => {
