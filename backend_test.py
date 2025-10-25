@@ -752,11 +752,11 @@ class MemberAnalyticsTestRunner:
 
 def main():
     """Main test execution"""
-    runner = FinancialReportingTestRunner()
+    runner = MemberAnalyticsTestRunner()
     success = runner.run_all_tests()
     
     if success:
-        print("\n🎉 All Financial Reporting API tests passed!")
+        print("\n🎉 All Member Analytics & Retention API tests passed!")
         exit(0)
     else:
         print("\n💥 Some tests failed!")
