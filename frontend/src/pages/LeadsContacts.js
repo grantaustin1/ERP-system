@@ -103,13 +103,57 @@ export default function LeadsContacts() {
   const fetchLeads = async () => {
     setLoading(true);
     try {
-      const response = await axios.get(`${API}/sales/leads`);
+      const response = await axios.get(`${API}/sales/leads`, {
+        params: { filter_type: filterType }
+      });
       setLeads(response.data.leads);
+      setIsManager(response.data.is_manager);
     } catch (error) {
       toast.error('Failed to fetch leads');
     } finally {
       setLoading(false);
     }
+  };
+
+  const fetchConsultants = async () => {
+    try {
+      const response = await axios.get(`${API}/sales/consultants`);
+      setConsultants(response.data.consultants);
+    } catch (error) {
+      // If user is not a manager, this will fail silently
+      console.log('Could not fetch consultants');
+    }
+  };
+
+  const handleAssignLead = async () => {
+    if (!selectedConsultant) {
+      toast.error('Please select a consultant');
+      return;
+    }
+
+    try {
+      await axios.post(`${API}/sales/leads/${leadToAssign.id}/assign`, null, {
+        params: {
+          assigned_to: selectedConsultant,
+          assignment_notes: assignmentNotes
+        }
+      });
+      
+      toast.success('Lead assigned successfully');
+      setAssignModalOpen(false);
+      setLeadToAssign(null);
+      setSelectedConsultant('');
+      setAssignmentNotes('');
+      fetchLeads();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Failed to assign lead');
+    }
+  };
+
+  const openAssignModal = (lead) => {
+    setLeadToAssign(lead);
+    setSelectedConsultant(lead.assigned_to || '');
+    setAssignModalOpen(true);
   };
 
   const filterLeads = () => {
