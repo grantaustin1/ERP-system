@@ -618,6 +618,163 @@ export default function SalesDashboard() {
           )}
         </div>
       </div>
+
+      {/* Drill-down Modal */}
+      <Dialog open={drillDownOpen} onOpenChange={setDrillDownOpen}>
+        <DialogContent className="bg-slate-800 border-slate-700 text-white max-w-4xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              {drillDownType === 'source_performance' && (
+                <>
+                  <Target className="w-5 h-5 text-blue-400" />
+                  Lead Source Performance Details
+                </>
+              )}
+              {drillDownType === 'loss_analysis' && (
+                <>
+                  <AlertCircle className="w-5 h-5 text-red-400" />
+                  Loss Reason Analysis Details
+                </>
+              )}
+              {drillDownType === 'salesperson_performance' && (
+                <>
+                  <Award className="w-5 h-5 text-yellow-400" />
+                  Salesperson Performance Details
+                </>
+              )}
+            </DialogTitle>
+            <DialogDescription className="text-slate-400">
+              Detailed breakdown and insights
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="mt-4">
+            {drillDownType === 'source_performance' && drillDownData && (
+              <div className="space-y-4">
+                {drillDownData.map((source, index) => (
+                  <div key={index} className="p-4 bg-slate-700/50 rounded-lg border border-slate-600">
+                    <div className="flex items-center justify-between mb-3">
+                      <h3 className="text-lg font-semibold text-white">{source.source}</h3>
+                      <Badge className="bg-blue-600/50">
+                        {source.conversion_rate}% conversion
+                      </Badge>
+                    </div>
+                    
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                      <div className="p-3 bg-slate-800/50 rounded border border-slate-600">
+                        <p className="text-xs text-slate-400 uppercase mb-1">Total Leads</p>
+                        <p className="text-2xl font-bold text-white">{source.total_leads}</p>
+                      </div>
+                      <div className="p-3 bg-slate-800/50 rounded border border-slate-600">
+                        <p className="text-xs text-slate-400 uppercase mb-1">Converted</p>
+                        <p className="text-2xl font-bold text-green-400">{source.converted_leads}</p>
+                      </div>
+                      <div className="p-3 bg-slate-800/50 rounded border border-slate-600">
+                        <p className="text-xs text-slate-400 uppercase mb-1">Lost</p>
+                        <p className="text-2xl font-bold text-red-400">{source.lost_leads}</p>
+                      </div>
+                      <div className="p-3 bg-slate-800/50 rounded border border-slate-600">
+                        <p className="text-xs text-slate-400 uppercase mb-1">In Progress</p>
+                        <p className="text-2xl font-bold text-blue-400">{source.in_progress}</p>
+                      </div>
+                    </div>
+                    
+                    <div className="mt-3 pt-3 border-t border-slate-600">
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <p className="text-xs text-slate-400">Loss Rate</p>
+                          <p className="text-sm font-semibold text-white">{source.loss_rate}%</p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-slate-400">Avg. Days to Convert</p>
+                          <p className="text-sm font-semibold text-white">{source.avg_days_to_convert} days</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {drillDownType === 'loss_analysis' && drillDownData && (
+              <div className="space-y-4">
+                {drillDownData.map((reason, index) => (
+                  <div key={index} className="p-4 bg-slate-700/50 rounded-lg border border-slate-600">
+                    <div className="flex items-center justify-between mb-3">
+                      <h3 className="text-lg font-semibold text-white">{reason.reason}</h3>
+                      <Badge className="bg-red-600/50">
+                        {reason.percentage}% of losses
+                      </Badge>
+                    </div>
+                    
+                    <div className="mb-3">
+                      <p className="text-sm text-slate-400 mb-1">Total Lost Leads:</p>
+                      <p className="text-2xl font-bold text-white">{reason.count}</p>
+                    </div>
+                    
+                    {Object.keys(reason.by_source).length > 0 && (
+                      <div className="mt-3 pt-3 border-t border-slate-600">
+                        <p className="text-xs text-slate-400 uppercase mb-2">Breakdown by Source:</p>
+                        <div className="flex flex-wrap gap-2">
+                          {Object.entries(reason.by_source).map(([source, count]) => (
+                            <Badge key={source} variant="outline" className="border-slate-500">
+                              {source}: {count}
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {drillDownType === 'salesperson_performance' && drillDownData && (
+              <div className="space-y-4">
+                {drillDownData.map((person, index) => (
+                  <div key={index} className="p-4 bg-slate-700/50 rounded-lg border border-slate-600">
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-3">
+                        <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold ${
+                          index === 0 ? 'bg-yellow-500 text-yellow-900' :
+                          index === 1 ? 'bg-slate-400 text-slate-900' :
+                          index === 2 ? 'bg-orange-600 text-orange-100' :
+                          'bg-slate-600 text-slate-200'
+                        }`}>
+                          #{index + 1}
+                        </div>
+                        <h3 className="text-lg font-semibold text-white">{person.salesperson}</h3>
+                      </div>
+                      <Badge className="bg-green-600/50">
+                        {person.conversion_rate}% conversion
+                      </Badge>
+                    </div>
+                    
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                      <div className="p-3 bg-slate-800/50 rounded border border-slate-600">
+                        <p className="text-xs text-slate-400 uppercase mb-1">Total Leads</p>
+                        <p className="text-2xl font-bold text-white">{person.total_leads}</p>
+                      </div>
+                      <div className="p-3 bg-slate-800/50 rounded border border-slate-600">
+                        <p className="text-xs text-slate-400 uppercase mb-1">Converted</p>
+                        <p className="text-2xl font-bold text-green-400">{person.converted}</p>
+                      </div>
+                      <div className="p-3 bg-slate-800/50 rounded border border-slate-600">
+                        <p className="text-xs text-slate-400 uppercase mb-1">In Progress</p>
+                        <p className="text-2xl font-bold text-blue-400">{person.in_progress}</p>
+                      </div>
+                      <div className="p-3 bg-slate-800/50 rounded border border-slate-600">
+                        <p className="text-xs text-slate-400 uppercase mb-1">Lost</p>
+                        <p className="text-2xl font-bold text-red-400">{person.lost}</p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
