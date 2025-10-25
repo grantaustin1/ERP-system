@@ -1028,6 +1028,11 @@ class AppSettings(BaseModel):
     enable_sms_notifications: bool = True
     enable_whatsapp_notifications: bool = False
     enable_inapp_notifications: bool = True
+    # Freeze Policy Settings
+    max_freezes_per_12_months: int = 2  # Maximum number of freezes allowed in 12 months
+    min_freeze_duration_days: int = 7  # Minimum freeze duration in days
+    max_freeze_duration_days: int = 90  # Maximum freeze duration in days
+    require_freeze_reason: bool = True  # Require reason when freezing membership
     # Created/Updated timestamps
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: Optional[datetime] = None
@@ -1040,6 +1045,10 @@ class AppSettingsUpdate(BaseModel):
     enable_sms_notifications: Optional[bool] = None
     enable_whatsapp_notifications: Optional[bool] = None
     enable_inapp_notifications: Optional[bool] = None
+    max_freezes_per_12_months: Optional[int] = None
+    min_freeze_duration_days: Optional[int] = None
+    max_freeze_duration_days: Optional[int] = None
+    require_freeze_reason: Optional[bool] = None
 
 
 
