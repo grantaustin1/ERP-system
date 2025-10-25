@@ -106,17 +106,18 @@ class SalesModulePhase2TestRunner:
                 return False
             
             # Create test opportunity
-            opportunity_data = {
-                "lead_id": self.test_lead_id,
+            opportunity_params = {
                 "title": f"Premium Membership Sale {timestamp}",
+                "contact_id": self.test_lead_id,
                 "value": 5000.0,
                 "stage": "proposal",
                 "probability": 75,
                 "expected_close_date": (datetime.now() + timedelta(days=30)).isoformat(),
-                "assigned_to": self.test_user_id
+                "assigned_to": self.test_user_id,
+                "notes": "Test opportunity for automation testing"
             }
             
-            response = requests.post(f"{API_BASE}/sales/opportunities", json=opportunity_data, headers=self.headers)
+            response = requests.post(f"{API_BASE}/sales/opportunities", params=opportunity_params, headers=self.headers)
             if response.status_code == 200:
                 opportunity = response.json()
                 self.created_opportunities.append(opportunity["id"])
