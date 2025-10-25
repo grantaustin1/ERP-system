@@ -371,37 +371,37 @@ class MemberPortalNotificationTestRunner:
             if response.status_code == 200:
                 data = response.json()
                 
-                # Verify response structure
-                required_sections = ["membership_info", "bookings", "notifications", "stats"]
+                # Verify response structure based on actual API response
+                required_sections = ["member", "stats", "recent_invoices", "upcoming_payments"]
                 
                 for section in required_sections:
                     if section not in data:
                         self.log_result("Member Portal Dashboard Structure", False, f"Missing section: {section}")
                         return False
                 
-                # Verify membership_info structure
-                membership_info = data["membership_info"]
-                membership_fields = ["member_name", "membership_type", "status", "join_date", "expiry_date"]
-                for field in membership_fields:
-                    if field not in membership_info:
-                        self.log_result("Member Portal Dashboard Membership Info", False, f"Missing membership field: {field}")
+                # Verify member info structure
+                member_info = data["member"]
+                member_fields = ["member_name", "email", "phone", "status", "membership_type", "join_date"]
+                for field in member_fields:
+                    if field not in member_info:
+                        self.log_result("Member Portal Dashboard Member Info", False, f"Missing member field: {field}")
                         return False
                 
-                # Verify bookings structure
-                bookings = data["bookings"]
-                if not isinstance(bookings, list):
-                    self.log_result("Member Portal Dashboard Bookings", False, "Bookings should be array")
+                # Verify recent_invoices structure
+                recent_invoices = data["recent_invoices"]
+                if not isinstance(recent_invoices, list):
+                    self.log_result("Member Portal Dashboard Recent Invoices", False, "Recent invoices should be array")
                     return False
                 
-                # Verify notifications structure
-                notifications = data["notifications"]
-                if not isinstance(notifications, list):
-                    self.log_result("Member Portal Dashboard Notifications", False, "Notifications should be array")
+                # Verify upcoming_payments structure
+                upcoming_payments = data["upcoming_payments"]
+                if not isinstance(upcoming_payments, list):
+                    self.log_result("Member Portal Dashboard Upcoming Payments", False, "Upcoming payments should be array")
                     return False
                 
                 # Verify stats structure
                 stats = data["stats"]
-                stats_fields = ["total_visits", "this_month_visits", "total_bookings", "upcoming_bookings"]
+                stats_fields = ["total_visits", "days_since_last_visit", "unread_notifications", "pending_payments"]
                 for field in stats_fields:
                     if field not in stats:
                         self.log_result("Member Portal Dashboard Stats", False, f"Missing stats field: {field}")
