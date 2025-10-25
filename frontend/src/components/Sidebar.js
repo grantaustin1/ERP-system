@@ -30,6 +30,7 @@ export default function Sidebar() {
     { path: '/reports', icon: FileBarChart, label: 'Reports', testId: 'nav-reports', module: 'reports' },
     { path: '/reports/financial', icon: DollarSign, label: 'Financial Reports', testId: 'nav-financial-reports', module: 'reports' },
     { path: '/reports/members', icon: Users, label: 'Member Analytics', testId: 'nav-member-analytics', module: 'reports' },
+    { path: '/reports/sales', icon: Target, label: 'Sales Performance', testId: 'nav-sales-performance', module: 'reports' },
     { path: '/engagement', icon: Target, label: 'Engagement', testId: 'nav-engagement', module: null },
     { path: '/rewards', icon: Award, label: 'Points & Rewards', testId: 'nav-rewards', module: null },
     { path: '/sales', icon: Briefcase, label: 'Sales CRM', testId: 'nav-sales', module: null },
