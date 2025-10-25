@@ -31,6 +31,7 @@ export default function Sidebar() {
     { path: '/engagement', icon: Target, label: 'Engagement', testId: 'nav-engagement', module: null },
     { path: '/rewards', icon: Award, label: 'Points & Rewards', testId: 'nav-rewards', module: null },
     { path: '/sales', icon: Briefcase, label: 'Sales CRM', testId: 'nav-sales', module: null },
+    { path: '/sales/complimentary', icon: Gift, label: 'Complimentary Passes', testId: 'nav-complimentary', module: null },
     { path: '/sales/workflows', icon: Workflow, label: 'Sales Workflows', testId: 'nav-sales-workflows', module: null },
     { path: '/sales/setup', icon: Settings, label: 'Sales Setup', testId: 'nav-sales-setup', module: null },
     { path: '/levies', icon: DollarSign, label: 'Levies', testId: 'nav-levies', module: 'billing' },
