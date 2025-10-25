@@ -8824,7 +8824,7 @@ async def get_sales_consultants(current_user: User = Depends(get_current_user)):
     
     consultants = await db.users.find(
         {"role": {"$in": consultant_roles}},
-        {"_id": 0, "id": 1, "email": 1, "name": 1, "role": 1}
+        {"_id": 0, "id": 1, "email": 1, "full_name": 1, "role": 1}
     ).to_list(None)
     
     # Get lead counts for each consultant
@@ -8835,6 +8835,425 @@ async def get_sales_consultants(current_user: User = Depends(get_current_user)):
     return {
         "total": len(consultants),
         "consultants": consultants
+    }
+
+
+# ==================== COMPLIMENTARY MEMBERSHIP ENDPOINTS ====================
+
+@api_router.post("/complimentary-types")
+async def create_complimentary_type(
+    type_data: ComplimentaryMembershipTypeCreate,
+    current_user: User = Depends(get_current_user)
+):
+    """Create a new complimentary membership type (managers only)"""
+    manager_roles = ["business_owner", "head_admin", "sales_head", "sales_manager"]
+    if current_user.role not in manager_roles:
+        raise HTTPException(status_code=403, detail="Only managers can create complimentary types")
+    
+    type_id = str(uuid.uuid4())
+    now = datetime.now(timezone.utc).isoformat()
+    
+    comp_type = {
+        "id": type_id,
+        **type_data.dict(),
+        "created_at": now,
+        "updated_at": now
+    }
+    
+    await db.complimentary_types.insert_one(comp_type)
+    return {"success": True, "complimentary_type": comp_type}
+
+
+@api_router.get("/complimentary-types")
+async def get_complimentary_types(current_user: User = Depends(get_current_user)):
+    """Get all complimentary membership types"""
+    types = await db.complimentary_types.find({"_id": 0}).sort("name", 1).to_list(None)
+    return {"total": len(types), "types": types}
+
+
+@api_router.put("/complimentary-types/{type_id}")
+async def update_complimentary_type(
+    type_id: str,
+    type_data: ComplimentaryMembershipTypeCreate,
+    current_user: User = Depends(get_current_user)
+):
+    """Update a complimentary membership type (managers only)"""
+    manager_roles = ["business_owner", "head_admin", "sales_head", "sales_manager"]
+    if current_user.role not in manager_roles:
+        raise HTTPException(status_code=403, detail="Only managers can update complimentary types")
+    
+    update_data = {
+        **type_data.dict(),
+        "updated_at": datetime.now(timezone.utc).isoformat()
+    }
+    
+    result = await db.complimentary_types.update_one(
+        {"id": type_id},
+        {"$set": update_data}
+    )
+    
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Complimentary type not found")
+    
+    return {"success": True, "message": "Complimentary type updated"}
+
+
+@api_router.delete("/complimentary-types/{type_id}")
+async def delete_complimentary_type(
+    type_id: str,
+    current_user: User = Depends(get_current_user)
+):
+    """Delete a complimentary membership type (managers only)"""
+    manager_roles = ["business_owner", "head_admin", "sales_head", "sales_manager"]
+    if current_user.role not in manager_roles:
+        raise HTTPException(status_code=403, detail="Only managers can delete complimentary types")
+    
+    # Check if any active memberships use this type
+    active_count = await db.complimentary_memberships.count_documents({
+        "complimentary_type_id": type_id,
+        "status": {"$in": ["active", "not_using"]}
+    })
+    
+    if active_count > 0:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Cannot delete: {active_count} active memberships use this type"
+        )
+    
+    result = await db.complimentary_types.delete_one({"id": type_id})
+    
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Complimentary type not found")
+    
+    return {"success": True, "message": "Complimentary type deleted"}
+
+
+@api_router.post("/complimentary-memberships")
+async def issue_complimentary_membership(
+    membership_data: ComplimentaryMembershipCreate,
+    current_user: User = Depends(get_current_user)
+):
+    """Issue a complimentary membership pass and optionally create a lead"""
+    from datetime import timedelta
+    
+    # Get the complimentary type
+    comp_type = await db.complimentary_types.find_one(
+        {"id": membership_data.complimentary_type_id},
+        {"_id": 0}
+    )
+    
+    if not comp_type:
+        raise HTTPException(status_code=404, detail="Complimentary type not found")
+    
+    if not comp_type.get("is_active"):
+        raise HTTPException(status_code=400, detail="This complimentary type is not active")
+    
+    # Create member (simplified - in production, integrate with full member creation)
+    member_id = str(uuid.uuid4())
+    now = datetime.now(timezone.utc)
+    now_iso = now.isoformat()
+    
+    member_name = f"{membership_data.first_name} {membership_data.last_name}"
+    
+    # Calculate expiry date
+    expiry_date = now + timedelta(days=comp_type["time_limit_days"])
+    
+    # Create complimentary membership record
+    comp_membership_id = str(uuid.uuid4())
+    comp_membership = {
+        "id": comp_membership_id,
+        "member_id": member_id,
+        "member_name": member_name,
+        "member_email": membership_data.email,
+        "member_phone": membership_data.phone,
+        "complimentary_type_id": comp_type["id"],
+        "complimentary_type_name": comp_type["name"],
+        "start_date": now_iso,
+        "expiry_date": expiry_date.isoformat(),
+        "time_limit_days": comp_type["time_limit_days"],
+        "visit_limit": comp_type["visit_limit"],
+        "visits_used": 0,
+        "visits_remaining": comp_type["visit_limit"],
+        "last_visit_date": None,
+        "status": "active",
+        "assigned_consultant_id": membership_data.assigned_consultant_id,
+        "assigned_consultant_name": None,
+        "created_from_lead_id": None,
+        "converted_to_member_id": None,
+        "conversion_date": None,
+        "created_at": now_iso,
+        "updated_at": now_iso
+    }
+    
+    # Get consultant name if assigned
+    if membership_data.assigned_consultant_id:
+        consultant = await db.users.find_one(
+            {"id": membership_data.assigned_consultant_id},
+            {"_id": 0, "full_name": 1, "email": 1}
+        )
+        if consultant:
+            comp_membership["assigned_consultant_name"] = consultant.get("full_name") or consultant.get("email")
+    
+    await db.complimentary_memberships.insert_one(comp_membership)
+    
+    # Auto-create lead if requested
+    lead_id = None
+    if membership_data.auto_create_lead:
+        lead_id = str(uuid.uuid4())
+        lead = {
+            "id": lead_id,
+            "first_name": membership_data.first_name,
+            "last_name": membership_data.last_name,
+            "email": membership_data.email,
+            "phone": membership_data.phone,
+            "company": "",
+            "source": "complimentary_membership",
+            "source_id": None,
+            "status": "new",
+            "status_id": None,
+            "referred_by_member_id": None,
+            "loss_reason_id": None,
+            "loss_notes": None,
+            "lead_score": 50,  # Medium score for complimentary
+            "assigned_to": membership_data.assigned_consultant_id,
+            "assigned_by": current_user.id if membership_data.assigned_consultant_id else None,
+            "assigned_at": now_iso if membership_data.assigned_consultant_id else None,
+            "assignment_history": [],
+            "created_at": now_iso,
+            "updated_at": now_iso,
+            "last_contacted": None,
+            "notes": f"Complimentary membership issued: {comp_type['name']}. {membership_data.notes or ''}",
+            "tags": ["complimentary"]
+        }
+        
+        await db.leads.insert_one(lead)
+        
+        # Update complimentary membership with lead_id
+        await db.complimentary_memberships.update_one(
+            {"id": comp_membership_id},
+            {"$set": {"created_from_lead_id": lead_id}}
+        )
+        comp_membership["created_from_lead_id"] = lead_id
+    
+    return {
+        "success": True,
+        "complimentary_membership": comp_membership,
+        "lead_id": lead_id,
+        "message": "Complimentary membership issued successfully"
+    }
+
+
+@api_router.get("/complimentary-memberships")
+async def get_complimentary_memberships(
+    status: Optional[str] = None,
+    complimentary_type_id: Optional[str] = None,
+    assigned_consultant_id: Optional[str] = None,
+    current_user: User = Depends(get_current_user)
+):
+    """Get complimentary memberships with filters"""
+    query = {}
+    
+    if status:
+        query["status"] = status
+    if complimentary_type_id:
+        query["complimentary_type_id"] = complimentary_type_id
+    if assigned_consultant_id:
+        query["assigned_consultant_id"] = assigned_consultant_id
+    
+    memberships = await db.complimentary_memberships.find(
+        query,
+        {"_id": 0}
+    ).sort("created_at", -1).to_list(None)
+    
+    return {
+        "total": len(memberships),
+        "memberships": memberships
+    }
+
+
+@api_router.get("/complimentary-dashboard")
+async def get_complimentary_dashboard(
+    days: int = 30,
+    current_user: User = Depends(get_current_user)
+):
+    """Get complimentary membership dashboard statistics"""
+    from datetime import timedelta
+    
+    now = datetime.now(timezone.utc)
+    cutoff_date = (now - timedelta(days=days)).isoformat()
+    
+    # Total complimentary memberships issued (within period)
+    total_issued = await db.complimentary_memberships.count_documents({
+        "created_at": {"$gte": cutoff_date}
+    })
+    
+    # Active memberships
+    active_memberships = await db.complimentary_memberships.count_documents({
+        "status": "active",
+        "expiry_date": {"$gte": now.isoformat()}
+    })
+    
+    # Members accessing (visits_used > 0)
+    accessing_count = await db.complimentary_memberships.count_documents({
+        "created_at": {"$gte": cutoff_date},
+        "visits_used": {"$gt": 0}
+    })
+    
+    # Members not accessing (visits_used = 0, status = active)
+    not_accessing_count = await db.complimentary_memberships.count_documents({
+        "status": {"$in": ["active", "not_using"]},
+        "visits_used": 0,
+        "expiry_date": {"$gte": now.isoformat()}
+    })
+    
+    # Expired passes
+    expired_count = await db.complimentary_memberships.count_documents({
+        "status": "expired"
+    })
+    
+    # Converted to paid members
+    converted_count = await db.complimentary_memberships.count_documents({
+        "status": "converted",
+        "created_at": {"$gte": cutoff_date}
+    })
+    
+    # Utilization by type
+    pipeline = [
+        {"$match": {"created_at": {"$gte": cutoff_date}}},
+        {"$group": {
+            "_id": "$complimentary_type_id",
+            "type_name": {"$first": "$complimentary_type_name"},
+            "total_issued": {"$sum": 1},
+            "total_visits": {"$sum": "$visits_used"},
+            "members_accessed": {
+                "$sum": {"$cond": [{"$gt": ["$visits_used", 0]}, 1, 0]}
+            },
+            "members_converted": {
+                "$sum": {"$cond": [{"$eq": ["$status", "converted"]}, 1, 0]}
+            }
+        }},
+        {"$sort": {"total_visits": -1}}
+    ]
+    
+    utilization_by_type = await db.complimentary_memberships.aggregate(pipeline).to_list(None)
+    
+    # Calculate utilization percentage
+    for item in utilization_by_type:
+        if item["total_issued"] > 0:
+            item["utilization_percentage"] = round((item["members_accessed"] / item["total_issued"]) * 100, 1)
+            item["conversion_rate"] = round((item["members_converted"] / item["total_issued"]) * 100, 1)
+        else:
+            item["utilization_percentage"] = 0
+            item["conversion_rate"] = 0
+    
+    # Overall conversion rate
+    conversion_rate = 0
+    if total_issued > 0:
+        conversion_rate = round((converted_count / total_issued) * 100, 1)
+    
+    # Utilization rate
+    utilization_rate = 0
+    if total_issued > 0:
+        utilization_rate = round((accessing_count / total_issued) * 100, 1)
+    
+    return {
+        "period_days": days,
+        "total_issued": total_issued,
+        "active_memberships": active_memberships,
+        "accessing_count": accessing_count,
+        "not_accessing_count": not_accessing_count,
+        "expired_count": expired_count,
+        "converted_count": converted_count,
+        "utilization_rate": utilization_rate,
+        "conversion_rate": conversion_rate,
+        "utilization_by_type": utilization_by_type
+    }
+
+
+@api_router.post("/complimentary-memberships/{membership_id}/record-visit")
+async def record_complimentary_visit(
+    membership_id: str,
+    current_user: User = Depends(get_current_user)
+):
+    """Record a visit for a complimentary membership (called when access granted)"""
+    membership = await db.complimentary_memberships.find_one(
+        {"id": membership_id},
+        {"_id": 0}
+    )
+    
+    if not membership:
+        raise HTTPException(status_code=404, detail="Complimentary membership not found")
+    
+    # Check if still active
+    now = datetime.now(timezone.utc)
+    expiry_date = datetime.fromisoformat(membership["expiry_date"].replace('Z', '+00:00'))
+    
+    if now > expiry_date:
+        # Mark as expired
+        await db.complimentary_memberships.update_one(
+            {"id": membership_id},
+            {"$set": {"status": "expired", "updated_at": now.isoformat()}}
+        )
+        raise HTTPException(status_code=400, detail="Complimentary membership has expired")
+    
+    if membership["visits_used"] >= membership["visit_limit"]:
+        # Mark as completed
+        await db.complimentary_memberships.update_one(
+            {"id": membership_id},
+            {"$set": {"status": "completed", "updated_at": now.isoformat()}}
+        )
+        raise HTTPException(status_code=400, detail="Visit limit reached")
+    
+    # Increment visit count
+    new_visits_used = membership["visits_used"] + 1
+    new_visits_remaining = membership["visit_limit"] - new_visits_used
+    
+    update_data = {
+        "visits_used": new_visits_used,
+        "visits_remaining": new_visits_remaining,
+        "last_visit_date": now.isoformat(),
+        "updated_at": now.isoformat(),
+        "status": "active" if new_visits_remaining > 0 else "completed"
+    }
+    
+    await db.complimentary_memberships.update_one(
+        {"id": membership_id},
+        {"$set": update_data}
+    )
+    
+    # Get complimentary type for notification settings
+    comp_type = await db.complimentary_types.find_one(
+        {"id": membership["complimentary_type_id"]},
+        {"_id": 0}
+    )
+    
+    # Check if we should notify consultant
+    should_notify = comp_type and new_visits_used in comp_type.get("notification_on_visits", [])
+    
+    if should_notify and membership.get("assigned_consultant_id"):
+        # Create notification task
+        task_id = str(uuid.uuid4())
+        task = {
+            "id": task_id,
+            "title": f"Complimentary Visit #{new_visits_used}: {membership['member_name']}",
+            "description": f"{membership['member_name']} has used {new_visits_used} of {membership['visit_limit']} visits on their {membership['complimentary_type_name']} pass. Consider following up!",
+            "task_type": "follow_up",
+            "related_to_type": "complimentary_membership",
+            "related_to_id": membership_id,
+            "assigned_to": membership["assigned_consultant_id"],
+            "due_date": (now + timedelta(days=1)).isoformat(),
+            "priority": "medium",
+            "status": "pending",
+            "created_at": now.isoformat(),
+            "completed_at": None
+        }
+        await db.sales_tasks.insert_one(task)
+    
+    return {
+        "success": True,
+        "visits_used": new_visits_used,
+        "visits_remaining": new_visits_remaining,
+        "notification_sent": should_notify
     }
 
 
