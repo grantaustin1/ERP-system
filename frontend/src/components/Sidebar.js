@@ -8,6 +8,39 @@ export default function Sidebar() {
   const navigate = useNavigate();
   const location = useLocation();
   const { canView, loading } = usePermissions();
+  const [userRole, setUserRole] = useState(null);
+  const [memberStatus, setMemberStatus] = useState(null);
+
+  // Get user role and member status from token/API
+  useEffect(() => {
+    const fetchUserInfo = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        if (token) {
+          const response = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/auth/me`, {
+            headers: { Authorization: `Bearer ${token}` }
+          });
+          if (response.ok) {
+            const data = await response.json();
+            setUserRole(data.role);
+            // If user has a member record, get member status
+            if (data.member_id) {
+              const memberResponse = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/members/${data.member_id}`, {
+                headers: { Authorization: `Bearer ${token}` }
+              });
+              if (memberResponse.ok) {
+                const memberData = await memberResponse.json();
+                setMemberStatus(memberData.membership_status);
+              }
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching user info:', error);
+      }
+    };
+    fetchUserInfo();
+  }, []);
 
   const handleLogout = () => {
     localStorage.removeItem('token');
