@@ -8603,7 +8603,7 @@ async def assign_lead(
     if previous_assigned_to:
         prev_user = await db.users.find_one({"id": previous_assigned_to}, {"_id": 0, "email": 1, "full_name": 1})
         if prev_user:
-            previous_assigned_to_name = prev_user.get("name") or prev_user.get("email")
+            previous_assigned_to_name = prev_user.get("full_name") or prev_user.get("email")
     
     now = datetime.now(timezone.utc).isoformat()
     
