@@ -8633,9 +8633,15 @@ async def create_auto_follow_up_tasks(
         
         if not existing_task:
             # Create follow-up task
+            # Handle both first_name/last_name and full_name formats
+            if 'first_name' in lead and 'last_name' in lead:
+                lead_name = f"{lead['first_name']} {lead['last_name']}"
+            else:
+                lead_name = lead.get('full_name', 'Lead')
+            
             task = {
                 "id": str(uuid.uuid4()),
-                "title": f"Follow up with {lead['first_name']} {lead['last_name']}",
+                "title": f"Follow up with {lead_name}",
                 "description": f"Lead has been inactive for {days_inactive}+ days. Time to reach out!",
                 "task_type": "follow_up",
                 "related_to_type": "lead",
