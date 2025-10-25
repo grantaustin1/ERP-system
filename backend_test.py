@@ -454,13 +454,12 @@ class SalesModulePhase2TestRunner:
         
         try:
             # Create test workflow
-            import json
-            workflow_params = {
+            workflow_data = {
                 "name": "Auto Task on Qualified Lead",
                 "trigger_object": "lead",
                 "trigger_event": "status_changed",
-                "conditions": json.dumps({"status": "qualified"}),
-                "actions": json.dumps([
+                "conditions": {"status": "qualified"},
+                "actions": [
                     {
                         "type": "create_task",
                         "params": {
@@ -470,10 +469,10 @@ class SalesModulePhase2TestRunner:
                             "priority": "high"
                         }
                     }
-                ])
+                ]
             }
             
-            response = requests.post(f"{API_BASE}/sales/workflows", params=workflow_params, headers=self.headers)
+            response = requests.post(f"{API_BASE}/sales/workflows", json=workflow_data, headers=self.headers)
             
             if response.status_code == 200:
                 data = response.json()
