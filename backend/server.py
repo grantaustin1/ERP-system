@@ -8458,6 +8458,8 @@ async def auto_score_lead(lead_id: str, current_user: User = Depends(get_current
     """
     Automatically calculate and update lead score based on multiple factors
     """
+    from datetime import datetime, timedelta
+    
     lead = await db.leads.find_one({"id": lead_id}, {"_id": 0})
     if not lead:
         raise HTTPException(status_code=404, detail="Lead not found")
