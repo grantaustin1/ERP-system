@@ -8899,7 +8899,7 @@ async def create_complimentary_type(
 @api_router.get("/complimentary-types")
 async def get_complimentary_types(current_user: User = Depends(get_current_user)):
     """Get all complimentary membership types"""
-    types = await db.complimentary_types.find({"_id": 0}).sort("name", 1).to_list(None)
+    types = await db.complimentary_types.find({}, {"_id": 0}).sort("name", 1).to_list(None)
     return {"total": len(types), "types": types}
 
 
