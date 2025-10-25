@@ -702,8 +702,8 @@ class MemberAnalyticsTestRunner:
             return False
     
     def run_all_tests(self):
-        """Run all financial reporting API tests"""
-        print("🚀 Starting Financial Reporting API Tests...")
+        """Run all member analytics & retention API tests"""
+        print("🚀 Starting Member Analytics & Retention API Tests...")
         print(f"📍 Testing against: {BASE_URL}")
         
         # Authenticate first
@@ -713,10 +713,11 @@ class MemberAnalyticsTestRunner:
         
         # Run all tests
         tests = [
-            self.test_revenue_report_api,
-            self.test_commissions_report_api,
-            self.test_financial_summary_api,
-            self.test_payment_analysis_api,
+            self.test_retention_dashboard_api,
+            self.test_member_ltv_api,
+            self.test_at_risk_members_api,
+            self.test_member_demographics_api,
+            self.test_acquisition_cost_api,
             self.test_response_times,
             self.test_error_handling
         ]
