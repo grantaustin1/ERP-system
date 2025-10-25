@@ -7869,6 +7869,245 @@ class ReferralRewardCreate(BaseModel):
     notes: Optional[str] = None
 
 
+# ==================== SALES CRM CONFIGURATION ENDPOINTS ====================
+
+# Lead Sources CRUD
+@api_router.get("/sales/config/lead-sources")
+async def get_lead_sources(current_user: User = Depends(get_current_user)):
+    """Get all lead sources"""
+    sources = await db.lead_sources.find({"_id": 0}).sort("display_order", 1).to_list(None)
+    return {"sources": sources, "total": len(sources)}
+
+@api_router.post("/sales/config/lead-sources")
+async def create_lead_source(
+    source_data: LeadSourceCreate,
+    current_user: User = Depends(get_current_user)
+):
+    """Create a new lead source"""
+    import uuid
+    source = {
+        "id": str(uuid.uuid4()),
+        **source_data.model_dump(),
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "updated_at": datetime.now(timezone.utc).isoformat()
+    }
+    await db.lead_sources.insert_one(source)
+    return {"success": True, "source": source}
+
+@api_router.put("/sales/config/lead-sources/{source_id}")
+async def update_lead_source(
+    source_id: str,
+    source_data: LeadSourceCreate,
+    current_user: User = Depends(get_current_user)
+):
+    """Update a lead source"""
+    update_data = {
+        **source_data.model_dump(),
+        "updated_at": datetime.now(timezone.utc).isoformat()
+    }
+    result = await db.lead_sources.update_one(
+        {"id": source_id},
+        {"$set": update_data}
+    )
+    if result.modified_count == 0:
+        raise HTTPException(status_code=404, detail="Lead source not found")
+    return {"success": True, "message": "Lead source updated"}
+
+@api_router.delete("/sales/config/lead-sources/{source_id}")
+async def delete_lead_source(
+    source_id: str,
+    current_user: User = Depends(get_current_user)
+):
+    """Delete a lead source"""
+    result = await db.lead_sources.delete_one({"id": source_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Lead source not found")
+    return {"success": True, "message": "Lead source deleted"}
+
+# Lead Statuses CRUD
+@api_router.get("/sales/config/lead-statuses")
+async def get_lead_statuses(current_user: User = Depends(get_current_user)):
+    """Get all lead statuses"""
+    statuses = await db.lead_statuses.find({"_id": 0}).sort("workflow_sequence", 1).to_list(None)
+    return {"statuses": statuses, "total": len(statuses)}
+
+@api_router.post("/sales/config/lead-statuses")
+async def create_lead_status(
+    status_data: LeadStatusCreate,
+    current_user: User = Depends(get_current_user)
+):
+    """Create a new lead status"""
+    import uuid
+    status = {
+        "id": str(uuid.uuid4()),
+        **status_data.model_dump(),
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "updated_at": datetime.now(timezone.utc).isoformat()
+    }
+    await db.lead_statuses.insert_one(status)
+    return {"success": True, "status": status}
+
+@api_router.put("/sales/config/lead-statuses/{status_id}")
+async def update_lead_status(
+    status_id: str,
+    status_data: LeadStatusCreate,
+    current_user: User = Depends(get_current_user)
+):
+    """Update a lead status"""
+    update_data = {
+        **status_data.model_dump(),
+        "updated_at": datetime.now(timezone.utc).isoformat()
+    }
+    result = await db.lead_statuses.update_one(
+        {"id": status_id},
+        {"$set": update_data}
+    )
+    if result.modified_count == 0:
+        raise HTTPException(status_code=404, detail="Lead status not found")
+    return {"success": True, "message": "Lead status updated"}
+
+@api_router.delete("/sales/config/lead-statuses/{status_id}")
+async def delete_lead_status(
+    status_id: str,
+    current_user: User = Depends(get_current_user)
+):
+    """Delete a lead status"""
+    result = await db.lead_statuses.delete_one({"id": status_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Lead status not found")
+    return {"success": True, "message": "Lead status deleted"}
+
+# Loss Reasons CRUD
+@api_router.get("/sales/config/loss-reasons")
+async def get_loss_reasons(current_user: User = Depends(get_current_user)):
+    """Get all loss reasons"""
+    reasons = await db.loss_reasons.find({"_id": 0}).sort("display_order", 1).to_list(None)
+    return {"reasons": reasons, "total": len(reasons)}
+
+@api_router.post("/sales/config/loss-reasons")
+async def create_loss_reason(
+    reason_data: LossReasonCreate,
+    current_user: User = Depends(get_current_user)
+):
+    """Create a new loss reason"""
+    import uuid
+    reason = {
+        "id": str(uuid.uuid4()),
+        **reason_data.model_dump(),
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "updated_at": datetime.now(timezone.utc).isoformat()
+    }
+    await db.loss_reasons.insert_one(reason)
+    return {"success": True, "reason": reason}
+
+@api_router.put("/sales/config/loss-reasons/{reason_id}")
+async def update_loss_reason(
+    reason_id: str,
+    reason_data: LossReasonCreate,
+    current_user: User = Depends(get_current_user)
+):
+    """Update a loss reason"""
+    update_data = {
+        **reason_data.model_dump(),
+        "updated_at": datetime.now(timezone.utc).isoformat()
+    }
+    result = await db.loss_reasons.update_one(
+        {"id": reason_id},
+        {"$set": update_data}
+    )
+    if result.modified_count == 0:
+        raise HTTPException(status_code=404, detail="Loss reason not found")
+    return {"success": True, "message": "Loss reason updated"}
+
+@api_router.delete("/sales/config/loss-reasons/{reason_id}")
+async def delete_loss_reason(
+    reason_id: str,
+    current_user: User = Depends(get_current_user)
+):
+    """Delete a loss reason"""
+    result = await db.loss_reasons.delete_one({"id": reason_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Loss reason not found")
+    return {"success": True, "message": "Loss reason deleted"}
+
+# Referral Rewards CRUD
+@api_router.get("/sales/referral-rewards")
+async def get_referral_rewards(
+    member_id: Optional[str] = None,
+    status: Optional[str] = None,
+    current_user: User = Depends(get_current_user)
+):
+    """Get referral rewards with optional filters"""
+    query = {}
+    if member_id:
+        query["referring_member_id"] = member_id
+    if status:
+        query["status"] = status
+    
+    rewards = await db.referral_rewards.find(query, {"_id": 0}).sort("created_at", -1).to_list(None)
+    
+    # Enrich with member and lead names
+    enriched_rewards = []
+    for reward in rewards:
+        reward_copy = reward.copy()
+        
+        # Get referring member name
+        member = await db.members.find_one(
+            {"id": reward["referring_member_id"]},
+            {"_id": 0, "first_name": 1, "last_name": 1}
+        )
+        if member:
+            reward_copy["referring_member_name"] = f"{member.get('first_name', '')} {member.get('last_name', '')}".strip()
+        
+        # Get referred lead name
+        lead = await db.leads.find_one(
+            {"id": reward["referred_lead_id"]},
+            {"_id": 0, "first_name": 1, "last_name": 1}
+        )
+        if lead:
+            reward_copy["referred_lead_name"] = f"{lead.get('first_name', '')} {lead.get('last_name', '')}".strip()
+        
+        enriched_rewards.append(reward_copy)
+    
+    return {"rewards": enriched_rewards, "total": len(enriched_rewards)}
+
+@api_router.post("/sales/referral-rewards")
+async def create_referral_reward(
+    reward_data: ReferralRewardCreate,
+    current_user: User = Depends(get_current_user)
+):
+    """Create a new referral reward"""
+    import uuid
+    reward = {
+        "id": str(uuid.uuid4()),
+        **reward_data.model_dump(),
+        "status": "pending",
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "delivered_at": None
+    }
+    await db.referral_rewards.insert_one(reward)
+    return {"success": True, "reward": reward}
+
+@api_router.put("/sales/referral-rewards/{reward_id}/status")
+async def update_referral_reward_status(
+    reward_id: str,
+    status: str,  # pending, approved, delivered
+    current_user: User = Depends(get_current_user)
+):
+    """Update referral reward status"""
+    update_data = {"status": status}
+    if status == "delivered":
+        update_data["delivered_at"] = datetime.now(timezone.utc).isoformat()
+    
+    result = await db.referral_rewards.update_one(
+        {"id": reward_id},
+        {"$set": update_data}
+    )
+    if result.modified_count == 0:
+        raise HTTPException(status_code=404, detail="Referral reward not found")
+    return {"success": True, "message": f"Reward status updated to {status}"}
+
+
 # ==================== LEADS/CONTACTS ENDPOINTS ====================
 
 @api_router.get("/sales/leads")
