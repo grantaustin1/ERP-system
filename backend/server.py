@@ -8677,6 +8677,13 @@ class WorkflowRule(BaseModel):
     is_active: bool
     created_at: str
 
+class WorkflowCreate(BaseModel):
+    name: str
+    trigger_object: str
+    trigger_event: str
+    conditions: dict
+    actions: List[dict]
+
 
 @api_router.get("/sales/workflows")
 async def get_workflows(current_user: User = Depends(get_current_user)):
