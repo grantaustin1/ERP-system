@@ -1202,6 +1202,128 @@ export default function Settings() {
                     <ul className="text-sm text-slate-300 space-y-1">
                       <li>• EFT files are generated in Nedbank CPS format for Same Day Value processing</li>
                       <li>• Generated files are auto-saved to <code className="bg-slate-700 px-1 rounded">/app/eft_files/outgoing</code></li>
+
+
+            {/* App Settings Tab */}
+            <TabsContent value="app">
+              <Card className="bg-slate-800 border-slate-700">
+                <CardHeader>
+                  <CardTitle className="text-white flex items-center">
+                    <SettingsIcon className="w-5 h-5 mr-2" />
+                    Application Settings
+                  </CardTitle>
+                  <CardDescription className="text-slate-400">
+                    Configure general application features and member portal access
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  {/* Member Portal Settings */}
+                  <div>
+                    <h3 className="text-lg font-semibold text-white mb-4">Member Portal Settings</h3>
+                    
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between p-4 bg-slate-700/50 rounded-lg">
+                        <div>
+                          <Label className="text-white text-base">Enable Member Portal</Label>
+                          <p className="text-sm text-slate-400 mt-1">
+                            Allow members to access the member portal dashboard
+                          </p>
+                        </div>
+                        <Switch
+                          checked={appSettings.member_portal_enabled}
+                          onCheckedChange={(checked) => setAppSettings({...appSettings, member_portal_enabled: checked})}
+                        />
+                      </div>
+
+                      <div className="flex items-center justify-between p-4 bg-slate-700/50 rounded-lg">
+                        <div>
+                          <Label className="text-white text-base">Require Active Membership Status</Label>
+                          <p className="text-sm text-slate-400 mt-1">
+                            Only active members can access the member portal
+                          </p>
+                        </div>
+                        <Switch
+                          checked={appSettings.member_portal_require_active_status}
+                          onCheckedChange={(checked) => setAppSettings({...appSettings, member_portal_require_active_status: checked})}
+                          disabled={!appSettings.member_portal_enabled}
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Notification Channels Settings */}
+                  <div className="border-t border-slate-700 pt-6 mt-6">
+                    <h3 className="text-lg font-semibold text-white mb-4">Notification Channels</h3>
+                    
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between p-4 bg-slate-700/50 rounded-lg">
+                        <div>
+                          <Label className="text-white text-base">Email Notifications</Label>
+                          <p className="text-sm text-slate-400 mt-1">
+                            Send notifications via email
+                          </p>
+                        </div>
+                        <Switch
+                          checked={appSettings.enable_email_notifications}
+                          onCheckedChange={(checked) => setAppSettings({...appSettings, enable_email_notifications: checked})}
+                        />
+                      </div>
+
+                      <div className="flex items-center justify-between p-4 bg-slate-700/50 rounded-lg">
+                        <div>
+                          <Label className="text-white text-base">SMS Notifications</Label>
+                          <p className="text-sm text-slate-400 mt-1">
+                            Send notifications via SMS
+                          </p>
+                        </div>
+                        <Switch
+                          checked={appSettings.enable_sms_notifications}
+                          onCheckedChange={(checked) => setAppSettings({...appSettings, enable_sms_notifications: checked})}
+                        />
+                      </div>
+
+                      <div className="flex items-center justify-between p-4 bg-slate-700/50 rounded-lg">
+                        <div>
+                          <Label className="text-white text-base">WhatsApp Notifications</Label>
+                          <p className="text-sm text-slate-400 mt-1">
+                            Send notifications via WhatsApp Business API
+                          </p>
+                        </div>
+                        <Switch
+                          checked={appSettings.enable_whatsapp_notifications}
+                          onCheckedChange={(checked) => setAppSettings({...appSettings, enable_whatsapp_notifications: checked})}
+                        />
+                      </div>
+
+                      <div className="flex items-center justify-between p-4 bg-slate-700/50 rounded-lg">
+                        <div>
+                          <Label className="text-white text-base">In-App Notifications</Label>
+                          <p className="text-sm text-slate-400 mt-1">
+                            Show notifications within the application
+                          </p>
+                        </div>
+                        <Switch
+                          checked={appSettings.enable_inapp_notifications}
+                          onCheckedChange={(checked) => setAppSettings({...appSettings, enable_inapp_notifications: checked})}
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Save Button */}
+                  <div className="flex justify-end pt-6 border-t border-slate-700">
+                    <Button 
+                      onClick={handleSaveAppSettings}
+                      className="bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700"
+                    >
+                      <SettingsIcon className="w-4 h-4 mr-2" />
+                      Save App Settings
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
                       <li>• Incoming bank response files are monitored in <code className="bg-slate-700 px-1 rounded">/app/eft_files/incoming</code></li>
                       <li>• <strong>Advance billing:</strong> Files created {eftSettings.advance_billing_days} days before due date for payment gateway processing</li>
                       <li>• Payment confirmations automatically update member balances and invoice statuses</li>
