@@ -124,10 +124,15 @@ class SalesModulePhase2TestRunner:
             
             response = requests.post(f"{API_BASE}/sales/opportunities", params=opportunity_params, headers=self.headers)
             if response.status_code == 200:
-                opportunity = response.json()
-                self.created_opportunities.append(opportunity["id"])
-                self.log_result("Setup Test Opportunity", True, f"Created test opportunity: {opportunity['id']}")
-                return True
+                opp_response = response.json()
+                if "opportunity" in opp_response:
+                    opportunity = opp_response["opportunity"]
+                    self.created_opportunities.append(opportunity["id"])
+                    self.log_result("Setup Test Opportunity", True, f"Created test opportunity: {opportunity['id']}")
+                    return True
+                else:
+                    self.log_result("Setup Test Opportunity", False, f"Unexpected response structure: {opp_response}")
+                    return False
             else:
                 self.log_result("Setup Test Opportunity", False, f"Failed to create test opportunity: {response.status_code}",
                               {"response": response.text})
