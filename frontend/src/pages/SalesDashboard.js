@@ -57,6 +57,7 @@ export default function SalesDashboard() {
 
   useEffect(() => {
     fetchDashboardData();
+    fetchComprehensiveAnalytics();
   }, []);
 
   const fetchDashboardData = async () => {
@@ -74,6 +75,21 @@ export default function SalesDashboard() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const fetchComprehensiveAnalytics = async () => {
+    try {
+      const response = await axios.get(`${API}/sales/analytics/dashboard/comprehensive`);
+      setComprehensiveAnalytics(response.data);
+    } catch (error) {
+      console.error('Failed to fetch comprehensive analytics:', error);
+    }
+  };
+
+  const openDrillDown = (type, data) => {
+    setDrillDownType(type);
+    setDrillDownData(data);
+    setDrillDownOpen(true);
   };
 
   const getStageColor = (stage) => {
