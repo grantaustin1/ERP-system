@@ -23,11 +23,6 @@ class FinancialReportingTestRunner:
         self.admin_token = None
         self.admin_headers = {}
         self.test_results = []
-        self.test_consultant_id = None
-        self.created_types = []
-        self.created_memberships = []
-        self.test_type_id = None
-        self.test_membership_id = None
         
     def log_result(self, test_name, success, message, details=None):
         """Log test result"""
