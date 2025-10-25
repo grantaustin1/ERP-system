@@ -173,6 +173,7 @@ export default function Members() {
       console.log('Member created successfully:', response.data);
       toast.success('Member added successfully!');
       setDialogOpen(false);
+      setAccountHolderManuallyEdited(false); // Reset manual edit flag
       setFormData({
         first_name: '',
         last_name: '',
