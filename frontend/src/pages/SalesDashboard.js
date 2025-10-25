@@ -88,6 +88,15 @@ export default function SalesDashboard() {
     }
   };
 
+  const fetchComplimentaryData = async () => {
+    try {
+      const response = await axios.get(`${API}/complimentary-dashboard?days=30`);
+      setComplimentaryData(response.data);
+    } catch (error) {
+      console.error('Failed to fetch complimentary data:', error);
+    }
+  };
+
   const openDrillDown = (type, data) => {
     setDrillDownType(type);
     setDrillDownData(data);
