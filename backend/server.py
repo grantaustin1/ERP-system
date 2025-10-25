@@ -9067,9 +9067,35 @@ async def issue_complimentary_membership(
         )
         comp_membership["created_from_lead_id"] = lead_id
     
+    # Return clean copy without MongoDB ObjectId
+    response_membership = {
+        "id": comp_membership["id"],
+        "member_id": comp_membership["member_id"],
+        "member_name": comp_membership["member_name"],
+        "member_email": comp_membership["member_email"],
+        "member_phone": comp_membership["member_phone"],
+        "complimentary_type_id": comp_membership["complimentary_type_id"],
+        "complimentary_type_name": comp_membership["complimentary_type_name"],
+        "start_date": comp_membership["start_date"],
+        "expiry_date": comp_membership["expiry_date"],
+        "time_limit_days": comp_membership["time_limit_days"],
+        "visit_limit": comp_membership["visit_limit"],
+        "visits_used": comp_membership["visits_used"],
+        "visits_remaining": comp_membership["visits_remaining"],
+        "last_visit_date": comp_membership["last_visit_date"],
+        "status": comp_membership["status"],
+        "assigned_consultant_id": comp_membership["assigned_consultant_id"],
+        "assigned_consultant_name": comp_membership["assigned_consultant_name"],
+        "created_from_lead_id": comp_membership["created_from_lead_id"],
+        "converted_to_member_id": comp_membership["converted_to_member_id"],
+        "conversion_date": comp_membership["conversion_date"],
+        "created_at": comp_membership["created_at"],
+        "updated_at": comp_membership["updated_at"]
+    }
+    
     return {
         "success": True,
-        "complimentary_membership": comp_membership,
+        "complimentary_membership": response_membership,
         "lead_id": lead_id,
         "message": "Complimentary membership issued successfully"
     }
