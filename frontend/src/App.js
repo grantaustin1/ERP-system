@@ -83,6 +83,7 @@ function App() {
             <Route path="/sales/leads" element={<PrivateRoute><LeadsContacts /></PrivateRoute>} />
             <Route path="/sales/pipeline" element={<PrivateRoute><SalesPipeline /></PrivateRoute>} />
             <Route path="/sales/tasks" element={<PrivateRoute><SalesTasks /></PrivateRoute>} />
+            <Route path="/sales/workflows" element={<PrivateRoute><WorkflowAutomation /></PrivateRoute>} />
             <Route path="/reports" element={<PrivateRoute><Reports /></PrivateRoute>} />
             <Route path="/import" element={<PrivateRoute><DataImport /></PrivateRoute>} />
             <Route path="/permission-matrix" element={<PrivateRoute><PermissionMatrix /></PrivateRoute>} />
