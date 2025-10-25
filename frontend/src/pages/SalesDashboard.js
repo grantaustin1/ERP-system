@@ -330,6 +330,57 @@ export default function SalesDashboard() {
                 </Card>
               )}
 
+              {/* Complimentary Membership Summary */}
+              {complimentaryData && (
+                <Card className="bg-slate-800 border-slate-700 mt-8">
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <CardTitle className="text-white flex items-center gap-2">
+                          <Gift className="w-5 h-5 text-blue-400" />
+                          Complimentary Memberships
+                        </CardTitle>
+                        <CardDescription className="text-slate-400">
+                          Track complimentary pass usage and conversion (Last 30 days)
+                        </CardDescription>
+                      </div>
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => navigate('/sales/complimentary')}
+                        className="text-slate-300 border-slate-600 hover:bg-slate-700"
+                      >
+                        <Eye className="w-4 h-4 mr-2" />
+                        View All
+                      </Button>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                      <div className="bg-slate-700/50 p-4 rounded-lg">
+                        <div className="text-slate-400 text-sm mb-1">Total Issued</div>
+                        <div className="text-2xl font-bold text-white">{complimentaryData.total_issued}</div>
+                      </div>
+                      <div className="bg-slate-700/50 p-4 rounded-lg">
+                        <div className="text-slate-400 text-sm mb-1">Utilization Rate</div>
+                        <div className="text-2xl font-bold text-blue-400">{complimentaryData.utilization_rate}%</div>
+                        <div className="text-xs text-slate-400 mt-1">{complimentaryData.accessing_count} accessing</div>
+                      </div>
+                      <div className="bg-slate-700/50 p-4 rounded-lg">
+                        <div className="text-slate-400 text-sm mb-1">Conversion Rate</div>
+                        <div className="text-2xl font-bold text-purple-400">{complimentaryData.conversion_rate}%</div>
+                        <div className="text-xs text-slate-400 mt-1">{complimentaryData.converted_count} converted</div>
+                      </div>
+                      <div className="bg-slate-700/50 p-4 rounded-lg">
+                        <div className="text-slate-400 text-sm mb-1">Needs Follow-up</div>
+                        <div className="text-2xl font-bold text-red-400">{complimentaryData.not_accessing_count}</div>
+                        <div className="text-xs text-slate-400 mt-1">Not using passes</div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
               {/* Advanced Sales Analytics */}
               <div className="mt-8">
                 <AdvancedSalesAnalytics />
