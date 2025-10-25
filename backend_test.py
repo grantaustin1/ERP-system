@@ -173,101 +173,95 @@ class SalesPerformanceTestRunner:
             self.log_result("Sales Funnel API", False, f"Error: {str(e)}")
             return False
     
-    def test_member_ltv_api(self):
-        """Test GET /api/reports/member-ltv endpoint"""
-        print("\n=== Testing Member LTV API ===")
+    def test_pipeline_forecast_api(self):
+        """Test GET /api/reports/pipeline-forecast endpoint"""
+        print("\n=== Testing Pipeline Forecast API ===")
         
         try:
             # Test 1: Default parameters
-            response = requests.get(f"{API_BASE}/reports/member-ltv", headers=self.admin_headers)
+            response = requests.get(f"{API_BASE}/reports/pipeline-forecast", headers=self.admin_headers)
             
             if response.status_code == 200:
                 data = response.json()
                 
                 # Verify response structure
-                required_fields = ["summary", "ltv_by_membership_type", "top_members", "all_members_ltv"]
+                required_fields = ["summary", "pipeline_by_stage", "stage_probabilities"]
                 
                 for field in required_fields:
                     if field not in data:
-                        self.log_result("Member LTV Structure", False, f"Missing field: {field}")
+                        self.log_result("Pipeline Forecast Structure", False, f"Missing field: {field}")
                         return False
                 
                 # Verify summary structure
                 summary = data["summary"]
-                summary_fields = ["total_members", "total_ltv", "average_ltv", "average_ltv_active_members", "highest_ltv", "lowest_ltv"]
+                summary_fields = ["total_opportunities", "total_pipeline_value", "weighted_pipeline_value", "predicted_revenue", "closing_this_month", "closing_this_month_value", "closing_this_month_weighted", "avg_days_to_close"]
                 for field in summary_fields:
                     if field not in summary:
-                        self.log_result("Member LTV Summary", False, f"Missing summary field: {field}")
+                        self.log_result("Pipeline Forecast Summary", False, f"Missing summary field: {field}")
                         return False
                 
-                # Verify ltv_by_membership_type structure
-                ltv_by_type = data["ltv_by_membership_type"]
-                if not isinstance(ltv_by_type, dict):
-                    self.log_result("Member LTV By Type", False, "ltv_by_membership_type should be object")
+                # Verify pipeline_by_stage structure
+                pipeline_stages = data["pipeline_by_stage"]
+                if not isinstance(pipeline_stages, list):
+                    self.log_result("Pipeline Forecast Stages", False, "pipeline_by_stage should be array")
                     return False
                 
-                # Verify membership type structure if any exist
-                if ltv_by_type:
-                    type_name = list(ltv_by_type.keys())[0]
-                    type_data = ltv_by_type[type_name]
-                    type_fields = ["total_revenue", "member_count", "avg_ltv"]
-                    for field in type_fields:
-                        if field not in type_data:
-                            self.log_result("Member LTV Type Fields", False, f"Missing type field: {field}")
+                # Verify stage structure if any exist
+                if pipeline_stages:
+                    stage = pipeline_stages[0]
+                    stage_fields = ["stage", "count", "total_value", "weighted_value", "probability"]
+                    for field in stage_fields:
+                        if field not in stage:
+                            self.log_result("Pipeline Forecast Stage Fields", False, f"Missing stage field: {field}")
                             return False
                 
-                # Verify top_members structure
-                top_members = data["top_members"]
-                if not isinstance(top_members, list):
-                    self.log_result("Member LTV Top Members", False, "top_members should be array")
-                    return False
+                # Verify stage_probabilities structure
+                probabilities = data["stage_probabilities"]
+                expected_probs = {
+                    "lead": 0.10,
+                    "qualified": 0.25,
+                    "proposal": 0.50,
+                    "negotiation": 0.75,
+                    "closed_won": 1.00
+                }
                 
-                # Verify top 20 limit
-                if len(top_members) > 20:
-                    self.log_result("Member LTV Top Members Limit", False, "top_members should be limited to 20")
-                    return False
-                
-                # Verify member structure if any exist
-                if top_members:
-                    member = top_members[0]
-                    member_fields = ["member_id", "member_name", "status", "tenure_months", "total_revenue", "monthly_avg_revenue"]
-                    for field in member_fields:
-                        if field not in member:
-                            self.log_result("Member LTV Member Fields", False, f"Missing member field: {field}")
-                            return False
+                for stage, expected_prob in expected_probs.items():
+                    if stage not in probabilities:
+                        self.log_result("Pipeline Forecast Probabilities", False, f"Missing probability for stage: {stage}")
+                        return False
                     
-                    # Verify sorting (highest total_revenue first)
-                    if len(top_members) > 1:
-                        for i in range(1, len(top_members)):
-                            if top_members[i]["total_revenue"] > top_members[i-1]["total_revenue"]:
-                                self.log_result("Member LTV Sorting", False, "Members not sorted by total_revenue")
-                                return False
-                    
-                    # Verify monthly_avg_revenue calculation
-                    tenure = member["tenure_months"]
-                    total_rev = member["total_revenue"]
-                    monthly_avg = member["monthly_avg_revenue"]
-                    expected_avg = round(total_rev / tenure, 2) if tenure > 0 else 0
-                    if abs(monthly_avg - expected_avg) > 0.01:  # Allow small floating point differences
-                        self.log_result("Member LTV Monthly Avg Calculation", False, f"Monthly avg calculation incorrect: {monthly_avg} vs expected {expected_avg}")
+                    if probabilities[stage] != expected_prob:
+                        self.log_result("Pipeline Forecast Probability Values", False, f"Stage {stage} should have probability {expected_prob}, got {probabilities[stage]}")
                         return False
                 
-                # Verify all_members_ltv structure
-                all_members = data["all_members_ltv"]
-                if not isinstance(all_members, list):
-                    self.log_result("Member LTV All Members", False, "all_members_ltv should be array")
-                    return False
+                # Verify weighted calculations use correct probabilities
+                for stage in pipeline_stages:
+                    stage_name = stage["stage"]
+                    if stage_name in probabilities:
+                        expected_weighted = round(stage["total_value"] * probabilities[stage_name], 2)
+                        actual_weighted = stage["weighted_value"]
+                        if abs(actual_weighted - expected_weighted) > 0.01:
+                            self.log_result("Pipeline Forecast Weighted Calculation", False, f"Stage {stage_name} weighted value incorrect: {actual_weighted} vs expected {expected_weighted}")
+                            return False
                 
-                self.log_result("Member LTV Default", True, f"Total LTV: R{summary['total_ltv']:.2f}, Average: R{summary['average_ltv']:.2f}")
+                # Verify all currency values are rounded to 2 decimals
+                currency_fields = ["total_pipeline_value", "weighted_pipeline_value", "predicted_revenue", "closing_this_month_value", "closing_this_month_weighted"]
+                for field in currency_fields:
+                    value = summary[field]
+                    if isinstance(value, float) and round(value, 2) != value:
+                        self.log_result("Pipeline Forecast Currency Rounding", False, f"Currency field {field} not rounded to 2 decimals: {value}")
+                        return False
+                
+                self.log_result("Pipeline Forecast Default", True, f"Total opportunities: {summary['total_opportunities']}, Pipeline value: R{summary['total_pipeline_value']:.2f}")
                 
             else:
-                self.log_result("Member LTV Default", False, f"Failed: {response.status_code}")
+                self.log_result("Pipeline Forecast Default", False, f"Failed: {response.status_code}")
                 return False
             
             return True
             
         except Exception as e:
-            self.log_result("Member LTV API", False, f"Error: {str(e)}")
+            self.log_result("Pipeline Forecast API", False, f"Error: {str(e)}")
             return False
     
     def test_at_risk_members_api(self):
