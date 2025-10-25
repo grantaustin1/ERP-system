@@ -136,8 +136,31 @@ export default function LeadsContacts() {
       return;
     }
     
+    if (!newLead.source_id) {
+      toast.error('Please select a lead source');
+      return;
+    }
+    
+    if (!newLead.status_id) {
+      toast.error('Please select a lead status');
+      return;
+    }
+    
     try {
-      const response = await axios.post(`${API}/sales/leads`, newLead);
+      const payload = {
+        first_name: newLead.first_name,
+        last_name: newLead.last_name,
+        email: newLead.email || null,
+        phone: newLead.phone || null,
+        company: newLead.company || null,
+        source: newLead.source, // Keep for backward compatibility
+        source_id: newLead.source_id,
+        status_id: newLead.status_id,
+        referred_by_member_id: newLead.referred_by_member_id || null,
+        notes: newLead.notes || null
+      };
+      
+      const response = await axios.post(`${API}/sales/leads`, payload);
       toast.success('Lead created successfully');
       setCreateModalOpen(false);
       setNewLead({
@@ -147,6 +170,9 @@ export default function LeadsContacts() {
         phone: '',
         company: '',
         source: 'other',
+        source_id: null,
+        status_id: null,
+        referred_by_member_id: null,
         notes: ''
       });
       fetchLeads();
