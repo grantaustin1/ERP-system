@@ -4378,7 +4378,7 @@ async def remove_tag_from_member(member_id: str, tag_name: str, current_user: Us
 
 @api_router.post("/members/{member_id}/freeze")
 async def freeze_membership(member_id: str, data: MemberActionRequest, current_user: User = Depends(get_current_user)):
-    """Freeze a member's membership"""
+    """Freeze a member's membership with policy enforcement"""
     member = await db.members.find_one({"id": member_id}, {"_id": 0})
     if not member:
         raise HTTPException(status_code=404, detail="Member not found")
@@ -4386,16 +4386,71 @@ async def freeze_membership(member_id: str, data: MemberActionRequest, current_u
     if member.get("freeze_status"):
         raise HTTPException(status_code=400, detail="Membership is already frozen")
     
+    # Get freeze policy settings
+    app_settings = await db.app_settings.find_one({}, {"_id": 0})
+    if not app_settings:
+        app_settings = AppSettings().model_dump()
+    
+    # Validate freeze reason if required
+    if app_settings.get("require_freeze_reason", True) and not data.reason:
+        raise HTTPException(status_code=400, detail="Freeze reason is required")
+    
+    # Validate freeze duration
+    if not data.end_date:
+        raise HTTPException(status_code=400, detail="Freeze end date is required")
+    
+    freeze_start = datetime.now(timezone.utc)
+    freeze_duration_days = (data.end_date - freeze_start).days
+    
+    min_duration = app_settings.get("min_freeze_duration_days", 7)
+    max_duration = app_settings.get("max_freeze_duration_days", 90)
+    
+    if freeze_duration_days < min_duration:
+        raise HTTPException(status_code=400, detail=f"Freeze duration must be at least {min_duration} days")
+    
+    if freeze_duration_days > max_duration:
+        raise HTTPException(status_code=400, detail=f"Freeze duration cannot exceed {max_duration} days")
+    
+    # Check freeze count limit (count freezes in last 12 months)
+    twelve_months_ago = freeze_start - timedelta(days=365)
+    freeze_history = member.get("freeze_history", [])
+    
+    # Count freezes in last 12 months
+    recent_freezes = [
+        f for f in freeze_history 
+        if f.get("start_date") and datetime.fromisoformat(f["start_date"]) >= twelve_months_ago
+    ]
+    
+    max_freezes = app_settings.get("max_freezes_per_12_months", 2)
+    if len(recent_freezes) >= max_freezes:
+        raise HTTPException(
+            status_code=400, 
+            detail=f"Maximum freeze limit reached. You can only freeze {max_freezes} times in 12 months."
+        )
+    
+    # Create freeze record for history
+    freeze_record = {
+        "start_date": freeze_start.isoformat(),
+        "end_date": data.end_date.isoformat(),
+        "reason": data.reason or "Freeze requested",
+        "duration_days": freeze_duration_days,
+        "frozen_by": current_user.full_name,
+        "frozen_by_id": current_user.id
+    }
+    
+    # Update freeze history
+    freeze_history.append(freeze_record)
+    
     # Update member freeze status
     freeze_data = {
         "freeze_status": True,
-        "freeze_start_date": datetime.now(timezone.utc).isoformat(),
+        "freeze_start_date": freeze_start.isoformat(),
+        "freeze_end_date": data.end_date.isoformat(),
         "freeze_reason": data.reason or "Freeze requested",
-        "membership_status": "frozen"
+        "membership_status": "freeze",
+        "freeze_count_12_months": len(recent_freezes) + 1,
+        "freeze_history": freeze_history
     }
-    
-    if data.end_date:
-        freeze_data["freeze_end_date"] = data.end_date.isoformat()
     
     await db.members.update_one(
         {"id": member_id},
@@ -4406,13 +4461,23 @@ async def freeze_membership(member_id: str, data: MemberActionRequest, current_u
     await add_journal_entry(
         member_id=member_id,
         action_type="membership_frozen",
-        description=f"Membership frozen. Reason: {data.reason or 'Freeze requested'}",
-        metadata={"end_date": data.end_date.isoformat() if data.end_date else None},
+        description=f"Membership frozen for {freeze_duration_days} days. Reason: {data.reason or 'Freeze requested'}",
+        metadata={
+            "end_date": data.end_date.isoformat(),
+            "duration_days": freeze_duration_days,
+            "freeze_count": len(recent_freezes) + 1
+        },
         created_by=current_user.id,
         created_by_name=current_user.full_name
     )
     
-    return {"message": "Membership frozen successfully", "freeze_end_date": data.end_date}
+    return {
+        "message": "Membership frozen successfully",
+        "freeze_end_date": data.end_date.isoformat(),
+        "duration_days": freeze_duration_days,
+        "freeze_count_12_months": len(recent_freezes) + 1,
+        "remaining_freezes": max_freezes - (len(recent_freezes) + 1)
+    }
 
 @api_router.post("/members/{member_id}/unfreeze")
 async def unfreeze_membership(member_id: str, current_user: User = Depends(get_current_user)):
