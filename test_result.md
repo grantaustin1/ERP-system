@@ -6943,10 +6943,11 @@ metadata:
 
 test_plan:
   current_focus:
-    - "Financial Reporting API - Revenue Report"
-    - "Financial Reporting API - Commissions Report"
-    - "Financial Reporting API - Financial Summary"
-    - "Financial Reporting API - Payment Analysis"
+    - "Member Analytics & Retention APIs - Retention Dashboard"
+    - "Member Analytics & Retention APIs - Member LTV Report"
+    - "Member Analytics & Retention APIs - At-Risk Members"
+    - "Member Analytics & Retention APIs - Member Demographics"
+    - "Member Analytics & Retention APIs - Acquisition Cost Analysis"
   stuck_tasks: []
   test_all: false
   test_priority: "high_first"
