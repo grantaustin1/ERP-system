@@ -568,6 +568,7 @@ export default function LeadsContacts() {
                       <th className="text-left py-3 px-4 text-slate-400 font-medium">Company</th>
                       <th className="text-left py-3 px-4 text-slate-400 font-medium">Source</th>
                       <th className="text-left py-3 px-4 text-slate-400 font-medium">Status</th>
+                      {isManager && <th className="text-left py-3 px-4 text-slate-400 font-medium">Assigned To</th>}
                       <th className="text-left py-3 px-4 text-slate-400 font-medium">Score</th>
                       <th className="text-right py-3 px-4 text-slate-400 font-medium">Actions</th>
                     </tr>
