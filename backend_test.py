@@ -959,9 +959,9 @@ class SalesModulePhase2TestRunner:
                             return False
                     
                     # Verify sorted by total_value (descending)
-                    if len(data["team_members"]) > 1:
-                        first_member = data["team_members"][0]
-                        second_member = data["team_members"][1]
+                    if len(data["team_metrics"]) > 1:
+                        first_member = data["team_metrics"][0]
+                        second_member = data["team_metrics"][1]
                         if first_member["opportunities"]["total_value"] < second_member["opportunities"]["total_value"]:
                             self.log_result("Team Performance Sort Order", False, 
                                           "Team members not sorted by total_value descending")
@@ -971,7 +971,7 @@ class SalesModulePhase2TestRunner:
                                           "Team members correctly sorted by total_value")
                 
                 self.log_result("Team Performance API", True, 
-                              f"Retrieved performance data for {len(data['team_members'])} team members")
+                              f"Retrieved performance data for {len(data['team_metrics'])} team members")
                 return True
                 
             else:
