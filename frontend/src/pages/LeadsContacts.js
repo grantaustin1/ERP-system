@@ -300,20 +300,64 @@ export default function LeadsContacts() {
                   </div>
                   
                   <div>
-                    <label className="text-sm text-slate-400 mb-1 block">Source</label>
-                    <Select value={newLead.source} onValueChange={(value) => setNewLead({...newLead, source: value})}>
+                    <label className="text-sm text-slate-400 mb-1 block">Lead Source *</label>
+                    <Select 
+                      value={newLead.source_id || ''} 
+                      onValueChange={(value) => setNewLead({...newLead, source_id: value})}
+                    >
                       <SelectTrigger className="bg-slate-700 border-slate-600 text-white">
-                        <SelectValue />
+                        <SelectValue placeholder="Select source..." />
                       </SelectTrigger>
                       <SelectContent className="bg-slate-800 border-slate-700">
-                        <SelectItem value="referral" className="text-white">Referral</SelectItem>
-                        <SelectItem value="website" className="text-white">Website</SelectItem>
-                        <SelectItem value="walk_in" className="text-white">Walk-in</SelectItem>
-                        <SelectItem value="social_media" className="text-white">Social Media</SelectItem>
-                        <SelectItem value="other" className="text-white">Other</SelectItem>
+                        {leadSources.filter(s => s.is_active).map(source => (
+                          <SelectItem key={source.id} value={source.id} className="text-white">
+                            {source.icon && <span className="mr-2">{source.icon}</span>}
+                            {source.name}
+                          </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                   </div>
+                  
+                  <div>
+                    <label className="text-sm text-slate-400 mb-1 block">Lead Status *</label>
+                    <Select 
+                      value={newLead.status_id || ''} 
+                      onValueChange={(value) => setNewLead({...newLead, status_id: value})}
+                    >
+                      <SelectTrigger className="bg-slate-700 border-slate-600 text-white">
+                        <SelectValue placeholder="Select status..." />
+                      </SelectTrigger>
+                      <SelectContent className="bg-slate-800 border-slate-700">
+                        {leadStatuses.filter(s => s.is_active).map(status => (
+                          <SelectItem key={status.id} value={status.id} className="text-white">
+                            <div className="flex items-center gap-2">
+                              <div 
+                                className="w-3 h-3 rounded-full" 
+                                style={{backgroundColor: status.color}}
+                              />
+                              {status.name}
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  {/* Conditional Referral Field - Only show if source is "Referral" */}
+                  {(() => {
+                    const selectedSource = leadSources.find(s => s.id === newLead.source_id);
+                    return selectedSource && selectedSource.name === "Referral" ? (
+                      <div className="col-span-2">
+                        <MemberSearchAutocomplete
+                          value={newLead.referred_by_member_id}
+                          onChange={(memberId) => setNewLead({...newLead, referred_by_member_id: memberId})}
+                          label="Referring Member"
+                          placeholder="Search for the member who referred this lead..."
+                        />
+                      </div>
+                    ) : null;
+                  })()}
                   
                   <div className="col-span-2">
                     <label className="text-sm text-slate-400 mb-1 block">Notes</label>
