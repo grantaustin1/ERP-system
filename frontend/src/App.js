@@ -38,6 +38,7 @@ import WorkflowAutomation from '@/pages/WorkflowAutomation';
 import SalesCRMSetup from '@/pages/SalesCRMSetup';
 import ComplimentaryMembership from '@/pages/ComplimentaryMembership';
 import FinancialReports from '@/pages/FinancialReports';
+import MemberAnalytics from '@/pages/MemberAnalytics';
 import { Toaster } from '@/components/ui/sonner';
 import { PermissionProvider } from '@/contexts/PermissionContext';
 
