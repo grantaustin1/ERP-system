@@ -453,17 +453,17 @@ class MemberPortalNotificationTestRunner:
             return False
         
         try:
-            # Test 1: Send notification to member
-            notification_data = {
+            # Test 1: Send notification to member using query parameters
+            params = {
                 "member_id": self.test_member_id,
-                "title": "Test Notification",
+                "notification_type": "general",
+                "subject": "Test Notification",
                 "message": "This is a test notification from the backend test suite",
-                "channels": ["email", "inapp"],
-                "priority": "normal"
+                "channels": ["email", "in_app"]
             }
             
             response = requests.post(f"{API_BASE}/notifications/send", 
-                                   json=notification_data, 
+                                   params=params, 
                                    headers=self.admin_headers)
             
             if response.status_code == 200:
@@ -474,13 +474,18 @@ class MemberPortalNotificationTestRunner:
                     self.log_result("Notifications Send Response", False, "Missing success message")
                     return False
                 
-                # Verify notification was created (check if notification_id is returned)
-                if "notification_id" in data:
-                    self.log_result("Notifications Send", True, f"Notification sent successfully: {data['notification_id']}")
-                    return True
-                else:
-                    self.log_result("Notifications Send", True, "Notification sent successfully")
-                    return True
+                # Verify success flag
+                if not data.get("success", False):
+                    self.log_result("Notifications Send Success", False, "Success flag not set")
+                    return False
+                
+                # Verify channels were processed
+                if "channels" not in data:
+                    self.log_result("Notifications Send Channels", False, "Missing channels in response")
+                    return False
+                
+                self.log_result("Notifications Send", True, f"Notification sent via {data.get('channels', [])}")
+                return True
                 
             else:
                 self.log_result("Notifications Send", False, f"Failed: {response.status_code}")
