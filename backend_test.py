@@ -18,22 +18,13 @@ API_BASE = f"{BASE_URL}/api"
 TEST_EMAIL = "admin@gym.com"
 TEST_PASSWORD = "admin123"
 
-class ConfigurableLeadSystemTestRunner:
+class AttendanceHeatmapTestRunner:
     def __init__(self):
         self.token = None
         self.headers = {}
         self.test_results = []
-        self.created_leads = []  # Track created leads for cleanup
-        self.created_sources = []  # Track created lead sources for cleanup
-        self.created_statuses = []  # Track created lead statuses for cleanup
-        self.created_loss_reasons = []  # Track created loss reasons for cleanup
-        self.created_referral_rewards = []  # Track created referral rewards for cleanup
-        self.test_lead_id = None
-        self.test_user_id = None
         self.test_member_id = None
-        self.seeded_source_ids = {}  # Map of seeded source names to IDs
-        self.seeded_status_ids = {}  # Map of seeded status names to IDs
-        self.seeded_loss_reason_ids = {}  # Map of seeded loss reason names to IDs
+        self.created_access_logs = []  # Track created access logs for cleanup
         
     def log_result(self, test_name, success, message, details=None):
         """Log test result"""
