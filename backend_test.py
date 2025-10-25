@@ -475,7 +475,20 @@ class SalesModulePhase2TestRunner:
             response = requests.post(f"{API_BASE}/sales/workflows", json=workflow_data, headers=self.headers)
             
             if response.status_code == 200:
-                data = response.json()
+                response_data = response.json()
+                
+                # Verify response structure
+                if "success" not in response_data or "workflow" not in response_data:
+                    self.log_result("Create Workflow Response Structure", False, 
+                                  f"Missing success or workflow in response: {response_data}")
+                    return False
+                
+                if not response_data["success"]:
+                    self.log_result("Create Workflow Success", False, 
+                                  "Workflow creation was not successful")
+                    return False
+                
+                data = response_data["workflow"]
                 
                 # Verify required structure
                 required_fields = ["id", "name", "trigger_object", "trigger_event", "conditions", "actions", "is_active", "created_at"]
