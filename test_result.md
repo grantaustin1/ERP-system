@@ -6694,6 +6694,79 @@ agent_communication:
         agent: "main"
         comment: "Implemented POST /complimentary-memberships/{membership_id}/record-visit to track visits. Increments visit count, updates last_visit_date, checks expiry and visit limits, auto-creates follow-up tasks for consultants on configured visit numbers (1st, 2nd, 3rd), marks status as completed when limits reached."
 
+frontend:
+  - task: "Complimentary Membership Main Page"
+    implemented: true
+    working: "NA"
+    file: "/app/frontend/src/pages/ComplimentaryMembership.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Created ComplimentaryMembership.js page with comprehensive dashboard. Features: 6 dashboard metric cards (Total Issued, Active Memberships, Utilization Rate, Conversion Rate, Not Using, Expired Passes), Utilization by Type section with progress bars and performance breakdown, filterable membership table (by status, type, consultant), membership details (name, email, phone, type, visits used/remaining, last visit, days left, consultant, status badges). Clean dark theme with Lucide icons and Shadcn UI components."
+
+  - task: "Issue Complimentary Pass Dialog"
+    implemented: true
+    working: "NA"
+    file: "/app/frontend/src/pages/ComplimentaryMembership.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Implemented Issue Pass dialog with full form: first name, last name, email, phone, pass type selector (shows visit/time limits), consultant assignment dropdown (from /sales/consultants API), notes textarea, auto-create lead checkbox. Form validation, toast notifications on success/error. Clears form after submission and refreshes dashboard data."
+
+  - task: "Complimentary Type Management Dialog"
+    implemented: true
+    working: "NA"
+    file: "/app/frontend/src/pages/ComplimentaryMembership.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Implemented Type Management dialog with tabs: 1) Existing Types list showing all types with icon, name, description, time/visit limits, alert days, notification visits, edit/delete buttons, 2) Create/Edit Type form with fields: name, description, time limit (days), visit limit, alert after (days), notification visits (comma separated), icon (emoji), color (color picker), active toggle. Full CRUD operations with manager role protection. Delete with active usage check handled by backend."
+
+  - task: "Complimentary Membership Filters"
+    implemented: true
+    working: "NA"
+    file: "/app/frontend/src/pages/ComplimentaryMembership.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Implemented three filter dropdowns: Status (All/Active/Not Using/Expired/Completed/Converted), Type (All Types + dynamic list from complimentary types), Consultant (All Consultants + dynamic list from sales consultants). Filters trigger API calls to /complimentary-memberships with proper query parameters. Real-time filtering with loading states."
+
+  - task: "Complimentary Summary Card in Sales Dashboard"
+    implemented: true
+    working: "NA"
+    file: "/app/frontend/src/pages/SalesDashboard.js"
+    stuck_count: 0
+    priority: "medium"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Added Complimentary Membership summary card to Sales Dashboard showing: Total Issued (30 days), Utilization Rate with accessing count, Conversion Rate with converted count, Needs Follow-up (not using count). Card positioned before AdvancedSalesAnalytics section. Includes 'View All' button linking to /sales/complimentary page. Uses Gift icon and dark theme styling consistent with dashboard."
+
+  - task: "Complimentary Membership Route & Navigation"
+    implemented: true
+    working: "NA"
+    file: "/app/frontend/src/App.js, /app/frontend/src/components/Sidebar.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Added /sales/complimentary route to App.js with PrivateRoute wrapper. Added 'Complimentary Passes' navigation link to Sidebar under Sales CRM section with Gift icon. Route properly configured to load ComplimentaryMembership component."
+
 metadata:
   created_by: "main_agent"
   version: "3.0"
