@@ -4860,7 +4860,7 @@ agent_communication:
       9. API data integration and error handling
       
       **AUTHENTICATION**: admin@gym.com / admin123
-      **APPLICATION URL**: https://fitclub-manager.preview.emergentagent.com
+      **APPLICATION URL**: https://fitmanage-system.preview.emergentagent.com
 
   - agent: "testing"
     message: |
@@ -5185,7 +5185,7 @@ agent_communication:
       - Dashboard Integration: ✅ WORKING
       
       **AUTHENTICATION**: admin@gym.com / admin123
-      **APPLICATION URL**: https://fitclub-manager.preview.emergentagent.com
+      **APPLICATION URL**: https://fitmanage-system.preview.emergentagent.com
 
 frontend:
   - task: "Phase 2B - At-Risk Members Widget"
