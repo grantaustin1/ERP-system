@@ -142,9 +142,9 @@ class LeadAssignmentTestRunner:
             self.log_result("Setup Test Data", False, f"Error setting up test data: {str(e)}")
             return False
     
-    # ===================== STARTUP SEEDING VERIFICATION TESTS =====================
+    # ===================== LEAD ASSIGNMENT API TESTS =====================
     
-    def test_startup_seeding_verification(self):
+    def test_get_sales_consultants(self):
         """Test that default lead sources, statuses, and loss reasons are seeded correctly"""
         print("\n=== Testing Startup Seeding Verification ===")
         
