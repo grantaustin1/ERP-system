@@ -156,7 +156,7 @@ class SalesModulePhase2TestRunner:
                 data = response.json()
                 
                 # Verify required structure
-                required_fields = ["lead_id", "score", "scoring_factors", "updated_at"]
+                required_fields = ["success", "lead_id", "new_score", "scoring_factors"]
                 missing_fields = [field for field in required_fields if field not in data]
                 
                 if missing_fields:
@@ -164,8 +164,14 @@ class SalesModulePhase2TestRunner:
                                   f"Missing fields: {missing_fields}")
                     return False
                 
+                # Verify success
+                if not data["success"]:
+                    self.log_result("Lead Scoring Success", False, 
+                                  "Lead scoring was not successful")
+                    return False
+                
                 # Verify score is between 0-100
-                score = data["score"]
+                score = data["new_score"]
                 if not (0 <= score <= 100):
                     self.log_result("Lead Scoring Range", False, 
                                   f"Score {score} not in range 0-100")
