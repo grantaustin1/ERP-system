@@ -7985,7 +7985,7 @@ async def delete_lead_status(
 @api_router.get("/sales/config/loss-reasons")
 async def get_loss_reasons(current_user: User = Depends(get_current_user)):
     """Get all loss reasons"""
-    reasons = await db.loss_reasons.find({"_id": 0}).sort("display_order", 1).to_list(None)
+    reasons = await db.loss_reasons.find({}, {"_id": 0}).sort("display_order", 1).to_list(None)
     return {"reasons": reasons, "total": len(reasons)}
 
 @api_router.post("/sales/config/loss-reasons")
