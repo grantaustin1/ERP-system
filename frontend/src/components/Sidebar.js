@@ -152,10 +152,18 @@ export default function Sidebar() {
       }
     }
     
-    // Check if item requires active member status
+    // Check if item requires active member status (Member Portal)
     if (item.requireActiveMember) {
-      if (memberStatus !== 'active') {
+      // Check if member portal is globally enabled
+      if (appSettings && !appSettings.member_portal_enabled) {
         return false;
+      }
+      
+      // Check if member portal requires active status and if user's status is active
+      if (appSettings && appSettings.member_portal_require_active_status) {
+        if (memberStatus !== 'active') {
+          return false;
+        }
       }
     }
     
