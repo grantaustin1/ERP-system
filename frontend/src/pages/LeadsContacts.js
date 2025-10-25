@@ -69,11 +69,28 @@ export default function LeadsContacts() {
 
   useEffect(() => {
     fetchLeads();
+    fetchConfigurations();
   }, []);
 
   useEffect(() => {
     filterLeads();
   }, [leads, searchQuery, statusFilter, sourceFilter]);
+
+  const fetchConfigurations = async () => {
+    try {
+      const [sourcesRes, statusesRes, reasonsRes] = await Promise.all([
+        axios.get(`${API}/sales/config/lead-sources`),
+        axios.get(`${API}/sales/config/lead-statuses`),
+        axios.get(`${API}/sales/config/loss-reasons`)
+      ]);
+      
+      setLeadSources(sourcesRes.data.sources || []);
+      setLeadStatuses(statusesRes.data.statuses || []);
+      setLossReasons(reasonsRes.data.reasons || []);
+    } catch (error) {
+      console.error('Error fetching configurations:', error);
+    }
+  };
 
   const fetchLeads = async () => {
     setLoading(true);
