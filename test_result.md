@@ -6705,6 +6705,9 @@ agent_communication:
       - working: "NA"
         agent: "main"
         comment: "Implemented POST /complimentary-memberships/{membership_id}/record-visit to track visits. Increments visit count, updates last_visit_date, checks expiry and visit limits, auto-creates follow-up tasks for consultants on configured visit numbers (1st, 2nd, 3rd), marks status as completed when limits reached."
+      - working: true
+        agent: "testing"
+        comment: "✅ COMPREHENSIVE TESTING PASSED: Successfully records visits with proper tracking - visits_used increments (0→1→2), visits_remaining decrements (5→4→3), last_visit_date updates to current timestamp. Validates membership exists (404 for invalid ID), checks expiry date (400 if expired), enforces visit limits (400 if exceeded). Returns success response with updated counts and notification_sent flag. Notification tasks created for consultants on configured visit numbers. Status updates to 'completed' when visit limit reached."
 
 frontend:
   - task: "Complimentary Membership Main Page"
