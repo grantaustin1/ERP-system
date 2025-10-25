@@ -466,14 +466,29 @@ function AccessControlEnhanced() {
                     placeholder="Search members by name or email..."
                     className="flex-1"
                     id="member-search"
+                    value={quickSearchQuery}
+                    onChange={(e) => setQuickSearchQuery(e.target.value)}
                   />
-                  <Button variant="outline">
+                  <Button variant="outline" onClick={() => setQuickSearchQuery('')}>
                     <Search className="h-4 w-4" />
                   </Button>
                 </div>
 
                 <div className="grid gap-3 max-h-[500px] overflow-y-auto">
-                  {members.filter(m => m.membership_status === 'active').slice(0, 20).map(member => (
+                  {members
+                    .filter(m => m.membership_status === 'active')
+                    .filter(m => {
+                      if (!quickSearchQuery) return true;
+                      const query = quickSearchQuery.toLowerCase();
+                      return (
+                        m.first_name?.toLowerCase().includes(query) ||
+                        m.last_name?.toLowerCase().includes(query) ||
+                        m.email?.toLowerCase().includes(query) ||
+                        m.phone?.toLowerCase().includes(query)
+                      );
+                    })
+                    .slice(0, 20)
+                    .map(member => (
                     <Card key={member.id} className="border-l-4 border-l-blue-500">
                       <CardContent className="py-3">
                         <div className="flex justify-between items-center">
