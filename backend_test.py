@@ -1070,7 +1070,7 @@ class SalesModulePhase2TestRunner:
         # Clean up created leads
         for lead_id in self.created_leads:
             try:
-                response = requests.delete(f"{API_BASE}/leads/{lead_id}", headers=self.headers)
+                response = requests.delete(f"{API_BASE}/sales/leads/{lead_id}", headers=self.headers)
                 if response.status_code == 200:
                     self.log_result(f"Cleanup Lead {lead_id[:8]}", True, "Lead deleted")
                 else:
