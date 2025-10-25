@@ -130,71 +130,73 @@ class SalesModulePhase2TestRunner:
             self.log_result("Setup Test Data", False, f"Error creating test data: {str(e)}")
             return False
     
-    def test_points_balance_api(self):
-        """Test Points Balance API - GET /api/engagement/points/balance/{member_id}"""
-        print("\n=== Testing Points Balance API ===")
+    def test_lead_scoring_api(self):
+        """Test Lead Scoring API - POST /api/sales/automation/score-lead/{lead_id}"""
+        print("\n=== Testing Lead Scoring API ===")
         
         try:
-            # Test with existing member
-            response = requests.get(f"{API_BASE}/engagement/points/balance/{self.test_member_id}", headers=self.headers)
+            # Test with existing lead
+            response = requests.post(f"{API_BASE}/sales/automation/score-lead/{self.test_lead_id}", headers=self.headers)
             
             if response.status_code == 200:
                 data = response.json()
                 
                 # Verify required structure
-                required_fields = ["member_id", "total_points", "lifetime_points", "last_updated"]
+                required_fields = ["lead_id", "score", "scoring_factors", "updated_at"]
                 missing_fields = [field for field in required_fields if field not in data]
                 
                 if missing_fields:
-                    self.log_result("Points Balance Structure", False, 
+                    self.log_result("Lead Scoring Structure", False, 
                                   f"Missing fields: {missing_fields}")
                     return False
                 
-                # Verify data types
-                if not isinstance(data["total_points"], int):
-                    self.log_result("Points Balance Total Points Type", False, 
-                                  "Total points should be integer")
+                # Verify score is between 0-100
+                score = data["score"]
+                if not (0 <= score <= 100):
+                    self.log_result("Lead Scoring Range", False, 
+                                  f"Score {score} not in range 0-100")
                     return False
                 
-                if not isinstance(data["lifetime_points"], int):
-                    self.log_result("Points Balance Lifetime Points Type", False, 
-                                  "Lifetime points should be integer")
-                    return False
+                # Verify scoring factors structure
+                factors = data["scoring_factors"]
+                expected_factors = ["contact_completeness", "company_info", "source_quality", "recent_activity", "opportunities_count"]
                 
-                if data["member_id"] != self.test_member_id:
-                    self.log_result("Points Balance Member ID", False, 
-                                  "Member ID mismatch")
-                    return False
-                
-                self.log_result("Points Balance API (Existing Member)", True, 
-                              f"Retrieved balance: {data['total_points']} total, {data['lifetime_points']} lifetime")
-                
-                # Test with new member (should initialize to 0)
-                response = requests.get(f"{API_BASE}/engagement/points/balance/{self.test_member_id_2}", headers=self.headers)
-                if response.status_code == 200:
-                    new_data = response.json()
-                    if new_data["total_points"] == 0 and new_data["lifetime_points"] == 0:
-                        self.log_result("Points Balance API (New Member)", True, 
-                                      "New member initialized with 0 points")
-                    else:
-                        self.log_result("Points Balance API (New Member)", False, 
-                                      f"Expected 0 points, got {new_data['total_points']}")
+                for factor in expected_factors:
+                    if factor not in factors:
+                        self.log_result("Lead Scoring Factors", False, 
+                                      f"Missing scoring factor: {factor}")
                         return False
+                
+                # Verify lead ID matches
+                if data["lead_id"] != self.test_lead_id:
+                    self.log_result("Lead Scoring Lead ID", False, 
+                                  "Lead ID mismatch")
+                    return False
+                
+                self.log_result("Lead Scoring API (Valid Lead)", True, 
+                              f"Lead scored: {score}/100 with factors: {list(factors.keys())}")
+                
+                # Test with non-existent lead (should return 404)
+                fake_lead_id = "fake_lead_123"
+                response = requests.post(f"{API_BASE}/sales/automation/score-lead/{fake_lead_id}", headers=self.headers)
+                if response.status_code == 404:
+                    self.log_result("Lead Scoring API (Non-existent Lead)", True, 
+                                  "Correctly returns 404 for non-existent lead")
                 else:
-                    self.log_result("Points Balance API (New Member)", False, 
-                                  f"Failed to get balance for new member: {response.status_code}")
+                    self.log_result("Lead Scoring API (Non-existent Lead)", False, 
+                                  f"Expected 404, got {response.status_code}")
                     return False
                 
                 return True
                 
             else:
-                self.log_result("Points Balance API", False, 
-                              f"Failed to get points balance: {response.status_code}",
+                self.log_result("Lead Scoring API", False, 
+                              f"Failed to score lead: {response.status_code}",
                               {"response": response.text})
                 return False
                 
         except Exception as e:
-            self.log_result("Points Balance API", False, f"Error testing points balance API: {str(e)}")
+            self.log_result("Lead Scoring API", False, f"Error testing lead scoring API: {str(e)}")
             return False
     
     def test_points_award_api(self):
