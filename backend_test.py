@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-Backend Test Suite - Attendance Heatmap API Testing
-Focus on testing the new attendance heatmap endpoint with various parameters and validation
+Backend Test Suite - Lead Assignment APIs Testing
+Focus on testing the new Lead Assignment APIs with role-based access control
 """
 
 import requests
@@ -15,10 +15,10 @@ BASE_URL = os.getenv('REACT_APP_BACKEND_URL', 'https://fitness-erp-app.preview.e
 API_BASE = f"{BASE_URL}/api"
 
 # Test credentials
-TEST_EMAIL = "admin@gym.com"
-TEST_PASSWORD = "admin123"
+MANAGER_EMAIL = "admin@gym.com"
+MANAGER_PASSWORD = "admin123"
 
-class AttendanceHeatmapTestRunner:
+class LeadAssignmentTestRunner:
     def __init__(self):
         self.token = None
         self.headers = {}
