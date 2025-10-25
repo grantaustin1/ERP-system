@@ -216,6 +216,8 @@ class Member(BaseModel):
     freeze_start_date: Optional[datetime] = None
     freeze_end_date: Optional[datetime] = None
     freeze_reason: Optional[str] = None
+    freeze_count_12_months: int = 0  # Number of times frozen in last 12 months
+    freeze_history: List[dict] = []  # History of all freeze periods [{start_date, end_date, reason, duration_days}]
     # No-show tracking
     no_show_count: int = 0
     # Access PIN (using access card number)
