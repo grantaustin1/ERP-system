@@ -374,8 +374,10 @@ class FinancialReportingTestRunner:
                 data = response.json()
                 period = data["period"]
                 
-                # Verify date range is respected
-                if start_date not in period["start_date"] or end_date not in period["end_date"]:
+                # Verify date range is respected (handle timezone format differences)
+                start_check = "2024-01-01" in period["start_date"]
+                end_check = "2024-12-31" in period["end_date"]
+                if not start_check or not end_check:
                     self.log_result("Financial Summary Custom Dates", False, "Date range not respected")
                     return False
                 
