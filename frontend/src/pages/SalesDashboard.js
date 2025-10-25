@@ -49,6 +49,7 @@ export default function SalesDashboard() {
   const [overview, setOverview] = useState(null);
   const [funnel, setFunnel] = useState(null);
   const [comprehensiveAnalytics, setComprehensiveAnalytics] = useState(null);
+  const [complimentaryData, setComplimentaryData] = useState(null);
   const [loading, setLoading] = useState(false);
   const [drillDownOpen, setDrillDownOpen] = useState(false);
   const [drillDownData, setDrillDownData] = useState(null);
