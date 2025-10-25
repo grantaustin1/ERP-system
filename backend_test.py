@@ -394,78 +394,189 @@ class MemberAnalyticsTestRunner:
             self.log_result("At-Risk Members API", False, f"Error: {str(e)}")
             return False
     
-    def test_payment_analysis_api(self):
-        """Test GET /api/reports/payment-analysis endpoint"""
-        print("\n=== Testing Payment Analysis API ===")
+    def test_member_demographics_api(self):
+        """Test GET /api/reports/member-demographics endpoint"""
+        print("\n=== Testing Member Demographics API ===")
         
         try:
-            # Test 1: Default parameters (last 30 days)
-            response = requests.get(f"{API_BASE}/reports/payment-analysis", headers=self.admin_headers)
+            # Test 1: Default parameters
+            response = requests.get(f"{API_BASE}/reports/member-demographics", headers=self.admin_headers)
             
             if response.status_code == 200:
                 data = response.json()
                 
                 # Verify response structure
-                required_fields = ["period", "overall", "by_payment_method", "failure_analysis"]
+                required_fields = ["summary", "gender_distribution", "age_distribution", "membership_type_distribution", "location_distribution", "status_distribution"]
                 
                 for field in required_fields:
                     if field not in data:
-                        self.log_result("Payment Analysis Structure", False, f"Missing field: {field}")
+                        self.log_result("Member Demographics Structure", False, f"Missing field: {field}")
                         return False
                 
-                # Verify overall statistics
-                overall = data["overall"]
-                overall_fields = ["total_transactions", "successful_transactions", "failed_transactions", "pending_transactions", "overall_success_rate"]
-                for field in overall_fields:
-                    if field not in overall:
-                        self.log_result("Payment Analysis Overall", False, f"Missing overall field: {field}")
+                # Verify summary structure
+                summary = data["summary"]
+                summary_fields = ["total_members", "active_members", "active_percentage"]
+                for field in summary_fields:
+                    if field not in summary:
+                        self.log_result("Member Demographics Summary", False, f"Missing summary field: {field}")
                         return False
                 
-                # Verify success rate is percentage
-                if not (0 <= overall["overall_success_rate"] <= 100):
-                    self.log_result("Payment Analysis Success Rate", False, "Success rate should be 0-100%")
+                # Verify active_percentage calculation
+                total = summary["total_members"]
+                active = summary["active_members"]
+                active_pct = summary["active_percentage"]
+                expected_pct = round((active / total) * 100, 2) if total > 0 else 0
+                if abs(active_pct - expected_pct) > 0.01:
+                    self.log_result("Member Demographics Active Percentage", False, f"Active percentage calculation incorrect: {active_pct} vs expected {expected_pct}")
                     return False
                 
-                # Verify by_payment_method structure
-                by_method = data["by_payment_method"]
-                if not isinstance(by_method, dict):
-                    self.log_result("Payment Analysis By Method", False, "by_payment_method should be object")
+                # Verify gender_distribution is object
+                gender_dist = data["gender_distribution"]
+                if not isinstance(gender_dist, dict):
+                    self.log_result("Member Demographics Gender", False, "gender_distribution should be object")
                     return False
                 
-                # Verify payment method structure if any exist
-                if by_method:
-                    method_name = list(by_method.keys())[0]
-                    method_data = by_method[method_name]
-                    method_fields = [
-                        "total_transactions", "successful", "failed", "pending",
-                        "total_amount", "successful_amount", "failed_amount",
-                        "success_rate", "failure_rate"
-                    ]
-                    for field in method_fields:
-                        if field not in method_data:
-                            self.log_result("Payment Analysis Method Fields", False, f"Missing method field: {field}")
-                            return False
-                    
-                    # Verify rates are percentages
-                    if not (0 <= method_data["success_rate"] <= 100):
-                        self.log_result("Payment Analysis Method Success Rate", False, "Method success rate should be 0-100%")
+                # Verify age_distribution structure
+                age_dist = data["age_distribution"]
+                expected_age_groups = ["Under 18", "18-25", "26-35", "36-45", "46-55", "56-65", "Over 65", "Unknown"]
+                for group in expected_age_groups:
+                    if group not in age_dist:
+                        self.log_result("Member Demographics Age Groups", False, f"Missing age group: {group}")
                         return False
                 
-                # Verify failure analysis
-                failure_analysis = data["failure_analysis"]
-                if "top_failure_reasons" not in failure_analysis or "total_failed_amount" not in failure_analysis:
-                    self.log_result("Payment Analysis Failure Analysis", False, "Missing failure analysis fields")
+                # Verify age groups sum to total_members
+                age_sum = sum(age_dist.values())
+                if age_sum != total:
+                    self.log_result("Member Demographics Age Sum", False, f"Age groups sum ({age_sum}) doesn't match total members ({total})")
                     return False
                 
-                # Verify failure reasons is dict
-                if not isinstance(failure_analysis["top_failure_reasons"], dict):
-                    self.log_result("Payment Analysis Failure Reasons", False, "top_failure_reasons should be object")
+                # Verify membership_type_distribution is object
+                type_dist = data["membership_type_distribution"]
+                if not isinstance(type_dist, dict):
+                    self.log_result("Member Demographics Membership Types", False, "membership_type_distribution should be object")
                     return False
                 
-                self.log_result("Payment Analysis Default", True, f"Total transactions: {overall['total_transactions']}, Success rate: {overall['overall_success_rate']:.1f}%")
+                # Verify location_distribution is object (top 10)
+                location_dist = data["location_distribution"]
+                if not isinstance(location_dist, dict):
+                    self.log_result("Member Demographics Locations", False, "location_distribution should be object")
+                    return False
+                
+                # Verify top 10 locations limit
+                if len(location_dist) > 10:
+                    self.log_result("Member Demographics Location Limit", False, "location_distribution should be limited to top 10")
+                    return False
+                
+                # Verify status_distribution is object
+                status_dist = data["status_distribution"]
+                if not isinstance(status_dist, dict):
+                    self.log_result("Member Demographics Status", False, "status_distribution should be object")
+                    return False
+                
+                self.log_result("Member Demographics Default", True, f"Total: {total} members, Active: {active_pct}%")
                 
             else:
-                self.log_result("Payment Analysis Default", False, f"Failed: {response.status_code}")
+                self.log_result("Member Demographics Default", False, f"Failed: {response.status_code}")
+                return False
+            
+            return True
+            
+        except Exception as e:
+            self.log_result("Member Demographics API", False, f"Error: {str(e)}")
+            return False
+    
+    def test_acquisition_cost_api(self):
+        """Test GET /api/reports/acquisition-cost endpoint"""
+        print("\n=== Testing Acquisition Cost API ===")
+        
+        try:
+            # Test 1: Default parameters (last 90 days)
+            response = requests.get(f"{API_BASE}/reports/acquisition-cost", headers=self.admin_headers)
+            
+            if response.status_code == 200:
+                data = response.json()
+                
+                # Verify response structure
+                required_fields = ["period", "summary", "by_source", "best_performing_source", "worst_performing_source"]
+                
+                for field in required_fields:
+                    if field not in data:
+                        self.log_result("Acquisition Cost Structure", False, f"Missing field: {field}")
+                        return False
+                
+                # Verify period structure
+                period = data["period"]
+                period_fields = ["start_date", "end_date"]
+                for field in period_fields:
+                    if field not in period:
+                        self.log_result("Acquisition Cost Period", False, f"Missing period field: {field}")
+                        return False
+                
+                # Verify summary structure
+                summary = data["summary"]
+                summary_fields = ["total_leads", "total_converted", "overall_conversion_rate", "total_estimated_cost", "average_cost_per_lead", "average_cost_per_acquisition"]
+                for field in summary_fields:
+                    if field not in summary:
+                        self.log_result("Acquisition Cost Summary", False, f"Missing summary field: {field}")
+                        return False
+                
+                # Verify conversion rate calculation
+                total_leads = summary["total_leads"]
+                total_converted = summary["total_converted"]
+                conversion_rate = summary["overall_conversion_rate"]
+                expected_rate = round((total_converted / total_leads) * 100, 2) if total_leads > 0 else 0
+                if abs(conversion_rate - expected_rate) > 0.01:
+                    self.log_result("Acquisition Cost Conversion Rate", False, f"Conversion rate calculation incorrect: {conversion_rate} vs expected {expected_rate}")
+                    return False
+                
+                # Verify by_source structure
+                by_source = data["by_source"]
+                if not isinstance(by_source, list):
+                    self.log_result("Acquisition Cost By Source", False, "by_source should be array")
+                    return False
+                
+                # Verify source structure if any exist
+                if by_source:
+                    source = by_source[0]
+                    source_fields = ["source", "total_leads", "converted_leads", "conversion_rate", "estimated_cost", "cost_per_lead", "cost_per_acquisition", "roi", "revenue_generated"]
+                    for field in source_fields:
+                        if field not in source:
+                            self.log_result("Acquisition Cost Source Fields", False, f"Missing source field: {field}")
+                            return False
+                    
+                    # Verify sorting (highest conversion_rate first)
+                    if len(by_source) > 1:
+                        for i in range(1, len(by_source)):
+                            if by_source[i]["conversion_rate"] > by_source[i-1]["conversion_rate"]:
+                                self.log_result("Acquisition Cost Sorting", False, "Sources not sorted by conversion_rate")
+                                return False
+                    
+                    # Verify cost calculations
+                    total_cost = source["estimated_cost"]
+                    converted = source["converted_leads"]
+                    cost_per_acq = source["cost_per_acquisition"]
+                    expected_cost_per_acq = round(total_cost / converted, 2) if converted > 0 else 0
+                    if abs(cost_per_acq - expected_cost_per_acq) > 0.01:
+                        self.log_result("Acquisition Cost Per Acquisition", False, f"Cost per acquisition calculation incorrect: {cost_per_acq} vs expected {expected_cost_per_acq}")
+                        return False
+                
+                # Verify best/worst performing sources
+                best_source = data["best_performing_source"]
+                worst_source = data["worst_performing_source"]
+                
+                if by_source:
+                    if best_source and best_source != by_source[0]:
+                        self.log_result("Acquisition Cost Best Source", False, "Best performing source should be first in sorted list")
+                        return False
+                    
+                    if worst_source and worst_source != by_source[-1]:
+                        self.log_result("Acquisition Cost Worst Source", False, "Worst performing source should be last in sorted list")
+                        return False
+                
+                self.log_result("Acquisition Cost Default", True, f"Total leads: {total_leads}, Conversion rate: {conversion_rate}%")
+                
+            else:
+                self.log_result("Acquisition Cost Default", False, f"Failed: {response.status_code}")
                 return False
             
             # Test 2: Custom date range
@@ -473,7 +584,7 @@ class MemberAnalyticsTestRunner:
             start_date = "2024-01-01T00:00:00Z"
             
             response = requests.get(
-                f"{API_BASE}/reports/payment-analysis",
+                f"{API_BASE}/reports/acquisition-cost",
                 params={"start_date": start_date, "end_date": end_date},
                 headers=self.admin_headers
             )
@@ -486,19 +597,19 @@ class MemberAnalyticsTestRunner:
                 start_check = "2024-01-01" in period["start_date"]
                 end_check = "2024-12-31" in period["end_date"]
                 if not start_check or not end_check:
-                    self.log_result("Payment Analysis Custom Dates", False, "Date range not respected")
+                    self.log_result("Acquisition Cost Custom Dates", False, "Date range not respected")
                     return False
                 
-                self.log_result("Payment Analysis Custom Dates", True, f"Custom range: {data['overall']['total_transactions']} transactions")
+                self.log_result("Acquisition Cost Custom Dates", True, f"Custom range: {data['summary']['total_leads']} leads")
                 
             else:
-                self.log_result("Payment Analysis Custom Dates", False, f"Failed: {response.status_code}")
+                self.log_result("Acquisition Cost Custom Dates", False, f"Failed: {response.status_code}")
                 return False
             
             return True
             
         except Exception as e:
-            self.log_result("Payment Analysis API", False, f"Error: {str(e)}")
+            self.log_result("Acquisition Cost API", False, f"Error: {str(e)}")
             return False
     
     def test_response_times(self):
