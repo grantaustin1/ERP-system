@@ -211,7 +211,7 @@ class SalesModulePhase2TestRunner:
                     return False
                 
                 self.log_result("Lead Scoring API (Valid Lead)", True, 
-                              f"Lead scored: {score}/100 with factors: {list(factors.keys())}")
+                              f"Lead scored: {score}/100 with factors: {factors}")
                 
                 # Test with non-existent lead (should return 404)
                 fake_lead_id = "fake_lead_123"
