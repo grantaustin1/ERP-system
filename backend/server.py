@@ -175,7 +175,7 @@ class Member(BaseModel):
     home_phone: Optional[str] = None
     work_phone: Optional[str] = None
     membership_type_id: str
-    membership_status: str = "active"  # active, suspended, cancelled
+    membership_status: str = "active"  # active, suspended, cancelled, freeze
     join_date: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     expiry_date: Optional[datetime] = None
     qr_code: str = ""
