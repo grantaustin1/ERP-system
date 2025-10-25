@@ -9315,6 +9315,452 @@ async def record_complimentary_visit(
     }
 
 
+
+# ==================== ADVANCED FINANCIAL REPORTING APIS ====================
+
+@api_router.get("/reports/revenue")
+async def get_revenue_report(
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+    group_by: Optional[str] = "day",  # day, week, month
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Get comprehensive revenue report with trends and breakdowns
+    Aggregates data from invoices, payments, and POS transactions
+    """
+    try:
+        # Set default date range (last 30 days if not specified)
+        if not end_date:
+            end_dt = datetime.now(timezone.utc)
+        else:
+            end_dt = datetime.fromisoformat(end_date.replace('Z', '+00:00'))
+        
+        if not start_date:
+            start_dt = end_dt - timedelta(days=30)
+        else:
+            start_dt = datetime.fromisoformat(start_date.replace('Z', '+00:00'))
+        
+        start_iso = start_dt.isoformat()
+        end_iso = end_dt.isoformat()
+        
+        # Query invoices for the period
+        invoices = await db.invoices.find({
+            "created_at": {"$gte": start_iso, "$lte": end_iso},
+            "status": {"$in": ["paid", "partial"]}
+        }, {"_id": 0}).to_list(None)
+        
+        # Query POS transactions
+        pos_transactions = await db.pos_transactions.find({
+            "created_at": {"$gte": start_iso, "$lte": end_iso},
+            "status": "completed"
+        }, {"_id": 0}).to_list(None)
+        
+        # Calculate total revenue
+        invoice_revenue = sum(inv.get("amount", 0) for inv in invoices)
+        pos_revenue = sum(txn.get("total_amount", 0) for txn in pos_transactions)
+        total_revenue = invoice_revenue + pos_revenue
+        
+        # Revenue by service type
+        revenue_by_service = {
+            "Memberships": invoice_revenue,
+            "POS/Retail": pos_revenue
+        }
+        
+        # Revenue by payment method (from invoices)
+        payment_methods = {}
+        for invoice in invoices:
+            method = invoice.get("payment_gateway", "Manual")
+            payment_methods[method] = payment_methods.get(method, 0) + invoice.get("amount", 0)
+        
+        # Revenue trend (group by specified period)
+        revenue_trend = []
+        current_dt = start_dt
+        
+        while current_dt <= end_dt:
+            if group_by == "day":
+                period_end = current_dt + timedelta(days=1)
+                label = current_dt.strftime("%Y-%m-%d")
+            elif group_by == "week":
+                period_end = current_dt + timedelta(days=7)
+                label = f"Week of {current_dt.strftime('%Y-%m-%d')}"
+            else:  # month
+                # Move to next month
+                if current_dt.month == 12:
+                    period_end = current_dt.replace(year=current_dt.year + 1, month=1, day=1)
+                else:
+                    period_end = current_dt.replace(month=current_dt.month + 1, day=1)
+                label = current_dt.strftime("%B %Y")
+            
+            # Calculate revenue for this period
+            period_start_iso = current_dt.isoformat()
+            period_end_iso = period_end.isoformat()
+            
+            period_invoices = [inv for inv in invoices if period_start_iso <= inv.get("created_at", "") < period_end_iso]
+            period_pos = [txn for txn in pos_transactions if period_start_iso <= txn.get("created_at", "") < period_end_iso]
+            
+            period_revenue = sum(inv.get("amount", 0) for inv in period_invoices) + sum(txn.get("total_amount", 0) for txn in period_pos)
+            
+            revenue_trend.append({
+                "period": label,
+                "revenue": round(period_revenue, 2),
+                "invoice_revenue": round(sum(inv.get("amount", 0) for inv in period_invoices), 2),
+                "pos_revenue": round(sum(txn.get("total_amount", 0) for txn in period_pos), 2)
+            })
+            
+            current_dt = period_end
+        
+        # Compare with previous period
+        period_days = (end_dt - start_dt).days
+        prev_start = start_dt - timedelta(days=period_days)
+        prev_end = start_dt
+        
+        prev_invoices = await db.invoices.find({
+            "created_at": {"$gte": prev_start.isoformat(), "$lt": start_iso},
+            "status": {"$in": ["paid", "partial"]}
+        }, {"_id": 0}).to_list(None)
+        
+        prev_pos = await db.pos_transactions.find({
+            "created_at": {"$gte": prev_start.isoformat(), "$lt": start_iso},
+            "status": "completed"
+        }, {"_id": 0}).to_list(None)
+        
+        prev_revenue = sum(inv.get("amount", 0) for inv in prev_invoices) + sum(txn.get("total_amount", 0) for txn in prev_pos)
+        
+        # Calculate growth
+        growth_percentage = 0
+        if prev_revenue > 0:
+            growth_percentage = round(((total_revenue - prev_revenue) / prev_revenue) * 100, 2)
+        
+        return {
+            "period": {
+                "start_date": start_iso,
+                "end_date": end_iso,
+                "days": period_days
+            },
+            "total_revenue": round(total_revenue, 2),
+            "invoice_revenue": round(invoice_revenue, 2),
+            "pos_revenue": round(pos_revenue, 2),
+            "revenue_by_service": revenue_by_service,
+            "revenue_by_payment_method": payment_methods,
+            "revenue_trend": revenue_trend,
+            "comparison": {
+                "previous_period_revenue": round(prev_revenue, 2),
+                "growth_amount": round(total_revenue - prev_revenue, 2),
+                "growth_percentage": growth_percentage
+            },
+            "transaction_counts": {
+                "invoices": len(invoices),
+                "pos_transactions": len(pos_transactions),
+                "total": len(invoices) + len(pos_transactions)
+            }
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error generating revenue report: {str(e)}")
+
+
+@api_router.get("/reports/commissions")
+async def get_commissions_report(
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Get sales commissions report by salesperson
+    Based on closed/won opportunities and membership sales
+    """
+    try:
+        # Set default date range (last 30 days)
+        if not end_date:
+            end_dt = datetime.now(timezone.utc)
+        else:
+            end_dt = datetime.fromisoformat(end_date.replace('Z', '+00:00'))
+        
+        if not start_date:
+            start_dt = end_dt - timedelta(days=30)
+        else:
+            start_dt = datetime.fromisoformat(start_date.replace('Z', '+00:00'))
+        
+        start_iso = start_dt.isoformat()
+        end_iso = end_dt.isoformat()
+        
+        # Get all sales consultants
+        consultants = await db.users.find({
+            "role": {"$in": ["sales_head", "sales_manager", "business_owner"]}
+        }, {"_id": 0, "id": 1, "full_name": 1, "email": 1, "role": 1}).to_list(None)
+        
+        commission_data = []
+        
+        for consultant in consultants:
+            consultant_id = consultant["id"]
+            
+            # Get leads converted by this consultant
+            converted_leads = await db.leads.find({
+                "assigned_to": consultant_id,
+                "status": "converted",
+                "updated_at": {"$gte": start_iso, "$lte": end_iso}
+            }, {"_id": 0}).to_list(None)
+            
+            # Get opportunities closed/won by this consultant
+            won_opportunities = await db.opportunities.find({
+                "assigned_to": consultant_id,
+                "status": "closed_won",
+                "updated_at": {"$gte": start_iso, "$lte": end_iso}
+            }, {"_id": 0}).to_list(None)
+            
+            # Calculate commission (assume 10% of deal value)
+            total_deal_value = sum(opp.get("value", 0) for opp in won_opportunities)
+            commission_rate = 0.10  # 10%
+            calculated_commission = total_deal_value * commission_rate
+            
+            # Count conversions
+            conversion_count = len(converted_leads) + len(won_opportunities)
+            
+            commission_data.append({
+                "consultant_id": consultant_id,
+                "consultant_name": consultant.get("full_name") or consultant.get("email"),
+                "email": consultant.get("email"),
+                "role": consultant.get("role"),
+                "leads_converted": len(converted_leads),
+                "opportunities_won": len(won_opportunities),
+                "total_conversions": conversion_count,
+                "total_deal_value": round(total_deal_value, 2),
+                "commission_earned": round(calculated_commission, 2),
+                "average_deal_size": round(total_deal_value / conversion_count, 2) if conversion_count > 0 else 0
+            })
+        
+        # Sort by commission earned (highest first)
+        commission_data.sort(key=lambda x: x["commission_earned"], reverse=True)
+        
+        # Calculate totals
+        total_commissions = sum(c["commission_earned"] for c in commission_data)
+        total_deal_value = sum(c["total_deal_value"] for c in commission_data)
+        total_conversions = sum(c["total_conversions"] for c in commission_data)
+        
+        return {
+            "period": {
+                "start_date": start_iso,
+                "end_date": end_iso
+            },
+            "summary": {
+                "total_commissions": round(total_commissions, 2),
+                "total_deal_value": round(total_deal_value, 2),
+                "total_conversions": total_conversions,
+                "average_commission_per_consultant": round(total_commissions / len(commission_data), 2) if commission_data else 0
+            },
+            "consultants": commission_data,
+            "commission_rate": commission_rate
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error generating commissions report: {str(e)}")
+
+
+@api_router.get("/reports/financial-summary")
+async def get_financial_summary(
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Get high-level financial summary with key metrics
+    """
+    try:
+        # Set default date range (current month)
+        if not end_date:
+            end_dt = datetime.now(timezone.utc)
+        else:
+            end_dt = datetime.fromisoformat(end_date.replace('Z', '+00:00'))
+        
+        if not start_date:
+            # Start of current month
+            start_dt = end_dt.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        else:
+            start_dt = datetime.fromisoformat(start_date.replace('Z', '+00:00'))
+        
+        start_iso = start_dt.isoformat()
+        end_iso = end_dt.isoformat()
+        
+        # Total Revenue (invoices + POS)
+        invoices = await db.invoices.find({
+            "created_at": {"$gte": start_iso, "$lte": end_iso},
+            "status": {"$in": ["paid", "partial"]}
+        }, {"_id": 0}).to_list(None)
+        
+        pos_transactions = await db.pos_transactions.find({
+            "created_at": {"$gte": start_iso, "$lte": end_iso},
+            "status": "completed"
+        }, {"_id": 0}).to_list(None)
+        
+        total_revenue = sum(inv.get("amount", 0) for inv in invoices) + sum(txn.get("total_amount", 0) for txn in pos_transactions)
+        
+        # Outstanding/Unpaid invoices
+        unpaid_invoices = await db.invoices.find({
+            "status": {"$in": ["pending", "overdue"]},
+            "due_date": {"$lte": end_iso}
+        }, {"_id": 0}).to_list(None)
+        
+        outstanding_amount = sum(inv.get("amount", 0) for inv in unpaid_invoices)
+        
+        # Failed payments
+        failed_invoices = await db.invoices.find({
+            "status": "failed",
+            "created_at": {"$gte": start_iso, "$lte": end_iso}
+        }, {"_id": 0}).to_list(None)
+        
+        failed_amount = sum(inv.get("amount", 0) for inv in failed_invoices)
+        
+        # Active members count
+        active_members = await db.members.count_documents({
+            "status": "active"
+        })
+        
+        # New members this period
+        new_members = await db.members.count_documents({
+            "join_date": {"$gte": start_iso, "$lte": end_iso}
+        })
+        
+        # Average revenue per member
+        avg_revenue_per_member = round(total_revenue / active_members, 2) if active_members > 0 else 0
+        
+        # Collection rate (paid vs total invoiced)
+        total_invoiced = sum(inv.get("amount", 0) for inv in invoices) + outstanding_amount + failed_amount
+        collection_rate = round((total_revenue / total_invoiced) * 100, 2) if total_invoiced > 0 else 100
+        
+        return {
+            "period": {
+                "start_date": start_iso,
+                "end_date": end_iso,
+                "month": start_dt.strftime("%B %Y")
+            },
+            "revenue": {
+                "total_revenue": round(total_revenue, 2),
+                "membership_revenue": round(sum(inv.get("amount", 0) for inv in invoices), 2),
+                "retail_revenue": round(sum(txn.get("total_amount", 0) for txn in pos_transactions), 2),
+                "outstanding_receivables": round(outstanding_amount, 2),
+                "failed_payments": round(failed_amount, 2)
+            },
+            "members": {
+                "active_members": active_members,
+                "new_members": new_members,
+                "avg_revenue_per_member": avg_revenue_per_member
+            },
+            "performance": {
+                "collection_rate": collection_rate,
+                "total_transactions": len(invoices) + len(pos_transactions),
+                "unpaid_invoice_count": len(unpaid_invoices),
+                "failed_payment_count": len(failed_invoices)
+            }
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error generating financial summary: {str(e)}")
+
+
+@api_router.get("/reports/payment-analysis")
+async def get_payment_analysis(
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Analyze payment methods, success rates, and failure patterns
+    """
+    try:
+        # Set default date range (last 30 days)
+        if not end_date:
+            end_dt = datetime.now(timezone.utc)
+        else:
+            end_dt = datetime.fromisoformat(end_date.replace('Z', '+00:00'))
+        
+        if not start_date:
+            start_dt = end_dt - timedelta(days=30)
+        else:
+            start_dt = datetime.fromisoformat(start_date.replace('Z', '+00:00'))
+        
+        start_iso = start_dt.isoformat()
+        end_iso = end_dt.isoformat()
+        
+        # Get all invoices in period
+        all_invoices = await db.invoices.find({
+            "created_at": {"$gte": start_iso, "$lte": end_iso}
+        }, {"_id": 0}).to_list(None)
+        
+        # Group by payment method
+        payment_methods = {}
+        for invoice in all_invoices:
+            method = invoice.get("payment_gateway", "Manual")
+            if method not in payment_methods:
+                payment_methods[method] = {
+                    "total_transactions": 0,
+                    "successful": 0,
+                    "failed": 0,
+                    "pending": 0,
+                    "total_amount": 0,
+                    "successful_amount": 0,
+                    "failed_amount": 0
+                }
+            
+            payment_methods[method]["total_transactions"] += 1
+            payment_methods[method]["total_amount"] += invoice.get("amount", 0)
+            
+            status = invoice.get("status")
+            if status == "paid":
+                payment_methods[method]["successful"] += 1
+                payment_methods[method]["successful_amount"] += invoice.get("amount", 0)
+            elif status == "failed":
+                payment_methods[method]["failed"] += 1
+                payment_methods[method]["failed_amount"] += invoice.get("amount", 0)
+            elif status in ["pending", "overdue"]:
+                payment_methods[method]["pending"] += 1
+        
+        # Calculate success rates
+        for method, data in payment_methods.items():
+            total = data["total_transactions"]
+            data["success_rate"] = round((data["successful"] / total) * 100, 2) if total > 0 else 0
+            data["failure_rate"] = round((data["failed"] / total) * 100, 2) if total > 0 else 0
+            data["total_amount"] = round(data["total_amount"], 2)
+            data["successful_amount"] = round(data["successful_amount"], 2)
+            data["failed_amount"] = round(data["failed_amount"], 2)
+        
+        # Overall statistics
+        total_transactions = len(all_invoices)
+        successful_transactions = len([inv for inv in all_invoices if inv.get("status") == "paid"])
+        failed_transactions = len([inv for inv in all_invoices if inv.get("status") == "failed"])
+        
+        overall_success_rate = round((successful_transactions / total_transactions) * 100, 2) if total_transactions > 0 else 0
+        
+        # Failed payment reasons (if available)
+        failed_invoices = [inv for inv in all_invoices if inv.get("status") == "failed"]
+        failure_reasons = {}
+        for inv in failed_invoices:
+            reason = inv.get("status_message", "Unknown")
+            failure_reasons[reason] = failure_reasons.get(reason, 0) + 1
+        
+        return {
+            "period": {
+                "start_date": start_iso,
+                "end_date": end_iso
+            },
+            "overall": {
+                "total_transactions": total_transactions,
+                "successful_transactions": successful_transactions,
+                "failed_transactions": failed_transactions,
+                "pending_transactions": total_transactions - successful_transactions - failed_transactions,
+                "overall_success_rate": overall_success_rate
+            },
+            "by_payment_method": payment_methods,
+            "failure_analysis": {
+                "top_failure_reasons": failure_reasons,
+                "total_failed_amount": round(sum(inv.get("amount", 0) for inv in failed_invoices), 2)
+            }
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error generating payment analysis: {str(e)}")
+
+
 # ==================== OPPORTUNITIES/PIPELINE ENDPOINTS ====================
 
 @api_router.get("/sales/opportunities")
