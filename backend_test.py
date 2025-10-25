@@ -83,17 +83,18 @@ class SalesModulePhase2TestRunner:
             
             # Create test lead
             timestamp = int(time.time() * 1000)
-            lead_data = {
-                "source": "website",
-                "full_name": f"John SalesTest{timestamp}",
+            lead_params = {
+                "first_name": "John",
+                "last_name": f"SalesTest{timestamp}",
                 "email": f"john.sales.{timestamp}@example.com",
                 "phone": f"082555{timestamp % 100000:05d}",
-                "interest": "Premium Membership",
-                "assigned_to_consultant_id": self.test_user_id,
-                "status": "new"
+                "company": "Test Company",
+                "source": "website",
+                "assigned_to": self.test_user_id,
+                "notes": "Test lead for automation testing"
             }
             
-            response = requests.post(f"{API_BASE}/sales/leads", json=lead_data, headers=self.headers)
+            response = requests.post(f"{API_BASE}/sales/leads", params=lead_params, headers=self.headers)
             if response.status_code == 200:
                 lead = response.json()
                 self.test_lead_id = lead["id"]
