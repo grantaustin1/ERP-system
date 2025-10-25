@@ -1318,6 +1318,135 @@ backend:
         comment: "Added new 'App Settings' tab to Settings page with two sections: 1) Member Portal Settings (enable/disable portal, require active status toggle), 2) Notification Channels (toggles for Email, SMS, WhatsApp, In-App notifications). All settings use Switch components with proper state management. Added handleSaveAppSettings function to persist changes via API. Settings fetch on page load and update app_settings state. Ready for frontend testing."
 
 
+
+metadata:
+  created_by: "main_agent"
+  version: "1.0"
+  test_sequence: 3
+  run_ui: true
+
+test_plan:
+  current_focus:
+    - "Enhanced Member Portal & Notification System - Backend APIs"
+    - "App Settings Model & API"
+    - "Enhanced Sidebar with Category Organization"
+    - "App Settings UI in Settings Page"
+  stuck_tasks: []
+  test_all: false
+  test_priority: "high_first"
+
+agent_communication:
+  - agent: "main"
+    message: |
+      PHASE 3 IMPLEMENTATION COMPLETE: Enhanced Member Portal & Notification System with Sidebar Navigation
+      
+      ✅ IMPLEMENTED FEATURES:
+      
+      1. BACKEND - App Settings System:
+         - Created AppSettings model with configurable options:
+           * member_portal_enabled: Global toggle for member portal feature
+           * member_portal_require_active_status: Restrict portal to active members only
+           * enable_email_notifications: Toggle email channel
+           * enable_sms_notifications: Toggle SMS channel
+           * enable_whatsapp_notifications: Toggle WhatsApp channel
+           * enable_inapp_notifications: Toggle in-app notifications
+         - Added two new API endpoints:
+           * GET /api/settings/app: Retrieve app settings (returns defaults if none exist)
+           * POST /api/settings/app: Create or update app settings (admin only)
+         - Settings stored in MongoDB app_settings collection
+      
+      2. FRONTEND - Sidebar Navigation Reorganization:
+         - Reorganized sidebar with 8 logical category groups:
+           * Core: Dashboard, Members, Access Control, Classes
+           * Sales & CRM: Sales CRM, Complimentary Passes, Sales Workflows, Sales Setup
+           * Financial: POS, Billing, Invoices, Debit Orders, Levies, Reconciliation
+           * Analytics & Reports: Analytics, Advanced Analytics, Reports, Financial Reports, Member Analytics, Sales Performance
+           * Retention & Engagement: Engagement, Rewards, Member Portal, Broadcast
+           * Operations: Tasks, Packages, Products, Cancellations
+           * Marketing: Marketing, Automations
+           * System: Import Data, Permissions, User Roles, Settings
+         - Added RBAC for Member Portal:
+           * Checks if member_portal_enabled in app settings
+           * Checks if member status is 'active' when member_portal_require_active_status is true
+           * Fetches user role and member status from /api/auth/me and /api/members/{member_id}
+         - Added RBAC for Admin Broadcast:
+           * Restricted to admin roles: business_owner, head_admin, admin_manager, sales_manager, fitness_manager
+         - Enhanced sidebar rendering:
+           * Category headers with uppercase styling
+           * Grouped menu items under each category
+           * Conditional visibility based on permissions, role requirements, and app settings
+      
+      3. FRONTEND - App Settings UI:
+         - Added new "App Settings" tab to Settings page with two sections:
+           * Member Portal Settings:
+             - Enable/Disable Member Portal toggle
+             - Require Active Status toggle (disabled when portal is off)
+           * Notification Channels:
+             - Email Notifications toggle
+             - SMS Notifications toggle
+             - WhatsApp Notifications toggle
+             - In-App Notifications toggle
+         - All settings use Switch components with proper state management
+         - Added handleSaveAppSettings function to persist changes via POST /api/settings/app
+         - Settings automatically fetch on page load via GET /api/settings/app
+      
+      4. MEMBER PORTAL & ADMIN BROADCAST PAGES (Already Implemented):
+         - MemberPortalDashboard.js: Member self-service portal with dashboard stats, workout history, notifications
+         - AdminBroadcast.js: Admin interface for sending notifications to members with multi-channel support
+         - Both pages have routes configured in App.js (/member-portal and /admin/broadcast)
+      
+      ✅ TECHNICAL IMPLEMENTATION:
+      - Updated Sidebar.js to use useState and useEffect for fetching user context
+      - Added process.env.REACT_APP_BACKEND_URL for API calls
+      - Implemented category-based menu structure with filtering logic
+      - Added requireActiveMember and requireAdmin flags to menu items
+      - Created isItemVisible() function to check all visibility conditions
+      - Filtered visibleCategories to only show categories with visible items
+      
+      🧪 READY FOR BACKEND TESTING:
+      1. Test GET /api/settings/app endpoint:
+         - Verify default settings returned when no settings exist
+         - Verify settings structure matches AppSettings model
+      2. Test POST /api/settings/app endpoint:
+         - Create initial settings
+         - Update existing settings
+         - Verify all toggle fields work correctly
+         - Verify admin-only access control
+      3. Test Member Portal APIs:
+         - GET /api/member-portal/dashboard
+         - POST /api/notifications/send
+         - GET /api/notifications
+         - PATCH /api/notifications/{id}/read
+      
+      🧪 READY FOR FRONTEND TESTING:
+      1. Sidebar Navigation:
+         - Verify all 8 categories render correctly
+         - Verify category headers display properly
+         - Verify menu items grouped under correct categories
+         - Verify Member Portal visibility with different settings:
+           * When member_portal_enabled = true and member status = active (should show)
+           * When member_portal_enabled = false (should hide)
+           * When member_portal_require_active_status = true and member status = suspended (should hide)
+         - Verify Admin Broadcast only visible to admin/manager roles
+      2. App Settings Page:
+         - Navigate to Settings > App Settings tab
+         - Verify all toggles render and function correctly
+         - Test save functionality
+         - Verify settings persist after page reload
+         - Test member portal toggles disable/enable correctly
+      3. Member Portal Page:
+         - Navigate to /member-portal
+         - Verify page loads correctly
+         - Test all dashboard components
+      4. Admin Broadcast Page:
+         - Navigate to /admin/broadcast
+         - Verify page loads correctly
+         - Test notification sending functionality
+      
+      Authentication: admin@gym.com / admin123
+      Application URL: https://gym-analytics-pro.preview.emergentagent.com
+
+
     priority: "high"
     needs_retesting: false
     status_history:
