@@ -46,23 +46,64 @@ class LeadAssignmentTestRunner:
             print(f"   Details: {details}")
     
     def authenticate(self):
-        """Authenticate and get token"""
+        """Authenticate manager and create test consultant"""
         try:
+            # Authenticate as manager
             response = requests.post(f"{API_BASE}/auth/login", json={
-                "email": TEST_EMAIL,
-                "password": TEST_PASSWORD
+                "email": MANAGER_EMAIL,
+                "password": MANAGER_PASSWORD
             })
             
             if response.status_code == 200:
                 data = response.json()
-                self.token = data["access_token"]
-                self.headers = {"Authorization": f"Bearer {self.token}"}
-                self.log_result("Authentication", True, "Successfully authenticated")
-                return True
+                self.manager_token = data["access_token"]
+                self.manager_headers = {"Authorization": f"Bearer {self.manager_token}"}
+                self.log_result("Manager Authentication", True, "Successfully authenticated as manager")
             else:
-                self.log_result("Authentication", False, f"Failed to authenticate: {response.status_code}", 
-                              {"response": response.text})
+                self.log_result("Manager Authentication", False, f"Failed to authenticate manager: {response.status_code}")
                 return False
+                
+            # Create a test consultant user
+            timestamp = int(time.time() * 1000)
+            consultant_data = {
+                "email": f"consultant{timestamp}@test.com",
+                "password": "consultant123",
+                "full_name": f"Test Consultant {timestamp}",
+                "role": "sales_manager"
+            }
+            
+            response = requests.post(f"{API_BASE}/rbac/users", json=consultant_data, headers=self.manager_headers)
+            
+            if response.status_code == 200:
+                user_data = response.json()
+                if user_data.get("success") and "user" in user_data:
+                    consultant_user = user_data["user"]
+                    self.test_consultant_id = consultant_user["id"]
+                    self.created_users.append(self.test_consultant_id)
+                    
+                    # Authenticate as consultant
+                    consultant_login = requests.post(f"{API_BASE}/auth/login", json={
+                        "email": consultant_data["email"],
+                        "password": consultant_data["password"]
+                    })
+                    
+                    if consultant_login.status_code == 200:
+                        consultant_token_data = consultant_login.json()
+                        self.consultant_token = consultant_token_data["access_token"]
+                        self.consultant_headers = {"Authorization": f"Bearer {self.consultant_token}"}
+                        self.log_result("Consultant Authentication", True, f"Created and authenticated test consultant: {consultant_user['email']}")
+                    else:
+                        self.log_result("Consultant Authentication", False, f"Failed to authenticate consultant: {consultant_login.status_code}")
+                        return False
+                else:
+                    self.log_result("Create Test Consultant", False, "Invalid response structure")
+                    return False
+            else:
+                self.log_result("Create Test Consultant", False, f"Failed to create consultant: {response.status_code}")
+                return False
+                
+            return True
+            
         except Exception as e:
             self.log_result("Authentication", False, f"Authentication error: {str(e)}")
             return False
