@@ -8872,8 +8872,25 @@ async def create_complimentary_type(
             "updated_at": now
         }
         
-        await db.complimentary_types.insert_one(comp_type)
-        return {"success": True, "complimentary_type": comp_type}
+        result = await db.complimentary_types.insert_one(comp_type)
+        
+        # Return a clean copy without MongoDB ObjectId
+        response_type = {
+            "id": comp_type["id"],
+            "name": comp_type["name"],
+            "description": comp_type["description"],
+            "time_limit_days": comp_type["time_limit_days"],
+            "visit_limit": comp_type["visit_limit"],
+            "no_access_alert_days": comp_type["no_access_alert_days"],
+            "notification_on_visits": comp_type["notification_on_visits"],
+            "is_active": comp_type["is_active"],
+            "color": comp_type["color"],
+            "icon": comp_type["icon"],
+            "created_at": comp_type["created_at"],
+            "updated_at": comp_type["updated_at"]
+        }
+        
+        return {"success": True, "complimentary_type": response_type}
     except Exception as e:
         print(f"Error creating complimentary type: {e}")
         raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
