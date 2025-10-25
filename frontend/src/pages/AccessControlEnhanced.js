@@ -69,6 +69,8 @@ function AccessControlEnhanced() {
     notes: ''
   });
 
+  const [quickSearchQuery, setQuickSearchQuery] = useState('');
+
   const [logFilters, setLogFilters] = useState({
     status: '',
     location: '',
