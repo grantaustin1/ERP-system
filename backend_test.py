@@ -859,7 +859,7 @@ class SalesModulePhase2TestRunner:
                                           f"Forecast for {period} months: ${period_data['total_forecast']:.2f}")
                         else:
                             self.log_result(f"Sales Forecasting API ({period} months)", False, 
-                                          f"Period mismatch: expected {period}, got {period_data['period_months']}")
+                                          f"Period mismatch: expected {period}, got {period_data['forecast_period_months']}")
                             return False
                     else:
                         self.log_result(f"Sales Forecasting API ({period} months)", False, 
