@@ -7892,6 +7892,8 @@ async def create_lead_source(
         "updated_at": datetime.now(timezone.utc).isoformat()
     }
     await db.lead_sources.insert_one(source)
+    # Remove MongoDB's _id before returning
+    source.pop("_id", None)
     return {"success": True, "source": source}
 
 @api_router.put("/sales/config/lead-sources/{source_id}")
