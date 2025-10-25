@@ -767,17 +767,17 @@ class SalesModulePhase2TestRunner:
                               f"Executed {data['workflows_executed']} workflows with {len(data['executed_actions'])} actions")
                 
                 # Test with non-matching conditions
-                non_matching_data = {
+                non_matching_params = {
                     "trigger_object": "lead",
                     "trigger_event": "status_changed",
                     "object_id": self.test_lead_id,
-                    "object_data": {
+                    "object_data": json.dumps({
                         "status": "new",  # Different status, won't match
                         "assigned_to": self.test_user_id
-                    }
+                    })
                 }
                 
-                response = requests.post(f"{API_BASE}/sales/workflows/execute", json=non_matching_data, headers=self.headers)
+                response = requests.post(f"{API_BASE}/sales/workflows/execute", params=non_matching_params, headers=self.headers)
                 if response.status_code == 200:
                     non_matching_result = response.json()
                     if non_matching_result["workflows_executed"] == 0:
