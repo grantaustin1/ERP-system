@@ -1815,6 +1815,66 @@ backend:
         agent: "testing"
         comment: "✅ AUTO-UPDATE LAST VISIT WORKING: POST /api/access/validate successfully grants access and updates member's last_visit_date field. Access response includes full member data with updated timestamp. Last visit date updates correctly from null to current timestamp when access is granted. Journal entries created for access actions. Auto-update functionality operational and accurate."
 
+  - task: "Financial Reporting API - Revenue Report"
+    implemented: true
+    working: true
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Implemented GET /api/reports/revenue endpoint with comprehensive revenue analysis. Features: Default last 30 days or custom date range, aggregates invoices and POS transactions, revenue breakdown by service type (Memberships/POS), revenue by payment method, revenue trends with grouping (day/week/month), comparison with previous period including growth percentage, transaction counts. Returns structured data with period info, totals, breakdowns, and trends."
+      - working: true
+        agent: "testing"
+        comment: "✅ REVENUE REPORT API WORKING PERFECTLY: All endpoint functionality verified - default parameters (R2828.00 total revenue), custom date ranges (2024 full year), all group_by options (day: 31 periods, week: 5 periods, month: 2 periods). Response structure complete with period, total_revenue, invoice_revenue, pos_revenue, revenue_by_service breakdown, revenue_by_payment_method, revenue_trend arrays, comparison with growth_percentage, and transaction_counts. All numeric values properly formatted, date handling correct, response times excellent (0.041s)."
+
+  - task: "Financial Reporting API - Commissions Report"
+    implemented: true
+    working: true
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Implemented GET /api/reports/commissions endpoint for sales commission analysis. Features: Default last 30 days or custom date range, analyzes leads and opportunities by consultant, calculates commission based on deal values (10% rate), consultant performance metrics (leads converted, opportunities won, total conversions, deal values), sorting by commission earned (highest first), summary totals and averages."
+      - working: true
+        agent: "testing"
+        comment: "✅ COMMISSIONS REPORT API WORKING PERFECTLY: Found 5 consultants with complete performance data. Response structure verified with period, summary (total_commissions, total_deal_value, total_conversions, average_commission_per_consultant), consultants array with all required fields (consultant_id, consultant_name, email, role, leads_converted, opportunities_won, total_conversions, total_deal_value, commission_earned, average_deal_size), proper sorting by commission_earned, commission_rate included. Custom date ranges working correctly."
+
+  - task: "Financial Reporting API - Financial Summary"
+    implemented: true
+    working: true
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Implemented GET /api/reports/financial-summary endpoint for high-level financial overview. Features: Default current month or custom date range, revenue breakdown (total, membership, retail, outstanding receivables, failed payments), member metrics (active count, new members, average revenue per member), performance indicators (collection rate, transaction counts, unpaid/failed counts). Provides comprehensive financial health snapshot."
+      - working: true
+        agent: "testing"
+        comment: "✅ FINANCIAL SUMMARY API WORKING PERFECTLY: Complete financial overview verified - total revenue R2828.00, collection rate 10.8%. Response structure complete with period (start_date, end_date, month), revenue breakdown (total_revenue, membership_revenue, retail_revenue, outstanding_receivables, failed_payments), members data (active_members, new_members, avg_revenue_per_member), performance metrics (collection_rate 0-100%, total_transactions, unpaid_invoice_count, failed_payment_count). All numeric values validated, custom date ranges working correctly."
+
+  - task: "Financial Reporting API - Payment Analysis"
+    implemented: true
+    working: true
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Implemented GET /api/reports/payment-analysis endpoint for payment method analysis and failure patterns. Features: Default last 30 days or custom date range, overall statistics (total/successful/failed/pending transactions, success rate), breakdown by payment method (transaction counts, amounts, success/failure rates), failure analysis with top failure reasons and failed amounts. Provides insights into payment performance and issues."
+      - working: true
+        agent: "testing"
+        comment: "✅ PAYMENT ANALYSIS API WORKING PERFECTLY: Comprehensive payment analysis verified - 110 total transactions, 7.3% success rate. Response structure complete with period, overall statistics (total_transactions, successful_transactions, failed_transactions, pending_transactions, overall_success_rate 0-100%), by_payment_method object with detailed breakdown per method (transaction counts, amounts, success_rate, failure_rate), failure_analysis with top_failure_reasons dict and total_failed_amount. All payment method data properly structured, custom date ranges working correctly."
+
 frontend:
   - task: "Invoice Management UI - Create Invoice Dialog"
     implemented: true
