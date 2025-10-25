@@ -76,7 +76,11 @@ export default function Settings() {
     enable_email_notifications: true,
     enable_sms_notifications: true,
     enable_whatsapp_notifications: false,
-    enable_inapp_notifications: true
+    enable_inapp_notifications: true,
+    max_freezes_per_12_months: 2,
+    min_freeze_duration_days: 7,
+    max_freeze_duration_days: 90,
+    require_freeze_reason: false
   });
 
 
