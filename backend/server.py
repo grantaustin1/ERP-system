@@ -15712,10 +15712,11 @@ async def send_bulk_notification(
 app.include_router(api_router)
 
 
-# Startup event to seed default tags
+# Startup event to seed default tags and sales CRM configurations
 @app.on_event("startup")
 async def startup_event():
-    """Initialize default tags if they don't exist"""
+    """Initialize default tags and sales CRM configurations if they don't exist"""
+    # Seed default tags
     default_tags = [
         {"name": "VIP", "color": "#fbbf24", "category": "Status", "description": "VIP member"},
         {"name": "New Member", "color": "#3b82f6", "category": "Status", "description": "Recently joined"},
@@ -15737,6 +15738,91 @@ async def startup_event():
                 usage_count=0
             )
             await db.tags.insert_one(tag.model_dump())
+    
+    # Seed default lead sources
+    default_sources = [
+        {"name": "Walk-in", "description": "Prospect walked into facility", "icon": "🚶", "display_order": 1},
+        {"name": "Phone-in", "description": "Prospect called by phone", "icon": "📞", "display_order": 2},
+        {"name": "Referral", "description": "Referred by existing member", "icon": "🤝", "display_order": 3},
+        {"name": "Canvassing", "description": "Direct outreach/canvassing", "icon": "🎯", "display_order": 4},
+        {"name": "Social Media", "description": "Social media channels", "icon": "📱", "display_order": 5},
+        {"name": "Website", "description": "Website inquiry", "icon": "🌐", "display_order": 6},
+        {"name": "Email", "description": "Email inquiry", "icon": "📧", "display_order": 7},
+        {"name": "Other", "description": "Other sources", "icon": "📋", "display_order": 8},
+    ]
+    
+    for source_data in default_sources:
+        existing = await db.lead_sources.find_one({"name": source_data["name"]})
+        if not existing:
+            import uuid
+            source = {
+                "id": str(uuid.uuid4()),
+                "name": source_data["name"],
+                "description": source_data.get("description"),
+                "icon": source_data.get("icon"),
+                "is_active": True,
+                "display_order": source_data["display_order"],
+                "created_at": datetime.now(timezone.utc).isoformat(),
+                "updated_at": datetime.now(timezone.utc).isoformat()
+            }
+            await db.lead_sources.insert_one(source)
+    
+    # Seed default lead statuses (predefined workflow)
+    default_statuses = [
+        {"name": "New Lead", "category": "prospect", "color": "#3b82f6", "workflow_sequence": 10, "display_order": 1, "description": "Fresh lead, not yet contacted"},
+        {"name": "Called", "category": "prospect", "color": "#06b6d4", "workflow_sequence": 20, "display_order": 2, "description": "Initial call made"},
+        {"name": "Appointment Made", "category": "engaged", "color": "#8b5cf6", "workflow_sequence": 30, "display_order": 3, "description": "Appointment scheduled"},
+        {"name": "Appointment Confirmed", "category": "engaged", "color": "#a855f7", "workflow_sequence": 40, "display_order": 4, "description": "Appointment confirmed by prospect"},
+        {"name": "Showed", "category": "engaged", "color": "#d946ef", "workflow_sequence": 50, "display_order": 5, "description": "Prospect attended appointment"},
+        {"name": "Be Back", "category": "engaged", "color": "#f59e0b", "workflow_sequence": 60, "display_order": 6, "description": "Needs time to think, will return"},
+        {"name": "Joined", "category": "converted", "color": "#10b981", "workflow_sequence": 70, "display_order": 7, "description": "Successfully converted to member"},
+        {"name": "Lost", "category": "lost", "color": "#ef4444", "workflow_sequence": 80, "display_order": 8, "description": "Lead lost, reason required"},
+    ]
+    
+    for status_data in default_statuses:
+        existing = await db.lead_statuses.find_one({"name": status_data["name"]})
+        if not existing:
+            import uuid
+            status = {
+                "id": str(uuid.uuid4()),
+                "name": status_data["name"],
+                "description": status_data.get("description"),
+                "category": status_data["category"],
+                "color": status_data["color"],
+                "workflow_sequence": status_data["workflow_sequence"],
+                "is_active": True,
+                "display_order": status_data["display_order"],
+                "created_at": datetime.now(timezone.utc).isoformat(),
+                "updated_at": datetime.now(timezone.utc).isoformat()
+            }
+            await db.lead_statuses.insert_one(status)
+    
+    # Seed default loss reasons
+    default_loss_reasons = [
+        {"name": "Too Expensive", "description": "Price point too high", "display_order": 1},
+        {"name": "Medical Issues", "description": "Health or medical concerns", "display_order": 2},
+        {"name": "Lives Too Far", "description": "Location inconvenient", "display_order": 3},
+        {"name": "No Time", "description": "Schedule conflicts", "display_order": 4},
+        {"name": "Joined Competitor", "description": "Chose another gym", "display_order": 5},
+        {"name": "Not Interested", "description": "Lost interest in membership", "display_order": 6},
+        {"name": "Financial Issues", "description": "Cannot afford at this time", "display_order": 7},
+        {"name": "Other", "description": "Other reasons", "display_order": 8},
+    ]
+    
+    for reason_data in default_loss_reasons:
+        existing = await db.loss_reasons.find_one({"name": reason_data["name"]})
+        if not existing:
+            import uuid
+            reason = {
+                "id": str(uuid.uuid4()),
+                "name": reason_data["name"],
+                "description": reason_data.get("description"),
+                "is_active": True,
+                "display_order": reason_data["display_order"],
+                "created_at": datetime.now(timezone.utc).isoformat(),
+                "updated_at": datetime.now(timezone.utc).isoformat()
+            }
+            await db.loss_reasons.insert_one(reason)
 
 
 # Audit Logging Middleware
