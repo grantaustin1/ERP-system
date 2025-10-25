@@ -62,9 +62,9 @@ class MemberPortalNotificationTestRunner:
             self.log_result("Authentication", False, f"Authentication error: {str(e)}")
             return False
     
-    # ===================== SALES PERFORMANCE & FORECASTING API TESTS =====================
+    # ===================== APP SETTINGS API TESTS =====================
     
-    def test_sales_funnel_api(self):
+    def test_app_settings_get_api(self):
         """Test GET /api/reports/sales-funnel endpoint"""
         print("\n=== Testing Sales Funnel API ===")
         
