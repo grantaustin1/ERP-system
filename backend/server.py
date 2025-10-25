@@ -16095,6 +16095,51 @@ async def create_or_update_billing_settings(
         return settings_doc
 
 
+# ===== APP SETTINGS ENDPOINTS =====
+
+@api_router.get("/settings/app")
+async def get_app_settings(current_user: User = Depends(get_current_user)):
+    """Get general application settings"""
+    settings = await db.app_settings.find_one({}, {"_id": 0})
+    if not settings:
+        # Return default settings
+        default_settings = AppSettings()
+        return default_settings.model_dump()
+    return settings
+
+@api_router.post("/settings/app")
+async def create_or_update_app_settings(
+    data: AppSettingsUpdate,
+    current_user: User = Depends(get_current_user)
+):
+    """Create or update application settings (Admin only)"""
+    existing = await db.app_settings.find_one({})
+    
+    if existing:
+        # Update existing settings
+        update_data = {k: v for k, v in data.model_dump(exclude_unset=True).items() if v is not None}
+        update_data["updated_at"] = datetime.now(timezone.utc).isoformat()
+        
+        await db.app_settings.update_one(
+            {"id": existing["id"]},
+            {"$set": update_data}
+        )
+        
+        updated = await db.app_settings.find_one({"id": existing["id"]}, {"_id": 0})
+        return updated
+    else:
+        # Create new settings
+        settings = AppSettings(**data.model_dump(exclude_unset=True))
+        settings_doc = settings.model_dump()
+        settings_doc["created_at"] = settings_doc["created_at"].isoformat()
+        
+        await db.app_settings.insert_one(settings_doc)
+        settings_doc.pop("_id", None)
+        return settings_doc
+
+
+
+
 @api_router.get("/eft/settings")
 async def get_eft_settings(current_user: User = Depends(get_current_user)):
     """Get EFT configuration settings"""
