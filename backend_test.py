@@ -648,11 +648,11 @@ class SalesPerformanceTestRunner:
         
         try:
             endpoints = [
-                "/reports/retention-dashboard",
-                "/reports/member-ltv", 
-                "/reports/at-risk-members",
-                "/reports/member-demographics",
-                "/reports/acquisition-cost"
+                "/reports/sales-funnel",
+                "/reports/pipeline-forecast", 
+                "/reports/lead-source-roi",
+                "/reports/win-loss-analysis",
+                "/reports/salesperson-performance"
             ]
             
             for endpoint in endpoints:
