@@ -629,7 +629,6 @@ def main():
 
 if __name__ == "__main__":
     main()
-        """Test that default lead sources, statuses, and loss reasons are seeded correctly"""
         print("\n=== Testing Startup Seeding Verification ===")
         
         try:
