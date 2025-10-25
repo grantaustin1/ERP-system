@@ -8663,7 +8663,7 @@ async def assign_lead(
         "message": f"Lead {action_text} successfully",
         "lead_id": lead_id,
         "assigned_to": assigned_to,
-        "assigned_to_name": consultant.get("name") or consultant.get("email"),
+        "assigned_to_name": consultant.get("full_name") or consultant.get("email"),
         "assigned_by": current_user.id,
         "assigned_at": now,
         "notification_task_created": True
