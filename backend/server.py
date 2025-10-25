@@ -8610,7 +8610,7 @@ async def assign_lead(
     # Create assignment history entry
     assignment_record = {
         "assigned_to": assigned_to,
-        "assigned_to_name": consultant.get("name") or consultant.get("email"),
+        "assigned_to_name": consultant.get("full_name") or consultant.get("email"),
         "assigned_by": current_user.id,
         "assigned_by_name": current_user.full_name or current_user.email,
         "assigned_at": now,
