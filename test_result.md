@@ -1237,15 +1237,18 @@ backend:
 
   - task: "Configurable Lead Statuses - CRUD APIs"
     implemented: true
-    working: false
+    working: true
     file: "/app/backend/server.py"
-    stuck_count: 1
+    stuck_count: 0
     priority: "high"
     needs_retesting: false
     status_history:
       - working: false
         agent: "testing"
         comment: "❌ CRITICAL ISSUE: POST /api/sales/config/lead-statuses returns 500 Internal Server Error. Same ObjectId serialization error as lead sources. This prevents creating new lead statuses."
+      - working: true
+        agent: "testing"
+        comment: "✅ FIXED - Lead Statuses CRUD APIs WORKING PERFECTLY: All CRUD operations tested successfully. CREATE: POST /api/sales/config/lead-statuses creates statuses with all required fields (name, description, category, color, workflow_sequence, is_active, display_order). READ: GET /api/sales/config/lead-statuses returns all statuses correctly. UPDATE: PUT /api/sales/config/lead-statuses/{id} updates statuses and changes persist correctly (tested category and color changes). DELETE: DELETE /api/sales/config/lead-statuses/{id} removes statuses successfully. Error handling working - 404 for non-existent IDs. No ObjectId serialization errors."
 
   - task: "Configurable Loss Reasons - Startup Seeding"
     implemented: true
