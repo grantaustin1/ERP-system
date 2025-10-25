@@ -10370,6 +10370,580 @@ async def get_acquisition_cost_report(
         raise HTTPException(status_code=500, detail=f"Error calculating acquisition cost: {str(e)}")
 
 
+
+# ==================== SALES PERFORMANCE & FORECASTING REPORTING APIS ====================
+
+@api_router.get("/reports/sales-funnel")
+async def get_sales_funnel_report(
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Get sales funnel visualization with conversion rates at each stage
+    """
+    try:
+        # Set default date range (last 90 days)
+        if not end_date:
+            end_dt = datetime.now(timezone.utc)
+        else:
+            end_dt = datetime.fromisoformat(end_date.replace('Z', '+00:00'))
+        
+        if not start_date:
+            start_dt = end_dt - timedelta(days=90)
+        else:
+            start_dt = datetime.fromisoformat(start_date.replace('Z', '+00:00'))
+        
+        start_iso = start_dt.isoformat()
+        end_iso = end_dt.isoformat()
+        
+        # Define funnel stages in order
+        funnel_stages = [
+            {"stage": "lead", "label": "Leads", "collection": "leads"},
+            {"stage": "qualified", "label": "Qualified", "collection": "leads", "status": "qualified"},
+            {"stage": "proposal", "label": "Proposal Sent", "collection": "opportunities", "stage_field": "proposal"},
+            {"stage": "negotiation", "label": "Negotiation", "collection": "opportunities", "stage_field": "negotiation"},
+            {"stage": "closed_won", "label": "Closed Won", "collection": "opportunities", "stage_field": "closed_won"}
+        ]
+        
+        funnel_data = []
+        previous_count = 0
+        
+        for idx, stage_info in enumerate(funnel_stages):
+            stage = stage_info["stage"]
+            
+            # Count based on collection and criteria
+            if stage_info["collection"] == "leads":
+                if "status" in stage_info:
+                    # Qualified leads
+                    count = await db.leads.count_documents({
+                        "status": stage_info["status"],
+                        "created_at": {"$gte": start_iso, "$lte": end_iso}
+                    })
+                else:
+                    # All leads
+                    count = await db.leads.count_documents({
+                        "created_at": {"$gte": start_iso, "$lte": end_iso}
+                    })
+            else:
+                # Opportunities at specific stage
+                count = await db.opportunities.count_documents({
+                    "stage": stage_info.get("stage_field", stage),
+                    "created_at": {"$gte": start_iso, "$lte": end_iso}
+                })
+            
+            # Calculate conversion rate from previous stage
+            conversion_rate = 0
+            if idx > 0 and previous_count > 0:
+                conversion_rate = round((count / previous_count) * 100, 2)
+            elif idx == 0:
+                conversion_rate = 100  # First stage is 100%
+            
+            # Calculate drop-off
+            drop_off = previous_count - count if idx > 0 else 0
+            drop_off_rate = round((drop_off / previous_count) * 100, 2) if previous_count > 0 else 0
+            
+            funnel_data.append({
+                "stage": stage,
+                "label": stage_info["label"],
+                "count": count,
+                "conversion_rate": conversion_rate,
+                "drop_off": drop_off,
+                "drop_off_rate": drop_off_rate
+            })
+            
+            previous_count = count
+        
+        # Overall funnel metrics
+        total_leads = funnel_data[0]["count"] if funnel_data else 0
+        total_won = funnel_data[-1]["count"] if funnel_data else 0
+        overall_conversion = round((total_won / total_leads) * 100, 2) if total_leads > 0 else 0
+        
+        return {
+            "period": {
+                "start_date": start_iso,
+                "end_date": end_iso
+            },
+            "funnel_stages": funnel_data,
+            "summary": {
+                "total_leads": total_leads,
+                "total_won": total_won,
+                "overall_conversion_rate": overall_conversion,
+                "biggest_drop_off_stage": max(funnel_data, key=lambda x: x["drop_off"])["stage"] if funnel_data else None
+            }
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error generating sales funnel: {str(e)}")
+
+
+@api_router.get("/reports/pipeline-forecast")
+async def get_pipeline_forecast(
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Get pipeline forecasting with predicted revenue
+    Uses weighted probability by stage
+    """
+    try:
+        now = datetime.now(timezone.utc)
+        
+        # Get all open opportunities (not closed won or lost)
+        open_opportunities = await db.opportunities.find({
+            "stage": {"$nin": ["closed_won", "closed_lost"]}
+        }, {"_id": 0}).to_list(None)
+        
+        # Stage probabilities (typical sales pipeline weights)
+        stage_probabilities = {
+            "lead": 0.10,
+            "qualified": 0.25,
+            "proposal": 0.50,
+            "negotiation": 0.75,
+            "closed_won": 1.00
+        }
+        
+        # Calculate pipeline metrics
+        total_pipeline_value = 0
+        weighted_pipeline_value = 0
+        pipeline_by_stage = {}
+        
+        for opp in open_opportunities:
+            stage = opp.get("stage", "lead")
+            value = opp.get("value", 0)
+            probability = stage_probabilities.get(stage, 0.10)
+            
+            total_pipeline_value += value
+            weighted_pipeline_value += value * probability
+            
+            if stage not in pipeline_by_stage:
+                pipeline_by_stage[stage] = {
+                    "stage": stage,
+                    "count": 0,
+                    "total_value": 0,
+                    "weighted_value": 0,
+                    "probability": probability
+                }
+            
+            pipeline_by_stage[stage]["count"] += 1
+            pipeline_by_stage[stage]["total_value"] += value
+            pipeline_by_stage[stage]["weighted_value"] += value * probability
+        
+        # Round values
+        for stage_data in pipeline_by_stage.values():
+            stage_data["total_value"] = round(stage_data["total_value"], 2)
+            stage_data["weighted_value"] = round(stage_data["weighted_value"], 2)
+        
+        # Get opportunities closing this month
+        month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        if now.month == 12:
+            month_end = now.replace(year=now.year + 1, month=1, day=1, hour=0, minute=0, second=0, microsecond=0)
+        else:
+            month_end = now.replace(month=now.month + 1, day=1, hour=0, minute=0, second=0, microsecond=0)
+        
+        closing_this_month = [
+            opp for opp in open_opportunities 
+            if opp.get("expected_close_date") and 
+            month_start.isoformat() <= opp.get("expected_close_date") < month_end.isoformat()
+        ]
+        
+        closing_this_month_value = sum(opp.get("value", 0) for opp in closing_this_month)
+        closing_this_month_weighted = sum(
+            opp.get("value", 0) * stage_probabilities.get(opp.get("stage", "lead"), 0.10)
+            for opp in closing_this_month
+        )
+        
+        # Pipeline velocity (average time from lead to close)
+        won_opportunities = await db.opportunities.find({
+            "stage": "closed_won"
+        }, {"_id": 0}).to_list(None)
+        
+        total_days = 0
+        velocity_count = 0
+        for opp in won_opportunities:
+            created = opp.get("created_at")
+            updated = opp.get("updated_at")
+            if created and updated:
+                try:
+                    created_dt = datetime.fromisoformat(created.replace('Z', '+00:00'))
+                    updated_dt = datetime.fromisoformat(updated.replace('Z', '+00:00'))
+                    days = (updated_dt - created_dt).days
+                    total_days += days
+                    velocity_count += 1
+                except:
+                    continue
+        
+        avg_days_to_close = round(total_days / velocity_count, 1) if velocity_count > 0 else 0
+        
+        return {
+            "summary": {
+                "total_opportunities": len(open_opportunities),
+                "total_pipeline_value": round(total_pipeline_value, 2),
+                "weighted_pipeline_value": round(weighted_pipeline_value, 2),
+                "predicted_revenue": round(weighted_pipeline_value, 2),
+                "closing_this_month": len(closing_this_month),
+                "closing_this_month_value": round(closing_this_month_value, 2),
+                "closing_this_month_weighted": round(closing_this_month_weighted, 2),
+                "avg_days_to_close": avg_days_to_close
+            },
+            "pipeline_by_stage": list(pipeline_by_stage.values()),
+            "stage_probabilities": stage_probabilities
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error generating pipeline forecast: {str(e)}")
+
+
+@api_router.get("/reports/lead-source-roi")
+async def get_lead_source_roi_detailed(
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Deep dive into lead source performance with detailed ROI analysis
+    """
+    try:
+        # Set default date range (last 90 days)
+        if not end_date:
+            end_dt = datetime.now(timezone.utc)
+        else:
+            end_dt = datetime.fromisoformat(end_date.replace('Z', '+00:00'))
+        
+        if not start_date:
+            start_dt = end_dt - timedelta(days=90)
+        else:
+            start_dt = datetime.fromisoformat(start_date.replace('Z', '+00:00'))
+        
+        start_iso = start_dt.isoformat()
+        end_iso = end_dt.isoformat()
+        
+        # Get all leads in period
+        all_leads = await db.leads.find({
+            "created_at": {"$gte": start_iso, "$lte": end_iso}
+        }, {"_id": 0}).to_list(None)
+        
+        # Group by source
+        source_performance = {}
+        
+        for lead in all_leads:
+            source = lead.get("source", "Unknown")
+            
+            if source not in source_performance:
+                source_performance[source] = {
+                    "source": source,
+                    "total_leads": 0,
+                    "qualified_leads": 0,
+                    "converted_leads": 0,
+                    "lost_leads": 0,
+                    "revenue_generated": 0,
+                    "avg_deal_size": 0,
+                    "conversion_rate": 0,
+                    "qualification_rate": 0
+                }
+            
+            source_performance[source]["total_leads"] += 1
+            
+            status = lead.get("status", "new")
+            if status == "qualified":
+                source_performance[source]["qualified_leads"] += 1
+            elif status == "converted":
+                source_performance[source]["converted_leads"] += 1
+                # Try to get revenue from associated opportunity
+                # For now, use average deal value
+                source_performance[source]["revenue_generated"] += 2000  # Placeholder
+            elif status == "lost":
+                source_performance[source]["lost_leads"] += 1
+        
+        # Calculate rates and averages
+        for source, data in source_performance.items():
+            total = data["total_leads"]
+            
+            data["qualification_rate"] = round((data["qualified_leads"] / total) * 100, 2) if total > 0 else 0
+            data["conversion_rate"] = round((data["converted_leads"] / total) * 100, 2) if total > 0 else 0
+            data["avg_deal_size"] = round(data["revenue_generated"] / data["converted_leads"], 2) if data["converted_leads"] > 0 else 0
+            
+            # Estimated costs (same as acquisition cost report)
+            cost_estimates = {
+                "Google Ads": 50,
+                "Facebook Ads": 30,
+                "Instagram": 35,
+                "Walk-in": 5,
+                "Referral": 10,
+                "Website": 20,
+                "Email": 5
+            }
+            
+            base_cost = cost_estimates.get(source, 25)
+            data["estimated_cost"] = total * base_cost
+            data["cost_per_lead"] = base_cost
+            data["cost_per_acquisition"] = round(data["estimated_cost"] / data["converted_leads"], 2) if data["converted_leads"] > 0 else 0
+            
+            # ROI
+            roi = round(((data["revenue_generated"] - data["estimated_cost"]) / data["estimated_cost"]) * 100, 2) if data["estimated_cost"] > 0 else 0
+            data["roi"] = roi
+            
+            # Revenue fields
+            data["revenue_generated"] = round(data["revenue_generated"], 2)
+        
+        # Sort by ROI
+        source_list = sorted(source_performance.values(), key=lambda x: x["roi"], reverse=True)
+        
+        return {
+            "period": {
+                "start_date": start_iso,
+                "end_date": end_iso
+            },
+            "sources": source_list,
+            "best_roi_source": source_list[0] if source_list else None,
+            "worst_roi_source": source_list[-1] if source_list else None
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error generating lead source ROI: {str(e)}")
+
+
+@api_router.get("/reports/win-loss-analysis")
+async def get_win_loss_analysis(
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Analyze why deals are won or lost with reasons
+    """
+    try:
+        # Set default date range (last 90 days)
+        if not end_date:
+            end_dt = datetime.now(timezone.utc)
+        else:
+            end_dt = datetime.fromisoformat(end_date.replace('Z', '+00:00'))
+        
+        if not start_date:
+            start_dt = end_dt - timedelta(days=90)
+        else:
+            start_dt = datetime.fromisoformat(start_date.replace('Z', '+00:00'))
+        
+        start_iso = start_dt.isoformat()
+        end_iso = end_dt.isoformat()
+        
+        # Get won opportunities
+        won_opportunities = await db.opportunities.find({
+            "stage": "closed_won",
+            "updated_at": {"$gte": start_iso, "$lte": end_iso}
+        }, {"_id": 0}).to_list(None)
+        
+        # Get lost opportunities
+        lost_opportunities = await db.opportunities.find({
+            "stage": "closed_lost",
+            "updated_at": {"$gte": start_iso, "$lte": end_iso}
+        }, {"_id": 0}).to_list(None)
+        
+        # Calculate metrics
+        total_won = len(won_opportunities)
+        total_lost = len(lost_opportunities)
+        total_closed = total_won + total_lost
+        
+        win_rate = round((total_won / total_closed) * 100, 2) if total_closed > 0 else 0
+        
+        # Revenue from wins
+        won_revenue = sum(opp.get("value", 0) for opp in won_opportunities)
+        avg_won_deal_size = round(won_revenue / total_won, 2) if total_won > 0 else 0
+        
+        # Lost revenue
+        lost_revenue = sum(opp.get("value", 0) for opp in lost_opportunities)
+        avg_lost_deal_size = round(lost_revenue / total_lost, 2) if total_lost > 0 else 0
+        
+        # Loss reasons analysis
+        loss_reasons = {}
+        for opp in lost_opportunities:
+            reason = opp.get("loss_reason", "Not specified")
+            loss_reasons[reason] = loss_reasons.get(reason, 0) + 1
+        
+        # Sort loss reasons by frequency
+        loss_reasons_list = [{"reason": k, "count": v, "percentage": round((v / total_lost) * 100, 2) if total_lost > 0 else 0} 
+                             for k, v in loss_reasons.items()]
+        loss_reasons_list.sort(key=lambda x: x["count"], reverse=True)
+        
+        # Win rate by salesperson
+        salesperson_performance = {}
+        
+        for opp in won_opportunities + lost_opportunities:
+            assigned_to = opp.get("assigned_to")
+            if not assigned_to:
+                continue
+            
+            if assigned_to not in salesperson_performance:
+                salesperson_performance[assigned_to] = {
+                    "salesperson_id": assigned_to,
+                    "won": 0,
+                    "lost": 0,
+                    "win_rate": 0
+                }
+            
+            if opp.get("stage") == "closed_won":
+                salesperson_performance[assigned_to]["won"] += 1
+            else:
+                salesperson_performance[assigned_to]["lost"] += 1
+        
+        # Calculate win rates per salesperson
+        for person_data in salesperson_performance.values():
+            total = person_data["won"] + person_data["lost"]
+            person_data["win_rate"] = round((person_data["won"] / total) * 100, 2) if total > 0 else 0
+            person_data["total_closed"] = total
+        
+        # Get salesperson names
+        for person_id, person_data in salesperson_performance.items():
+            user = await db.users.find_one({"id": person_id}, {"_id": 0, "full_name": 1, "email": 1})
+            if user:
+                person_data["salesperson_name"] = user.get("full_name") or user.get("email")
+            else:
+                person_data["salesperson_name"] = "Unknown"
+        
+        salesperson_list = sorted(salesperson_performance.values(), key=lambda x: x["win_rate"], reverse=True)
+        
+        return {
+            "period": {
+                "start_date": start_iso,
+                "end_date": end_iso
+            },
+            "summary": {
+                "total_won": total_won,
+                "total_lost": total_lost,
+                "total_closed": total_closed,
+                "win_rate": win_rate,
+                "won_revenue": round(won_revenue, 2),
+                "lost_revenue": round(lost_revenue, 2),
+                "avg_won_deal_size": avg_won_deal_size,
+                "avg_lost_deal_size": avg_lost_deal_size
+            },
+            "loss_reasons": loss_reasons_list,
+            "top_loss_reason": loss_reasons_list[0] if loss_reasons_list else None,
+            "salesperson_performance": salesperson_list
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error generating win/loss analysis: {str(e)}")
+
+
+@api_router.get("/reports/salesperson-performance")
+async def get_salesperson_performance_detailed(
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+    salesperson_id: Optional[str] = None,
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Detailed performance metrics per salesperson
+    """
+    try:
+        # Set default date range (last 30 days)
+        if not end_date:
+            end_dt = datetime.now(timezone.utc)
+        else:
+            end_dt = datetime.fromisoformat(end_date.replace('Z', '+00:00'))
+        
+        if not start_date:
+            start_dt = end_dt - timedelta(days=30)
+        else:
+            start_dt = datetime.fromisoformat(start_date.replace('Z', '+00:00'))
+        
+        start_iso = start_dt.isoformat()
+        end_iso = end_dt.isoformat()
+        
+        # Get all sales users
+        sales_users = await db.users.find({
+            "role": {"$in": ["sales_head", "sales_manager", "business_owner"]}
+        }, {"_id": 0, "id": 1, "full_name": 1, "email": 1, "role": 1}).to_list(None)
+        
+        # Filter by specific salesperson if provided
+        if salesperson_id:
+            sales_users = [u for u in sales_users if u.get("id") == salesperson_id]
+        
+        performance_data = []
+        
+        for user in sales_users:
+            user_id = user["id"]
+            
+            # Get leads assigned to this person
+            leads = await db.leads.find({
+                "assigned_to": user_id,
+                "created_at": {"$gte": start_iso, "$lte": end_iso}
+            }, {"_id": 0}).to_list(None)
+            
+            # Get opportunities assigned to this person
+            opportunities = await db.opportunities.find({
+                "assigned_to": user_id,
+                "created_at": {"$gte": start_iso, "$lte": end_iso}
+            }, {"_id": 0}).to_list(None)
+            
+            # Calculate metrics
+            total_leads = len(leads)
+            qualified_leads = len([l for l in leads if l.get("status") == "qualified"])
+            converted_leads = len([l for l in leads if l.get("status") == "converted"])
+            
+            total_opportunities = len(opportunities)
+            won_opportunities = len([o for o in opportunities if o.get("stage") == "closed_won"])
+            lost_opportunities = len([o for o in opportunities if o.get("stage") == "closed_lost"])
+            
+            # Revenue
+            won_revenue = sum(o.get("value", 0) for o in opportunities if o.get("stage") == "closed_won")
+            
+            # Pipeline value (open opportunities)
+            open_opportunities = [o for o in opportunities if o.get("stage") not in ["closed_won", "closed_lost"]]
+            pipeline_value = sum(o.get("value", 0) for o in open_opportunities)
+            
+            # Rates
+            lead_conversion_rate = round((converted_leads / total_leads) * 100, 2) if total_leads > 0 else 0
+            opp_win_rate = round((won_opportunities / (won_opportunities + lost_opportunities)) * 100, 2) if (won_opportunities + lost_opportunities) > 0 else 0
+            
+            # Average deal size
+            avg_deal_size = round(won_revenue / won_opportunities, 2) if won_opportunities > 0 else 0
+            
+            performance_data.append({
+                "salesperson_id": user_id,
+                "salesperson_name": user.get("full_name") or user.get("email"),
+                "email": user.get("email"),
+                "role": user.get("role"),
+                "total_leads": total_leads,
+                "qualified_leads": qualified_leads,
+                "converted_leads": converted_leads,
+                "lead_conversion_rate": lead_conversion_rate,
+                "total_opportunities": total_opportunities,
+                "won_opportunities": won_opportunities,
+                "lost_opportunities": lost_opportunities,
+                "opp_win_rate": opp_win_rate,
+                "open_opportunities": len(open_opportunities),
+                "pipeline_value": round(pipeline_value, 2),
+                "won_revenue": round(won_revenue, 2),
+                "avg_deal_size": avg_deal_size
+            })
+        
+        # Sort by won revenue
+        performance_data.sort(key=lambda x: x["won_revenue"], reverse=True)
+        
+        # Calculate team totals
+        team_totals = {
+            "total_leads": sum(p["total_leads"] for p in performance_data),
+            "total_opportunities": sum(p["total_opportunities"] for p in performance_data),
+            "total_won": sum(p["won_opportunities"] for p in performance_data),
+            "total_revenue": round(sum(p["won_revenue"] for p in performance_data), 2),
+            "total_pipeline_value": round(sum(p["pipeline_value"] for p in performance_data), 2)
+        }
+        
+        return {
+            "period": {
+                "start_date": start_iso,
+                "end_date": end_iso
+            },
+            "team_summary": team_totals,
+            "salesperson_performance": performance_data,
+            "top_performer": performance_data[0] if performance_data else None
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error generating salesperson performance: {str(e)}")
+
+
 # ==================== OPPORTUNITIES/PIPELINE ENDPOINTS ====================
 
 @api_router.get("/sales/opportunities")
