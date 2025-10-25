@@ -8593,7 +8593,7 @@ async def assign_lead(
         raise HTTPException(status_code=404, detail="Lead not found")
     
     # Get the consultant user to verify they exist
-    consultant = await db.users.find_one({"id": assigned_to}, {"_id": 0, "id": 1, "email": 1, "name": 1})
+    consultant = await db.users.find_one({"id": assigned_to}, {"_id": 0, "id": 1, "email": 1, "full_name": 1})
     if not consultant:
         raise HTTPException(status_code=404, detail="Consultant not found")
     
