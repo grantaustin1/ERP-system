@@ -40,6 +40,11 @@ export default function LeadsContacts() {
   const [statusFilter, setStatusFilter] = useState('all');
   const [sourceFilter, setSourceFilter] = useState('all');
   
+  // Configuration data
+  const [leadSources, setLeadSources] = useState([]);
+  const [leadStatuses, setLeadStatuses] = useState([]);
+  const [lossReasons, setLossReasons] = useState([]);
+  
   // Create Lead Modal
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [newLead, setNewLead] = useState({
@@ -49,6 +54,11 @@ export default function LeadsContacts() {
     phone: '',
     company: '',
     source: 'other',
+    source_id: null,
+    status_id: null,
+    referred_by_member_id: null,
+    notes: ''
+  });
     notes: ''
   });
   
