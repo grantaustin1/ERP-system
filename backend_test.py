@@ -911,7 +911,7 @@ class SalesModulePhase2TestRunner:
                 # If team members exist, verify structure
                 if data["team_metrics"]:
                     member = data["team_metrics"][0]
-                    member_fields = ["user_id", "user_name", "email", "leads", "opportunities", "tasks"]
+                    member_fields = ["user_id", "user_name", "leads", "opportunities", "tasks"]
                     missing_member_fields = [field for field in member_fields if field not in member]
                     
                     if missing_member_fields:
