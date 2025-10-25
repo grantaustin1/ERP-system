@@ -7930,7 +7930,7 @@ async def delete_lead_source(
 @api_router.get("/sales/config/lead-statuses")
 async def get_lead_statuses(current_user: User = Depends(get_current_user)):
     """Get all lead statuses"""
-    statuses = await db.lead_statuses.find({"_id": 0}).sort("workflow_sequence", 1).to_list(None)
+    statuses = await db.lead_statuses.find({}, {"_id": 0}).sort("workflow_sequence", 1).to_list(None)
     return {"statuses": statuses, "total": len(statuses)}
 
 @api_router.post("/sales/config/lead-statuses")
