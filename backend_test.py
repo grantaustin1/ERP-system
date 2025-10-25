@@ -889,7 +889,7 @@ class SalesModulePhase2TestRunner:
                 data = response.json()
                 
                 # Verify required structure
-                required_fields = ["team_members", "total_members"]
+                required_fields = ["team_metrics", "total_team_members"]
                 missing_fields = [field for field in required_fields if field not in data]
                 
                 if missing_fields:
@@ -897,21 +897,21 @@ class SalesModulePhase2TestRunner:
                                   f"Missing fields: {missing_fields}")
                     return False
                 
-                # Verify team_members is a list
-                if not isinstance(data["team_members"], list):
+                # Verify team_metrics is a list
+                if not isinstance(data["team_metrics"], list):
                     self.log_result("Team Performance Members Type", False, 
-                                  "team_members should be a list")
+                                  "team_metrics should be a list")
                     return False
                 
-                # Verify total_members count
-                if not isinstance(data["total_members"], int) or data["total_members"] < 0:
+                # Verify total_team_members count
+                if not isinstance(data["total_team_members"], int) or data["total_team_members"] < 0:
                     self.log_result("Team Performance Total Type", False, 
-                                  "total_members should be non-negative integer")
+                                  "total_team_members should be non-negative integer")
                     return False
                 
                 # If team members exist, verify structure
-                if data["team_members"]:
-                    member = data["team_members"][0]
+                if data["team_metrics"]:
+                    member = data["team_metrics"][0]
                     member_fields = ["user_id", "user_name", "email", "leads", "opportunities", "tasks"]
                     missing_member_fields = [field for field in member_fields if field not in member]
                     
