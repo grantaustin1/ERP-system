@@ -8308,6 +8308,7 @@ async def create_lead(
             status_id = default_status["id"]
     
     lead_id = str(uuid.uuid4())
+    now = datetime.now(timezone.utc).isoformat()
     lead = {
         "id": lead_id,
         "first_name": first_name,
@@ -8323,9 +8324,12 @@ async def create_lead(
         "loss_reason_id": None,  # NEW
         "loss_notes": None,  # NEW
         "lead_score": 0,
-        "assigned_to": assigned_to or current_user.id,
-        "created_at": datetime.now(timezone.utc).isoformat(),
-        "updated_at": datetime.now(timezone.utc).isoformat(),
+        "assigned_to": assigned_to,  # Will be None if not provided
+        "assigned_by": current_user.id if assigned_to else None,  # NEW: Track who assigned
+        "assigned_at": now if assigned_to else None,  # NEW: Track when assigned
+        "assignment_history": [],  # NEW: Track assignment history
+        "created_at": now,
+        "updated_at": now,
         "last_contacted": None,
         "notes": notes,
         "tags": []
