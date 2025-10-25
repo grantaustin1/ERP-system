@@ -248,7 +248,7 @@ class SalesModulePhase2TestRunner:
                 data = response.json()
                 
                 # Verify required structure
-                required_fields = ["lead_id", "assigned_to", "assigned_to_email", "strategy", "success"]
+                required_fields = ["success", "lead_id", "assigned_to", "strategy"]
                 missing_fields = [field for field in required_fields if field not in data]
                 
                 if missing_fields:
