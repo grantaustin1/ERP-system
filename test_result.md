@@ -2246,9 +2246,11 @@ metadata:
 
 test_plan:
   current_focus:
-    - "ClubManager Enhancement - Phase 1 Components"
-    - "ClubManager Enhancement - Phase 2 Dashboard"
-    - "ClubManager Enhancement - Phase 3 Messaging"
+    - "Workflow Automation Page - /sales/workflows"
+    - "Sales Automation Panel - /sales/leads"
+    - "Advanced Sales Analytics - /sales"
+    - "Navigation & Routing for Sales Module"
+    - "Responsive Design for Sales Module"
   stuck_tasks: []
   test_all: false
   test_priority: "high_first"
