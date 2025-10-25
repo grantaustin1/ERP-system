@@ -8427,6 +8427,81 @@ async def create_lead(
     return {"success": True, "lead": lead}
 
 
+@api_router.get("/sales/leads/unassigned")
+async def get_unassigned_leads(current_user: User = Depends(get_current_user)):
+    """Get all unassigned leads (managers only)"""
+    # Check if current user is a manager
+    manager_roles = ["business_owner", "head_admin", "sales_head", "sales_manager"]
+    if current_user.role not in manager_roles:
+        raise HTTPException(status_code=403, detail="Only managers can view unassigned leads")
+    
+    # Get leads where assigned_to is null or empty
+    leads = await db.leads.find(
+        {"$or": [{"assigned_to": None}, {"assigned_to": ""}]},
+        {"_id": 0}
+    ).sort("created_at", -1).to_list(None)
+    
+    # Enrich with source and status info
+    for lead in leads:
+        # Get source info
+        if lead.get("source_id"):
+            source = await db.lead_sources.find_one({"id": lead["source_id"]}, {"_id": 0, "name": 1, "icon": 1})
+            if source:
+                lead["source_name"] = source.get("name")
+                lead["source_icon"] = source.get("icon")
+        
+        # Get status info
+        if lead.get("status_id"):
+            status = await db.lead_statuses.find_one({"id": lead["status_id"]}, {"_id": 0, "name": 1, "color": 1, "category": 1})
+            if status:
+                lead["status_name"] = status.get("name")
+                lead["status_color"] = status.get("color")
+                lead["status_category"] = status.get("category")
+    
+    return {
+        "total": len(leads),
+        "leads": leads
+    }
+
+
+@api_router.get("/sales/leads/my-leads")
+async def get_my_assigned_leads(current_user: User = Depends(get_current_user)):
+    """Get leads assigned to current user (consultants)"""
+    # Get leads assigned to the current user
+    leads = await db.leads.find(
+        {"assigned_to": current_user.id},
+        {"_id": 0}
+    ).sort("created_at", -1).to_list(None)
+    
+    # Enrich with source and status info
+    for lead in leads:
+        # Get source info
+        if lead.get("source_id"):
+            source = await db.lead_sources.find_one({"id": lead["source_id"]}, {"_id": 0, "name": 1, "icon": 1})
+            if source:
+                lead["source_name"] = source.get("name")
+                lead["source_icon"] = source.get("icon")
+        
+        # Get status info
+        if lead.get("status_id"):
+            status = await db.lead_statuses.find_one({"id": lead["status_id"]}, {"_id": 0, "name": 1, "color": 1, "category": 1})
+            if status:
+                lead["status_name"] = status.get("name")
+                lead["status_color"] = status.get("color")
+                lead["status_category"] = status.get("category")
+        
+        # Get assigned by info
+        if lead.get("assigned_by"):
+            assigner = await db.users.find_one({"id": lead["assigned_by"]}, {"_id": 0, "email": 1, "full_name": 1})
+            if assigner:
+                lead["assigned_by_name"] = assigner.get("full_name") or assigner.get("email")
+    
+    return {
+        "total": len(leads),
+        "leads": leads
+    }
+
+
 @api_router.get("/sales/leads/{lead_id}")
 async def get_lead(lead_id: str, current_user: User = Depends(get_current_user)):
     """Get a specific lead by ID"""
