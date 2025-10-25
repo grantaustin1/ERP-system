@@ -8137,14 +8137,29 @@ async def create_lead(
     email: Optional[str] = None,
     phone: Optional[str] = None,
     company: Optional[str] = None,
-    source: str = "other",
+    source_id: Optional[str] = None,  # NEW: reference to lead_sources
+    source: str = "other",  # Keep for backward compatibility
+    status_id: Optional[str] = None,  # NEW: reference to lead_statuses
+    referred_by_member_id: Optional[str] = None,  # NEW: for referrals
     assigned_to: Optional[str] = None,
     notes: Optional[str] = None,
     current_user: User = Depends(get_current_user)
 ):
-    """Create a new lead"""
+    """Create a new lead with configurable source and status"""
     import uuid
     from datetime import datetime
+    
+    # If source_id not provided, try to find default source
+    if not source_id:
+        default_source = await db.lead_sources.find_one({"name": "Other"})
+        if default_source:
+            source_id = default_source["id"]
+    
+    # If status_id not provided, use "New Lead" status
+    if not status_id:
+        default_status = await db.lead_statuses.find_one({"name": "New Lead"})
+        if default_status:
+            status_id = default_status["id"]
     
     lead_id = str(uuid.uuid4())
     lead = {
@@ -8154,8 +8169,13 @@ async def create_lead(
         "email": email,
         "phone": phone,
         "company": company,
-        "source": source,
-        "status": "new",
+        "source": source,  # Keep for backward compatibility
+        "source_id": source_id,  # NEW
+        "status": "new",  # Keep for backward compatibility
+        "status_id": status_id,  # NEW
+        "referred_by_member_id": referred_by_member_id,  # NEW
+        "loss_reason_id": None,  # NEW
+        "loss_notes": None,  # NEW
         "lead_score": 0,
         "assigned_to": assigned_to or current_user.id,
         "created_at": datetime.now(timezone.utc).isoformat(),
@@ -8166,6 +8186,27 @@ async def create_lead(
     }
     
     await db.leads.insert_one(lead.copy())
+    
+    # If this is a referral and member provided, create a referral reward (pending)
+    if referred_by_member_id:
+        # Verify member exists
+        referring_member = await db.members.find_one(
+            {"id": referred_by_member_id},
+            {"_id": 0, "id": 1}
+        )
+        if referring_member:
+            reward = {
+                "id": str(uuid.uuid4()),
+                "referring_member_id": referred_by_member_id,
+                "referred_lead_id": lead_id,
+                "reward_type": "pending_selection",
+                "reward_value": None,
+                "status": "pending",
+                "created_at": datetime.now(timezone.utc).isoformat(),
+                "delivered_at": None,
+                "notes": "Reward pending - lead needs to convert first"
+            }
+            await db.referral_rewards.insert_one(reward)
     
     # Log activity
     activity = {
