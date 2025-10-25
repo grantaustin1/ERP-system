@@ -73,7 +73,7 @@ class ConfigurableLeadSystemTestRunner:
             return False
     
     def setup_test_data(self):
-        """Create test leads and opportunities for sales testing"""
+        """Setup test data and get seeded configuration IDs"""
         try:
             # Get current user info
             response = requests.get(f"{API_BASE}/auth/me", headers=self.headers)
@@ -85,65 +85,77 @@ class ConfigurableLeadSystemTestRunner:
                 self.log_result("Get Current User", False, f"Failed to get current user: {response.status_code}")
                 return False
             
-            # Create test lead
-            timestamp = int(time.time() * 1000)
-            lead_params = {
-                "first_name": "John",
-                "last_name": f"SalesTest{timestamp}",
-                "email": f"john.sales.{timestamp}@example.com",
-                "phone": f"082555{timestamp % 100000:05d}",
-                "company": "Test Company",
-                "source": "website",
-                "assigned_to": self.test_user_id,
-                "notes": "Test lead for automation testing"
-            }
-            
-            response = requests.post(f"{API_BASE}/sales/leads", params=lead_params, headers=self.headers)
+            # Get an active member for referral testing
+            response = requests.get(f"{API_BASE}/members", headers=self.headers)
             if response.status_code == 200:
-                lead_response = response.json()
-                if "lead" in lead_response:
-                    lead = lead_response["lead"]
-                    self.test_lead_id = lead["id"]
-                    self.created_leads.append(lead["id"])
-                    self.log_result("Setup Test Lead", True, f"Created test lead: {self.test_lead_id}")
+                members_data = response.json()
+                if "members" in members_data and members_data["members"]:
+                    # Find an active member
+                    for member in members_data["members"]:
+                        if member.get("membership_status") == "active":
+                            self.test_member_id = member["id"]
+                            self.log_result("Get Test Member", True, f"Found active member: {member['first_name']} {member['last_name']}")
+                            break
+                    
+                    if not self.test_member_id:
+                        self.log_result("Get Test Member", False, "No active members found for referral testing")
+                        return False
                 else:
-                    self.log_result("Setup Test Lead", False, f"Unexpected response structure: {lead_response}")
+                    self.log_result("Get Test Member", False, "No members found")
                     return False
             else:
-                self.log_result("Setup Test Lead", False, f"Failed to create test lead: {response.status_code}",
-                              {"response": response.text})
+                self.log_result("Get Test Member", False, f"Failed to get members: {response.status_code}")
                 return False
             
-            # Create test opportunity
-            opportunity_params = {
-                "title": f"Premium Membership Sale {timestamp}",
-                "contact_id": self.test_lead_id,
-                "value": 5000.0,
-                "stage": "proposal",
-                "probability": 75,
-                "expected_close_date": (datetime.now() + timedelta(days=30)).isoformat(),
-                "assigned_to": self.test_user_id,
-                "notes": "Test opportunity for automation testing"
-            }
-            
-            response = requests.post(f"{API_BASE}/sales/opportunities", params=opportunity_params, headers=self.headers)
+            # Get seeded lead sources
+            response = requests.get(f"{API_BASE}/sales/config/lead-sources", headers=self.headers)
             if response.status_code == 200:
-                opp_response = response.json()
-                if "opportunity" in opp_response:
-                    opportunity = opp_response["opportunity"]
-                    self.created_opportunities.append(opportunity["id"])
-                    self.log_result("Setup Test Opportunity", True, f"Created test opportunity: {opportunity['id']}")
-                    return True
+                sources_data = response.json()
+                if "sources" in sources_data:
+                    for source in sources_data["sources"]:
+                        self.seeded_source_ids[source["name"]] = source["id"]
+                    self.log_result("Get Seeded Sources", True, f"Found {len(self.seeded_source_ids)} seeded sources")
                 else:
-                    self.log_result("Setup Test Opportunity", False, f"Unexpected response structure: {opp_response}")
+                    self.log_result("Get Seeded Sources", False, "No sources in response")
                     return False
             else:
-                self.log_result("Setup Test Opportunity", False, f"Failed to create test opportunity: {response.status_code}",
-                              {"response": response.text})
+                self.log_result("Get Seeded Sources", False, f"Failed to get sources: {response.status_code}")
                 return False
+            
+            # Get seeded lead statuses
+            response = requests.get(f"{API_BASE}/sales/config/lead-statuses", headers=self.headers)
+            if response.status_code == 200:
+                statuses_data = response.json()
+                if "statuses" in statuses_data:
+                    for status in statuses_data["statuses"]:
+                        self.seeded_status_ids[status["name"]] = status["id"]
+                    self.log_result("Get Seeded Statuses", True, f"Found {len(self.seeded_status_ids)} seeded statuses")
+                else:
+                    self.log_result("Get Seeded Statuses", False, "No statuses in response")
+                    return False
+            else:
+                self.log_result("Get Seeded Statuses", False, f"Failed to get statuses: {response.status_code}")
+                return False
+            
+            # Get seeded loss reasons
+            response = requests.get(f"{API_BASE}/sales/config/loss-reasons", headers=self.headers)
+            if response.status_code == 200:
+                reasons_data = response.json()
+                if "reasons" in reasons_data:
+                    for reason in reasons_data["reasons"]:
+                        self.seeded_loss_reason_ids[reason["name"]] = reason["id"]
+                    self.log_result("Get Seeded Loss Reasons", True, f"Found {len(self.seeded_loss_reason_ids)} seeded loss reasons")
+                else:
+                    self.log_result("Get Seeded Loss Reasons", False, "No loss reasons in response")
+                    return False
+            else:
+                self.log_result("Get Seeded Loss Reasons", False, f"Failed to get loss reasons: {response.status_code}")
+                return False
+            
+            return True
                 
         except Exception as e:
-            self.log_result("Setup Test Data", False, f"Error creating test data: {str(e)}")
+            self.log_result("Setup Test Data", False, f"Error setting up test data: {str(e)}")
             return False
     
     # ===================== SALES AUTOMATION TESTS =====================
