@@ -264,120 +264,113 @@ class SalesPerformanceTestRunner:
             self.log_result("Pipeline Forecast API", False, f"Error: {str(e)}")
             return False
     
-    def test_at_risk_members_api(self):
-        """Test GET /api/reports/at-risk-members endpoint"""
-        print("\n=== Testing At-Risk Members API ===")
+    def test_lead_source_roi_api(self):
+        """Test GET /api/reports/lead-source-roi endpoint"""
+        print("\n=== Testing Lead Source ROI API ===")
         
         try:
-            # Test 1: Default parameters (threshold 60)
-            response = requests.get(f"{API_BASE}/reports/at-risk-members", headers=self.admin_headers)
+            # Test 1: Default parameters (last 90 days)
+            response = requests.get(f"{API_BASE}/reports/lead-source-roi", headers=self.admin_headers)
             
             if response.status_code == 200:
                 data = response.json()
                 
                 # Verify response structure
-                required_fields = ["summary", "at_risk_members"]
+                required_fields = ["period", "sources", "best_roi_source", "worst_roi_source"]
                 
                 for field in required_fields:
                     if field not in data:
-                        self.log_result("At-Risk Members Structure", False, f"Missing field: {field}")
+                        self.log_result("Lead Source ROI Structure", False, f"Missing field: {field}")
                         return False
                 
-                # Verify summary structure
-                summary = data["summary"]
-                summary_fields = ["total_at_risk", "critical_risk", "high_risk", "medium_risk", "risk_threshold"]
-                for field in summary_fields:
-                    if field not in summary:
-                        self.log_result("At-Risk Members Summary", False, f"Missing summary field: {field}")
+                # Verify period structure
+                period = data["period"]
+                period_fields = ["start_date", "end_date"]
+                for field in period_fields:
+                    if field not in period:
+                        self.log_result("Lead Source ROI Period", False, f"Missing period field: {field}")
                         return False
                 
-                # Verify risk threshold
-                if summary["risk_threshold"] != 60:
-                    self.log_result("At-Risk Members Default Threshold", False, "Default threshold should be 60")
+                # Verify sources structure
+                sources = data["sources"]
+                if not isinstance(sources, list):
+                    self.log_result("Lead Source ROI Sources", False, "sources should be array")
                     return False
                 
-                # Verify at_risk_members structure
-                at_risk = data["at_risk_members"]
-                if not isinstance(at_risk, list):
-                    self.log_result("At-Risk Members Array", False, "at_risk_members should be array")
-                    return False
-                
-                # Verify member structure if any exist
-                if at_risk:
-                    member = at_risk[0]
-                    member_fields = ["member_id", "member_name", "email", "phone", "join_date", "last_visit", "risk_score", "risk_level", "risk_factors", "unpaid_invoices"]
-                    for field in member_fields:
-                        if field not in member:
-                            self.log_result("At-Risk Members Member Fields", False, f"Missing member field: {field}")
+                # Verify source structure if any exist
+                if sources:
+                    source = sources[0]
+                    source_fields = ["source", "total_leads", "qualified_leads", "converted_leads", "lost_leads", "revenue_generated", "avg_deal_size", "conversion_rate", "qualification_rate", "estimated_cost", "cost_per_lead", "cost_per_acquisition", "roi"]
+                    for field in source_fields:
+                        if field not in source:
+                            self.log_result("Lead Source ROI Source Fields", False, f"Missing source field: {field}")
                             return False
                     
-                    # Verify risk_level categorization
-                    risk_score = member["risk_score"]
-                    risk_level = member["risk_level"]
+                    # Verify all rates are percentages between 0-100
+                    rates = ["conversion_rate", "qualification_rate"]
+                    for rate_field in rates:
+                        rate_value = source[rate_field]
+                        if not (0 <= rate_value <= 100):
+                            self.log_result("Lead Source ROI Rate Range", False, f"{rate_field} should be 0-100%, got {rate_value}")
+                            return False
                     
-                    if risk_score >= 80 and risk_level != "critical":
-                        self.log_result("At-Risk Members Risk Level Critical", False, f"Risk score {risk_score} should be 'critical'")
-                        return False
-                    elif 60 <= risk_score < 80 and risk_level != "high":
-                        self.log_result("At-Risk Members Risk Level High", False, f"Risk score {risk_score} should be 'high'")
-                        return False
-                    elif 40 <= risk_score < 60 and risk_level != "medium":
-                        self.log_result("At-Risk Members Risk Level Medium", False, f"Risk score {risk_score} should be 'medium'")
-                        return False
-                    
-                    # Verify risk_factors is array with meaningful descriptions
-                    risk_factors = member["risk_factors"]
-                    if not isinstance(risk_factors, list):
-                        self.log_result("At-Risk Members Risk Factors", False, "risk_factors should be array")
-                        return False
-                    
-                    # Verify sorting (highest risk_score first)
-                    if len(at_risk) > 1:
-                        for i in range(1, len(at_risk)):
-                            if at_risk[i]["risk_score"] > at_risk[i-1]["risk_score"]:
-                                self.log_result("At-Risk Members Sorting", False, "Members not sorted by risk_score")
+                    # Verify sources are sorted by ROI (highest first)
+                    if len(sources) > 1:
+                        for i in range(1, len(sources)):
+                            if sources[i]["roi"] > sources[i-1]["roi"]:
+                                self.log_result("Lead Source ROI Sorting", False, "Sources not sorted by ROI (highest first)")
                                 return False
                 
-                self.log_result("At-Risk Members Default", True, f"Found {summary['total_at_risk']} at-risk members (threshold: {summary['risk_threshold']})")
+                # Verify best/worst ROI sources
+                best_roi = data["best_roi_source"]
+                worst_roi = data["worst_roi_source"]
+                
+                if sources:
+                    if best_roi and best_roi != sources[0]:
+                        self.log_result("Lead Source ROI Best Source", False, "Best ROI source should be first in sorted list")
+                        return False
+                    
+                    if worst_roi and worst_roi != sources[-1]:
+                        self.log_result("Lead Source ROI Worst Source", False, "Worst ROI source should be last in sorted list")
+                        return False
+                
+                self.log_result("Lead Source ROI Default", True, f"Found {len(sources)} sources")
                 
             else:
-                self.log_result("At-Risk Members Default", False, f"Failed: {response.status_code}")
+                self.log_result("Lead Source ROI Default", False, f"Failed: {response.status_code}")
                 return False
             
-            # Test 2: Custom threshold (40)
-            response = requests.get(f"{API_BASE}/reports/at-risk-members?risk_threshold=40", headers=self.admin_headers)
+            # Test 2: Custom date range
+            end_date = "2024-12-31T23:59:59Z"
+            start_date = "2024-01-01T00:00:00Z"
+            
+            response = requests.get(
+                f"{API_BASE}/reports/lead-source-roi",
+                params={"start_date": start_date, "end_date": end_date},
+                headers=self.admin_headers
+            )
             
             if response.status_code == 200:
                 data = response.json()
-                if data["summary"]["risk_threshold"] != 40:
-                    self.log_result("At-Risk Members Threshold 40", False, "Threshold 40 not respected")
+                period = data["period"]
+                
+                # Verify date range is respected
+                start_check = "2024-01-01" in period["start_date"]
+                end_check = "2024-12-31" in period["end_date"]
+                if not start_check or not end_check:
+                    self.log_result("Lead Source ROI Custom Dates", False, "Date range not respected")
                     return False
                 
-                self.log_result("At-Risk Members Threshold 40", True, f"Threshold 40: {data['summary']['total_at_risk']} at-risk members")
+                self.log_result("Lead Source ROI Custom Dates", True, f"Custom range: {len(data['sources'])} sources")
                 
             else:
-                self.log_result("At-Risk Members Threshold 40", False, f"Failed: {response.status_code}")
-                return False
-            
-            # Test 3: High threshold (80)
-            response = requests.get(f"{API_BASE}/reports/at-risk-members?risk_threshold=80", headers=self.admin_headers)
-            
-            if response.status_code == 200:
-                data = response.json()
-                if data["summary"]["risk_threshold"] != 80:
-                    self.log_result("At-Risk Members Threshold 80", False, "Threshold 80 not respected")
-                    return False
-                
-                self.log_result("At-Risk Members Threshold 80", True, f"Threshold 80: {data['summary']['total_at_risk']} at-risk members")
-                
-            else:
-                self.log_result("At-Risk Members Threshold 80", False, f"Failed: {response.status_code}")
+                self.log_result("Lead Source ROI Custom Dates", False, f"Failed: {response.status_code}")
                 return False
             
             return True
             
         except Exception as e:
-            self.log_result("At-Risk Members API", False, f"Error: {str(e)}")
+            self.log_result("Lead Source ROI API", False, f"Error: {str(e)}")
             return False
     
     def test_member_demographics_api(self):
