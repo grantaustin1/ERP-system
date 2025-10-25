@@ -6321,15 +6321,20 @@ metadata:
 
 test_plan:
   current_focus:
-    - "Configuration CRUD APIs - All endpoints"
-    - "Enhanced Lead Create/Update APIs"
-    - "Member Search API"
-    - "Comprehensive Dashboard Analytics API"
-    - "Sales CRM Setup Frontend Page"
-  stuck_tasks: []
+    - "Configurable Lead Sources - Startup Seeding"
+    - "Configurable Lead Sources - CRUD APIs"
+    - "Configurable Lead Statuses - CRUD APIs"
+    - "Configurable Loss Reasons - CRUD APIs"
+  stuck_tasks:
+    - "Configurable Lead Sources - Startup Seeding"
+    - "Configurable Lead Sources - CRUD APIs"
+    - "Configurable Lead Statuses - CRUD APIs"
+    - "Configurable Loss Reasons - CRUD APIs"
   test_all: false
-  test_priority: "high_first"
+  test_priority: "stuck_first"
 
 agent_communication:
   - agent: "main"
     message: "Configurable Lead Source/Status/Loss Reason System Phase 1 implementation complete. Backend includes: 18 new APIs across 6 categories (lead sources CRUD, lead statuses CRUD, loss reasons CRUD, referral rewards management, member search, comprehensive dashboard analytics), startup seeding for 8 sources/8 statuses/8 loss reasons, enhanced lead create/update APIs with new fields (source_id, status_id, referred_by_member_id, loss_reason_id, loss_notes), auto-referral reward creation and approval workflow. Frontend includes: SalesCRMSetup page with 3 tabs for full configuration management, added route /sales/setup and sidebar navigation. Please test: 1) All configuration CRUD endpoints (create, read, update, delete), 2) Seeded default data (verify 8 sources, 8 statuses, 8 reasons exist), 3) Member search API with various queries, 4) Enhanced lead create with referred_by_member_id (verify referral reward auto-creation), 5) Enhanced lead update with status change to 'Joined' (verify referral reward approval), 6) Lead update with 'Lost' status (verify loss_reason_id validation), 7) Comprehensive dashboard analytics API with date range filters, 8) All calculation accuracy (conversion rates, drop-off rates, averages). Frontend testing: Navigate to /sales/setup, test CRUD operations on all 3 tabs, verify form validation, verify color picker and dropdowns work."
+  - agent: "testing"
+    message: "COMPREHENSIVE BACKEND TESTING COMPLETED - CRITICAL ISSUES FOUND: ❌ **STARTUP SEEDING FAILURE**: All 3 configuration types (lead sources, lead statuses, loss reasons) have 0 seeded records instead of expected 8 each. Startup event may not be triggering or seeding code has bugs. ❌ **CRUD API 500 ERRORS**: All POST endpoints for configuration management return 500 Internal Server Error with ObjectId serialization issues ('ObjectId' object is not iterable). This completely blocks configuration management. ✅ **WORKING COMPONENTS**: Member Search API (13 active members found), Comprehensive Dashboard Analytics (proper structure, calculations accurate), Data Integrity Checks (existing data valid). ❌ **BLOCKED COMPONENTS**: Enhanced Lead Create/Update APIs cannot be tested due to missing seeded IDs. Referral Rewards partially working but blocked by lead creation issues. **ROOT CAUSE**: ObjectId serialization error in response handling prevents all configuration CRUD operations. **IMMEDIATE ACTION REQUIRED**: Fix ObjectId serialization in lead sources/statuses/loss reasons POST endpoints and investigate startup seeding failure."
