@@ -586,15 +586,16 @@ class MemberPortalNotificationTestRunner:
         
         try:
             # Test 1: Invalid member ID
-            invalid_notification = {
+            invalid_params = {
                 "member_id": "invalid-member-id",
-                "title": "Test",
+                "notification_type": "general",
+                "subject": "Test",
                 "message": "Test message",
                 "channels": ["email"]
             }
             
             response = requests.post(f"{API_BASE}/notifications/send", 
-                                   json=invalid_notification, 
+                                   params=invalid_params, 
                                    headers=self.admin_headers)
             
             if response.status_code in [400, 404, 422]:
@@ -604,14 +605,14 @@ class MemberPortalNotificationTestRunner:
                 return False
             
             # Test 2: Missing required fields
-            incomplete_notification = {
+            incomplete_params = {
                 "member_id": self.test_member_id if self.test_member_id else "test-id",
-                "title": "Test"
-                # Missing message and channels
+                "notification_type": "general"
+                # Missing subject and message
             }
             
             response = requests.post(f"{API_BASE}/notifications/send", 
-                                   json=incomplete_notification, 
+                                   params=incomplete_params, 
                                    headers=self.admin_headers)
             
             if response.status_code in [400, 422]:
@@ -621,15 +622,16 @@ class MemberPortalNotificationTestRunner:
                 return False
             
             # Test 3: Invalid channels
-            invalid_channels_notification = {
+            invalid_channels_params = {
                 "member_id": self.test_member_id if self.test_member_id else "test-id",
-                "title": "Test",
+                "notification_type": "general",
+                "subject": "Test",
                 "message": "Test message",
                 "channels": ["invalid_channel", "another_invalid"]
             }
             
             response = requests.post(f"{API_BASE}/notifications/send", 
-                                   json=invalid_channels_notification, 
+                                   params=invalid_channels_params, 
                                    headers=self.admin_headers)
             
             # This might succeed or fail depending on implementation - both are acceptable
