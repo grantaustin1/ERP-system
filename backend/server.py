@@ -7896,6 +7896,69 @@ class SalesTask(BaseModel):
     created_at: str
     completed_at: Optional[str] = None
 
+# ==================== COMPLIMENTARY MEMBERSHIP MODELS ====================
+
+class ComplimentaryMembershipType(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    id: str
+    name: str  # e.g., "3-Day Trial", "Week Pass", "Friends & Family"
+    description: Optional[str] = None
+    time_limit_days: int  # e.g., 7, 14, 30
+    visit_limit: int  # e.g., 3, 5, 10
+    no_access_alert_days: int  # e.g., 3, 7, 15 - days without visit to trigger alert
+    notification_on_visits: List[int] = [1, 2, 3]  # Notify consultant on these visit numbers
+    is_active: bool = True
+    color: str = "#3b82f6"  # For UI display
+    icon: str = "🎁"
+    created_at: str
+    updated_at: str
+
+class ComplimentaryMembershipTypeCreate(BaseModel):
+    name: str
+    description: Optional[str] = None
+    time_limit_days: int
+    visit_limit: int
+    no_access_alert_days: int
+    notification_on_visits: List[int] = [1, 2, 3]
+    is_active: bool = True
+    color: str = "#3b82f6"
+    icon: str = "🎁"
+
+class ComplimentaryMembership(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    id: str
+    member_id: str
+    member_name: str
+    member_email: Optional[str] = None
+    member_phone: Optional[str] = None
+    complimentary_type_id: str
+    complimentary_type_name: str
+    start_date: str
+    expiry_date: str
+    time_limit_days: int
+    visit_limit: int
+    visits_used: int = 0
+    visits_remaining: int
+    last_visit_date: Optional[str] = None
+    status: str  # active, expired, converted, not_using, completed
+    assigned_consultant_id: Optional[str] = None
+    assigned_consultant_name: Optional[str] = None
+    created_from_lead_id: Optional[str] = None
+    converted_to_member_id: Optional[str] = None
+    conversion_date: Optional[str] = None
+    created_at: str
+    updated_at: str
+
+class ComplimentaryMembershipCreate(BaseModel):
+    first_name: str
+    last_name: str
+    email: Optional[str] = None
+    phone: Optional[str] = None
+    complimentary_type_id: str
+    assigned_consultant_id: Optional[str] = None
+    notes: Optional[str] = None
+    auto_create_lead: bool = True
+
 # ==================== CONFIGURABLE LEAD SOURCE, STATUS, LOSS REASON MODELS ====================
 
 class LeadSource(BaseModel):
