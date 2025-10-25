@@ -9761,6 +9761,597 @@ async def get_payment_analysis(
         raise HTTPException(status_code=500, detail=f"Error generating payment analysis: {str(e)}")
 
 
+
+# ==================== MEMBER ANALYTICS & RETENTION REPORTING APIS ====================
+
+@api_router.get("/reports/retention-dashboard")
+async def get_retention_dashboard(
+    period_months: Optional[int] = 12,
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Get comprehensive retention analytics dashboard
+    Includes churn rate, retention by cohort, and trends
+    """
+    try:
+        now = datetime.now(timezone.utc)
+        period_start = now - timedelta(days=period_months * 30)
+        start_iso = period_start.isoformat()
+        end_iso = now.isoformat()
+        
+        # Get all members
+        all_members = await db.members.find({}, {"_id": 0}).to_list(None)
+        
+        # Active members (status = active)
+        active_members = [m for m in all_members if m.get("status") == "active"]
+        
+        # Inactive/cancelled members
+        inactive_members = [m for m in all_members if m.get("status") in ["inactive", "cancelled", "suspended"]]
+        
+        # Members who joined in the period
+        new_members_period = [m for m in all_members if m.get("join_date") and m.get("join_date") >= start_iso]
+        
+        # Calculate churn rate
+        total_members = len(all_members)
+        churned_members = len(inactive_members)
+        churn_rate = round((churned_members / total_members) * 100, 2) if total_members > 0 else 0
+        retention_rate = round(100 - churn_rate, 2)
+        
+        # Retention by cohort (group by join month)
+        cohorts = {}
+        for member in all_members:
+            join_date_str = member.get("join_date")
+            if not join_date_str:
+                continue
+            
+            try:
+                join_date = datetime.fromisoformat(join_date_str.replace('Z', '+00:00'))
+                cohort_key = join_date.strftime("%Y-%m")
+                
+                if cohort_key not in cohorts:
+                    cohorts[cohort_key] = {
+                        "cohort": cohort_key,
+                        "total_members": 0,
+                        "active_members": 0,
+                        "churned_members": 0,
+                        "retention_rate": 0
+                    }
+                
+                cohorts[cohort_key]["total_members"] += 1
+                if member.get("status") == "active":
+                    cohorts[cohort_key]["active_members"] += 1
+                else:
+                    cohorts[cohort_key]["churned_members"] += 1
+            except:
+                continue
+        
+        # Calculate retention rate for each cohort
+        for cohort_data in cohorts.values():
+            total = cohort_data["total_members"]
+            active = cohort_data["active_members"]
+            cohort_data["retention_rate"] = round((active / total) * 100, 2) if total > 0 else 0
+        
+        # Sort cohorts by date
+        cohort_list = sorted(cohorts.values(), key=lambda x: x["cohort"])
+        
+        # Monthly retention trend (last 12 months)
+        retention_trend = []
+        for i in range(period_months):
+            month_start = now - timedelta(days=(period_months - i) * 30)
+            month_end = now - timedelta(days=(period_months - i - 1) * 30)
+            
+            month_start_iso = month_start.isoformat()
+            month_end_iso = month_end.isoformat()
+            
+            # Members who were active at start of month
+            active_at_start = [m for m in all_members if m.get("join_date") and m.get("join_date") < month_start_iso and m.get("status") == "active"]
+            
+            # Members still active at end of month
+            still_active = [m for m in active_at_start if m.get("status") == "active"]
+            
+            retention = round((len(still_active) / len(active_at_start)) * 100, 2) if active_at_start else 100
+            
+            retention_trend.append({
+                "month": month_start.strftime("%B %Y"),
+                "retention_rate": retention,
+                "active_members": len(still_active),
+                "total_members": len(active_at_start)
+            })
+        
+        # Average member tenure (for active members)
+        total_tenure_days = 0
+        tenure_count = 0
+        for member in active_members:
+            join_date_str = member.get("join_date")
+            if join_date_str:
+                try:
+                    join_date = datetime.fromisoformat(join_date_str.replace('Z', '+00:00'))
+                    tenure_days = (now - join_date).days
+                    total_tenure_days += tenure_days
+                    tenure_count += 1
+                except:
+                    continue
+        
+        avg_tenure_days = round(total_tenure_days / tenure_count, 0) if tenure_count > 0 else 0
+        avg_tenure_months = round(avg_tenure_days / 30, 1)
+        
+        return {
+            "period": {
+                "start_date": start_iso,
+                "end_date": end_iso,
+                "months": period_months
+            },
+            "summary": {
+                "total_members": total_members,
+                "active_members": len(active_members),
+                "inactive_members": len(inactive_members),
+                "new_members_period": len(new_members_period),
+                "churn_rate": churn_rate,
+                "retention_rate": retention_rate,
+                "avg_tenure_months": avg_tenure_months
+            },
+            "retention_by_cohort": cohort_list[-12:],  # Last 12 cohorts
+            "retention_trend": retention_trend
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error generating retention dashboard: {str(e)}")
+
+
+@api_router.get("/reports/member-ltv")
+async def get_member_ltv_report(
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Calculate member lifetime value (LTV) metrics
+    """
+    try:
+        now = datetime.now(timezone.utc)
+        
+        # Get all members with their payment history
+        all_members = await db.members.find({}, {"_id": 0}).to_list(None)
+        
+        # Get all paid invoices
+        all_invoices = await db.invoices.find({
+            "status": {"$in": ["paid", "partial"]}
+        }, {"_id": 0}).to_list(None)
+        
+        # Calculate LTV per member
+        member_ltv_data = []
+        total_ltv = 0
+        
+        for member in all_members:
+            member_id = member.get("id")
+            
+            # Get member's invoices
+            member_invoices = [inv for inv in all_invoices if inv.get("member_id") == member_id]
+            member_revenue = sum(inv.get("amount", 0) for inv in member_invoices)
+            
+            # Calculate tenure
+            join_date_str = member.get("join_date")
+            tenure_months = 0
+            if join_date_str:
+                try:
+                    join_date = datetime.fromisoformat(join_date_str.replace('Z', '+00:00'))
+                    tenure_days = (now - join_date).days
+                    tenure_months = max(1, round(tenure_days / 30))
+                except:
+                    tenure_months = 1
+            
+            # Monthly average
+            monthly_avg = round(member_revenue / tenure_months, 2) if tenure_months > 0 else 0
+            
+            member_ltv_data.append({
+                "member_id": member_id,
+                "member_name": member.get("full_name", "Unknown"),
+                "status": member.get("status", "unknown"),
+                "join_date": join_date_str,
+                "tenure_months": tenure_months,
+                "total_revenue": round(member_revenue, 2),
+                "monthly_avg_revenue": monthly_avg,
+                "membership_type": member.get("membership_type", "Unknown")
+            })
+            
+            total_ltv += member_revenue
+        
+        # Sort by total revenue (highest LTV first)
+        member_ltv_data.sort(key=lambda x: x["total_revenue"], reverse=True)
+        
+        # Calculate averages
+        total_members = len(all_members)
+        avg_ltv = round(total_ltv / total_members, 2) if total_members > 0 else 0
+        
+        # Active members only
+        active_members = [m for m in member_ltv_data if m["status"] == "active"]
+        avg_ltv_active = round(sum(m["total_revenue"] for m in active_members) / len(active_members), 2) if active_members else 0
+        
+        # LTV by membership type
+        ltv_by_type = {}
+        for member in member_ltv_data:
+            mem_type = member["membership_type"]
+            if mem_type not in ltv_by_type:
+                ltv_by_type[mem_type] = {
+                    "total_revenue": 0,
+                    "member_count": 0,
+                    "avg_ltv": 0
+                }
+            ltv_by_type[mem_type]["total_revenue"] += member["total_revenue"]
+            ltv_by_type[mem_type]["member_count"] += 1
+        
+        # Calculate averages per type
+        for type_data in ltv_by_type.values():
+            count = type_data["member_count"]
+            type_data["avg_ltv"] = round(type_data["total_revenue"] / count, 2) if count > 0 else 0
+            type_data["total_revenue"] = round(type_data["total_revenue"], 2)
+        
+        return {
+            "summary": {
+                "total_members": total_members,
+                "total_ltv": round(total_ltv, 2),
+                "average_ltv": avg_ltv,
+                "average_ltv_active_members": avg_ltv_active,
+                "highest_ltv": member_ltv_data[0]["total_revenue"] if member_ltv_data else 0,
+                "lowest_ltv": member_ltv_data[-1]["total_revenue"] if member_ltv_data else 0
+            },
+            "ltv_by_membership_type": ltv_by_type,
+            "top_members": member_ltv_data[:20],  # Top 20 by LTV
+            "all_members_ltv": member_ltv_data
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error calculating member LTV: {str(e)}")
+
+
+@api_router.get("/reports/at-risk-members")
+async def get_at_risk_members(
+    risk_threshold: Optional[int] = 60,  # Risk score threshold
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Identify at-risk members based on various factors
+    Risk factors: low attendance, payment issues, long time since last visit
+    """
+    try:
+        now = datetime.now(timezone.utc)
+        
+        # Get active members
+        active_members = await db.members.find({
+            "status": "active"
+        }, {"_id": 0}).to_list(None)
+        
+        at_risk_members = []
+        
+        for member in active_members:
+            member_id = member.get("id")
+            risk_score = 0
+            risk_factors = []
+            
+            # Factor 1: Last visit (0-40 points)
+            last_visit = member.get("last_visit")
+            if last_visit:
+                try:
+                    last_visit_dt = datetime.fromisoformat(last_visit.replace('Z', '+00:00'))
+                    days_since_visit = (now - last_visit_dt).days
+                    
+                    if days_since_visit > 30:
+                        risk_score += 40
+                        risk_factors.append(f"No visit in {days_since_visit} days")
+                    elif days_since_visit > 14:
+                        risk_score += 20
+                        risk_factors.append(f"Last visit {days_since_visit} days ago")
+                    elif days_since_visit > 7:
+                        risk_score += 10
+                except:
+                    risk_score += 30
+                    risk_factors.append("Last visit date unavailable")
+            else:
+                risk_score += 30
+                risk_factors.append("Never visited")
+            
+            # Factor 2: Payment issues (0-30 points)
+            unpaid_invoices = await db.invoices.count_documents({
+                "member_id": member_id,
+                "status": {"$in": ["pending", "overdue", "failed"]}
+            })
+            
+            if unpaid_invoices > 2:
+                risk_score += 30
+                risk_factors.append(f"{unpaid_invoices} unpaid invoices")
+            elif unpaid_invoices > 0:
+                risk_score += 15
+                risk_factors.append(f"{unpaid_invoices} unpaid invoice(s)")
+            
+            # Factor 3: Membership duration (0-15 points - new members at higher risk)
+            join_date_str = member.get("join_date")
+            if join_date_str:
+                try:
+                    join_date = datetime.fromisoformat(join_date_str.replace('Z', '+00:00'))
+                    days_member = (now - join_date).days
+                    
+                    if days_member < 30:
+                        risk_score += 15
+                        risk_factors.append("New member (< 30 days)")
+                    elif days_member < 90:
+                        risk_score += 5
+                except:
+                    pass
+            
+            # Factor 4: Failed payment history (0-15 points)
+            failed_payments = await db.invoices.count_documents({
+                "member_id": member_id,
+                "status": "failed"
+            })
+            
+            if failed_payments > 1:
+                risk_score += 15
+                risk_factors.append(f"{failed_payments} failed payments")
+            elif failed_payments > 0:
+                risk_score += 7
+            
+            # Only include if risk score meets threshold
+            if risk_score >= risk_threshold:
+                at_risk_members.append({
+                    "member_id": member_id,
+                    "member_name": member.get("full_name", "Unknown"),
+                    "email": member.get("email"),
+                    "phone": member.get("phone"),
+                    "join_date": join_date_str,
+                    "last_visit": last_visit,
+                    "membership_type": member.get("membership_type"),
+                    "risk_score": risk_score,
+                    "risk_level": "critical" if risk_score >= 80 else "high" if risk_score >= 60 else "medium",
+                    "risk_factors": risk_factors,
+                    "unpaid_invoices": unpaid_invoices
+                })
+        
+        # Sort by risk score (highest first)
+        at_risk_members.sort(key=lambda x: x["risk_score"], reverse=True)
+        
+        # Calculate summary stats
+        critical_count = len([m for m in at_risk_members if m["risk_score"] >= 80])
+        high_count = len([m for m in at_risk_members if 60 <= m["risk_score"] < 80])
+        medium_count = len([m for m in at_risk_members if 40 <= m["risk_score"] < 60])
+        
+        return {
+            "summary": {
+                "total_at_risk": len(at_risk_members),
+                "critical_risk": critical_count,
+                "high_risk": high_count,
+                "medium_risk": medium_count,
+                "risk_threshold": risk_threshold
+            },
+            "at_risk_members": at_risk_members
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error identifying at-risk members: {str(e)}")
+
+
+@api_router.get("/reports/member-demographics")
+async def get_member_demographics(
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Get member demographics breakdown
+    Age, gender, location, membership type distribution
+    """
+    try:
+        # Get all members
+        all_members = await db.members.find({}, {"_id": 0}).to_list(None)
+        
+        total_members = len(all_members)
+        active_members = [m for m in all_members if m.get("status") == "active"]
+        
+        # Gender distribution
+        gender_breakdown = {}
+        for member in all_members:
+            gender = member.get("gender", "Not specified")
+            gender_breakdown[gender] = gender_breakdown.get(gender, 0) + 1
+        
+        # Age distribution
+        age_groups = {
+            "Under 18": 0,
+            "18-25": 0,
+            "26-35": 0,
+            "36-45": 0,
+            "46-55": 0,
+            "56-65": 0,
+            "Over 65": 0,
+            "Unknown": 0
+        }
+        
+        now = datetime.now(timezone.utc)
+        for member in all_members:
+            dob_str = member.get("date_of_birth")
+            if dob_str:
+                try:
+                    dob = datetime.fromisoformat(dob_str.replace('Z', '+00:00'))
+                    age = (now - dob).days // 365
+                    
+                    if age < 18:
+                        age_groups["Under 18"] += 1
+                    elif age <= 25:
+                        age_groups["18-25"] += 1
+                    elif age <= 35:
+                        age_groups["26-35"] += 1
+                    elif age <= 45:
+                        age_groups["36-45"] += 1
+                    elif age <= 55:
+                        age_groups["46-55"] += 1
+                    elif age <= 65:
+                        age_groups["56-65"] += 1
+                    else:
+                        age_groups["Over 65"] += 1
+                except:
+                    age_groups["Unknown"] += 1
+            else:
+                age_groups["Unknown"] += 1
+        
+        # Membership type distribution
+        membership_types = {}
+        for member in all_members:
+            mem_type = member.get("membership_type", "Unknown")
+            membership_types[mem_type] = membership_types.get(mem_type, 0) + 1
+        
+        # Location distribution (by city/address if available)
+        locations = {}
+        for member in all_members:
+            address = member.get("address", "")
+            # Simple extraction - just count unique cities/areas mentioned
+            if address:
+                # Take first part of address as location identifier
+                location = address.split(",")[0].strip() if "," in address else address[:30]
+                locations[location] = locations.get(location, 0) + 1
+            else:
+                locations["Not specified"] = locations.get("Not specified", 0) + 1
+        
+        # Top 10 locations only
+        top_locations = dict(sorted(locations.items(), key=lambda x: x[1], reverse=True)[:10])
+        
+        # Status distribution
+        status_breakdown = {}
+        for member in all_members:
+            status = member.get("status", "unknown")
+            status_breakdown[status] = status_breakdown.get(status, 0) + 1
+        
+        return {
+            "summary": {
+                "total_members": total_members,
+                "active_members": len(active_members),
+                "active_percentage": round((len(active_members) / total_members) * 100, 2) if total_members > 0 else 0
+            },
+            "gender_distribution": gender_breakdown,
+            "age_distribution": age_groups,
+            "membership_type_distribution": membership_types,
+            "location_distribution": top_locations,
+            "status_distribution": status_breakdown
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error generating demographics report: {str(e)}")
+
+
+@api_router.get("/reports/acquisition-cost")
+async def get_acquisition_cost_report(
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Calculate cost per acquisition by lead source
+    Analyzes lead source performance and ROI
+    """
+    try:
+        # Set default date range (last 90 days)
+        if not end_date:
+            end_dt = datetime.now(timezone.utc)
+        else:
+            end_dt = datetime.fromisoformat(end_date.replace('Z', '+00:00'))
+        
+        if not start_date:
+            start_dt = end_dt - timedelta(days=90)
+        else:
+            start_dt = datetime.fromisoformat(start_date.replace('Z', '+00:00'))
+        
+        start_iso = start_dt.isoformat()
+        end_iso = end_dt.isoformat()
+        
+        # Get all leads in the period
+        all_leads = await db.leads.find({
+            "created_at": {"$gte": start_iso, "$lte": end_iso}
+        }, {"_id": 0}).to_list(None)
+        
+        # Get all lead sources
+        lead_sources = await db.lead_sources.find({}, {"_id": 0}).to_list(None)
+        
+        # Analyze by source
+        source_performance = {}
+        
+        for lead in all_leads:
+            source = lead.get("source", "Unknown")
+            
+            if source not in source_performance:
+                source_performance[source] = {
+                    "source": source,
+                    "total_leads": 0,
+                    "converted_leads": 0,
+                    "conversion_rate": 0,
+                    "estimated_cost": 0,
+                    "cost_per_lead": 0,
+                    "cost_per_acquisition": 0,
+                    "roi": 0
+                }
+            
+            source_performance[source]["total_leads"] += 1
+            
+            if lead.get("status") == "converted":
+                source_performance[source]["converted_leads"] += 1
+        
+        # Calculate conversion rates and costs
+        for source, data in source_performance.items():
+            total = data["total_leads"]
+            converted = data["converted_leads"]
+            
+            # Conversion rate
+            data["conversion_rate"] = round((converted / total) * 100, 2) if total > 0 else 0
+            
+            # Estimated cost (simplified - in reality this would come from marketing spend data)
+            # For demo, assign approximate costs per source type
+            cost_estimates = {
+                "Google Ads": 50,  # per lead
+                "Facebook Ads": 30,
+                "Instagram": 35,
+                "Walk-in": 5,
+                "Referral": 10,
+                "Website": 20,
+                "Email": 5
+            }
+            
+            base_cost = cost_estimates.get(source, 25)  # Default R25 per lead
+            data["estimated_cost"] = total * base_cost
+            data["cost_per_lead"] = base_cost
+            
+            # Cost per acquisition
+            data["cost_per_acquisition"] = round(data["estimated_cost"] / converted, 2) if converted > 0 else 0
+            
+            # ROI (assuming average member LTV of R2000)
+            avg_ltv = 2000
+            revenue_generated = converted * avg_ltv
+            roi = round(((revenue_generated - data["estimated_cost"]) / data["estimated_cost"]) * 100, 2) if data["estimated_cost"] > 0 else 0
+            data["roi"] = roi
+            data["revenue_generated"] = revenue_generated
+        
+        # Sort by conversion rate (best performing first)
+        source_list = sorted(source_performance.values(), key=lambda x: x["conversion_rate"], reverse=True)
+        
+        # Calculate totals
+        total_leads = sum(s["total_leads"] for s in source_list)
+        total_converted = sum(s["converted_leads"] for s in source_list)
+        total_cost = sum(s["estimated_cost"] for s in source_list)
+        overall_conversion = round((total_converted / total_leads) * 100, 2) if total_leads > 0 else 0
+        
+        return {
+            "period": {
+                "start_date": start_iso,
+                "end_date": end_iso
+            },
+            "summary": {
+                "total_leads": total_leads,
+                "total_converted": total_converted,
+                "overall_conversion_rate": overall_conversion,
+                "total_estimated_cost": round(total_cost, 2),
+                "average_cost_per_lead": round(total_cost / total_leads, 2) if total_leads > 0 else 0,
+                "average_cost_per_acquisition": round(total_cost / total_converted, 2) if total_converted > 0 else 0
+            },
+            "by_source": source_list,
+            "best_performing_source": source_list[0] if source_list else None,
+            "worst_performing_source": source_list[-1] if source_list else None
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error calculating acquisition cost: {str(e)}")
+
+
 # ==================== OPPORTUNITIES/PIPELINE ENDPOINTS ====================
 
 @api_router.get("/sales/opportunities")
