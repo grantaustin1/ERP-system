@@ -1092,7 +1092,7 @@ class SalesModulePhase2TestRunner:
         # Clean up created opportunities
         for opp_id in self.created_opportunities:
             try:
-                response = requests.delete(f"{API_BASE}/opportunities/{opp_id}", headers=self.headers)
+                response = requests.delete(f"{API_BASE}/sales/opportunities/{opp_id}", headers=self.headers)
                 if response.status_code == 200:
                     self.log_result(f"Cleanup Opportunity {opp_id[:8]}", True, "Opportunity deleted")
                 else:
