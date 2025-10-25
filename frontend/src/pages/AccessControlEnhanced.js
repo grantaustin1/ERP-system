@@ -508,6 +508,23 @@ function AccessControlEnhanced() {
                       </CardContent>
                     </Card>
                   ))}
+                  {members
+                    .filter(m => m.membership_status === 'active')
+                    .filter(m => {
+                      if (!quickSearchQuery) return true;
+                      const query = quickSearchQuery.toLowerCase();
+                      return (
+                        m.first_name?.toLowerCase().includes(query) ||
+                        m.last_name?.toLowerCase().includes(query) ||
+                        m.email?.toLowerCase().includes(query) ||
+                        m.phone?.toLowerCase().includes(query)
+                      );
+                    }).length === 0 && quickSearchQuery && (
+                    <div className="text-center py-8 text-gray-500">
+                      <p>No members found matching "{quickSearchQuery}"</p>
+                      <p className="text-sm mt-2">Try adjusting your search or use Manual Override</p>
+                    </div>
+                  )}
                 </div>
               </div>
             </CardContent>
