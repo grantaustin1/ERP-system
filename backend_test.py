@@ -68,66 +68,66 @@ class SalesModulePhase2TestRunner:
             self.log_result("Authentication", False, f"Authentication error: {str(e)}")
             return False
     
-    def setup_test_members(self):
-        """Create test members for dashboard testing"""
+    def setup_test_data(self):
+        """Create test leads and opportunities for sales testing"""
         try:
-            # Get membership types
-            response = requests.get(f"{API_BASE}/membership-types", headers=self.headers)
-            if response.status_code != 200:
-                self.log_result("Get Membership Types", False, "Failed to get membership types")
+            # Get current user info
+            response = requests.get(f"{API_BASE}/auth/me", headers=self.headers)
+            if response.status_code == 200:
+                user_data = response.json()
+                self.test_user_id = user_data["id"]
+                self.log_result("Get Current User", True, f"Current user: {user_data['email']}")
+            else:
+                self.log_result("Get Current User", False, f"Failed to get current user: {response.status_code}")
                 return False
             
-            membership_types = response.json()
-            if not membership_types:
-                self.log_result("Get Membership Types", False, "No membership types found")
-                return False
-            
-            membership_type_id = membership_types[0]["id"]
-            
-            # Create first test member
-            timestamp = int(time.time() * 1000)  # Use milliseconds for more uniqueness
-            member_data_1 = {
-                "first_name": "Sarah",
-                "last_name": f"DashboardTest{timestamp}",
-                "email": f"sarah.dashboard.{timestamp}@example.com",
-                "phone": f"082333{timestamp % 100000:05d}",
-                "membership_type_id": membership_type_id
+            # Create test lead
+            timestamp = int(time.time() * 1000)
+            lead_data = {
+                "source": "website",
+                "full_name": f"John SalesTest{timestamp}",
+                "email": f"john.sales.{timestamp}@example.com",
+                "phone": f"082555{timestamp % 100000:05d}",
+                "interest": "Premium Membership",
+                "assigned_to_consultant_id": self.test_user_id,
+                "status": "new"
             }
             
-            response = requests.post(f"{API_BASE}/members", json=member_data_1, headers=self.headers)
+            response = requests.post(f"{API_BASE}/leads", json=lead_data, headers=self.headers)
             if response.status_code == 200:
-                member = response.json()
-                self.test_member_id = member["id"]
-                self.created_members.append(member["id"])
-                self.log_result("Setup Test Member 1", True, f"Created test member 1: {self.test_member_id}")
+                lead = response.json()
+                self.test_lead_id = lead["id"]
+                self.created_leads.append(lead["id"])
+                self.log_result("Setup Test Lead", True, f"Created test lead: {self.test_lead_id}")
             else:
-                self.log_result("Setup Test Member 1", False, f"Failed to create test member 1: {response.status_code}",
+                self.log_result("Setup Test Lead", False, f"Failed to create test lead: {response.status_code}",
                               {"response": response.text})
                 return False
             
-            # Create second test member
-            member_data_2 = {
-                "first_name": "Michael",
-                "last_name": f"DashboardTest{timestamp}",
-                "email": f"michael.dashboard.{timestamp}@example.com",
-                "phone": f"082444{timestamp % 100000:05d}",
-                "membership_type_id": membership_type_id
+            # Create test opportunity
+            opportunity_data = {
+                "lead_id": self.test_lead_id,
+                "title": f"Premium Membership Sale {timestamp}",
+                "value": 5000.0,
+                "stage": "proposal",
+                "probability": 75,
+                "expected_close_date": (datetime.now() + timedelta(days=30)).isoformat(),
+                "assigned_to": self.test_user_id
             }
             
-            response = requests.post(f"{API_BASE}/members", json=member_data_2, headers=self.headers)
+            response = requests.post(f"{API_BASE}/opportunities", json=opportunity_data, headers=self.headers)
             if response.status_code == 200:
-                member = response.json()
-                self.test_member_id_2 = member["id"]
-                self.created_members.append(member["id"])
-                self.log_result("Setup Test Member 2", True, f"Created test member 2: {self.test_member_id_2}")
+                opportunity = response.json()
+                self.created_opportunities.append(opportunity["id"])
+                self.log_result("Setup Test Opportunity", True, f"Created test opportunity: {opportunity['id']}")
                 return True
             else:
-                self.log_result("Setup Test Member 2", False, f"Failed to create test member 2: {response.status_code}",
+                self.log_result("Setup Test Opportunity", False, f"Failed to create test opportunity: {response.status_code}",
                               {"response": response.text})
                 return False
                 
         except Exception as e:
-            self.log_result("Setup Test Members", False, f"Error creating test members: {str(e)}")
+            self.log_result("Setup Test Data", False, f"Error creating test data: {str(e)}")
             return False
     
     def test_points_balance_api(self):
