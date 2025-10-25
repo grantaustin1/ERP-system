@@ -6868,12 +6868,10 @@ metadata:
 
 test_plan:
   current_focus:
-    - "Complimentary Membership Main Page"
-    - "Issue Complimentary Pass Dialog"
-    - "Complimentary Type Management Dialog"
-    - "Complimentary Membership Filters"
-    - "Complimentary Summary Card in Sales Dashboard"
-    - "Complimentary Membership Route & Navigation"
+    - "Financial Reporting API - Revenue Report"
+    - "Financial Reporting API - Commissions Report"
+    - "Financial Reporting API - Financial Summary"
+    - "Financial Reporting API - Payment Analysis"
   stuck_tasks: []
   test_all: false
   test_priority: "high_first"
