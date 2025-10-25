@@ -989,6 +989,11 @@ export default function Members() {
             </CardContent>
           </Card>
 
+          {/* Member Analytics Section */}
+          <div className="my-8">
+            <AttendanceHeatmap />
+          </div>
+
           {loading ? (
             <div className="text-center text-slate-400 py-12">Loading members...</div>
           ) : filteredMembers.length === 0 ? (
