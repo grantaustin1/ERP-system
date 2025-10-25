@@ -20,11 +20,15 @@ MANAGER_PASSWORD = "admin123"
 
 class LeadAssignmentTestRunner:
     def __init__(self):
-        self.token = None
-        self.headers = {}
+        self.manager_token = None
+        self.consultant_token = None
+        self.manager_headers = {}
+        self.consultant_headers = {}
         self.test_results = []
-        self.test_member_id = None
-        self.created_access_logs = []  # Track created access logs for cleanup
+        self.test_consultant_id = None
+        self.test_lead_id = None
+        self.created_leads = []
+        self.created_users = []
         
     def log_result(self, test_name, success, message, details=None):
         """Log test result"""
