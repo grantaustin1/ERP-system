@@ -278,104 +278,120 @@ class MemberAnalyticsTestRunner:
             self.log_result("Member LTV API", False, f"Error: {str(e)}")
             return False
     
-    def test_financial_summary_api(self):
-        """Test GET /api/reports/financial-summary endpoint"""
-        print("\n=== Testing Financial Summary API ===")
+    def test_at_risk_members_api(self):
+        """Test GET /api/reports/at-risk-members endpoint"""
+        print("\n=== Testing At-Risk Members API ===")
         
         try:
-            # Test 1: Default parameters (current month)
-            response = requests.get(f"{API_BASE}/reports/financial-summary", headers=self.admin_headers)
+            # Test 1: Default parameters (threshold 60)
+            response = requests.get(f"{API_BASE}/reports/at-risk-members", headers=self.admin_headers)
             
             if response.status_code == 200:
                 data = response.json()
                 
                 # Verify response structure
-                required_fields = ["period", "revenue", "members", "performance"]
+                required_fields = ["summary", "at_risk_members"]
                 
                 for field in required_fields:
                     if field not in data:
-                        self.log_result("Financial Summary Structure", False, f"Missing field: {field}")
+                        self.log_result("At-Risk Members Structure", False, f"Missing field: {field}")
                         return False
                 
-                # Verify period structure
-                period = data["period"]
-                period_fields = ["start_date", "end_date", "month"]
-                for field in period_fields:
-                    if field not in period:
-                        self.log_result("Financial Summary Period", False, f"Missing period field: {field}")
+                # Verify summary structure
+                summary = data["summary"]
+                summary_fields = ["total_at_risk", "critical_risk", "high_risk", "medium_risk", "risk_threshold"]
+                for field in summary_fields:
+                    if field not in summary:
+                        self.log_result("At-Risk Members Summary", False, f"Missing summary field: {field}")
                         return False
                 
-                # Verify revenue structure
-                revenue = data["revenue"]
-                revenue_fields = ["total_revenue", "membership_revenue", "retail_revenue", "outstanding_receivables", "failed_payments"]
-                for field in revenue_fields:
-                    if field not in revenue:
-                        self.log_result("Financial Summary Revenue", False, f"Missing revenue field: {field}")
-                        return False
-                    
-                    # Verify numeric values
-                    if not isinstance(revenue[field], (int, float)):
-                        self.log_result("Financial Summary Revenue Values", False, f"{field} should be numeric")
-                        return False
-                
-                # Verify members structure
-                members = data["members"]
-                member_fields = ["active_members", "new_members", "avg_revenue_per_member"]
-                for field in member_fields:
-                    if field not in members:
-                        self.log_result("Financial Summary Members", False, f"Missing members field: {field}")
-                        return False
-                
-                # Verify performance structure
-                performance = data["performance"]
-                perf_fields = ["collection_rate", "total_transactions", "unpaid_invoice_count", "failed_payment_count"]
-                for field in perf_fields:
-                    if field not in performance:
-                        self.log_result("Financial Summary Performance", False, f"Missing performance field: {field}")
-                        return False
-                
-                # Verify collection rate is percentage
-                if not (0 <= performance["collection_rate"] <= 100):
-                    self.log_result("Financial Summary Collection Rate", False, "Collection rate should be 0-100%")
+                # Verify risk threshold
+                if summary["risk_threshold"] != 60:
+                    self.log_result("At-Risk Members Default Threshold", False, "Default threshold should be 60")
                     return False
                 
-                self.log_result("Financial Summary Default", True, f"Total revenue: R{revenue['total_revenue']:.2f}, Collection rate: {performance['collection_rate']:.1f}%")
+                # Verify at_risk_members structure
+                at_risk = data["at_risk_members"]
+                if not isinstance(at_risk, list):
+                    self.log_result("At-Risk Members Array", False, "at_risk_members should be array")
+                    return False
+                
+                # Verify member structure if any exist
+                if at_risk:
+                    member = at_risk[0]
+                    member_fields = ["member_id", "member_name", "email", "phone", "join_date", "last_visit", "risk_score", "risk_level", "risk_factors", "unpaid_invoices"]
+                    for field in member_fields:
+                        if field not in member:
+                            self.log_result("At-Risk Members Member Fields", False, f"Missing member field: {field}")
+                            return False
+                    
+                    # Verify risk_level categorization
+                    risk_score = member["risk_score"]
+                    risk_level = member["risk_level"]
+                    
+                    if risk_score >= 80 and risk_level != "critical":
+                        self.log_result("At-Risk Members Risk Level Critical", False, f"Risk score {risk_score} should be 'critical'")
+                        return False
+                    elif 60 <= risk_score < 80 and risk_level != "high":
+                        self.log_result("At-Risk Members Risk Level High", False, f"Risk score {risk_score} should be 'high'")
+                        return False
+                    elif 40 <= risk_score < 60 and risk_level != "medium":
+                        self.log_result("At-Risk Members Risk Level Medium", False, f"Risk score {risk_score} should be 'medium'")
+                        return False
+                    
+                    # Verify risk_factors is array with meaningful descriptions
+                    risk_factors = member["risk_factors"]
+                    if not isinstance(risk_factors, list):
+                        self.log_result("At-Risk Members Risk Factors", False, "risk_factors should be array")
+                        return False
+                    
+                    # Verify sorting (highest risk_score first)
+                    if len(at_risk) > 1:
+                        for i in range(1, len(at_risk)):
+                            if at_risk[i]["risk_score"] > at_risk[i-1]["risk_score"]:
+                                self.log_result("At-Risk Members Sorting", False, "Members not sorted by risk_score")
+                                return False
+                
+                self.log_result("At-Risk Members Default", True, f"Found {summary['total_at_risk']} at-risk members (threshold: {summary['risk_threshold']})")
                 
             else:
-                self.log_result("Financial Summary Default", False, f"Failed: {response.status_code}")
+                self.log_result("At-Risk Members Default", False, f"Failed: {response.status_code}")
                 return False
             
-            # Test 2: Custom date range
-            end_date = "2024-12-31T23:59:59Z"
-            start_date = "2024-01-01T00:00:00Z"
-            
-            response = requests.get(
-                f"{API_BASE}/reports/financial-summary",
-                params={"start_date": start_date, "end_date": end_date},
-                headers=self.admin_headers
-            )
+            # Test 2: Custom threshold (40)
+            response = requests.get(f"{API_BASE}/reports/at-risk-members?risk_threshold=40", headers=self.admin_headers)
             
             if response.status_code == 200:
                 data = response.json()
-                period = data["period"]
-                
-                # Verify date range is respected (handle timezone format differences)
-                start_check = "2024-01-01" in period["start_date"]
-                end_check = "2024-12-31" in period["end_date"]
-                if not start_check or not end_check:
-                    self.log_result("Financial Summary Custom Dates", False, "Date range not respected")
+                if data["summary"]["risk_threshold"] != 40:
+                    self.log_result("At-Risk Members Threshold 40", False, "Threshold 40 not respected")
                     return False
                 
-                self.log_result("Financial Summary Custom Dates", True, f"Custom range: R{data['revenue']['total_revenue']:.2f}")
+                self.log_result("At-Risk Members Threshold 40", True, f"Threshold 40: {data['summary']['total_at_risk']} at-risk members")
                 
             else:
-                self.log_result("Financial Summary Custom Dates", False, f"Failed: {response.status_code}")
+                self.log_result("At-Risk Members Threshold 40", False, f"Failed: {response.status_code}")
+                return False
+            
+            # Test 3: High threshold (80)
+            response = requests.get(f"{API_BASE}/reports/at-risk-members?risk_threshold=80", headers=self.admin_headers)
+            
+            if response.status_code == 200:
+                data = response.json()
+                if data["summary"]["risk_threshold"] != 80:
+                    self.log_result("At-Risk Members Threshold 80", False, "Threshold 80 not respected")
+                    return False
+                
+                self.log_result("At-Risk Members Threshold 80", True, f"Threshold 80: {data['summary']['total_at_risk']} at-risk members")
+                
+            else:
+                self.log_result("At-Risk Members Threshold 80", False, f"Failed: {response.status_code}")
                 return False
             
             return True
             
         except Exception as e:
-            self.log_result("Financial Summary API", False, f"Error: {str(e)}")
+            self.log_result("At-Risk Members API", False, f"Error: {str(e)}")
             return False
     
     def test_payment_analysis_api(self):
