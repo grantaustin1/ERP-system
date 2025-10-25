@@ -8092,6 +8092,8 @@ async def create_referral_reward(
         "delivered_at": None
     }
     await db.referral_rewards.insert_one(reward)
+    # Remove MongoDB's _id before returning
+    reward.pop("_id", None)
     return {"success": True, "reward": reward}
 
 @api_router.put("/sales/referral-rewards/{reward_id}/status")
