@@ -653,9 +653,9 @@ class MemberAnalyticsTestRunner:
         print("\n=== Testing Error Handling ===")
         
         try:
-            # Test invalid date format
+            # Test invalid date format for acquisition cost
             response = requests.get(
-                f"{API_BASE}/reports/revenue",
+                f"{API_BASE}/reports/acquisition-cost",
                 params={"start_date": "invalid-date"},
                 headers=self.admin_headers
             )
@@ -667,18 +667,32 @@ class MemberAnalyticsTestRunner:
                 self.log_result("Error Handling Invalid Date", False, f"Unexpected status: {response.status_code}")
                 return False
             
-            # Test invalid group_by parameter
+            # Test invalid risk threshold parameter
             response = requests.get(
-                f"{API_BASE}/reports/revenue",
-                params={"group_by": "invalid_group"},
+                f"{API_BASE}/reports/at-risk-members",
+                params={"risk_threshold": "invalid_threshold"},
                 headers=self.admin_headers
             )
             
             # Should handle gracefully
             if response.status_code in [200, 400, 422, 500]:
-                self.log_result("Error Handling Invalid Group By", True, f"Handled gracefully: {response.status_code}")
+                self.log_result("Error Handling Invalid Threshold", True, f"Handled gracefully: {response.status_code}")
             else:
-                self.log_result("Error Handling Invalid Group By", False, f"Unexpected status: {response.status_code}")
+                self.log_result("Error Handling Invalid Threshold", False, f"Unexpected status: {response.status_code}")
+                return False
+            
+            # Test invalid period_months parameter
+            response = requests.get(
+                f"{API_BASE}/reports/retention-dashboard",
+                params={"period_months": "invalid_period"},
+                headers=self.admin_headers
+            )
+            
+            # Should handle gracefully
+            if response.status_code in [200, 400, 422, 500]:
+                self.log_result("Error Handling Invalid Period", True, f"Handled gracefully: {response.status_code}")
+            else:
+                self.log_result("Error Handling Invalid Period", False, f"Unexpected status: {response.status_code}")
                 return False
             
             return True
