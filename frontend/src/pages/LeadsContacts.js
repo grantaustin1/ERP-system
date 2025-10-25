@@ -374,6 +374,11 @@ export default function LeadsContacts() {
             </CardContent>
           </Card>
 
+          {/* Sales Automation Panel */}
+          <div className="mb-6">
+            <SalesAutomationPanel />
+          </div>
+
           {/* Leads List */}
           <Card className="bg-slate-800 border-slate-700">
             <CardHeader>
