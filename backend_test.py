@@ -560,6 +560,15 @@ class SalesModulePhase2TestRunner:
                 self.log_result("Update Workflow API", False, "No test workflow available")
                 return False
             
+            # Verify workflow exists before updating
+            check_response = requests.get(f"{API_BASE}/sales/workflows", headers=self.headers)
+            if check_response.status_code == 200:
+                workflows = check_response.json()["workflows"]
+                workflow_exists = any(w["id"] == self.test_workflow_id for w in workflows)
+                if not workflow_exists:
+                    self.log_result("Update Workflow API", False, "Test workflow was deleted before update test")
+                    return False
+            
             # Test toggling is_active
             update_data = {
                 "is_active": False
