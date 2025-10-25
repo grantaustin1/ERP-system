@@ -1207,15 +1207,18 @@ backend:
 
   - task: "Configurable Lead Sources - CRUD APIs"
     implemented: true
-    working: false
+    working: true
     file: "/app/backend/server.py"
-    stuck_count: 1
+    stuck_count: 0
     priority: "high"
     needs_retesting: false
     status_history:
       - working: false
         agent: "testing"
         comment: "❌ CRITICAL ISSUE: POST /api/sales/config/lead-sources returns 500 Internal Server Error. Backend logs show ObjectId serialization error: 'ObjectId' object is not iterable. This prevents creating new lead sources. GET endpoint works but returns empty data due to seeding issue."
+      - working: true
+        agent: "testing"
+        comment: "✅ FIXED - Lead Sources CRUD APIs WORKING PERFECTLY: All CRUD operations tested successfully. CREATE: POST /api/sales/config/lead-sources creates sources with valid UUID IDs, proper timestamps, and all required fields. READ: GET /api/sales/config/lead-sources returns all sources correctly. UPDATE: PUT /api/sales/config/lead-sources/{id} updates sources and changes persist correctly. DELETE: DELETE /api/sales/config/lead-sources/{id} removes sources from list. Error handling working correctly - 404 for non-existent IDs, 422 for missing required fields. No ObjectId serialization errors encountered."
 
   - task: "Configurable Lead Statuses - Startup Seeding"
     implemented: true
