@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-Backend Test Suite - Financial Reporting APIs Testing
-Focus on testing the Financial Reporting APIs with comprehensive validation
+Backend Test Suite - Member Analytics & Retention APIs Testing
+Focus on testing the Member Analytics & Retention APIs with comprehensive validation
 """
 
 import requests
@@ -18,7 +18,7 @@ API_BASE = f"{BASE_URL}/api"
 ADMIN_EMAIL = "admin@gym.com"
 ADMIN_PASSWORD = "admin123"
 
-class FinancialReportingTestRunner:
+class MemberAnalyticsTestRunner:
     def __init__(self):
         self.admin_token = None
         self.admin_headers = {}
