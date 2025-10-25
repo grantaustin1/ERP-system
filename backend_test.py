@@ -181,101 +181,101 @@ class MemberAnalyticsTestRunner:
             self.log_result("Retention Dashboard API", False, f"Error: {str(e)}")
             return False
     
-    def test_commissions_report_api(self):
-        """Test GET /api/reports/commissions endpoint"""
-        print("\n=== Testing Commissions Report API ===")
+    def test_member_ltv_api(self):
+        """Test GET /api/reports/member-ltv endpoint"""
+        print("\n=== Testing Member LTV API ===")
         
         try:
-            # Test 1: Default parameters (last 30 days)
-            response = requests.get(f"{API_BASE}/reports/commissions", headers=self.admin_headers)
+            # Test 1: Default parameters
+            response = requests.get(f"{API_BASE}/reports/member-ltv", headers=self.admin_headers)
             
             if response.status_code == 200:
                 data = response.json()
                 
                 # Verify response structure
-                required_fields = ["period", "summary", "consultants", "commission_rate"]
+                required_fields = ["summary", "ltv_by_membership_type", "top_members", "all_members_ltv"]
                 
                 for field in required_fields:
                     if field not in data:
-                        self.log_result("Commissions Report Structure", False, f"Missing field: {field}")
+                        self.log_result("Member LTV Structure", False, f"Missing field: {field}")
                         return False
                 
                 # Verify summary structure
                 summary = data["summary"]
-                summary_fields = ["total_commissions", "total_deal_value", "total_conversions", "average_commission_per_consultant"]
+                summary_fields = ["total_members", "total_ltv", "average_ltv", "average_ltv_active_members", "highest_ltv", "lowest_ltv"]
                 for field in summary_fields:
                     if field not in summary:
-                        self.log_result("Commissions Report Summary", False, f"Missing summary field: {field}")
+                        self.log_result("Member LTV Summary", False, f"Missing summary field: {field}")
                         return False
                 
-                # Verify consultants array
-                consultants = data["consultants"]
-                if not isinstance(consultants, list):
-                    self.log_result("Commissions Report Consultants", False, "consultants should be array")
+                # Verify ltv_by_membership_type structure
+                ltv_by_type = data["ltv_by_membership_type"]
+                if not isinstance(ltv_by_type, dict):
+                    self.log_result("Member LTV By Type", False, "ltv_by_membership_type should be object")
                     return False
                 
-                # Verify consultant structure if any exist
-                if consultants:
-                    consultant = consultants[0]
-                    consultant_fields = [
-                        "consultant_id", "consultant_name", "email", "role",
-                        "leads_converted", "opportunities_won", "total_conversions",
-                        "total_deal_value", "commission_earned", "average_deal_size"
-                    ]
-                    for field in consultant_fields:
-                        if field not in consultant:
-                            self.log_result("Commissions Report Consultant Fields", False, f"Missing consultant field: {field}")
+                # Verify membership type structure if any exist
+                if ltv_by_type:
+                    type_name = list(ltv_by_type.keys())[0]
+                    type_data = ltv_by_type[type_name]
+                    type_fields = ["total_revenue", "member_count", "avg_ltv"]
+                    for field in type_fields:
+                        if field not in type_data:
+                            self.log_result("Member LTV Type Fields", False, f"Missing type field: {field}")
+                            return False
+                
+                # Verify top_members structure
+                top_members = data["top_members"]
+                if not isinstance(top_members, list):
+                    self.log_result("Member LTV Top Members", False, "top_members should be array")
+                    return False
+                
+                # Verify top 20 limit
+                if len(top_members) > 20:
+                    self.log_result("Member LTV Top Members Limit", False, "top_members should be limited to 20")
+                    return False
+                
+                # Verify member structure if any exist
+                if top_members:
+                    member = top_members[0]
+                    member_fields = ["member_id", "member_name", "status", "tenure_months", "total_revenue", "monthly_avg_revenue"]
+                    for field in member_fields:
+                        if field not in member:
+                            self.log_result("Member LTV Member Fields", False, f"Missing member field: {field}")
                             return False
                     
-                    # Verify sorting (highest commission first)
-                    if len(consultants) > 1:
-                        for i in range(1, len(consultants)):
-                            if consultants[i]["commission_earned"] > consultants[i-1]["commission_earned"]:
-                                self.log_result("Commissions Report Sorting", False, "Consultants not sorted by commission_earned")
+                    # Verify sorting (highest total_revenue first)
+                    if len(top_members) > 1:
+                        for i in range(1, len(top_members)):
+                            if top_members[i]["total_revenue"] > top_members[i-1]["total_revenue"]:
+                                self.log_result("Member LTV Sorting", False, "Members not sorted by total_revenue")
                                 return False
+                    
+                    # Verify monthly_avg_revenue calculation
+                    tenure = member["tenure_months"]
+                    total_rev = member["total_revenue"]
+                    monthly_avg = member["monthly_avg_revenue"]
+                    expected_avg = round(total_rev / tenure, 2) if tenure > 0 else 0
+                    if abs(monthly_avg - expected_avg) > 0.01:  # Allow small floating point differences
+                        self.log_result("Member LTV Monthly Avg Calculation", False, f"Monthly avg calculation incorrect: {monthly_avg} vs expected {expected_avg}")
+                        return False
                 
-                # Verify numeric values
-                if not isinstance(data["commission_rate"], (int, float)):
-                    self.log_result("Commissions Report Rate", False, "commission_rate should be numeric")
+                # Verify all_members_ltv structure
+                all_members = data["all_members_ltv"]
+                if not isinstance(all_members, list):
+                    self.log_result("Member LTV All Members", False, "all_members_ltv should be array")
                     return False
                 
-                self.log_result("Commissions Report Default", True, f"Found {len(consultants)} consultants, total commissions: R{summary['total_commissions']:.2f}")
+                self.log_result("Member LTV Default", True, f"Total LTV: R{summary['total_ltv']:.2f}, Average: R{summary['average_ltv']:.2f}")
                 
             else:
-                self.log_result("Commissions Report Default", False, f"Failed: {response.status_code}")
-                return False
-            
-            # Test 2: Custom date range
-            end_date = "2024-12-31T23:59:59Z"
-            start_date = "2024-01-01T00:00:00Z"
-            
-            response = requests.get(
-                f"{API_BASE}/reports/commissions",
-                params={"start_date": start_date, "end_date": end_date},
-                headers=self.admin_headers
-            )
-            
-            if response.status_code == 200:
-                data = response.json()
-                period = data["period"]
-                
-                # Verify date range is respected (handle timezone format differences)
-                start_check = "2024-01-01" in period["start_date"]
-                end_check = "2024-12-31" in period["end_date"]
-                if not start_check or not end_check:
-                    self.log_result("Commissions Report Custom Dates", False, "Date range not respected")
-                    return False
-                
-                self.log_result("Commissions Report Custom Dates", True, f"Custom range: R{data['summary']['total_commissions']:.2f}")
-                
-            else:
-                self.log_result("Commissions Report Custom Dates", False, f"Failed: {response.status_code}")
+                self.log_result("Member LTV Default", False, f"Failed: {response.status_code}")
                 return False
             
             return True
             
         except Exception as e:
-            self.log_result("Commissions Report API", False, f"Error: {str(e)}")
+            self.log_result("Member LTV API", False, f"Error: {str(e)}")
             return False
     
     def test_financial_summary_api(self):
