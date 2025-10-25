@@ -100,6 +100,18 @@ export default function Members() {
     fetchTags();
   }, []);
 
+  // Auto-populate account holder name with member's full name
+  useEffect(() => {
+    if (formData.first_name || formData.last_name) {
+      const fullName = `${formData.first_name} ${formData.last_name}`.trim();
+      // Only update if account_holder_name is empty (to preserve manual edits)
+      if (!formData.account_holder_name || formData.account_holder_name === '') {
+        setFormData(prev => ({ ...prev, account_holder_name: fullName }));
+      }
+    }
+  }, [formData.first_name, formData.last_name]);
+
+
   const fetchMembers = async () => {
     try {
       const response = await axios.get(`${API}/members`);
