@@ -23,11 +23,13 @@ class SalesModulePhase2TestRunner:
         self.token = None
         self.headers = {}
         self.test_results = []
-        self.created_members = []  # Track created members for cleanup
-        self.created_invoices = []  # Track created invoices for cleanup
-        self.test_member_id = None
-        self.test_member_id_2 = None
-        self.test_invoice_id = None
+        self.created_leads = []  # Track created leads for cleanup
+        self.created_workflows = []  # Track created workflows for cleanup
+        self.created_opportunities = []  # Track created opportunities for cleanup
+        self.created_tasks = []  # Track created tasks for cleanup
+        self.test_lead_id = None
+        self.test_workflow_id = None
+        self.test_user_id = None
         
     def log_result(self, test_name, success, message, details=None):
         """Log test result"""
