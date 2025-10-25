@@ -373,95 +373,137 @@ class SalesPerformanceTestRunner:
             self.log_result("Lead Source ROI API", False, f"Error: {str(e)}")
             return False
     
-    def test_member_demographics_api(self):
-        """Test GET /api/reports/member-demographics endpoint"""
-        print("\n=== Testing Member Demographics API ===")
+    def test_win_loss_analysis_api(self):
+        """Test GET /api/reports/win-loss-analysis endpoint"""
+        print("\n=== Testing Win-Loss Analysis API ===")
         
         try:
-            # Test 1: Default parameters
-            response = requests.get(f"{API_BASE}/reports/member-demographics", headers=self.admin_headers)
+            # Test 1: Default parameters (last 90 days)
+            response = requests.get(f"{API_BASE}/reports/win-loss-analysis", headers=self.admin_headers)
             
             if response.status_code == 200:
                 data = response.json()
                 
                 # Verify response structure
-                required_fields = ["summary", "gender_distribution", "age_distribution", "membership_type_distribution", "location_distribution", "status_distribution"]
+                required_fields = ["period", "summary", "loss_reasons", "top_loss_reason", "salesperson_performance"]
                 
                 for field in required_fields:
                     if field not in data:
-                        self.log_result("Member Demographics Structure", False, f"Missing field: {field}")
+                        self.log_result("Win-Loss Analysis Structure", False, f"Missing field: {field}")
+                        return False
+                
+                # Verify period structure
+                period = data["period"]
+                period_fields = ["start_date", "end_date"]
+                for field in period_fields:
+                    if field not in period:
+                        self.log_result("Win-Loss Analysis Period", False, f"Missing period field: {field}")
                         return False
                 
                 # Verify summary structure
                 summary = data["summary"]
-                summary_fields = ["total_members", "active_members", "active_percentage"]
+                summary_fields = ["total_won", "total_lost", "total_closed", "win_rate", "won_revenue", "lost_revenue", "avg_won_deal_size", "avg_lost_deal_size"]
                 for field in summary_fields:
                     if field not in summary:
-                        self.log_result("Member Demographics Summary", False, f"Missing summary field: {field}")
+                        self.log_result("Win-Loss Analysis Summary", False, f"Missing summary field: {field}")
                         return False
                 
-                # Verify active_percentage calculation
-                total = summary["total_members"]
-                active = summary["active_members"]
-                active_pct = summary["active_percentage"]
-                expected_pct = round((active / total) * 100, 2) if total > 0 else 0
-                if abs(active_pct - expected_pct) > 0.01:
-                    self.log_result("Member Demographics Active Percentage", False, f"Active percentage calculation incorrect: {active_pct} vs expected {expected_pct}")
+                # Verify win_rate calculation
+                total_won = summary["total_won"]
+                total_closed = summary["total_closed"]
+                win_rate = summary["win_rate"]
+                expected_win_rate = round((total_won / total_closed) * 100, 2) if total_closed > 0 else 0
+                if abs(win_rate - expected_win_rate) > 0.01:
+                    self.log_result("Win-Loss Analysis Win Rate", False, f"Win rate calculation incorrect: {win_rate} vs expected {expected_win_rate}")
                     return False
                 
-                # Verify gender_distribution is object
-                gender_dist = data["gender_distribution"]
-                if not isinstance(gender_dist, dict):
-                    self.log_result("Member Demographics Gender", False, "gender_distribution should be object")
+                # Verify loss_reasons structure
+                loss_reasons = data["loss_reasons"]
+                if not isinstance(loss_reasons, list):
+                    self.log_result("Win-Loss Analysis Loss Reasons", False, "loss_reasons should be array")
                     return False
                 
-                # Verify age_distribution structure
-                age_dist = data["age_distribution"]
-                expected_age_groups = ["Under 18", "18-25", "26-35", "36-45", "46-55", "56-65", "Over 65", "Unknown"]
-                for group in expected_age_groups:
-                    if group not in age_dist:
-                        self.log_result("Member Demographics Age Groups", False, f"Missing age group: {group}")
-                        return False
+                # Verify loss reason structure if any exist
+                if loss_reasons:
+                    reason = loss_reasons[0]
+                    reason_fields = ["reason", "count", "percentage"]
+                    for field in reason_fields:
+                        if field not in reason:
+                            self.log_result("Win-Loss Analysis Reason Fields", False, f"Missing reason field: {field}")
+                            return False
+                    
+                    # Verify loss_reasons are sorted by count (highest first)
+                    if len(loss_reasons) > 1:
+                        for i in range(1, len(loss_reasons)):
+                            if loss_reasons[i]["count"] > loss_reasons[i-1]["count"]:
+                                self.log_result("Win-Loss Analysis Reason Sorting", False, "Loss reasons not sorted by count (highest first)")
+                                return False
                 
-                # Verify age groups sum to total_members
-                age_sum = sum(age_dist.values())
-                if age_sum != total:
-                    self.log_result("Member Demographics Age Sum", False, f"Age groups sum ({age_sum}) doesn't match total members ({total})")
+                # Verify top_loss_reason
+                top_loss_reason = data["top_loss_reason"]
+                if loss_reasons and top_loss_reason and top_loss_reason != loss_reasons[0]:
+                    self.log_result("Win-Loss Analysis Top Loss Reason", False, "Top loss reason should be first in sorted list")
                     return False
                 
-                # Verify membership_type_distribution is object
-                type_dist = data["membership_type_distribution"]
-                if not isinstance(type_dist, dict):
-                    self.log_result("Member Demographics Membership Types", False, "membership_type_distribution should be object")
+                # Verify salesperson_performance structure
+                salesperson_perf = data["salesperson_performance"]
+                if not isinstance(salesperson_perf, list):
+                    self.log_result("Win-Loss Analysis Salesperson Performance", False, "salesperson_performance should be array")
                     return False
                 
-                # Verify location_distribution is object (top 10)
-                location_dist = data["location_distribution"]
-                if not isinstance(location_dist, dict):
-                    self.log_result("Member Demographics Locations", False, "location_distribution should be object")
-                    return False
+                # Verify salesperson structure if any exist
+                if salesperson_perf:
+                    salesperson = salesperson_perf[0]
+                    salesperson_fields = ["salesperson_id", "salesperson_name", "won", "lost", "win_rate", "total_closed"]
+                    for field in salesperson_fields:
+                        if field not in salesperson:
+                            self.log_result("Win-Loss Analysis Salesperson Fields", False, f"Missing salesperson field: {field}")
+                            return False
+                    
+                    # Verify salesperson_performance is sorted by win_rate (highest first)
+                    if len(salesperson_perf) > 1:
+                        for i in range(1, len(salesperson_perf)):
+                            if salesperson_perf[i]["win_rate"] > salesperson_perf[i-1]["win_rate"]:
+                                self.log_result("Win-Loss Analysis Salesperson Sorting", False, "Salesperson performance not sorted by win_rate (highest first)")
+                                return False
                 
-                # Verify top 10 locations limit
-                if len(location_dist) > 10:
-                    self.log_result("Member Demographics Location Limit", False, "location_distribution should be limited to top 10")
-                    return False
-                
-                # Verify status_distribution is object
-                status_dist = data["status_distribution"]
-                if not isinstance(status_dist, dict):
-                    self.log_result("Member Demographics Status", False, "status_distribution should be object")
-                    return False
-                
-                self.log_result("Member Demographics Default", True, f"Total: {total} members, Active: {active_pct}%")
+                self.log_result("Win-Loss Analysis Default", True, f"Total closed: {total_closed}, Win rate: {win_rate}%")
                 
             else:
-                self.log_result("Member Demographics Default", False, f"Failed: {response.status_code}")
+                self.log_result("Win-Loss Analysis Default", False, f"Failed: {response.status_code}")
+                return False
+            
+            # Test 2: Custom date range
+            end_date = "2024-12-31T23:59:59Z"
+            start_date = "2024-01-01T00:00:00Z"
+            
+            response = requests.get(
+                f"{API_BASE}/reports/win-loss-analysis",
+                params={"start_date": start_date, "end_date": end_date},
+                headers=self.admin_headers
+            )
+            
+            if response.status_code == 200:
+                data = response.json()
+                period = data["period"]
+                
+                # Verify date range is respected
+                start_check = "2024-01-01" in period["start_date"]
+                end_check = "2024-12-31" in period["end_date"]
+                if not start_check or not end_check:
+                    self.log_result("Win-Loss Analysis Custom Dates", False, "Date range not respected")
+                    return False
+                
+                self.log_result("Win-Loss Analysis Custom Dates", True, f"Custom range: {data['summary']['total_closed']} closed deals")
+                
+            else:
+                self.log_result("Win-Loss Analysis Custom Dates", False, f"Failed: {response.status_code}")
                 return False
             
             return True
             
         except Exception as e:
-            self.log_result("Member Demographics API", False, f"Error: {str(e)}")
+            self.log_result("Win-Loss Analysis API", False, f"Error: {str(e)}")
             return False
     
     def test_acquisition_cost_api(self):
