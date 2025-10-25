@@ -556,18 +556,23 @@ class SalesModulePhase2TestRunner:
         print("\n=== Testing Update Workflow API ===")
         
         try:
-            if not self.test_workflow_id:
-                self.log_result("Update Workflow API", False, "No test workflow available")
+            # Create a new workflow specifically for update testing
+            update_workflow_data = {
+                "name": "Update Test Workflow",
+                "trigger_object": "lead",
+                "trigger_event": "created",
+                "conditions": {"status": "new"},
+                "actions": [{"type": "create_task", "params": {"title": "Test task"}}]
+            }
+            
+            response = requests.post(f"{API_BASE}/sales/workflows", json=update_workflow_data, headers=self.headers)
+            if response.status_code != 200:
+                self.log_result("Update Workflow API", False, "Failed to create workflow for update test")
                 return False
             
-            # Verify workflow exists before updating
-            check_response = requests.get(f"{API_BASE}/sales/workflows", headers=self.headers)
-            if check_response.status_code == 200:
-                workflows = check_response.json()["workflows"]
-                workflow_exists = any(w["id"] == self.test_workflow_id for w in workflows)
-                if not workflow_exists:
-                    self.log_result("Update Workflow API", False, "Test workflow was deleted before update test")
-                    return False
+            update_workflow = response.json()["workflow"]
+            update_workflow_id = update_workflow["id"]
+            self.created_workflows.append(update_workflow_id)
             
             # Test toggling is_active
             update_data = {
