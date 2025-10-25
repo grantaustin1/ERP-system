@@ -16372,113 +16372,148 @@ app.include_router(api_router)
 @app.on_event("startup")
 async def startup_event():
     """Initialize default tags and sales CRM configurations if they don't exist"""
-    # Seed default tags
-    default_tags = [
-        {"name": "VIP", "color": "#fbbf24", "category": "Status", "description": "VIP member"},
-        {"name": "New Member", "color": "#3b82f6", "category": "Status", "description": "Recently joined"},
-        {"name": "Late Payer", "color": "#ef4444", "category": "Payment", "description": "History of late payments"},
-        {"name": "Personal Training", "color": "#8b5cf6", "category": "Program", "description": "Enrolled in personal training"},
-        {"name": "Group Classes", "color": "#10b981", "category": "Program", "description": "Regular group class attendee"},
-        {"name": "High Risk", "color": "#dc2626", "category": "Status", "description": "At risk of cancellation"},
-        {"name": "Loyal", "color": "#059669", "category": "Status", "description": "Long-term loyal member"},
-    ]
+    print("=" * 80)
+    print("STARTUP EVENT TRIGGERED - Beginning seeding process")
+    print("=" * 80)
     
-    for tag_data in default_tags:
-        existing = await db.tags.find_one({"name": tag_data["name"]})
-        if not existing:
-            tag = Tag(
-                name=tag_data["name"],
-                color=tag_data["color"],
-                category=tag_data.get("category"),
-                description=tag_data.get("description"),
-                usage_count=0
-            )
-            await db.tags.insert_one(tag.model_dump())
-    
-    # Seed default lead sources
-    default_sources = [
-        {"name": "Walk-in", "description": "Prospect walked into facility", "icon": "🚶", "display_order": 1},
-        {"name": "Phone-in", "description": "Prospect called by phone", "icon": "📞", "display_order": 2},
-        {"name": "Referral", "description": "Referred by existing member", "icon": "🤝", "display_order": 3},
-        {"name": "Canvassing", "description": "Direct outreach/canvassing", "icon": "🎯", "display_order": 4},
-        {"name": "Social Media", "description": "Social media channels", "icon": "📱", "display_order": 5},
-        {"name": "Website", "description": "Website inquiry", "icon": "🌐", "display_order": 6},
-        {"name": "Email", "description": "Email inquiry", "icon": "📧", "display_order": 7},
-        {"name": "Other", "description": "Other sources", "icon": "📋", "display_order": 8},
-    ]
-    
-    for source_data in default_sources:
-        existing = await db.lead_sources.find_one({"name": source_data["name"]})
-        if not existing:
-            import uuid
-            source = {
-                "id": str(uuid.uuid4()),
-                "name": source_data["name"],
-                "description": source_data.get("description"),
-                "icon": source_data.get("icon"),
-                "is_active": True,
-                "display_order": source_data["display_order"],
-                "created_at": datetime.now(timezone.utc).isoformat(),
-                "updated_at": datetime.now(timezone.utc).isoformat()
-            }
-            await db.lead_sources.insert_one(source)
-    
-    # Seed default lead statuses (predefined workflow)
-    default_statuses = [
-        {"name": "New Lead", "category": "prospect", "color": "#3b82f6", "workflow_sequence": 10, "display_order": 1, "description": "Fresh lead, not yet contacted"},
-        {"name": "Called", "category": "prospect", "color": "#06b6d4", "workflow_sequence": 20, "display_order": 2, "description": "Initial call made"},
-        {"name": "Appointment Made", "category": "engaged", "color": "#8b5cf6", "workflow_sequence": 30, "display_order": 3, "description": "Appointment scheduled"},
-        {"name": "Appointment Confirmed", "category": "engaged", "color": "#a855f7", "workflow_sequence": 40, "display_order": 4, "description": "Appointment confirmed by prospect"},
-        {"name": "Showed", "category": "engaged", "color": "#d946ef", "workflow_sequence": 50, "display_order": 5, "description": "Prospect attended appointment"},
-        {"name": "Be Back", "category": "engaged", "color": "#f59e0b", "workflow_sequence": 60, "display_order": 6, "description": "Needs time to think, will return"},
-        {"name": "Joined", "category": "converted", "color": "#10b981", "workflow_sequence": 70, "display_order": 7, "description": "Successfully converted to member"},
-        {"name": "Lost", "category": "lost", "color": "#ef4444", "workflow_sequence": 80, "display_order": 8, "description": "Lead lost, reason required"},
-    ]
-    
-    for status_data in default_statuses:
-        existing = await db.lead_statuses.find_one({"name": status_data["name"]})
-        if not existing:
-            import uuid
-            status = {
-                "id": str(uuid.uuid4()),
-                "name": status_data["name"],
-                "description": status_data.get("description"),
-                "category": status_data["category"],
-                "color": status_data["color"],
-                "workflow_sequence": status_data["workflow_sequence"],
-                "is_active": True,
-                "display_order": status_data["display_order"],
-                "created_at": datetime.now(timezone.utc).isoformat(),
-                "updated_at": datetime.now(timezone.utc).isoformat()
-            }
-            await db.lead_statuses.insert_one(status)
-    
-    # Seed default loss reasons
-    default_loss_reasons = [
-        {"name": "Too Expensive", "description": "Price point too high", "display_order": 1},
-        {"name": "Medical Issues", "description": "Health or medical concerns", "display_order": 2},
-        {"name": "Lives Too Far", "description": "Location inconvenient", "display_order": 3},
-        {"name": "No Time", "description": "Schedule conflicts", "display_order": 4},
-        {"name": "Joined Competitor", "description": "Chose another gym", "display_order": 5},
-        {"name": "Not Interested", "description": "Lost interest in membership", "display_order": 6},
-        {"name": "Financial Issues", "description": "Cannot afford at this time", "display_order": 7},
-        {"name": "Other", "description": "Other reasons", "display_order": 8},
-    ]
-    
-    for reason_data in default_loss_reasons:
-        existing = await db.loss_reasons.find_one({"name": reason_data["name"]})
-        if not existing:
-            import uuid
-            reason = {
-                "id": str(uuid.uuid4()),
-                "name": reason_data["name"],
-                "description": reason_data.get("description"),
-                "is_active": True,
-                "display_order": reason_data["display_order"],
-                "created_at": datetime.now(timezone.utc).isoformat(),
-                "updated_at": datetime.now(timezone.utc).isoformat()
-            }
-            await db.loss_reasons.insert_one(reason)
+    try:
+        # Seed default tags
+        print("Seeding default tags...")
+        default_tags = [
+            {"name": "VIP", "color": "#fbbf24", "category": "Status", "description": "VIP member"},
+            {"name": "New Member", "color": "#3b82f6", "category": "Status", "description": "Recently joined"},
+            {"name": "Late Payer", "color": "#ef4444", "category": "Payment", "description": "History of late payments"},
+            {"name": "Personal Training", "color": "#8b5cf6", "category": "Program", "description": "Enrolled in personal training"},
+            {"name": "Group Classes", "color": "#10b981", "category": "Program", "description": "Regular group class attendee"},
+            {"name": "High Risk", "color": "#dc2626", "category": "Status", "description": "At risk of cancellation"},
+            {"name": "Loyal", "color": "#059669", "category": "Status", "description": "Long-term loyal member"},
+        ]
+        
+        tags_created = 0
+        for tag_data in default_tags:
+            existing = await db.tags.find_one({"name": tag_data["name"]})
+            if not existing:
+                tag = Tag(
+                    name=tag_data["name"],
+                    color=tag_data["color"],
+                    category=tag_data.get("category"),
+                    description=tag_data.get("description"),
+                    usage_count=0
+                )
+                await db.tags.insert_one(tag.model_dump())
+                tags_created += 1
+        print(f"✓ Tags seeding complete: {tags_created} tags created")
+        
+        # Seed default lead sources
+        print("Seeding default lead sources...")
+        default_sources = [
+            {"name": "Walk-in", "description": "Prospect walked into facility", "icon": "🚶", "display_order": 1},
+            {"name": "Phone-in", "description": "Prospect called by phone", "icon": "📞", "display_order": 2},
+            {"name": "Referral", "description": "Referred by existing member", "icon": "🤝", "display_order": 3},
+            {"name": "Canvassing", "description": "Direct outreach/canvassing", "icon": "🎯", "display_order": 4},
+            {"name": "Social Media", "description": "Social media channels", "icon": "📱", "display_order": 5},
+            {"name": "Website", "description": "Website inquiry", "icon": "🌐", "display_order": 6},
+            {"name": "Email", "description": "Email inquiry", "icon": "📧", "display_order": 7},
+            {"name": "Other", "description": "Other sources", "icon": "📋", "display_order": 8},
+        ]
+        
+        sources_created = 0
+        for source_data in default_sources:
+            existing = await db.lead_sources.find_one({"name": source_data["name"]})
+            if not existing:
+                import uuid
+                source = {
+                    "id": str(uuid.uuid4()),
+                    "name": source_data["name"],
+                    "description": source_data.get("description"),
+                    "icon": source_data.get("icon"),
+                    "is_active": True,
+                    "display_order": source_data["display_order"],
+                    "created_at": datetime.now(timezone.utc).isoformat(),
+                    "updated_at": datetime.now(timezone.utc).isoformat()
+                }
+                await db.lead_sources.insert_one(source)
+                sources_created += 1
+                print(f"  - Created lead source: {source_data['name']}")
+        print(f"✓ Lead sources seeding complete: {sources_created} sources created")
+        
+        # Seed default lead statuses (predefined workflow)
+        print("Seeding default lead statuses...")
+        default_statuses = [
+            {"name": "New Lead", "category": "prospect", "color": "#3b82f6", "workflow_sequence": 10, "display_order": 1, "description": "Fresh lead, not yet contacted"},
+            {"name": "Called", "category": "prospect", "color": "#06b6d4", "workflow_sequence": 20, "display_order": 2, "description": "Initial call made"},
+            {"name": "Appointment Made", "category": "engaged", "color": "#8b5cf6", "workflow_sequence": 30, "display_order": 3, "description": "Appointment scheduled"},
+            {"name": "Appointment Confirmed", "category": "engaged", "color": "#a855f7", "workflow_sequence": 40, "display_order": 4, "description": "Appointment confirmed by prospect"},
+            {"name": "Showed", "category": "engaged", "color": "#d946ef", "workflow_sequence": 50, "display_order": 5, "description": "Prospect attended appointment"},
+            {"name": "Be Back", "category": "engaged", "color": "#f59e0b", "workflow_sequence": 60, "display_order": 6, "description": "Needs time to think, will return"},
+            {"name": "Joined", "category": "converted", "color": "#10b981", "workflow_sequence": 70, "display_order": 7, "description": "Successfully converted to member"},
+            {"name": "Lost", "category": "lost", "color": "#ef4444", "workflow_sequence": 80, "display_order": 8, "description": "Lead lost, reason required"},
+        ]
+        
+        statuses_created = 0
+        for status_data in default_statuses:
+            existing = await db.lead_statuses.find_one({"name": status_data["name"]})
+            if not existing:
+                import uuid
+                status = {
+                    "id": str(uuid.uuid4()),
+                    "name": status_data["name"],
+                    "description": status_data.get("description"),
+                    "category": status_data["category"],
+                    "color": status_data["color"],
+                    "workflow_sequence": status_data["workflow_sequence"],
+                    "is_active": True,
+                    "display_order": status_data["display_order"],
+                    "created_at": datetime.now(timezone.utc).isoformat(),
+                    "updated_at": datetime.now(timezone.utc).isoformat()
+                }
+                await db.lead_statuses.insert_one(status)
+                statuses_created += 1
+                print(f"  - Created lead status: {status_data['name']}")
+        print(f"✓ Lead statuses seeding complete: {statuses_created} statuses created")
+        
+        # Seed default loss reasons
+        print("Seeding default loss reasons...")
+        default_loss_reasons = [
+            {"name": "Too Expensive", "description": "Price point too high", "display_order": 1},
+            {"name": "Medical Issues", "description": "Health or medical concerns", "display_order": 2},
+            {"name": "Lives Too Far", "description": "Location inconvenient", "display_order": 3},
+            {"name": "No Time", "description": "Schedule conflicts", "display_order": 4},
+            {"name": "Joined Competitor", "description": "Chose another gym", "display_order": 5},
+            {"name": "Not Interested", "description": "Lost interest in membership", "display_order": 6},
+            {"name": "Financial Issues", "description": "Cannot afford at this time", "display_order": 7},
+            {"name": "Other", "description": "Other reasons", "display_order": 8},
+        ]
+        
+        reasons_created = 0
+        for reason_data in default_loss_reasons:
+            existing = await db.loss_reasons.find_one({"name": reason_data["name"]})
+            if not existing:
+                import uuid
+                reason = {
+                    "id": str(uuid.uuid4()),
+                    "name": reason_data["name"],
+                    "description": reason_data.get("description"),
+                    "is_active": True,
+                    "display_order": reason_data["display_order"],
+                    "created_at": datetime.now(timezone.utc).isoformat(),
+                    "updated_at": datetime.now(timezone.utc).isoformat()
+                }
+                await db.loss_reasons.insert_one(reason)
+                reasons_created += 1
+                print(f"  - Created loss reason: {reason_data['name']}")
+        print(f"✓ Loss reasons seeding complete: {reasons_created} reasons created")
+        
+        print("=" * 80)
+        print(f"STARTUP SEEDING COMPLETE: {tags_created} tags, {sources_created} sources, {statuses_created} statuses, {reasons_created} loss reasons")
+        print("=" * 80)
+        
+    except Exception as e:
+        print("=" * 80)
+        print(f"ERROR IN STARTUP SEEDING: {type(e).__name__}: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        print("=" * 80)
 
 
 # Audit Logging Middleware
