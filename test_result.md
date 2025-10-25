@@ -4818,6 +4818,81 @@ backend:
         agent: "testing"
         comment: "✅ Task Journal Integration working correctly: When tasks are created with related_member_id, they are automatically logged in the member's journal with action_type='task_created'. Journal entries include proper metadata with task_id, task_type, priority, and assignment details. GET /api/members/{member_id}/journal successfully retrieves task creation entries, providing complete audit trail of member-related tasks."
 
+  - task: "Member Analytics & Retention APIs - Retention Dashboard"
+    implemented: true
+    working: true
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Created GET /api/reports/retention-dashboard endpoint with comprehensive retention analytics. Supports configurable period_months parameter (default 12). Returns period info, summary stats (total/active/inactive members, churn/retention rates, avg tenure), retention by cohort (last 12 cohorts with retention rates), and retention trend (monthly data). Calculates churn rate, ensures churn + retention = 100%, provides cohort analysis by join month."
+      - working: true
+        agent: "testing"
+        comment: "✅ Retention Dashboard API WORKING PERFECTLY: All parameter variations tested successfully - default 12 months, custom 6 months, and 24 months periods. Response structure validated with all required fields (period, summary, retention_by_cohort, retention_trend). Mathematical accuracy verified: churn_rate + retention_rate = 100%, all percentages between 0-100%. Cohort analysis working with proper retention rate calculations per join month. Retention trend provides monthly breakdown. Fixed datetime comparison bug during testing. Response time: 0.042s (well under 2s requirement)."
+
+  - task: "Member Analytics & Retention APIs - Member LTV Report"
+    implemented: true
+    working: true
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Created GET /api/reports/member-ltv endpoint for lifetime value analysis. Calculates member LTV from paid invoices, tenure months from join date, monthly average revenue. Returns summary (total/average LTV, highest/lowest), LTV breakdown by membership type, top 20 members by LTV, and complete member LTV list. Sorts members by total revenue (highest first), provides accurate monthly average calculations."
+      - working: true
+        agent: "testing"
+        comment: "✅ Member LTV API WORKING CORRECTLY: All response structure validated with summary (total_ltv: R2828.00, average_ltv: R23.57), ltv_by_membership_type breakdown, top_members limited to 20 and correctly sorted by total_revenue (highest first), all_members_ltv complete list. Monthly average revenue calculations verified accurate (total_revenue / tenure_months). Currency values properly formatted to 2 decimal places. Response time: 0.041s."
+
+  - task: "Member Analytics & Retention APIs - At-Risk Members"
+    implemented: true
+    working: true
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Created GET /api/reports/at-risk-members endpoint with configurable risk_threshold parameter (default 60). Calculates risk scores based on: last visit (0-40 points), payment issues (0-30 points), membership duration (0-15 points), failed payment history (0-15 points). Categorizes risk levels: critical (≥80), high (60-79), medium (40-59). Returns summary stats and sorted member list with risk factors."
+      - working: true
+        agent: "testing"
+        comment: "✅ At-Risk Members API WORKING PERFECTLY: All threshold variations tested (default 60, custom 40, high 80). Risk level categorization verified: critical (≥80), high (60-79), medium (40-59). Risk factors array contains meaningful descriptions. Members sorted by risk_score (highest first). Summary provides breakdown by risk level. All required member fields present (member_id, member_name, email, phone, join_date, last_visit, risk_score, risk_level, risk_factors, unpaid_invoices). Response time: 0.080s."
+
+  - task: "Member Analytics & Retention APIs - Member Demographics"
+    implemented: true
+    working: true
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Created GET /api/reports/member-demographics endpoint for comprehensive member demographics analysis. Returns summary (total/active members, active percentage), gender distribution, age distribution (7 age groups: Under 18, 18-25, 26-35, 36-45, 46-55, 56-65, Over 65, Unknown), membership type distribution, location distribution (top 10), and status distribution. Calculates age from date_of_birth, ensures age groups sum to total members."
+      - working: true
+        agent: "testing"
+        comment: "✅ Member Demographics API WORKING CORRECTLY: All response structure validated with summary (total: 120 members, active_percentage calculation verified accurate), all 7 age groups present and sum to total_members, gender/membership type/status distributions as objects, location_distribution limited to top 10. Active percentage calculation mathematically correct. All required fields present and properly typed. Response time: 0.040s."
+
+  - task: "Member Analytics & Retention APIs - Acquisition Cost Analysis"
+    implemented: true
+    working: true
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Created GET /api/reports/acquisition-cost endpoint with optional date range parameters (default last 90 days). Analyzes lead source performance with conversion rates, estimated costs per source, cost per lead/acquisition, ROI calculations. Returns period info, summary stats, by_source array sorted by conversion_rate (highest first), best/worst performing sources. Uses estimated cost model for demo purposes."
+      - working: true
+        agent: "testing"
+        comment: "✅ Acquisition Cost API WORKING PERFECTLY: Default and custom date ranges working correctly. All response structure validated with period, summary (total_leads: 9, conversion_rate calculations verified accurate), by_source array sorted by conversion_rate (highest first), best/worst performing sources correctly identified. Cost calculations verified: cost_per_acquisition = estimated_cost / converted_leads. All required source fields present (source, total_leads, converted_leads, conversion_rate, estimated_cost, cost_per_lead, cost_per_acquisition, roi, revenue_generated). Response time: 0.039s."
+
 frontend:
   - task: "Tasks Page with Tabs"
     implemented: true
