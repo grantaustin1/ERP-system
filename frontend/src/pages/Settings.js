@@ -1314,6 +1314,67 @@ export default function Settings() {
                     </div>
                   </div>
 
+                  {/* Freeze Policy Settings */}
+                  <div className="border-t border-slate-700 pt-6 mt-6">
+                    <h3 className="text-lg font-semibold text-white mb-4">Membership Freeze Policy</h3>
+                    
+                    <div className="space-y-4">
+                      <div className="grid md:grid-cols-3 gap-4">
+                        <div className="space-y-2">
+                          <Label className="text-white">Max Freezes per 12 Months</Label>
+                          <Input
+                            type="number"
+                            min="1"
+                            max="12"
+                            value={appSettings.max_freezes_per_12_months}
+                            onChange={(e) => setAppSettings({...appSettings, max_freezes_per_12_months: parseInt(e.target.value) || 2})}
+                            className="bg-slate-700 border-slate-600 text-white"
+                          />
+                          <p className="text-xs text-slate-400">Limit how many times members can freeze</p>
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label className="text-white">Min Freeze Duration (Days)</Label>
+                          <Input
+                            type="number"
+                            min="1"
+                            max="30"
+                            value={appSettings.min_freeze_duration_days}
+                            onChange={(e) => setAppSettings({...appSettings, min_freeze_duration_days: parseInt(e.target.value) || 7})}
+                            className="bg-slate-700 border-slate-600 text-white"
+                          />
+                          <p className="text-xs text-slate-400">Minimum freeze period allowed</p>
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label className="text-white">Max Freeze Duration (Days)</Label>
+                          <Input
+                            type="number"
+                            min="7"
+                            max="365"
+                            value={appSettings.max_freeze_duration_days}
+                            onChange={(e) => setAppSettings({...appSettings, max_freeze_duration_days: parseInt(e.target.value) || 90})}
+                            className="bg-slate-700 border-slate-600 text-white"
+                          />
+                          <p className="text-xs text-slate-400">Maximum freeze period allowed</p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center justify-between p-4 bg-slate-700/50 rounded-lg">
+                        <div>
+                          <Label className="text-white text-base">Require Freeze Reason</Label>
+                          <p className="text-sm text-slate-400 mt-1">
+                            Require members to provide a reason when freezing membership
+                          </p>
+                        </div>
+                        <Switch
+                          checked={appSettings.require_freeze_reason}
+                          onCheckedChange={(checked) => setAppSettings({...appSettings, require_freeze_reason: checked})}
+                        />
+                      </div>
+                    </div>
+                  </div>
+
                   {/* Save Button */}
                   <div className="flex justify-end pt-6 border-t border-slate-700">
                     <Button 
