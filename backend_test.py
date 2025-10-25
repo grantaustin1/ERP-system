@@ -62,138 +62,123 @@ class MemberAnalyticsTestRunner:
             self.log_result("Authentication", False, f"Authentication error: {str(e)}")
             return False
     
-    # ===================== FINANCIAL REPORTING API TESTS =====================
+    # ===================== MEMBER ANALYTICS & RETENTION API TESTS =====================
     
-    def test_revenue_report_api(self):
-        """Test GET /api/reports/revenue endpoint"""
-        print("\n=== Testing Revenue Report API ===")
+    def test_retention_dashboard_api(self):
+        """Test GET /api/reports/retention-dashboard endpoint"""
+        print("\n=== Testing Retention Dashboard API ===")
         
         try:
-            # Test 1: Default parameters (last 30 days)
-            response = requests.get(f"{API_BASE}/reports/revenue", headers=self.admin_headers)
+            # Test 1: Default parameters (12 months)
+            response = requests.get(f"{API_BASE}/reports/retention-dashboard", headers=self.admin_headers)
             
             if response.status_code == 200:
                 data = response.json()
                 
                 # Verify response structure
-                required_fields = [
-                    "period", "total_revenue", "invoice_revenue", "pos_revenue",
-                    "revenue_by_service", "revenue_by_payment_method", "revenue_trend",
-                    "comparison", "transaction_counts"
-                ]
+                required_fields = ["period", "summary", "retention_by_cohort", "retention_trend"]
                 
                 for field in required_fields:
                     if field not in data:
-                        self.log_result("Revenue Report Structure", False, f"Missing field: {field}")
+                        self.log_result("Retention Dashboard Structure", False, f"Missing field: {field}")
                         return False
                 
                 # Verify period structure
                 period = data["period"]
-                if "start_date" not in period or "end_date" not in period or "days" not in period:
-                    self.log_result("Revenue Report Period", False, "Invalid period structure")
-                    return False
-                
-                # Verify numeric values
-                if not isinstance(data["total_revenue"], (int, float)):
-                    self.log_result("Revenue Report Total", False, "total_revenue should be numeric")
-                    return False
-                
-                if not isinstance(data["invoice_revenue"], (int, float)):
-                    self.log_result("Revenue Report Invoice", False, "invoice_revenue should be numeric")
-                    return False
-                
-                if not isinstance(data["pos_revenue"], (int, float)):
-                    self.log_result("Revenue Report POS", False, "pos_revenue should be numeric")
-                    return False
-                
-                # Verify revenue breakdown
-                revenue_by_service = data["revenue_by_service"]
-                if "Memberships" not in revenue_by_service or "POS/Retail" not in revenue_by_service:
-                    self.log_result("Revenue Report Service Breakdown", False, "Missing service categories")
-                    return False
-                
-                # Verify comparison structure
-                comparison = data["comparison"]
-                comp_fields = ["previous_period_revenue", "growth_amount", "growth_percentage"]
-                for field in comp_fields:
-                    if field not in comparison:
-                        self.log_result("Revenue Report Comparison", False, f"Missing comparison field: {field}")
+                period_fields = ["start_date", "end_date", "months"]
+                for field in period_fields:
+                    if field not in period:
+                        self.log_result("Retention Dashboard Period", False, f"Missing period field: {field}")
                         return False
                 
-                # Verify transaction counts
-                tx_counts = data["transaction_counts"]
-                if "invoices" not in tx_counts or "pos_transactions" not in tx_counts or "total" not in tx_counts:
-                    self.log_result("Revenue Report Transaction Counts", False, "Missing transaction count fields")
+                # Verify summary structure
+                summary = data["summary"]
+                summary_fields = ["total_members", "active_members", "inactive_members", "new_members_period", "churn_rate", "retention_rate", "avg_tenure_months"]
+                for field in summary_fields:
+                    if field not in summary:
+                        self.log_result("Retention Dashboard Summary", False, f"Missing summary field: {field}")
+                        return False
+                
+                # Verify churn_rate + retention_rate = 100%
+                churn_rate = summary["churn_rate"]
+                retention_rate = summary["retention_rate"]
+                if abs((churn_rate + retention_rate) - 100) > 0.1:  # Allow small floating point differences
+                    self.log_result("Retention Dashboard Rate Sum", False, f"Churn rate ({churn_rate}) + retention rate ({retention_rate}) should equal 100%")
                     return False
                 
-                self.log_result("Revenue Report Default", True, f"Default report: R{data['total_revenue']:.2f} total revenue")
+                # Verify percentages are between 0-100
+                if not (0 <= churn_rate <= 100) or not (0 <= retention_rate <= 100):
+                    self.log_result("Retention Dashboard Rate Range", False, "Rates should be between 0-100%")
+                    return False
+                
+                # Verify retention_by_cohort structure
+                cohorts = data["retention_by_cohort"]
+                if not isinstance(cohorts, list):
+                    self.log_result("Retention Dashboard Cohorts", False, "retention_by_cohort should be array")
+                    return False
+                
+                if cohorts:
+                    cohort = cohorts[0]
+                    cohort_fields = ["cohort", "total_members", "active_members", "churned_members", "retention_rate"]
+                    for field in cohort_fields:
+                        if field not in cohort:
+                            self.log_result("Retention Dashboard Cohort Fields", False, f"Missing cohort field: {field}")
+                            return False
+                
+                # Verify retention_trend structure
+                trend = data["retention_trend"]
+                if not isinstance(trend, list):
+                    self.log_result("Retention Dashboard Trend", False, "retention_trend should be array")
+                    return False
+                
+                if trend:
+                    trend_item = trend[0]
+                    trend_fields = ["month", "retention_rate", "active_members", "total_members"]
+                    for field in trend_fields:
+                        if field not in trend_item:
+                            self.log_result("Retention Dashboard Trend Fields", False, f"Missing trend field: {field}")
+                            return False
+                
+                self.log_result("Retention Dashboard Default", True, f"Total members: {summary['total_members']}, Retention rate: {retention_rate}%")
                 
             else:
-                self.log_result("Revenue Report Default", False, f"Failed: {response.status_code}")
+                self.log_result("Retention Dashboard Default", False, f"Failed: {response.status_code}")
                 return False
             
-            # Test 2: Custom date range
-            end_date = "2024-12-31T23:59:59Z"
-            start_date = "2024-01-01T00:00:00Z"
-            
-            response = requests.get(
-                f"{API_BASE}/reports/revenue",
-                params={"start_date": start_date, "end_date": end_date},
-                headers=self.admin_headers
-            )
+            # Test 2: Custom period (6 months)
+            response = requests.get(f"{API_BASE}/reports/retention-dashboard?period_months=6", headers=self.admin_headers)
             
             if response.status_code == 200:
                 data = response.json()
-                period = data["period"]
-                
-                # Verify date range is respected (handle timezone format differences)
-                start_check = "2024-01-01" in period["start_date"]
-                end_check = "2024-12-31" in period["end_date"]
-                if not start_check or not end_check:
-                    self.log_result("Revenue Report Custom Dates", False, "Date range not respected")
+                if data["period"]["months"] != 6:
+                    self.log_result("Retention Dashboard 6 Months", False, "Period months not respected")
                     return False
                 
-                self.log_result("Revenue Report Custom Dates", True, f"Custom range: R{data['total_revenue']:.2f}")
+                self.log_result("Retention Dashboard 6 Months", True, f"6-month period: {data['summary']['retention_rate']}% retention")
                 
             else:
-                self.log_result("Revenue Report Custom Dates", False, f"Failed: {response.status_code}")
+                self.log_result("Retention Dashboard 6 Months", False, f"Failed: {response.status_code}")
                 return False
             
-            # Test 3: Different group_by options
-            for group_by in ["day", "week", "month"]:
-                response = requests.get(
-                    f"{API_BASE}/reports/revenue",
-                    params={"group_by": group_by},
-                    headers=self.admin_headers
-                )
-                
-                if response.status_code == 200:
-                    data = response.json()
-                    
-                    # Verify revenue_trend exists and has data
-                    if "revenue_trend" not in data or not isinstance(data["revenue_trend"], list):
-                        self.log_result(f"Revenue Report Group By {group_by}", False, "Invalid revenue_trend")
-                        return False
-                    
-                    # Verify trend data structure
-                    if data["revenue_trend"]:
-                        trend_item = data["revenue_trend"][0]
-                        trend_fields = ["period", "revenue", "invoice_revenue", "pos_revenue"]
-                        for field in trend_fields:
-                            if field not in trend_item:
-                                self.log_result(f"Revenue Report Group By {group_by}", False, f"Missing trend field: {field}")
-                                return False
-                    
-                    self.log_result(f"Revenue Report Group By {group_by}", True, f"Grouped by {group_by}: {len(data['revenue_trend'])} periods")
-                    
-                else:
-                    self.log_result(f"Revenue Report Group By {group_by}", False, f"Failed: {response.status_code}")
+            # Test 3: 24 months period
+            response = requests.get(f"{API_BASE}/reports/retention-dashboard?period_months=24", headers=self.admin_headers)
+            
+            if response.status_code == 200:
+                data = response.json()
+                if data["period"]["months"] != 24:
+                    self.log_result("Retention Dashboard 24 Months", False, "Period months not respected")
                     return False
+                
+                self.log_result("Retention Dashboard 24 Months", True, f"24-month period: {data['summary']['retention_rate']}% retention")
+                
+            else:
+                self.log_result("Retention Dashboard 24 Months", False, f"Failed: {response.status_code}")
+                return False
             
             return True
             
         except Exception as e:
-            self.log_result("Revenue Report API", False, f"Error: {str(e)}")
+            self.log_result("Retention Dashboard API", False, f"Error: {str(e)}")
             return False
     
     def test_commissions_report_api(self):
