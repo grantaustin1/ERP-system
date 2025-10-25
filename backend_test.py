@@ -710,7 +710,12 @@ class SalesModulePhase2TestRunner:
                 self.log_result("Execute Workflow Setup", False, "Failed to create test workflow")
                 return False
             
-            execution_workflow = response.json()
+            execution_response = response.json()
+            if "workflow" not in execution_response:
+                self.log_result("Execute Workflow Setup", False, f"Unexpected response structure: {execution_response}")
+                return False
+            
+            execution_workflow = execution_response["workflow"]
             execution_workflow_id = execution_workflow["id"]
             self.created_workflows.append(execution_workflow_id)
             
