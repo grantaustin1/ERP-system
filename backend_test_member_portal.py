@@ -511,21 +511,34 @@ class MemberPortalNotificationTestRunner:
             if response.status_code == 200:
                 data = response.json()
                 
-                # Verify response is array
-                if not isinstance(data, list):
-                    self.log_result("Get Member Notifications Structure", False, "Response should be array")
+                # Verify response structure - should be object with notifications array
+                if not isinstance(data, dict):
+                    self.log_result("Get Member Notifications Structure", False, "Response should be object")
+                    return False
+                
+                # Verify required fields
+                required_fields = ["notifications", "total", "unread_count"]
+                for field in required_fields:
+                    if field not in data:
+                        self.log_result("Get Member Notifications Fields", False, f"Missing field: {field}")
+                        return False
+                
+                # Verify notifications is array
+                notifications = data["notifications"]
+                if not isinstance(notifications, list):
+                    self.log_result("Get Member Notifications Array", False, "Notifications should be array")
                     return False
                 
                 # If notifications exist, verify structure
-                if data:
-                    notification = data[0]
-                    notification_fields = ["id", "title", "message", "created_at", "read", "priority"]
+                if notifications:
+                    notification = notifications[0]
+                    notification_fields = ["id", "member_id", "type", "channel", "subject", "message", "status", "created_at"]
                     for field in notification_fields:
                         if field not in notification:
-                            self.log_result("Get Member Notifications Fields", False, f"Missing notification field: {field}")
+                            self.log_result("Get Member Notifications Notification Fields", False, f"Missing notification field: {field}")
                             return False
                 
-                self.log_result("Get Member Notifications", True, f"Retrieved {len(data)} notifications for member")
+                self.log_result("Get Member Notifications", True, f"Retrieved {len(notifications)} notifications for member (total: {data['total']}, unread: {data['unread_count']})")
                 return True
                 
             else:
