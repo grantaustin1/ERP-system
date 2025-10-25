@@ -6034,3 +6034,158 @@ agent_communication:
     message: "COMPREHENSIVE TESTING COMPLETED - Sales Module Phase 2 Advanced APIs tested with 63.6% success rate (7/11 tests passed). MAJOR SUCCESS: All 3 Advanced Analytics APIs working perfectly with accurate calculations and data aggregation. Sales Automation APIs (2/3 passed) working correctly with proper lead scoring (0-100 scale), auto-assignment strategies, and follow-up task creation. Workflow Automation APIs (2/5 passed) have core CRUD functionality working but minor implementation details need adjustment. Fixed critical datetime import issue in lead scoring during testing. All APIs handle error cases properly (404 for non-existent resources). The backend implementation is solid and ready for production use with minor refinements needed for workflow execution API parameter handling."
   - agent: "testing"
     message: "🎉 SALES MODULE PHASE 2 ADVANCED FRONTEND TESTING COMPLETED - 99% SUCCESS RATE. Comprehensive testing of all Sales Module Phase 2 Advanced frontend features completed successfully. **WORKFLOW AUTOMATION PAGE (/sales/workflows) - 100% SUCCESS**: ✅ Page loads with correct title 'Workflow Automation' and subtitle 'Automate your sales processes with visual workflows'. ✅ 'Create Workflow' button (purple, top-right) found and functional. ✅ 4 workflow cards displayed with names, trigger info (object + event), Active/Inactive badges, conditions as blue badges, actions as colored badges with icons, control buttons (View, Activate/Deactivate, Delete). ✅ Create Workflow Dialog opens with all required fields: Workflow Name input, Description textarea (optional), Trigger Object dropdown (Lead, Opportunity, Task), Trigger Event dropdown (Created, Updated, Status Changed), Actions section with 'Add Action' button. ✅ Action form appears with action type dropdown and action-specific fields for Create Task, Update Field, Send Email, SMS, Create Opportunity. ✅ Visual Builder dialog opens with ReactFlow canvas, Background grid, Controls (zoom, fit view), MiniMap, nodes and edges connecting trigger→conditions→actions. **SALES AUTOMATION PANEL (/sales/leads) - 100% SUCCESS**: ✅ Sales Automation card found with gradient purple/blue background and Zap icon. ✅ Three tabs (Lead Scoring, Auto-Assign, Follow-Up) with proper tab icons. ✅ Lead Scoring Tab: 'Select Lead (enter lead ID)' label and input field, 'Calculate Score' button (purple), error handling for empty field shows error toast, result card appears with Lead Score badge (0-100) and Scoring Factors with green checkmarks. ✅ Auto-Assign Tab: Lead ID input, 'Assignment Strategy' dropdown with options (Round Robin - Equal distribution, Least Loaded - Fewest pending tasks), 'Auto-Assign Lead' button (blue), assignment successful card shows assigned email and strategy used. ✅ Follow-Up Tab: 'Days Inactive Threshold' input with default value 7 days, description text, 'Create Follow-Up Tasks' button (green), result card shows 'Tasks Created' count and 'Leads Processed' count with threshold confirmation. ✅ Info box with blue AlertCircle icon and tip text found. **ADVANCED SALES ANALYTICS (/sales) - 100% SUCCESS**: ✅ Advanced Sales Analytics card found with gradient blue/purple background and BarChart3 icon. ✅ Three tabs (Sales Forecast, Team Performance, Conversion Rates). ✅ Sales Forecast Tab (default active): Loading state appears, 3 summary cards (Total Forecast with blue DollarSign icon, Historical Revenue with green TrendingUp icon, Confidence with yellow Target icon) showing ZAR currency format with badges, 'Forecast by Pipeline Stage' chart with Recharts BarChart showing 2 bars per stage (Total Value, Weighted Forecast), X-axis labels (stages), Y-axis with values, legend, tooltip on hover. ✅ Team Performance Tab: Loading state, 'Team Leaderboard' with Award icon, team members listed (up to 10) with rank badges (#1 gold, #2 silver, #3 bronze, rest gray), user names, lead/opportunity counts, total won value (currency format), win rate badges, metrics grid (Conversion, Won Opps, Task Rate). ✅ Conversion Rates Tab: Loading state, 'Lead Conversion Funnel' with Activity icon showing stages (New, Contacted, Qualified, Converted) with counts, percentages, conversion rate badges, progress bars with gradient (green to blue), 'Opportunity Conversion' with Percent icon showing grid of opportunity stages with counts. ✅ Tab switching works correctly with smooth transitions and no console errors. **NAVIGATION & ROUTING - 95% SUCCESS**: ✅ All URL direct access working perfectly (/sales/workflows, /sales/leads, /sales). ✅ Browser navigation (back/forward) working correctly with proper state preservation. ✅ Route configuration: All Sales Module routes properly configured in App.js with PrivateRoute protection. ✅ Page loading: All pages load without errors and maintain correct state. Minor: 'Sales Workflows' sidebar menu item not found in current sidebar configuration, but direct URL access works perfectly. **RESPONSIVE DESIGN - 100% SUCCESS**: ✅ Desktop View (1920x1080): Layouts not broken, cards properly aligned, all components display correctly. ✅ Tablet View (768x1024): Grids adjust correctly (2 columns instead of 3), cards stack properly, responsive breakpoints working as designed. ✅ Mobile View (375x667): Single column layout implemented correctly, all buttons accessible, no horizontal scrolling, proper touch targets. ✅ Tailwind CSS responsive classes (md:grid-cols-2, lg:grid-cols-3) working correctly across all Sales Module components. **ERROR HANDLING & INTEGRATION - 100% SUCCESS**: ✅ API error handling with appropriate error toasts for invalid lead IDs. ✅ Loading states for all API calls with proper indicators. ✅ Form validation working for required fields. ✅ Backend API integration working correctly with proper data flow. ✅ State management and navigation state preservation working. ✅ No console errors or warnings detected. All Sales Module Phase 2 Advanced features are production-ready and working as designed. Ready for main agent to summarize and finish."
+
+  # ===================== CONFIGURABLE LEAD SOURCE/STATUS/LOSS REASON SYSTEM =====================
+
+  - task: "Lead Source, Status, Loss Reason Models & Seeding"
+    implemented: true
+    working: "NA"
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Created Pydantic models: LeadSource, LeadStatus, LossReason, ReferralReward. Updated startup_event to seed 8 default lead sources (Walk-in, Phone-in, Referral, Canvassing, Social Media, Website, Email, Other), 8 default lead statuses with predefined workflow sequence (New Lead→Called→Appointment Made→Confirmed→Showed→Be Back→Joined→Lost), and 8 default loss reasons (Too Expensive, Medical Issues, Lives Too Far, No Time, Joined Competitor, Not Interested, Financial, Other). All seeds have proper icons, colors, categories, and workflow sequences."
+
+  - task: "Configuration CRUD APIs - Lead Sources"
+    implemented: true
+    working: "NA"
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Implemented 4 APIs: GET /sales/config/lead-sources (fetch all, sorted by display_order), POST /sales/config/lead-sources (create with LeadSourceCreate model), PUT /sales/config/lead-sources/{source_id} (update), DELETE /sales/config/lead-sources/{source_id} (delete). All APIs include proper error handling and return success/error responses."
+
+  - task: "Configuration CRUD APIs - Lead Statuses"
+    implemented: true
+    working: "NA"
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Implemented 4 APIs: GET /sales/config/lead-statuses (fetch all, sorted by workflow_sequence), POST /sales/config/lead-statuses (create with LeadStatusCreate model including category, color, workflow_sequence), PUT /sales/config/lead-statuses/{status_id} (update), DELETE /sales/config/lead-statuses/{status_id} (delete). Statuses include category field (prospect/engaged/converted/lost) for workflow logic."
+
+  - task: "Configuration CRUD APIs - Loss Reasons"
+    implemented: true
+    working: "NA"
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Implemented 4 APIs: GET /sales/config/loss-reasons (fetch all, sorted by display_order), POST /sales/config/loss-reasons (create with LossReasonCreate model), PUT /sales/config/loss-reasons/{reason_id} (update), DELETE /sales/config/loss-reasons/{reason_id} (delete). All APIs have proper validation and error handling."
+
+  - task: "Referral Rewards Management APIs"
+    implemented: true
+    working: "NA"
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Implemented 3 APIs: GET /sales/referral-rewards (fetch with filters, enriched with member and lead names), POST /sales/referral-rewards (create with ReferralRewardCreate model), PUT /sales/referral-rewards/{reward_id}/status (update status to pending/approved/delivered with auto-delivered_at timestamp). Supports reward_type: free_month, free_item, discount, points."
+
+  - task: "Member Search API for Referrals"
+    implemented: true
+    working: "NA"
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Implemented GET /sales/members/search API with query parameter 'q'. Searches members by first_name, last_name, email, phone, or id using regex (case-insensitive). Filters to only active members (membership_status=active). Returns limited to 20 results. Minimum 2 characters required for search."
+
+  - task: "Enhanced Lead Create API with New Fields"
+    implemented: true
+    working: "NA"
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Updated POST /sales/leads API to support: source_id (reference to lead_sources), status_id (reference to lead_statuses), referred_by_member_id (for referrals). Auto-fetches default 'Other' source and 'New Lead' status if not provided. When referred_by_member_id is provided, automatically creates a pending referral reward record. Maintains backward compatibility with old 'source' and 'status' fields."
+
+  - task: "Enhanced Lead Update API with Loss Tracking"
+    implemented: true
+    working: "NA"
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Updated PUT /sales/leads/{lead_id} API to support: status_id, source_id, referred_by_member_id, loss_reason_id, loss_notes. Validation: requires loss_reason_id when status category is 'lost'. Auto-approves referral rewards when status changes to category 'converted' (e.g., Joined). Maintains all existing functionality."
+
+  - task: "Comprehensive Dashboard Analytics API"
+    implemented: true
+    working: "NA"
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Implemented GET /sales/analytics/dashboard/comprehensive with optional date_from/date_to parameters (defaults to last 30 days). Returns 5 major analytics sections: 1) Source Performance (conversion rates, loss rates, avg days to convert per source), 2) Status Funnel (lead count per status, drop-off rates, percentages), 3) Loss Analysis (top loss reasons, breakdown by source), 4) Daily Trends (new leads, converted, lost per day), 5) Salesperson Performance (conversion rates by user). All data aggregated from leads, enriched with configuration data."
+
+  - task: "Sales CRM Setup Frontend Page"
+    implemented: true
+    working: "NA"
+    file: "/app/frontend/src/pages/SalesCRMSetup.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Created comprehensive SalesCRMSetup.js page with 3 tabs: Lead Sources, Lead Statuses, Loss Reasons. Each tab has full CRUD functionality: list view with cards, create/edit dialogs, delete confirmation. Lead Sources: name, description, icon (emoji), active toggle, display order. Lead Statuses: name, description, category dropdown (prospect/engaged/converted/lost), color picker, workflow sequence, display order. Loss Reasons: name, description, active toggle, display order. All dialogs have proper form validation and success/error toasts."
+
+  - task: "Sales CRM Setup Route & Navigation"
+    implemented: true
+    working: "NA"
+    file: "/app/frontend/src/App.js, /app/frontend/src/components/Sidebar.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Added SalesCRMSetup import to App.js and created route /sales/setup. Added Settings icon to Sidebar imports. Added 'Sales Setup' menu item with /sales/setup path to sidebar navigation. Frontend restarted successfully."
+
+metadata:
+  created_by: "main_agent"
+  version: "3.0"
+  test_sequence: 2
+  run_ui: false
+
+test_plan:
+  current_focus:
+    - "Configuration CRUD APIs - All endpoints"
+    - "Enhanced Lead Create/Update APIs"
+    - "Member Search API"
+    - "Comprehensive Dashboard Analytics API"
+    - "Sales CRM Setup Frontend Page"
+  stuck_tasks: []
+  test_all: false
+  test_priority: "high_first"
+
+agent_communication:
+  - agent: "main"
+    message: "Configurable Lead Source/Status/Loss Reason System Phase 1 implementation complete. Backend includes: 18 new APIs across 6 categories (lead sources CRUD, lead statuses CRUD, loss reasons CRUD, referral rewards management, member search, comprehensive dashboard analytics), startup seeding for 8 sources/8 statuses/8 loss reasons, enhanced lead create/update APIs with new fields (source_id, status_id, referred_by_member_id, loss_reason_id, loss_notes), auto-referral reward creation and approval workflow. Frontend includes: SalesCRMSetup page with 3 tabs for full configuration management, added route /sales/setup and sidebar navigation. Please test: 1) All configuration CRUD endpoints (create, read, update, delete), 2) Seeded default data (verify 8 sources, 8 statuses, 8 reasons exist), 3) Member search API with various queries, 4) Enhanced lead create with referred_by_member_id (verify referral reward auto-creation), 5) Enhanced lead update with status change to 'Joined' (verify referral reward approval), 6) Lead update with 'Lost' status (verify loss_reason_id validation), 7) Comprehensive dashboard analytics API with date range filters, 8) All calculation accuracy (conversion rates, drop-off rates, averages). Frontend testing: Navigate to /sales/setup, test CRUD operations on all 3 tabs, verify form validation, verify color picker and dropdowns work."
