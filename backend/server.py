@@ -9519,6 +9519,305 @@ async def get_activity_metrics(
 
 
 
+# ==================== COMPREHENSIVE DASHBOARD ANALYTICS ====================
+
+@api_router.get("/sales/analytics/dashboard/comprehensive")
+async def get_comprehensive_dashboard_analytics(
+    date_from: Optional[str] = None,
+    date_to: Optional[str] = None,
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Comprehensive dashboard analytics combining all metrics:
+    - Source performance (conversion rates, volumes, time-to-conversion)
+    - Status funnel (drop-off rates, bottlenecks)
+    - Loss analysis (top reasons, by source, by stage)
+    - Time-based trends
+    - Salesperson performance
+    """
+    from datetime import datetime, timedelta
+    from collections import defaultdict
+    
+    # Default date range: last 30 days
+    if not date_from:
+        date_from = (datetime.now(timezone.utc) - timedelta(days=30)).isoformat()
+    if not date_to:
+        date_to = datetime.now(timezone.utc).isoformat()
+    
+    # Build query for date range
+    date_query = {
+        "created_at": {
+            "$gte": date_from,
+            "$lte": date_to
+        }
+    }
+    
+    # Fetch all leads in period
+    all_leads = await db.leads.find(date_query, {"_id": 0}).to_list(None)
+    
+    # Fetch lead sources
+    lead_sources_map = {}
+    sources = await db.lead_sources.find({"_id": 0}).to_list(None)
+    for source in sources:
+        lead_sources_map[source["id"]] = source
+    
+    # Fetch lead statuses
+    lead_statuses_map = {}
+    statuses = await db.lead_statuses.find({"_id": 0}).to_list(None)
+    for status in statuses:
+        lead_statuses_map[status["id"]] = status
+    
+    # Fetch loss reasons
+    loss_reasons_map = {}
+    reasons = await db.loss_reasons.find({"_id": 0}).to_list(None)
+    for reason in reasons:
+        loss_reasons_map[reason["id"]] = reason
+    
+    # ===== 1. SOURCE PERFORMANCE ANALYTICS =====
+    source_performance = defaultdict(lambda: {
+        "total_leads": 0,
+        "converted_leads": 0,
+        "lost_leads": 0,
+        "in_progress": 0,
+        "conversion_rate": 0,
+        "loss_rate": 0,
+        "avg_days_to_convert": 0,
+        "total_days_to_convert": 0,
+        "converted_count_for_avg": 0
+    })
+    
+    for lead in all_leads:
+        source_id = lead.get("source_id") or "unknown"
+        source_name = lead_sources_map.get(source_id, {}).get("name", "Unknown")
+        
+        source_performance[source_name]["total_leads"] += 1
+        
+        # Check status category
+        status_id = lead.get("status_id")
+        if status_id:
+            status_obj = lead_statuses_map.get(status_id, {})
+            category = status_obj.get("category", "")
+            
+            if category == "converted":
+                source_performance[source_name]["converted_leads"] += 1
+                # Calculate days to convert
+                created = datetime.fromisoformat(lead["created_at"])
+                updated = datetime.fromisoformat(lead["updated_at"])
+                days = (updated - created).days
+                source_performance[source_name]["total_days_to_convert"] += days
+                source_performance[source_name]["converted_count_for_avg"] += 1
+            elif category == "lost":
+                source_performance[source_name]["lost_leads"] += 1
+            else:
+                source_performance[source_name]["in_progress"] += 1
+    
+    # Calculate rates and averages
+    source_performance_list = []
+    for source_name, data in source_performance.items():
+        total = data["total_leads"]
+        if total > 0:
+            data["conversion_rate"] = round((data["converted_leads"] / total) * 100, 2)
+            data["loss_rate"] = round((data["lost_leads"] / total) * 100, 2)
+        
+        if data["converted_count_for_avg"] > 0:
+            data["avg_days_to_convert"] = round(data["total_days_to_convert"] / data["converted_count_for_avg"], 1)
+        
+        source_performance_list.append({
+            "source": source_name,
+            **{k: v for k, v in data.items() if k not in ["total_days_to_convert", "converted_count_for_avg"]}
+        })
+    
+    # Sort by conversion rate descending
+    source_performance_list.sort(key=lambda x: x["conversion_rate"], reverse=True)
+    
+    # ===== 2. STATUS FUNNEL ANALYTICS =====
+    status_funnel = defaultdict(lambda: {
+        "count": 0,
+        "percentage": 0,
+        "drop_off": 0,
+        "avg_time_in_status_days": 0
+    })
+    
+    # Count leads by status
+    for lead in all_leads:
+        status_id = lead.get("status_id")
+        if status_id:
+            status_name = lead_statuses_map.get(status_id, {}).get("name", "Unknown")
+            status_funnel[status_name]["count"] += 1
+    
+    # Calculate percentages (relative to first status)
+    sorted_statuses = sorted(statuses, key=lambda x: x.get("workflow_sequence", 0))
+    first_status_count = 0
+    if sorted_statuses:
+        first_status_name = sorted_statuses[0]["name"]
+        first_status_count = status_funnel[first_status_name]["count"]
+    
+    status_funnel_list = []
+    prev_count = first_status_count
+    
+    for status in sorted_statuses:
+        status_name = status["name"]
+        count = status_funnel[status_name]["count"]
+        
+        if first_status_count > 0:
+            percentage = round((count / first_status_count) * 100, 2)
+        else:
+            percentage = 0
+        
+        drop_off = prev_count - count
+        
+        status_funnel_list.append({
+            "status": status_name,
+            "count": count,
+            "percentage": percentage,
+            "drop_off": drop_off,
+            "workflow_sequence": status.get("workflow_sequence", 0)
+        })
+        
+        prev_count = count
+    
+    # ===== 3. LOSS ANALYSIS =====
+    loss_analysis = defaultdict(lambda: {
+        "count": 0,
+        "percentage": 0,
+        "by_source": defaultdict(int),
+        "by_status_before_lost": defaultdict(int)
+    })
+    
+    total_lost_leads = 0
+    
+    for lead in all_leads:
+        status_id = lead.get("status_id")
+        if status_id:
+            status_obj = lead_statuses_map.get(status_id, {})
+            if status_obj.get("category") == "lost":
+                total_lost_leads += 1
+                
+                loss_reason_id = lead.get("loss_reason_id")
+                if loss_reason_id:
+                    reason_name = loss_reasons_map.get(loss_reason_id, {}).get("name", "Unknown")
+                else:
+                    reason_name = "Not Specified"
+                
+                loss_analysis[reason_name]["count"] += 1
+                
+                # Track by source
+                source_id = lead.get("source_id") or "unknown"
+                source_name = lead_sources_map.get(source_id, {}).get("name", "Unknown")
+                loss_analysis[reason_name]["by_source"][source_name] += 1
+    
+    # Calculate percentages
+    loss_analysis_list = []
+    for reason_name, data in loss_analysis.items():
+        count = data["count"]
+        percentage = round((count / total_lost_leads) * 100, 2) if total_lost_leads > 0 else 0
+        
+        loss_analysis_list.append({
+            "reason": reason_name,
+            "count": count,
+            "percentage": percentage,
+            "by_source": dict(data["by_source"])
+        })
+    
+    # Sort by count descending
+    loss_analysis_list.sort(key=lambda x: x["count"], reverse=True)
+    
+    # ===== 4. TIME-BASED TRENDS =====
+    # Group by date
+    daily_trends = defaultdict(lambda: {
+        "new_leads": 0,
+        "converted": 0,
+        "lost": 0
+    })
+    
+    for lead in all_leads:
+        created_date = lead["created_at"][:10]  # YYYY-MM-DD
+        daily_trends[created_date]["new_leads"] += 1
+        
+        status_id = lead.get("status_id")
+        if status_id:
+            status_obj = lead_statuses_map.get(status_id, {})
+            category = status_obj.get("category", "")
+            
+            if category == "converted":
+                daily_trends[created_date]["converted"] += 1
+            elif category == "lost":
+                daily_trends[created_date]["lost"] += 1
+    
+    daily_trends_list = [
+        {"date": date, **data}
+        for date, data in sorted(daily_trends.items())
+    ]
+    
+    # ===== 5. SALESPERSON PERFORMANCE =====
+    salesperson_performance = defaultdict(lambda: {
+        "total_leads": 0,
+        "converted": 0,
+        "lost": 0,
+        "in_progress": 0,
+        "conversion_rate": 0
+    })
+    
+    for lead in all_leads:
+        assigned_to = lead.get("assigned_to", "Unassigned")
+        salesperson_performance[assigned_to]["total_leads"] += 1
+        
+        status_id = lead.get("status_id")
+        if status_id:
+            status_obj = lead_statuses_map.get(status_id, {})
+            category = status_obj.get("category", "")
+            
+            if category == "converted":
+                salesperson_performance[assigned_to]["converted"] += 1
+            elif category == "lost":
+                salesperson_performance[assigned_to]["lost"] += 1
+            else:
+                salesperson_performance[assigned_to]["in_progress"] += 1
+    
+    # Calculate conversion rates
+    salesperson_performance_list = []
+    for user_id, data in salesperson_performance.items():
+        total = data["total_leads"]
+        if total > 0:
+            data["conversion_rate"] = round((data["converted"] / total) * 100, 2)
+        
+        # Get user name
+        user = await db.users.find_one({"id": user_id}, {"_id": 0, "email": 1, "name": 1})
+        user_name = user.get("name") or user.get("email") if user else user_id
+        
+        salesperson_performance_list.append({
+            "salesperson": user_name,
+            **data
+        })
+    
+    # Sort by conversion rate descending
+    salesperson_performance_list.sort(key=lambda x: x["conversion_rate"], reverse=True)
+    
+    # ===== SUMMARY METRICS =====
+    total_leads = len(all_leads)
+    total_converted = sum(1 for l in all_leads if lead_statuses_map.get(l.get("status_id"), {}).get("category") == "converted")
+    overall_conversion_rate = round((total_converted / total_leads) * 100, 2) if total_leads > 0 else 0
+    
+    return {
+        "date_range": {
+            "from": date_from,
+            "to": date_to
+        },
+        "summary": {
+            "total_leads": total_leads,
+            "total_converted": total_converted,
+            "total_lost": total_lost_leads,
+            "in_progress": total_leads - total_converted - total_lost_leads,
+            "overall_conversion_rate": overall_conversion_rate
+        },
+        "source_performance": source_performance_list,
+        "status_funnel": status_funnel_list,
+        "loss_analysis": loss_analysis_list,
+        "daily_trends": daily_trends_list,
+        "salesperson_performance": salesperson_performance_list
+    }
+
+
 # Levy Routes
 @api_router.get("/levies", response_model=List[Levy])
 async def get_levies(status: Optional[str] = None, current_user: User = Depends(get_current_user)):
