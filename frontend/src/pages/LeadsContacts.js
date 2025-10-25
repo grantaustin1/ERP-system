@@ -621,6 +621,20 @@ export default function LeadsContacts() {
                             {lead.status}
                           </Badge>
                         </td>
+                        {isManager && (
+                          <td className="py-3 px-4">
+                            {lead.assigned_to ? (
+                              <div>
+                                <div className="text-white text-sm">{lead.assigned_to_name || 'Assigned'}</div>
+                                <div className="text-slate-400 text-xs">
+                                  {lead.assigned_at && new Date(lead.assigned_at).toLocaleDateString()}
+                                </div>
+                              </div>
+                            ) : (
+                              <Badge className="bg-orange-600 text-white">Unassigned</Badge>
+                            )}
+                          </td>
+                        )}
                         <td className="py-3 px-4">
                           <div className="flex items-center gap-2">
                             <Star className="w-4 h-4 text-yellow-400" />
@@ -629,6 +643,17 @@ export default function LeadsContacts() {
                         </td>
                         <td className="py-3 px-4 text-right">
                           <div className="flex items-center justify-end gap-2">
+                            {isManager && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => openAssignModal(lead)}
+                                className="text-green-400 hover:text-green-300 hover:bg-slate-700"
+                                title={lead.assigned_to ? 'Reassign Lead' : 'Assign Lead'}
+                              >
+                                <Users className="w-4 h-4" />
+                              </Button>
+                            )}
                             <Button
                               variant="ghost"
                               size="sm"
