@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-Backend Test Suite - Phase 2E Engagement Features
-Focus on Points System, Global Search, Activity Feeds, and Engagement Scoring
+Backend Test Suite - Sales Module Phase 2 Advanced APIs
+Focus on Sales Automation, Workflow Automation, and Advanced Analytics
 """
 
 import requests
@@ -18,7 +18,7 @@ API_BASE = f"{BASE_URL}/api"
 TEST_EMAIL = "admin@gym.com"
 TEST_PASSWORD = "admin123"
 
-class EngagementFeaturesTestRunner:
+class SalesModulePhase2TestRunner:
     def __init__(self):
         self.token = None
         self.headers = {}
