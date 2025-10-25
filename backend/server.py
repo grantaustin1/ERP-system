@@ -7875,7 +7875,7 @@ class ReferralRewardCreate(BaseModel):
 @api_router.get("/sales/config/lead-sources")
 async def get_lead_sources(current_user: User = Depends(get_current_user)):
     """Get all lead sources"""
-    sources = await db.lead_sources.find({"_id": 0}).sort("display_order", 1).to_list(None)
+    sources = await db.lead_sources.find({}, {"_id": 0}).sort("display_order", 1).to_list(None)
     return {"sources": sources, "total": len(sources)}
 
 @api_router.post("/sales/config/lead-sources")
