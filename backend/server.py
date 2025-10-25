@@ -8107,6 +8107,43 @@ async def update_referral_reward_status(
         raise HTTPException(status_code=404, detail="Referral reward not found")
     return {"success": True, "message": f"Reward status updated to {status}"}
 
+# Member Search for Referrals
+@api_router.get("/sales/members/search")
+async def search_members_for_referral(
+    q: str,
+    current_user: User = Depends(get_current_user)
+):
+    """Search members for referral linking"""
+    if len(q) < 2:
+        return {"members": [], "total": 0}
+    
+    # Build search query
+    search_query = {
+        "$or": [
+            {"first_name": {"$regex": q, "$options": "i"}},
+            {"last_name": {"$regex": q, "$options": "i"}},
+            {"email": {"$regex": q, "$options": "i"}},
+            {"phone": {"$regex": q, "$options": "i"}},
+            {"id": {"$regex": q, "$options": "i"}}
+        ],
+        "membership_status": "active"  # Only active members can refer
+    }
+    
+    members = await db.members.find(
+        search_query,
+        {
+            "_id": 0,
+            "id": 1,
+            "first_name": 1,
+            "last_name": 1,
+            "email": 1,
+            "phone": 1,
+            "membership_status": 1
+        }
+    ).limit(20).to_list(None)
+    
+    return {"members": members, "total": len(members)}
+
 
 # ==================== LEADS/CONTACTS ENDPOINTS ====================
 
