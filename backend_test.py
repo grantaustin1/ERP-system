@@ -115,7 +115,7 @@ class SalesModulePhase2TestRunner:
                 "assigned_to": self.test_user_id
             }
             
-            response = requests.post(f"{API_BASE}/opportunities", json=opportunity_data, headers=self.headers)
+            response = requests.post(f"{API_BASE}/sales/opportunities", json=opportunity_data, headers=self.headers)
             if response.status_code == 200:
                 opportunity = response.json()
                 self.created_opportunities.append(opportunity["id"])
