@@ -7795,6 +7795,79 @@ class SalesTask(BaseModel):
     created_at: str
     completed_at: Optional[str] = None
 
+# ==================== CONFIGURABLE LEAD SOURCE, STATUS, LOSS REASON MODELS ====================
+
+class LeadSource(BaseModel):
+    id: str
+    name: str
+    description: Optional[str] = None
+    icon: Optional[str] = None  # emoji or icon name
+    is_active: bool = True
+    display_order: int = 0
+    created_at: str
+    updated_at: str
+
+class LeadSourceCreate(BaseModel):
+    name: str
+    description: Optional[str] = None
+    icon: Optional[str] = None
+    is_active: bool = True
+    display_order: int = 0
+
+class LeadStatus(BaseModel):
+    id: str
+    name: str
+    description: Optional[str] = None
+    category: str  # prospect, engaged, converted, lost
+    color: str  # hex color code
+    workflow_sequence: int  # order in the workflow (0-100)
+    is_active: bool = True
+    display_order: int = 0
+    created_at: str
+    updated_at: str
+
+class LeadStatusCreate(BaseModel):
+    name: str
+    description: Optional[str] = None
+    category: str
+    color: str
+    workflow_sequence: int
+    is_active: bool = True
+    display_order: int = 0
+
+class LossReason(BaseModel):
+    id: str
+    name: str
+    description: Optional[str] = None
+    is_active: bool = True
+    display_order: int = 0
+    created_at: str
+    updated_at: str
+
+class LossReasonCreate(BaseModel):
+    name: str
+    description: Optional[str] = None
+    is_active: bool = True
+    display_order: int = 0
+
+class ReferralReward(BaseModel):
+    id: str
+    referring_member_id: str
+    referred_lead_id: str
+    reward_type: str  # free_month, free_item, discount, points
+    reward_value: Optional[str] = None  # e.g., "Water Bottle", "R100 discount", "1 Month Free"
+    status: str  # pending, approved, delivered
+    created_at: str
+    delivered_at: Optional[str] = None
+    notes: Optional[str] = None
+
+class ReferralRewardCreate(BaseModel):
+    referring_member_id: str
+    referred_lead_id: str
+    reward_type: str
+    reward_value: Optional[str] = None
+    notes: Optional[str] = None
+
 
 # ==================== LEADS/CONTACTS ENDPOINTS ====================
 
