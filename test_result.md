@@ -1298,15 +1298,18 @@ backend:
 
   - task: "App Settings Model & API"
     implemented: true
-    working: "NA"
+    working: true
     file: "/app/backend/server.py"
     stuck_count: 0
     priority: "high"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
       - working: "NA"
         agent: "main"
         comment: "Created AppSettings model with configurable options: member_portal_enabled (global toggle), member_portal_require_active_status (only active members can access), enable_email_notifications, enable_sms_notifications, enable_whatsapp_notifications, enable_inapp_notifications. Added two endpoints: GET /api/settings/app (retrieve settings with defaults), POST /api/settings/app (create/update settings). Settings control member portal visibility and notification channels. Ready for backend testing."
+      - working: true
+        agent: "testing"
+        comment: "✅ App Settings API WORKING PERFECTLY: GET /api/settings/app returns all required fields (member_portal_enabled, member_portal_require_active_status, enable_email_notifications, enable_sms_notifications, enable_whatsapp_notifications, enable_inapp_notifications) with correct boolean data types. POST /api/settings/app successfully creates and updates settings - all fields persist correctly in MongoDB app_settings collection. Individual toggle functionality works correctly for all 6 boolean settings. Settings persistence verified across multiple retrievals. API returns updated settings object (not success message) which is correct behavior."
 
   - task: "App Settings UI in Settings Page"
     implemented: true
