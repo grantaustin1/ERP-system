@@ -8266,12 +8266,17 @@ async def update_lead(
     phone: Optional[str] = None,
     company: Optional[str] = None,
     status: Optional[str] = None,
+    status_id: Optional[str] = None,  # NEW
+    source_id: Optional[str] = None,  # NEW
+    referred_by_member_id: Optional[str] = None,  # NEW
+    loss_reason_id: Optional[str] = None,  # NEW
+    loss_notes: Optional[str] = None,  # NEW
     lead_score: Optional[int] = None,
     assigned_to: Optional[str] = None,
     notes: Optional[str] = None,
     current_user: User = Depends(get_current_user)
 ):
-    """Update a lead"""
+    """Update a lead with support for configurable fields"""
     from datetime import datetime
     
     lead = await db.leads.find_one({"id": lead_id}, {"_id": 0})
@@ -8292,12 +8297,39 @@ async def update_lead(
         update_data["company"] = company
     if status is not None:
         update_data["status"] = status
+    if status_id is not None:
+        update_data["status_id"] = status_id
+        # Check if status is "Lost" (category = lost), require loss_reason_id
+        status_obj = await db.lead_statuses.find_one({"id": status_id})
+        if status_obj and status_obj.get("category") == "lost" and not loss_reason_id:
+            raise HTTPException(status_code=400, detail="Loss reason required when marking lead as lost")
+    if source_id is not None:
+        update_data["source_id"] = source_id
+    if referred_by_member_id is not None:
+        update_data["referred_by_member_id"] = referred_by_member_id
+    if loss_reason_id is not None:
+        update_data["loss_reason_id"] = loss_reason_id
+    if loss_notes is not None:
+        update_data["loss_notes"] = loss_notes
     if lead_score is not None:
         update_data["lead_score"] = min(max(lead_score, 0), 100)  # Clamp 0-100
     if assigned_to is not None:
         update_data["assigned_to"] = assigned_to
     if notes is not None:
         update_data["notes"] = notes
+    
+    # Check if status changed to "Joined" (category = converted) and referred_by_member_id exists
+    if status_id:
+        status_obj = await db.lead_statuses.find_one({"id": status_id})
+        if status_obj and status_obj.get("category") == "converted" and lead.get("referred_by_member_id"):
+            # Update referral reward status to approved
+            await db.referral_rewards.update_many(
+                {
+                    "referred_lead_id": lead_id,
+                    "status": "pending"
+                },
+                {"$set": {"status": "approved"}}
+            )
     
     await db.leads.update_one({"id": lead_id}, {"$set": update_data})
     
