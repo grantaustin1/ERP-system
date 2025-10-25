@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { API } from '@/App';
 import Sidebar from '@/components/Sidebar';
+import AdvancedSalesAnalytics from '@/components/AdvancedSalesAnalytics';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { 
   Users, 
