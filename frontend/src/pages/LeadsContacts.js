@@ -65,10 +65,20 @@ export default function LeadsContacts() {
   const [selectedLead, setSelectedLead] = useState(null);
   const [leadDetails, setLeadDetails] = useState(null);
 
+  // Assignment functionality
+  const [assignModalOpen, setAssignModalOpen] = useState(false);
+  const [leadToAssign, setLeadToAssign] = useState(null);
+  const [consultants, setConsultants] = useState([]);
+  const [selectedConsultant, setSelectedConsultant] = useState('');
+  const [assignmentNotes, setAssignmentNotes] = useState('');
+  const [filterType, setFilterType] = useState('all'); // 'all', 'my_leads', 'unassigned'
+  const [isManager, setIsManager] = useState(false);
+
   useEffect(() => {
     fetchLeads();
     fetchConfigurations();
-  }, []);
+    fetchConsultants();
+  }, [filterType]);
 
   useEffect(() => {
     filterLeads();
