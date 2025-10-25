@@ -273,6 +273,10 @@ export default function Settings() {
                 <SettingsIcon className="w-4 h-4 mr-2" />
                 EFT Settings
               </TabsTrigger>
+              <TabsTrigger value="app" className="data-[state=active]:bg-emerald-500">
+                <SettingsIcon className="w-4 h-4 mr-2" />
+                App Settings
+              </TabsTrigger>
             </TabsList>
 
             {/* Membership Packages Tab */}
