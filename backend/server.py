@@ -8612,7 +8612,7 @@ async def assign_lead(
         "assigned_to": assigned_to,
         "assigned_to_name": consultant.get("name") or consultant.get("email"),
         "assigned_by": current_user.id,
-        "assigned_by_name": current_user.name or current_user.email,
+        "assigned_by_name": current_user.full_name or current_user.email,
         "assigned_at": now,
         "notes": assignment_notes,
         "previous_assigned_to": previous_assigned_to,
