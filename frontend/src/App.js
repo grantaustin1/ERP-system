@@ -37,6 +37,7 @@ import SalesTasks from '@/pages/SalesTasks';
 import WorkflowAutomation from '@/pages/WorkflowAutomation';
 import SalesCRMSetup from '@/pages/SalesCRMSetup';
 import ComplimentaryMembership from '@/pages/ComplimentaryMembership';
+import FinancialReports from '@/pages/FinancialReports';
 import { Toaster } from '@/components/ui/sonner';
 import { PermissionProvider } from '@/contexts/PermissionContext';
 
