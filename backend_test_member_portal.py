@@ -550,23 +550,23 @@ class MemberPortalNotificationTestRunner:
                 ["email"],
                 ["sms"],
                 ["whatsapp"],
-                ["inapp"],
+                ["in_app"],
                 ["email", "sms"],
-                ["email", "whatsapp", "inapp"],
-                ["email", "sms", "whatsapp", "inapp"]
+                ["email", "whatsapp", "in_app"],
+                ["email", "sms", "whatsapp", "in_app"]
             ]
             
             for channels in channel_tests:
-                notification_data = {
+                params = {
                     "member_id": self.test_member_id,
-                    "title": f"Multi-Channel Test - {', '.join(channels)}",
+                    "notification_type": "general",
+                    "subject": f"Multi-Channel Test - {', '.join(channels)}",
                     "message": f"Testing notification via channels: {', '.join(channels)}",
-                    "channels": channels,
-                    "priority": "normal"
+                    "channels": channels
                 }
                 
                 response = requests.post(f"{API_BASE}/notifications/send", 
-                                       json=notification_data, 
+                                       params=params, 
                                        headers=self.admin_headers)
                 
                 if response.status_code != 200:
