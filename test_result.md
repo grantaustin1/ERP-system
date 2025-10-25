@@ -1190,6 +1190,150 @@ backend:
         agent: "testing"
         comment: "✅ Settings Page Comprehensive Testing Complete: All major functionality working correctly. **NAVIGATION TESTING**: All 6 category buttons found and functional (Business Settings, Payment Integration, Staff & Security, Operations, Automation, System). Category navigation works - buttons change content area correctly. **SUB-TAB TESTING**: Business Settings sub-tabs working (Membership Types, Payment Sources tabs switch content properly). Payment Integration sub-tabs working (EFT Settings, DebiCheck tabs functional). **BUTTON FUNCTIONALITY**: Create Membership Type button found, enabled, and clickable with proper event handlers. Save EFT Settings button found and functional. Save DebiCheck Settings button found and functional. **FORM INTERACTIONS**: All form buttons are properly enabled and have click handlers attached. **NO CRITICAL ISSUES FOUND**: No console errors, no network failures, no broken functionality. **MINOR SESSION ISSUE**: Occasional session timeouts during extended testing, but core functionality works when authenticated. All Settings page features are production-ready and working as designed."
 
+  - task: "Configurable Lead Sources - Startup Seeding"
+    implemented: true
+    working: false
+    file: "/app/backend/server.py"
+    stuck_count: 1
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: false
+        agent: "testing"
+        comment: "❌ CRITICAL ISSUE: Startup seeding not working. Expected 8 default lead sources (Walk-in, Phone-in, Referral, Canvassing, Social Media, Website, Email, Other) but found 0. GET /api/sales/config/lead-sources returns empty array. Backend startup event may not be triggering properly or seeding code has issues."
+
+  - task: "Configurable Lead Sources - CRUD APIs"
+    implemented: true
+    working: false
+    file: "/app/backend/server.py"
+    stuck_count: 1
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: false
+        agent: "testing"
+        comment: "❌ CRITICAL ISSUE: POST /api/sales/config/lead-sources returns 500 Internal Server Error. Backend logs show ObjectId serialization error: 'ObjectId' object is not iterable. This prevents creating new lead sources. GET endpoint works but returns empty data due to seeding issue."
+
+  - task: "Configurable Lead Statuses - Startup Seeding"
+    implemented: true
+    working: false
+    file: "/app/backend/server.py"
+    stuck_count: 1
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: false
+        agent: "testing"
+        comment: "❌ CRITICAL ISSUE: Startup seeding not working. Expected 8 default lead statuses (New Lead, Called, Appointment Made, Appointment Confirmed, Showed, Be Back, Joined, Lost) but found 0. GET /api/sales/config/lead-statuses returns empty array."
+
+  - task: "Configurable Lead Statuses - CRUD APIs"
+    implemented: true
+    working: false
+    file: "/app/backend/server.py"
+    stuck_count: 1
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: false
+        agent: "testing"
+        comment: "❌ CRITICAL ISSUE: POST /api/sales/config/lead-statuses returns 500 Internal Server Error. Same ObjectId serialization error as lead sources. This prevents creating new lead statuses."
+
+  - task: "Configurable Loss Reasons - Startup Seeding"
+    implemented: true
+    working: false
+    file: "/app/backend/server.py"
+    stuck_count: 1
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: false
+        agent: "testing"
+        comment: "❌ CRITICAL ISSUE: Startup seeding not working. Expected 8 default loss reasons (Too Expensive, Medical Issues, Lives Too Far, No Time, Joined Competitor, Not Interested, Financial Issues, Other) but found 0. GET /api/sales/config/loss-reasons returns empty array."
+
+  - task: "Configurable Loss Reasons - CRUD APIs"
+    implemented: true
+    working: false
+    file: "/app/backend/server.py"
+    stuck_count: 1
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: false
+        agent: "testing"
+        comment: "❌ CRITICAL ISSUE: POST /api/sales/config/loss-reasons returns 500 Internal Server Error. Same ObjectId serialization error preventing creation of new loss reasons."
+
+  - task: "Member Search API for Referrals"
+    implemented: true
+    working: true
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "testing"
+        comment: "✅ Member Search API working correctly: GET /api/sales/members/search correctly returns empty for queries < 2 characters. Returns 13 active members for valid queries. Properly filters by membership_status=active. Response structure includes required fields (id, first_name, last_name, email, phone, membership_status). Limit of 20 results enforced."
+
+  - task: "Enhanced Lead Create API with Referrals"
+    implemented: true
+    working: false
+    file: "/app/backend/server.py"
+    stuck_count: 1
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: false
+        agent: "testing"
+        comment: "❌ BLOCKED: Cannot test enhanced lead creation due to missing seeded source and status IDs. Requires working startup seeding and CRUD APIs to function properly."
+
+  - task: "Enhanced Lead Update API with Loss Validation"
+    implemented: true
+    working: false
+    file: "/app/backend/server.py"
+    stuck_count: 1
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: false
+        agent: "testing"
+        comment: "❌ BLOCKED: Cannot test enhanced lead update due to no test lead available (creation blocked by seeding issues)."
+
+  - task: "Referral Rewards Management APIs"
+    implemented: true
+    working: true
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "medium"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "testing"
+        comment: "✅ Referral Rewards Management partially working: GET /api/sales/referral-rewards returns correct structure with empty rewards array (expected when no rewards exist). Cannot test full CRUD functionality due to missing test member/lead IDs from blocked lead creation."
+
+  - task: "Comprehensive Dashboard Analytics API"
+    implemented: true
+    working: true
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "testing"
+        comment: "✅ Comprehensive Dashboard Analytics working correctly: GET /api/sales/analytics/dashboard/comprehensive returns proper structure with all required fields (date_range, summary, source_performance, status_funnel, loss_analysis, daily_trends, salesperson_performance). Custom date range parameters work correctly. Calculation accuracy verified for conversion rates. Handles empty data gracefully. Retrieved analytics for 7 existing leads with 0.0% conversion rate."
+
+  - task: "Data Integrity Checks"
+    implemented: true
+    working: true
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "medium"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "testing"
+        comment: "✅ Data Integrity Checks working: All existing data has valid UUID formats, ISO timestamps, and hex color codes. Workflow sequence uniqueness verified. Display order consistency confirmed. No data corruption detected in existing records."
+
   - task: "Outgoing EFT File Generation - Billing"
     implemented: true
     working: "NA"
