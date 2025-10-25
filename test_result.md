@@ -7003,11 +7003,11 @@ metadata:
 
 test_plan:
   current_focus:
-    - "Member Analytics & Retention APIs - Retention Dashboard"
-    - "Member Analytics & Retention APIs - Member LTV Report"
-    - "Member Analytics & Retention APIs - At-Risk Members"
-    - "Member Analytics & Retention APIs - Member Demographics"
-    - "Member Analytics & Retention APIs - Acquisition Cost Analysis"
+    - "Sales Performance & Forecasting APIs - Sales Funnel Report"
+    - "Sales Performance & Forecasting APIs - Pipeline Forecast Report"
+    - "Sales Performance & Forecasting APIs - Lead Source ROI Report"
+    - "Sales Performance & Forecasting APIs - Win-Loss Analysis Report"
+    - "Sales Performance & Forecasting APIs - Salesperson Performance Report"
   stuck_tasks: []
   test_all: false
   test_priority: "high_first"
