@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-Backend Test Suite - Enhanced Member Portal & Notification System APIs Testing
-Focus on testing the Enhanced Member Portal & Notification System APIs with comprehensive validation
+Backend Test Suite - ERP360 Gym Management System API Testing
+Focus on testing the 3 API fixes and critical endpoints
 """
 
 import requests
@@ -18,7 +18,7 @@ API_BASE = f"{BASE_URL}/api"
 ADMIN_EMAIL = "admin@gym.com"
 ADMIN_PASSWORD = "admin123"
 
-class MemberPortalNotificationTestRunner:
+class ERP360APITestRunner:
     def __init__(self):
         self.admin_token = None
         self.admin_headers = {}
