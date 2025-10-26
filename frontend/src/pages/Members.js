@@ -1134,32 +1134,36 @@ export default function Members() {
                     {/* Phase 1 - Quick Action Buttons */}
                     <div className="flex flex-col gap-2 mt-4">
                       <div className="flex gap-2">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            showQRCode(member);
-                          }}
-                          className="flex-1 border-emerald-500 text-emerald-400 hover:bg-emerald-500/10"
-                          data-testid={`view-qr-${member.id}`}
-                        >
-                          <QrCode className="w-4 h-4 mr-1" />
-                          QR
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setSelectedMembersForMessaging([member.id]);
-                            setMessagingDialogOpen(true);
-                          }}
-                          className="flex-1 border-blue-500 text-blue-400 hover:bg-blue-500/10"
-                        >
-                          <Send className="w-4 h-4 mr-1" />
-                          Message
-                        </Button>
+                        <WithTooltip tooltip="View and download member's QR code for quick check-in">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              showQRCode(member);
+                            }}
+                            className="flex-1 border-emerald-500 text-emerald-400 hover:bg-emerald-500/10"
+                            data-testid={`view-qr-${member.id}`}
+                          >
+                            <QrCode className="w-4 h-4 mr-1" />
+                            QR
+                          </Button>
+                        </WithTooltip>
+                        <WithTooltip tooltip="Send a message to this member via Email, SMS, or WhatsApp">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedMembersForMessaging([member.id]);
+                              setMessagingDialogOpen(true);
+                            }}
+                            className="flex-1 border-blue-500 text-blue-400 hover:bg-blue-500/10"
+                          >
+                            <Send className="w-4 h-4 mr-1" />
+                            Message
+                          </Button>
+                        </WithTooltip>
                       </div>
                       <div className="flex gap-2">
                         <PermissionGuard permission="members:edit">
