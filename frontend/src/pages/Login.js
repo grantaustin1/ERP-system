@@ -79,7 +79,7 @@ export default function Login() {
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
-            {!isLogin && (
+            {!isLogin && !forgotPasswordMode && (
               <div className="space-y-2">
                 <Label htmlFor="full_name" className="text-slate-200">Full Name</Label>
                 <Input
@@ -106,26 +106,48 @@ export default function Login() {
                 className="bg-slate-700/50 border-slate-600 text-white placeholder:text-slate-400"
               />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="password" className="text-slate-200">Password</Label>
-              <Input
-                id="password"
-                data-testid="password-input"
-                type="password"
-                placeholder="••••••••"
-                value={formData.password}
-                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                required
-                className="bg-slate-700/50 border-slate-600 text-white placeholder:text-slate-400"
-              />
-            </div>
+            {!forgotPasswordMode && (
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="password" className="text-slate-200">Password</Label>
+                  {isLogin && (
+                    <button
+                      type="button"
+                      onClick={() => setForgotPasswordMode(true)}
+                      className="text-xs text-emerald-400 hover:text-emerald-300"
+                    >
+                      Forgot password?
+                    </button>
+                  )}
+                </div>
+                <div className="relative">
+                  <Input
+                    id="password"
+                    data-testid="password-input"
+                    type={showPassword ? 'text' : 'password'}
+                    placeholder="••••••••"
+                    value={formData.password}
+                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                    required
+                    className="bg-slate-700/50 border-slate-600 text-white placeholder:text-slate-400 pr-10"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"
+                  >
+                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+            )}
             <Button
               type="submit"
               data-testid="submit-button"
               className="w-full bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white font-semibold"
               disabled={loading}
             >
-              {loading ? 'Please wait...' : isLogin ? 'Sign In' : 'Sign Up'}
+              {loading ? 'Please wait...' : forgotPasswordMode ? 'Send Reset Link' : isLogin ? 'Sign In' : 'Sign Up'}
             </Button>
           </form>
           <div className="mt-4 text-center">
