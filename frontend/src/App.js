@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import axios from 'axios';
 import '@/App.css';
+import { TooltipProvider } from '@/components/ui/tooltip';
 import Login from '@/pages/Login';
 import Dashboard from '@/pages/Dashboard';
 import Members from '@/pages/Members';
