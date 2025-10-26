@@ -1193,12 +1193,14 @@ export default function Settings() {
 
                   {/* Save Button */}
                   <div className="flex justify-end pt-4 border-t border-slate-700">
-                    <Button 
-                      onClick={handleSaveEftSettings}
-                      className="bg-emerald-500 hover:bg-emerald-600 text-white"
-                    >
-                      Save EFT Settings
-                    </Button>
+                    <WithTooltip tooltip="Save EFT configuration changes">
+                      <Button 
+                        onClick={handleSaveEftSettings}
+                        className="bg-emerald-500 hover:bg-emerald-600 text-white"
+                      >
+                        Save EFT Settings
+                      </Button>
+                    </WithTooltip>
                   </div>
 
                   {/* Information Box */}
