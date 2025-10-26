@@ -10303,6 +10303,114 @@ async def get_member_ltv_report(
         raise HTTPException(status_code=500, detail=f"Error calculating member LTV: {str(e)}")
 
 
+@api_router.get("/reports/payment-analytics")
+async def get_payment_analytics(
+    period_months: Optional[int] = 12,
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Get comprehensive payment analytics including payment methods, trends, and success rates
+    """
+    try:
+        now = datetime.now(timezone.utc)
+        period_start = now - timedelta(days=period_months * 30)
+        start_iso = period_start.isoformat()
+        
+        # Get all invoices in the period
+        all_invoices = await db.invoices.find({
+            "created_at": {"$gte": start_iso}
+        }, {"_id": 0}).to_list(None)
+        
+        # Payment method breakdown
+        payment_methods = {}
+        total_revenue = 0
+        paid_count = 0
+        pending_count = 0
+        overdue_count = 0
+        
+        for invoice in all_invoices:
+            status = invoice.get("status", "pending")
+            amount = invoice.get("amount", 0)
+            payment_method = invoice.get("payment_method", "unknown")
+            
+            # Count by status
+            if status == "paid":
+                paid_count += 1
+                total_revenue += amount
+                
+                # Track by payment method
+                if payment_method not in payment_methods:
+                    payment_methods[payment_method] = {
+                        "count": 0,
+                        "total_amount": 0
+                    }
+                payment_methods[payment_method]["count"] += 1
+                payment_methods[payment_method]["total_amount"] += amount
+            elif status == "pending":
+                pending_count += 1
+            elif status == "overdue":
+                overdue_count += 1
+        
+        # Calculate payment success rate
+        total_invoices = len(all_invoices)
+        success_rate = round((paid_count / total_invoices) * 100, 2) if total_invoices > 0 else 0
+        
+        # Monthly revenue trend
+        monthly_revenue = {}
+        for invoice in all_invoices:
+            if invoice.get("status") == "paid":
+                created_at_str = invoice.get("created_at")
+                if created_at_str:
+                    try:
+                        created_date = datetime.fromisoformat(created_at_str.replace('Z', '+00:00'))
+                        month_key = created_date.strftime("%Y-%m")
+                        if month_key not in monthly_revenue:
+                            monthly_revenue[month_key] = 0
+                        monthly_revenue[month_key] += invoice.get("amount", 0)
+                    except:
+                        continue
+        
+        # Convert to sorted list
+        revenue_trend = [
+            {"month": month, "revenue": round(amount, 2)}
+            for month, amount in sorted(monthly_revenue.items())
+        ]
+        
+        return {
+            "period": {
+                "start_date": start_iso,
+                "end_date": now.isoformat(),
+                "months": period_months
+            },
+            "summary": {
+                "total_invoices": total_invoices,
+                "paid_invoices": paid_count,
+                "pending_invoices": pending_count,
+                "overdue_invoices": overdue_count,
+                "total_revenue": round(total_revenue, 2),
+                "payment_success_rate": success_rate
+            },
+            "payment_methods": payment_methods,
+            "revenue_trend": revenue_trend
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error generating payment analytics: {str(e)}")
+
+
+@api_router.get("/reports/retention")
+async def get_retention_report(
+    period_months: Optional[int] = 12,
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Alias for retention-dashboard endpoint
+    Get comprehensive retention analytics dashboard
+    """
+    return await get_retention_dashboard(period_months, current_user)
+
+
+
 @api_router.get("/reports/at-risk-members")
 async def get_at_risk_members(
     risk_threshold: Optional[int] = 60,  # Risk score threshold
