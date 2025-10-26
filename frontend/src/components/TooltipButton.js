@@ -62,20 +62,18 @@ export function WithTooltip({ children, tooltip, side = "top" }) {
   if (!tooltip) return children;
 
   return (
-    <TooltipProvider delayDuration={300}>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <span className="inline-block">
-            {children}
-          </span>
-        </TooltipTrigger>
-        <TooltipContent 
-          side={side}
-          className="bg-slate-900 text-white border-slate-700 max-w-xs z-50"
-        >
-          <p>{tooltip}</p>
-        </TooltipContent>
-      </Tooltip>
-    </TooltipProvider>
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <span className="inline-block">
+          {children}
+        </span>
+      </TooltipTrigger>
+      <TooltipContent 
+        side={side}
+        className="bg-slate-900 text-white border-slate-700 max-w-xs z-50"
+      >
+        <p>{tooltip}</p>
+      </TooltipContent>
+    </Tooltip>
   );
 }
