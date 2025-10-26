@@ -574,6 +574,22 @@ class UserCreate(BaseModel):
     full_name: str
 
 class UserLogin(BaseModel):
+
+class PasswordChangeRequest(BaseModel):
+    old_password: str
+    new_password: str
+
+class PasswordResetRequest(BaseModel):
+    email: EmailStr
+
+class PasswordResetConfirm(BaseModel):
+    token: str
+    new_password: str
+
+class SetInitialPassword(BaseModel):
+    user_id: str
+    temporary_password: str
+
     email: EmailStr
     password: str
 
