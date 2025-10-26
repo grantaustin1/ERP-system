@@ -31,23 +31,21 @@ export default function TooltipButton({
   }
 
   return (
-    <TooltipProvider delayDuration={300}>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          {typeof children === 'function' ? children(buttonProps) : (
-            <Button disabled={disabled} {...buttonProps}>
-              {children}
-            </Button>
-          )}
-        </TooltipTrigger>
-        <TooltipContent 
-          side={side}
-          className="bg-slate-900 text-white border-slate-700 max-w-xs"
-        >
-          <p>{tooltip}</p>
-        </TooltipContent>
-      </Tooltip>
-    </TooltipProvider>
+    <Tooltip>
+      <TooltipTrigger asChild>
+        {typeof children === 'function' ? children(buttonProps) : (
+          <Button disabled={disabled} {...buttonProps}>
+            {children}
+          </Button>
+        )}
+      </TooltipTrigger>
+      <TooltipContent 
+        side={side}
+        className="bg-slate-900 text-white border-slate-700 max-w-xs"
+      >
+        <p>{tooltip}</p>
+      </TooltipContent>
+    </Tooltip>
   );
 }
 
