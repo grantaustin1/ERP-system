@@ -19808,7 +19808,7 @@ async def get_rbac_modules():
 
 @api_router.get("/rbac/permission-matrix")
 async def get_permission_matrix():
-    """Get the role-permission matrix from database"""
+    """Get the role-permission matrix from database (public endpoint for client-side permission checks)"""
     try:
         matrix = await db.permission_matrix.find({}, {"_id": 0}).to_list(length=None)
         return {"matrix": matrix}
