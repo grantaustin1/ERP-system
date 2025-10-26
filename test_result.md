@@ -7435,3 +7435,54 @@ agent_communication:
       
       **RECOMMENDATION**: 
       Main agent should complete the sidebar navigation structure by adding the missing 5 categories (Financial, Analytics & Reports, Operations, Marketing, System) and critical navigation items (Members, Settings, Access Control, Classes) to achieve full Phase 3 compliance.
+
+  - agent: "testing"
+    message: |
+      🔍 API FIXES TESTING - 3 ENDPOINTS TESTED (1 PASS, 2 FAIL)
+      
+      **TEST 1: Lead Creation with JSON Body (POST /api/sales/leads)** ❌ FAILED
+      - Status: 500 Internal Server Error
+      - **ROOT CAUSE**: NameError at line 8741 in /app/backend/server.py
+      - **BUG**: Code uses `referred_by_member_id` instead of `lead_data.referred_by_member_id`
+      - **ERROR**: "NameError: name 'referred_by_member_id' is not defined"
+      - **FIX REQUIRED**: Change line 8741 from `if referred_by_member_id:` to `if lead_data.referred_by_member_id:`
+      - **IMPACT**: Lead creation completely broken - cannot create any leads via API
+      - **PRIORITY**: CRITICAL - This is a blocking bug that prevents lead creation
+      
+      **TEST 2: Payment Analytics Endpoint (GET /api/reports/payment-analytics)** ❌ FAILED
+      - Status: 200 OK (endpoint exists and returns data)
+      - **ISSUE**: Response structure doesn't match expected format
+      - **ACTUAL RESPONSE**: Contains `revenue_trend` (singular), missing `success_rates` field
+      - **EXPECTED**: Should have `revenue_trends` (plural) and `success_rates` object
+      - **CURRENT STRUCTURE**: 
+        - ✅ period (correct)
+        - ✅ summary (correct, includes payment_success_rate)
+        - ✅ payment_methods (correct)
+        - ✅ revenue_trend (exists but should be plural)
+        - ❌ success_rates (missing - only payment_success_rate in summary)
+      - **FIX REQUIRED**: Either:
+        1. Rename `revenue_trend` to `revenue_trends` for consistency
+        2. Add `success_rates` object with breakdown by payment method/status
+        OR update documentation to match actual response structure
+      - **PRIORITY**: MEDIUM - Endpoint works but naming inconsistency may confuse API consumers
+      
+      **TEST 3: Retention Report Alias (GET /api/reports/retention)** ✅ PASSED
+      - Status: 200 OK
+      - **VERIFIED**: Alias endpoint working correctly
+      - **FUNCTIONALITY**: Successfully calls retention-dashboard internally
+      - **RESPONSE STRUCTURE**: All expected fields present
+        - ✅ period (start_date, end_date, months)
+        - ✅ summary (churn_rate: 0.0%, retention_rate: 100.0%, total_members, active_members)
+        - ✅ retention_by_cohort (1 cohort found)
+        - ✅ retention_trend (12 data points)
+      - **PRIORITY**: ✅ WORKING - No action required
+      
+      **SUMMARY**:
+      - ✅ 1/3 tests passing (33.3% success rate)
+      - ❌ 2/3 tests failing
+      - 🔴 1 CRITICAL bug (lead creation broken)
+      - 🟡 1 MEDIUM issue (response structure inconsistency)
+      
+      **IMMEDIATE ACTION REQUIRED**:
+      1. Fix lead creation bug at line 8741 (CRITICAL)
+      2. Clarify payment analytics response structure (MEDIUM)
