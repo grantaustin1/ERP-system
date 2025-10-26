@@ -1686,6 +1686,136 @@ async def login(credentials: UserLogin):
     return Token(access_token=token)
 
 @api_router.get("/auth/me", response_model=User)
+
+
+# ===== PASSWORD MANAGEMENT ENDPOINTS =====
+
+@api_router.post("/auth/change-password")
+async def change_password(
+    data: PasswordChangeRequest,
+    current_user: User = Depends(get_current_user)
+):
+    """Change password for logged-in user"""
+    # Verify old password
+    user = await db.users.find_one({"id": current_user.id})
+    if not verify_password(data.old_password, user["password"]):
+        raise HTTPException(status_code=400, detail="Current password is incorrect")
+    
+    # Update password
+    hashed_password = hash_password(data.new_password)
+    await db.users.update_one(
+        {"id": current_user.id},
+        {"$set": {
+            "password": hashed_password,
+            "first_login": False,
+            "must_change_password": False,
+            "password_changed_at": datetime.now(timezone.utc).isoformat()
+        }}
+    )
+    
+    return {"message": "Password changed successfully"}
+
+@api_router.post("/auth/request-password-reset")
+async def request_password_reset(data: PasswordResetRequest):
+    """Request password reset - sends email with reset link"""
+    user = await db.users.find_one({"email": data.email}, {"_id": 0})
+    if not user:
+        # Don't reveal if email exists or not for security
+        return {"message": "If the email exists, a password reset link has been sent"}
+    
+    # Generate reset token
+    reset_token = str(uuid.uuid4())
+    expires_at = datetime.now(timezone.utc) + timedelta(hours=24)
+    
+    await db.users.update_one(
+        {"email": data.email},
+        {"$set": {
+            "password_reset_token": reset_token,
+            "password_reset_token_expires": expires_at.isoformat()
+        }}
+    )
+    
+    # TODO: Send email with reset link
+    # For now, we'll mock it
+    reset_link = f"https://your-app.com/reset-password?token={reset_token}"
+    print(f"🔐 Password Reset Link: {reset_link}")
+    print(f"📧 Would send email to: {data.email}")
+    
+    return {
+        "message": "If the email exists, a password reset link has been sent",
+        "mock_reset_token": reset_token  # Remove this in production
+    }
+
+@api_router.post("/auth/reset-password")
+async def reset_password(data: PasswordResetConfirm):
+    """Reset password using token"""
+    user = await db.users.find_one({
+        "password_reset_token": data.token
+    }, {"_id": 0})
+    
+    if not user:
+        raise HTTPException(status_code=400, detail="Invalid or expired reset token")
+    
+    # Check if token is expired
+    if user.get("password_reset_token_expires"):
+        expires_at = datetime.fromisoformat(user["password_reset_token_expires"])
+        if expires_at < datetime.now(timezone.utc):
+            raise HTTPException(status_code=400, detail="Reset token has expired")
+    
+    # Update password
+    hashed_password = hash_password(data.new_password)
+    await db.users.update_one(
+        {"id": user["id"]},
+        {"$set": {
+            "password": hashed_password,
+            "password_reset_token": None,
+            "password_reset_token_expires": None,
+            "first_login": False,
+            "must_change_password": False,
+            "password_changed_at": datetime.now(timezone.utc).isoformat()
+        }}
+    )
+    
+    return {"message": "Password reset successfully"}
+
+@api_router.post("/auth/set-initial-password")
+async def set_initial_password(
+    data: SetInitialPassword,
+    current_user: User = Depends(get_current_user)
+):
+    """Set initial temporary password for new user (Admin only)"""
+    # Check if current user is admin
+    if current_user.role not in ["business_owner", "head_admin"]:
+        raise HTTPException(status_code=403, detail="Only admins can set initial passwords")
+    
+    user = await db.users.find_one({"id": data.user_id}, {"_id": 0})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    # Hash temporary password
+    hashed_password = hash_password(data.temporary_password)
+    
+    # Update user with temporary password and force change
+    await db.users.update_one(
+        {"id": data.user_id},
+        {"$set": {
+            "password": hashed_password,
+            "must_change_password": True,
+            "first_login": True
+        }}
+    )
+    
+    # TODO: Send email with temporary password
+    print(f"📧 Would send temporary password to: {user['email']}")
+    print(f"🔑 Temporary Password: {data.temporary_password}")
+    
+    return {
+        "message": f"Temporary password set for {user['email']}",
+        "email": user['email'],
+        "temporary_password": data.temporary_password  # Remove in production
+    }
+
+
 async def get_me(current_user: User = Depends(get_current_user)):
     return current_user
 
