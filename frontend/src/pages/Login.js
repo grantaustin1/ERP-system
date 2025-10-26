@@ -18,6 +18,10 @@ export default function Login() {
     full_name: ''
   });
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showChangePasswordDialog, setShowChangePasswordDialog] = useState(false);
+  const [isFirstLogin, setIsFirstLogin] = useState(false);
+  const [forgotPasswordMode, setForgotPasswordMode] = useState(false);
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
