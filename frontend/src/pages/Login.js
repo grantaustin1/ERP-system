@@ -29,17 +29,38 @@ export default function Login() {
     setLoading(true);
 
     try {
-      const endpoint = isLogin ? '/auth/login' : '/auth/register';
-      const response = await axios.post(`${API}${endpoint}`, formData);
-      
-      localStorage.setItem('token', response.data.access_token);
-      toast.success(isLogin ? 'Login successful!' : 'Registration successful!');
-      navigate('/');
+      if (forgotPasswordMode) {
+        // Request password reset
+        await axios.post(`${API}/auth/request-password-reset`, { email: formData.email });
+        toast.success('Password reset link sent to your email');
+        setForgotPasswordMode(false);
+        setFormData({ email: '', password: '', full_name: '' });
+      } else {
+        const endpoint = isLogin ? '/auth/login' : '/auth/register';
+        const response = await axios.post(`${API}${endpoint}`, formData);
+        
+        localStorage.setItem('token', response.data.access_token);
+        
+        // Check if user needs to change password
+        if (response.data.first_login || response.data.must_change_password) {
+          setIsFirstLogin(true);
+          setShowChangePasswordDialog(true);
+          toast.info('Please change your password to continue');
+        } else {
+          toast.success(isLogin ? 'Login successful!' : 'Registration successful!');
+          navigate('/');
+        }
+      }
     } catch (error) {
       toast.error(error.response?.data?.detail || 'An error occurred');
     } finally {
       setLoading(false);
     }
+  };
+
+  const handlePasswordChangeSuccess = () => {
+    toast.success('Password changed successfully!');
+    navigate('/');
   };
 
   return (
