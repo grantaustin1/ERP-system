@@ -19793,6 +19793,61 @@ async def send_bulk_notification(
     }
 
 
+
+# =================== RBAC & PERMISSIONS ENDPOINTS ===================
+
+@api_router.get("/rbac/modules")
+async def get_rbac_modules():
+    """Get all available RBAC modules and actions"""
+    from permissions import MODULES, ACTIONS, PERMISSIONS
+    return {
+        "modules": MODULES,
+        "actions": ACTIONS,
+        "permissions": list(PERMISSIONS.keys())
+    }
+
+@api_router.get("/rbac/permission-matrix")
+async def get_permission_matrix():
+    """Get the role-permission matrix from database"""
+    try:
+        matrix = await db.permission_matrix.find({}, {"_id": 0}).to_list(length=None)
+        return {"matrix": matrix}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to fetch permission matrix: {str(e)}")
+
+@api_router.get("/rbac/roles")
+async def get_rbac_roles():
+    """Get all available roles"""
+    from permissions import ROLES
+    return {"roles": ROLES}
+
+@api_router.get("/rbac/role/{role}/permissions")
+async def get_role_permissions(role: str):
+    """Get permissions for a specific role"""
+    try:
+        role_perms = await db.permission_matrix.find_one({"role": role}, {"_id": 0})
+        if not role_perms:
+            raise HTTPException(status_code=404, detail=f"Role '{role}' not found")
+        return role_perms
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to fetch role permissions: {str(e)}")
+
+@api_router.put("/rbac/role/{role}/permissions")
+async def update_role_permissions(role: str, permissions: Dict[str, List[str]]):
+    """Update permissions for a specific role"""
+    try:
+        result = await db.permission_matrix.update_one(
+            {"role": role},
+            {"$set": {"permissions": permissions.get("permissions", [])}},
+            upsert=True
+        )
+        return {"success": True, "modified": result.modified_count, "upserted": result.upserted_id is not None}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to update role permissions: {str(e)}")
+
+
 # Include the router in the main app (must be after all route definitions)
 app.include_router(api_router)
 
