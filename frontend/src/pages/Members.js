@@ -896,7 +896,7 @@ export default function Members() {
                 </form>
               </DialogContent>
             </Dialog>
-            </PermissionGuard>
+          </PermissionGuard>
           </div>
 
           {/* Search and Filter Section */}
