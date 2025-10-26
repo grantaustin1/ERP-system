@@ -8738,16 +8738,16 @@ async def create_lead(
     await db.leads.insert_one(lead.copy())
     
     # If this is a referral and member provided, create a referral reward (pending)
-    if referred_by_member_id:
+    if lead_data.referred_by_member_id:
         # Verify member exists
         referring_member = await db.members.find_one(
-            {"id": referred_by_member_id},
+            {"id": lead_data.referred_by_member_id},
             {"_id": 0, "id": 1}
         )
         if referring_member:
             reward = {
                 "id": str(uuid.uuid4()),
-                "referring_member_id": referred_by_member_id,
+                "referring_member_id": lead_data.referred_by_member_id,
                 "referred_lead_id": lead_id,
                 "reward_type": "pending_selection",
                 "reward_value": None,
