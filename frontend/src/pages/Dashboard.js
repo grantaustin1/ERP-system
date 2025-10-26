@@ -558,14 +558,16 @@ export default function Dashboard() {
                           <p className="text-sm text-slate-400">
                             {alertData?.green_members?.length || 0} highly engaged members
                           </p>
-                          <Button
-                            onClick={() => openNotificationDialog('green')}
-                            size="sm"
-                            className="bg-green-600 hover:bg-green-700"
-                          >
-                            <Send className="w-4 h-4 mr-2" />
-                            Send Notification
-                          </Button>
+                          <WithTooltip tooltip="Send a notification to all highly engaged (green) members">
+                            <Button
+                              onClick={() => openNotificationDialog('green')}
+                              size="sm"
+                              className="bg-green-600 hover:bg-green-700"
+                            >
+                              <Send className="w-4 h-4 mr-2" />
+                              Send Notification
+                            </Button>
+                          </WithTooltip>
                         </div>
                         <div className="space-y-2 max-h-96 overflow-y-auto">
                           {alertData?.green_members?.length > 0 ? (
