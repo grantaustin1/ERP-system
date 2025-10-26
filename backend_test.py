@@ -245,7 +245,148 @@ class ERP360APITestRunner:
             self.log_result("Retention Report Endpoint", False, f"Error: {str(e)}")
             return False
     
-    def test_pipeline_forecast_api(self):
+    # ===================== PRIORITY 2: VERIFY CRITICAL ENDPOINTS =====================
+    
+    def test_permission_matrix_endpoint(self):
+        """Test GET /api/rbac/permission-matrix - Should return all 15 roles"""
+        print("\n=== Testing Permission Matrix Endpoint ===")
+        
+        try:
+            response = requests.get(
+                f"{API_BASE}/rbac/permission-matrix",
+                headers=self.admin_headers
+            )
+            
+            if response.status_code == 200:
+                data = response.json()
+                
+                # Verify response structure
+                if "matrix" not in data:
+                    self.log_result("Permission Matrix - Structure", False, "Missing 'matrix' field")
+                    return False
+                
+                matrix = data["matrix"]
+                if not isinstance(matrix, list):
+                    self.log_result("Permission Matrix - Matrix Type", False, "matrix should be array")
+                    return False
+                
+                # Verify we have all 15 roles
+                if len(matrix) != 15:
+                    self.log_result("Permission Matrix - Role Count", False, f"Expected 15 roles, got {len(matrix)}")
+                    return False
+                
+                # Verify each role has required fields
+                for role in matrix:
+                    required_fields = ["role", "role_display_name", "permissions", "is_custom", "is_default"]
+                    for field in required_fields:
+                        if field not in role:
+                            self.log_result("Permission Matrix - Role Fields", False, f"Missing field: {field} in role")
+                            return False
+                
+                self.log_result("Permission Matrix Endpoint", True, f"Retrieved all 15 roles successfully")
+                return True
+                
+            else:
+                error_msg = f"Failed with status {response.status_code}"
+                try:
+                    error_detail = response.json()
+                    error_msg += f": {error_detail}"
+                except:
+                    error_msg += f": {response.text}"
+                self.log_result("Permission Matrix Endpoint", False, error_msg)
+                return False
+            
+        except Exception as e:
+            self.log_result("Permission Matrix Endpoint", False, f"Error: {str(e)}")
+            return False
+    
+    def test_auth_me_endpoint(self):
+        """Test GET /api/auth/me - Should return current user info"""
+        print("\n=== Testing Auth Me Endpoint ===")
+        
+        try:
+            response = requests.get(
+                f"{API_BASE}/auth/me",
+                headers=self.admin_headers
+            )
+            
+            if response.status_code == 200:
+                data = response.json()
+                
+                # Verify response structure
+                required_fields = ["id", "email", "full_name", "role"]
+                
+                for field in required_fields:
+                    if field not in data:
+                        self.log_result("Auth Me - Structure", False, f"Missing field: {field}")
+                        return False
+                
+                # Verify email matches admin email
+                if data["email"] != ADMIN_EMAIL:
+                    self.log_result("Auth Me - Email Mismatch", False, f"Expected {ADMIN_EMAIL}, got {data['email']}")
+                    return False
+                
+                self.log_result("Auth Me Endpoint", True, f"User: {data['email']}, Role: {data['role']}")
+                return True
+                
+            else:
+                error_msg = f"Failed with status {response.status_code}"
+                try:
+                    error_detail = response.json()
+                    error_msg += f": {error_detail}"
+                except:
+                    error_msg += f": {response.text}"
+                self.log_result("Auth Me Endpoint", False, error_msg)
+                return False
+            
+        except Exception as e:
+            self.log_result("Auth Me Endpoint", False, f"Error: {str(e)}")
+            return False
+    
+    def test_members_list_endpoint(self):
+        """Test GET /api/members - Should return member list"""
+        print("\n=== Testing Members List Endpoint ===")
+        
+        try:
+            response = requests.get(
+                f"{API_BASE}/members",
+                headers=self.admin_headers
+            )
+            
+            if response.status_code == 200:
+                data = response.json()
+                
+                # Verify response is an array
+                if not isinstance(data, list):
+                    self.log_result("Members List - Type", False, "Response should be array")
+                    return False
+                
+                # If we have members, verify structure
+                if len(data) > 0:
+                    member = data[0]
+                    required_fields = ["id", "first_name", "last_name", "email", "phone", "membership_type_id"]
+                    
+                    for field in required_fields:
+                        if field not in member:
+                            self.log_result("Members List - Member Fields", False, f"Missing field: {field}")
+                            return False
+                
+                self.log_result("Members List Endpoint", True, f"Retrieved {len(data)} members")
+                return True
+                
+            else:
+                error_msg = f"Failed with status {response.status_code}"
+                try:
+                    error_detail = response.json()
+                    error_msg += f": {error_detail}"
+                except:
+                    error_msg += f": {response.text}"
+                self.log_result("Members List Endpoint", False, error_msg)
+                return False
+            
+        except Exception as e:
+            self.log_result("Members List Endpoint", False, f"Error: {str(e)}")
+            return False
         """Test GET /api/reports/pipeline-forecast endpoint"""
         print("\n=== Testing Pipeline Forecast API ===")
         
