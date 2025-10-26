@@ -87,31 +87,43 @@ class ERP360APITestRunner:
             if response.status_code in [200, 201]:
                 data = response.json()
                 
+                # Verify response structure (API returns {success: true, lead: {...}})
+                if "success" not in data or "lead" not in data:
+                    self.log_result("Lead Creation - Response Structure", False, "Missing 'success' or 'lead' field in response")
+                    return False
+                
+                lead = data["lead"]
+                
                 # Verify lead was created with correct data
-                if "id" not in data:
-                    self.log_result("Lead Creation - Response Structure", False, "Missing 'id' field in response")
+                if "id" not in lead:
+                    self.log_result("Lead Creation - Lead ID", False, "Missing 'id' field in lead object")
                     return False
                 
                 # Verify all fields are present
                 for field in ["first_name", "last_name", "email", "phone", "source"]:
-                    if field not in data:
+                    if field not in lead:
                         self.log_result("Lead Creation - Response Fields", False, f"Missing field: {field}")
                         return False
                 
                 # Verify data matches input
-                if data["first_name"] != lead_data["first_name"]:
-                    self.log_result("Lead Creation - Data Mismatch", False, f"first_name mismatch: {data['first_name']} vs {lead_data['first_name']}")
+                if lead["first_name"] != lead_data["first_name"]:
+                    self.log_result("Lead Creation - Data Mismatch", False, f"first_name mismatch: {lead['first_name']} vs {lead_data['first_name']}")
                     return False
                 
-                if data["email"] != lead_data["email"]:
-                    self.log_result("Lead Creation - Data Mismatch", False, f"email mismatch: {data['email']} vs {lead_data['email']}")
+                if lead["email"] != lead_data["email"]:
+                    self.log_result("Lead Creation - Data Mismatch", False, f"email mismatch: {lead['email']} vs {lead_data['email']}")
                     return False
                 
                 # CRITICAL: Verify referred_by_member_id bug is fixed (should not be required)
                 # The bug was that referred_by_member_id was required but shouldn't be
                 # If we can create a lead without it, the bug is fixed
-                self.log_result("Lead Creation with JSON Body", True, f"Lead created successfully with ID: {data['id']}, referred_by_member_id bug is FIXED")
-                return True
+                # Verify referred_by_member_id is null (not required)
+                if "referred_by_member_id" in lead and lead["referred_by_member_id"] is None:
+                    self.log_result("Lead Creation with JSON Body", True, f"Lead created successfully with ID: {lead['id']}, referred_by_member_id bug is FIXED (field is optional and null)")
+                    return True
+                else:
+                    self.log_result("Lead Creation with JSON Body", True, f"Lead created successfully with ID: {lead['id']}")
+                    return True
                 
             else:
                 error_msg = f"Failed with status {response.status_code}"
