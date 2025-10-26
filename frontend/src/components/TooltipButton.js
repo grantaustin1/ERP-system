@@ -65,11 +65,13 @@ export function WithTooltip({ children, tooltip, side = "top" }) {
     <TooltipProvider delayDuration={300}>
       <Tooltip>
         <TooltipTrigger asChild>
-          {children}
+          <span className="inline-block">
+            {children}
+          </span>
         </TooltipTrigger>
         <TooltipContent 
           side={side}
-          className="bg-slate-900 text-white border-slate-700 max-w-xs"
+          className="bg-slate-900 text-white border-slate-700 max-w-xs z-50"
         >
           <p>{tooltip}</p>
         </TooltipContent>
