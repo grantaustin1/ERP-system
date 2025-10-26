@@ -8309,6 +8309,20 @@ class ReferralRewardCreate(BaseModel):
     reward_value: Optional[str] = None
     notes: Optional[str] = None
 
+class SalesLeadCreate(BaseModel):
+    first_name: str
+    last_name: str
+    email: Optional[str] = None
+    phone: Optional[str] = None
+    company: Optional[str] = None
+    source_id: Optional[str] = None
+    source: str = "other"
+    status_id: Optional[str] = None
+    referred_by_member_id: Optional[str] = None
+    assigned_to: Optional[str] = None
+    notes: Optional[str] = None
+
+
 
 # ==================== SALES CRM CONFIGURATION ENDPOINTS ====================
 
