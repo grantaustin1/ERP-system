@@ -596,6 +596,8 @@ class SetInitialPassword(BaseModel):
 class Token(BaseModel):
     access_token: str
     token_type: str = "bearer"
+    first_login: bool = False
+    must_change_password: bool = False
 
 # ===================== RBAC & Permission Models =====================
 
