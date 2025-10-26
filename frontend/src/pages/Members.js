@@ -554,10 +554,12 @@ export default function Members() {
                 }
               }}>
                 <DialogTrigger asChild>
-                  <Button className="bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700" data-testid="add-member-button">
-                    <UserPlus className="w-4 h-4 mr-2" />
-                    Add Member
-                  </Button>
+                  <WithTooltip tooltip="Add a new member to the gym system">
+                    <Button className="bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700" data-testid="add-member-button">
+                      <UserPlus className="w-4 h-4 mr-2" />
+                      Add Member
+                    </Button>
+                  </WithTooltip>
                 </DialogTrigger>
               <DialogContent className="bg-slate-800 border-slate-700 text-white max-w-2xl max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
