@@ -141,9 +141,6 @@ export default function Sidebar() {
   const isItemVisible = (item) => {
     // Check module-based permissions
     if (item.module && !canView(item.module)) {
-      if (item.label === 'Settings' || item.label === 'User Roles' || item.label === 'Import Data' || item.label === 'Permissions') {
-        console.log(`[Sidebar] Item '${item.label}' filtered out - no permission for module '${item.module}'`);
-      }
       return false;
     }
     
