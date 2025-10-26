@@ -574,6 +574,8 @@ class UserCreate(BaseModel):
     full_name: str
 
 class UserLogin(BaseModel):
+    email: EmailStr
+    password: str
 
 class PasswordChangeRequest(BaseModel):
     old_password: str
