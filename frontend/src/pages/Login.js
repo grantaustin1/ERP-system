@@ -157,7 +157,7 @@ export default function Login() {
               className="text-sm text-emerald-400 hover:text-emerald-300 transition-colors"
               data-testid="toggle-auth-button"
             >
-              {isLogin ? "Don't have an account? Sign up" : 'Already have an account? Sign in'}
+              {forgotPasswordMode ? 'Back to login' : isLogin ? "Don't have an account? Sign up" : 'Already have an account? Sign in'}
             </button>
           </div>
           <div className="mt-4 text-center">
@@ -172,6 +172,14 @@ export default function Login() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Change Password Dialog */}
+      <ChangePasswordDialog
+        open={showChangePasswordDialog}
+        onOpenChange={setShowChangePasswordDialog}
+        isFirstLogin={isFirstLogin}
+        onSuccess={handlePasswordChangeSuccess}
+      />
     </div>
   );
 }
