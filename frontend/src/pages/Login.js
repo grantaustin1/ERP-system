@@ -44,9 +44,7 @@ export default function Login() {
         localStorage.setItem('token', response.data.access_token);
         
         // Refresh permissions after successful login
-        console.log('[Login] Token saved, refreshing permissions...');
         await refreshPermissions();
-        console.log('[Login] Permissions refreshed');
         
         // Check if user needs to change password
         if (response.data.first_login || response.data.must_change_password) {
