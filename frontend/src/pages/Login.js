@@ -153,7 +153,14 @@ export default function Login() {
           <div className="mt-4 text-center">
             <button
               type="button"
-              onClick={() => setIsLogin(!isLogin)}
+              onClick={() => {
+                if (forgotPasswordMode) {
+                  setForgotPasswordMode(false);
+                } else {
+                  setIsLogin(!isLogin);
+                }
+                setFormData({ email: '', password: '', full_name: '' });
+              }}
               className="text-sm text-emerald-400 hover:text-emerald-300 transition-colors"
               data-testid="toggle-auth-button"
             >
