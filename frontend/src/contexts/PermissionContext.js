@@ -66,7 +66,12 @@ export const PermissionProvider = ({ children }) => {
   };
 
   const canView = (module) => {
-    return hasPermission(`${module}:view`);
+    const permission = `${module}:view`;
+    const result = hasPermission(permission);
+    if (module === 'settings' || module === 'staff' || module === 'import') {
+      console.log(`[PermissionContext] canView('${module}') = ${result}, checking: ${permission}`);
+    }
+    return result;
   };
 
   const canCreate = (module) => {
