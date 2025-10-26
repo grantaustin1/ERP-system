@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { API } from '@/App';
 import Sidebar from '@/components/Sidebar';
+import PermissionGuard from '@/components/PermissionGuard';
+import { usePermissions } from '@/contexts/PermissionContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
