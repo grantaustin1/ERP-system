@@ -65,19 +65,20 @@ function PrivateRoute({ children }) {
 
 function App() {
   return (
-    <div className="App">
-      <PermissionProvider>
-        <BrowserRouter>
-          <Routes>
-            <Route path="/login" element={<Login />} />
-            <Route path="/member-portal" element={<MemberPortal />} />
-            <Route path="/" element={<PrivateRoute><Dashboard /></PrivateRoute>} />
-            <Route path="/dashboard" element={<PrivateRoute><Dashboard /></PrivateRoute>} />
-            <Route path="/members" element={<PrivateRoute><Members /></PrivateRoute>} />
-            <Route path="/access" element={<PrivateRoute><AccessControl /></PrivateRoute>} />
-            <Route path="/classes" element={<PrivateRoute><Classes /></PrivateRoute>} />
-            <Route path="/billing" element={<PrivateRoute><BillingEnhanced /></PrivateRoute>} />
-            <Route path="/invoices" element={<PrivateRoute><InvoiceManagement /></PrivateRoute>} />
+    <TooltipProvider delayDuration={300}>
+      <div className="App">
+        <PermissionProvider>
+          <BrowserRouter>
+            <Routes>
+              <Route path="/login" element={<Login />} />
+              <Route path="/member-portal" element={<MemberPortal />} />
+              <Route path="/" element={<PrivateRoute><Dashboard /></PrivateRoute>} />
+              <Route path="/dashboard" element={<PrivateRoute><Dashboard /></PrivateRoute>} />
+              <Route path="/members" element={<PrivateRoute><Members /></PrivateRoute>} />
+              <Route path="/access" element={<PrivateRoute><AccessControl /></PrivateRoute>} />
+              <Route path="/classes" element={<PrivateRoute><Classes /></PrivateRoute>} />
+              <Route path="/billing" element={<PrivateRoute><BillingEnhanced /></PrivateRoute>} />
+              <Route path="/invoices" element={<PrivateRoute><InvoiceManagement /></PrivateRoute>} />
             <Route path="/cancellations" element={<PrivateRoute><Cancellations /></PrivateRoute>} />
             <Route path="/levies" element={<PrivateRoute><Levies /></PrivateRoute>} />
             <Route path="/marketing" element={<PrivateRoute><Marketing /></PrivateRoute>} />
