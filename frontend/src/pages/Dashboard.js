@@ -481,22 +481,24 @@ export default function Dashboard() {
                       Track member activity based on {alertData?.config?.days_period || 30}-day access patterns
                     </CardDescription>
                   </div>
-                  <Button 
-                    onClick={generateMockData}
-                    disabled={generatingMockData}
-                    size="sm"
-                    variant="outline"
-                    className="border-slate-600 text-slate-300"
-                  >
-                    {generatingMockData ? (
-                      <>
-                        <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
-                        Generating...
-                      </>
-                    ) : (
-                      'Generate Mock Data'
-                    )}
-                  </Button>
+                  <WithTooltip tooltip="Generate sample member engagement data for testing">
+                    <Button 
+                      onClick={generateMockData}
+                      disabled={generatingMockData}
+                      size="sm"
+                      variant="outline"
+                      className="border-slate-600 text-slate-300"
+                    >
+                      {generatingMockData ? (
+                        <>
+                          <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                          Generating...
+                        </>
+                      ) : (
+                        'Generate Mock Data'
+                      )}
+                    </Button>
+                  </WithTooltip>
                 </div>
               </CardHeader>
               <CardContent>
