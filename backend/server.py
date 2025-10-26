@@ -561,6 +561,12 @@ class User(BaseModel):
     full_name: str
     role: str = "admin"  # admin, staff, member
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    # Password management fields
+    first_login: bool = True  # True if user hasn't logged in yet
+    must_change_password: bool = False  # Force password change on next login
+    password_changed_at: Optional[datetime] = None
+    password_reset_token: Optional[str] = None
+    password_reset_token_expires: Optional[datetime] = None
 
 class UserCreate(BaseModel):
     email: EmailStr
