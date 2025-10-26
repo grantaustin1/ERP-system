@@ -544,19 +544,20 @@ export default function Members() {
               <h1 className="text-4xl font-bold text-white mb-2" data-testid="members-title">Members</h1>
               <p className="text-slate-400">Manage gym members and memberships</p>
             </div>
-            <Dialog open={dialogOpen} onOpenChange={(open) => {
-              setDialogOpen(open);
-              if (open) {
-                // Reset manual edit flag when opening dialog for new member
-                setAccountHolderManuallyEdited(false);
-              }
-            }}>
-              <DialogTrigger asChild>
-                <Button className="bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700" data-testid="add-member-button">
-                  <UserPlus className="w-4 h-4 mr-2" />
-                  Add Member
-                </Button>
-              </DialogTrigger>
+            <PermissionGuard permission="members:create">
+              <Dialog open={dialogOpen} onOpenChange={(open) => {
+                setDialogOpen(open);
+                if (open) {
+                  // Reset manual edit flag when opening dialog for new member
+                  setAccountHolderManuallyEdited(false);
+                }
+              }}>
+                <DialogTrigger asChild>
+                  <Button className="bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700" data-testid="add-member-button">
+                    <UserPlus className="w-4 h-4 mr-2" />
+                    Add Member
+                  </Button>
+                </DialogTrigger>
               <DialogContent className="bg-slate-800 border-slate-700 text-white max-w-2xl max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
                   <DialogTitle>Add New Member</DialogTitle>
