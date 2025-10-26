@@ -8686,30 +8686,22 @@ async def get_leads(
 
 @api_router.post("/sales/leads")
 async def create_lead(
-    first_name: str,
-    last_name: str,
-    email: Optional[str] = None,
-    phone: Optional[str] = None,
-    company: Optional[str] = None,
-    source_id: Optional[str] = None,  # NEW: reference to lead_sources
-    source: str = "other",  # Keep for backward compatibility
-    status_id: Optional[str] = None,  # NEW: reference to lead_statuses
-    referred_by_member_id: Optional[str] = None,  # NEW: for referrals
-    assigned_to: Optional[str] = None,
-    notes: Optional[str] = None,
+    lead_data: SalesLeadCreate,
     current_user: User = Depends(get_current_user)
 ):
-    """Create a new lead with configurable source and status"""
+    """Create a new lead with configurable source and status (accepts JSON body)"""
     import uuid
     from datetime import datetime
     
     # If source_id not provided, try to find default source
+    source_id = lead_data.source_id
     if not source_id:
         default_source = await db.lead_sources.find_one({"name": "Other"})
         if default_source:
             source_id = default_source["id"]
     
     # If status_id not provided, use "New Lead" status
+    status_id = lead_data.status_id
     if not status_id:
         default_status = await db.lead_statuses.find_one({"name": "New Lead"})
         if default_status:
@@ -8719,27 +8711,27 @@ async def create_lead(
     now = datetime.now(timezone.utc).isoformat()
     lead = {
         "id": lead_id,
-        "first_name": first_name,
-        "last_name": last_name,
-        "email": email,
-        "phone": phone,
-        "company": company,
-        "source": source,  # Keep for backward compatibility
+        "first_name": lead_data.first_name,
+        "last_name": lead_data.last_name,
+        "email": lead_data.email,
+        "phone": lead_data.phone,
+        "company": lead_data.company,
+        "source": lead_data.source,  # Keep for backward compatibility
         "source_id": source_id,  # NEW
         "status": "new",  # Keep for backward compatibility
         "status_id": status_id,  # NEW
-        "referred_by_member_id": referred_by_member_id,  # NEW
+        "referred_by_member_id": lead_data.referred_by_member_id,  # NEW
         "loss_reason_id": None,  # NEW
         "loss_notes": None,  # NEW
         "lead_score": 0,
-        "assigned_to": assigned_to,  # Will be None if not provided
-        "assigned_by": current_user.id if assigned_to else None,  # NEW: Track who assigned
-        "assigned_at": now if assigned_to else None,  # NEW: Track when assigned
+        "assigned_to": lead_data.assigned_to,  # Will be None if not provided
+        "assigned_by": current_user.id if lead_data.assigned_to else None,  # NEW: Track who assigned
+        "assigned_at": now if lead_data.assigned_to else None,  # NEW: Track when assigned
         "assignment_history": [],  # NEW: Track assignment history
         "created_at": now,
         "updated_at": now,
         "last_contacted": None,
-        "notes": notes,
+        "notes": lead_data.notes,
         "tags": []
     }
     
