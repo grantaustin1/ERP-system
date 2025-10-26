@@ -216,33 +216,43 @@ class ERP360APITestRunner:
             if response.status_code == 200:
                 data = response.json()
                 
-                # Verify response structure
-                required_fields = ["retention_data", "churn_rate", "cohort_analysis"]
+                # Verify response structure (actual API returns: period, summary, retention_by_cohort)
+                required_fields = ["period", "summary", "retention_by_cohort"]
                 
                 for field in required_fields:
                     if field not in data:
                         self.log_result("Retention Report - Structure", False, f"Missing field: {field}")
                         return False
                 
-                # Verify retention_data structure
-                retention_data = data["retention_data"]
-                if not isinstance(retention_data, list):
-                    self.log_result("Retention Report - Retention Data", False, "retention_data should be array")
-                    return False
+                # Verify period structure
+                period = data["period"]
+                period_fields = ["start_date", "end_date", "months"]
+                for field in period_fields:
+                    if field not in period:
+                        self.log_result("Retention Report - Period", False, f"Missing period field: {field}")
+                        return False
+                
+                # Verify summary structure
+                summary = data["summary"]
+                summary_fields = ["total_members", "active_members", "churn_rate", "retention_rate"]
+                for field in summary_fields:
+                    if field not in summary:
+                        self.log_result("Retention Report - Summary", False, f"Missing summary field: {field}")
+                        return False
                 
                 # Verify churn_rate is a number
-                churn_rate = data["churn_rate"]
+                churn_rate = summary["churn_rate"]
                 if not isinstance(churn_rate, (int, float)):
                     self.log_result("Retention Report - Churn Rate", False, f"churn_rate should be number, got {type(churn_rate)}")
                     return False
                 
-                # Verify cohort_analysis structure
-                cohort_analysis = data["cohort_analysis"]
-                if not isinstance(cohort_analysis, list):
-                    self.log_result("Retention Report - Cohort Analysis", False, "cohort_analysis should be array")
+                # Verify retention_by_cohort structure
+                retention_by_cohort = data["retention_by_cohort"]
+                if not isinstance(retention_by_cohort, list):
+                    self.log_result("Retention Report - Cohort Analysis", False, "retention_by_cohort should be array")
                     return False
                 
-                self.log_result("Retention Report Endpoint", True, f"Churn rate: {churn_rate}%, Retention data points: {len(retention_data)}, Cohorts: {len(cohort_analysis)}")
+                self.log_result("Retention Report Endpoint", True, f"Churn rate: {churn_rate}%, Retention rate: {summary['retention_rate']}%, Total members: {summary['total_members']}, Cohorts: {len(retention_by_cohort)}")
                 return True
                 
             else:
