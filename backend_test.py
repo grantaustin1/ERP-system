@@ -62,64 +62,187 @@ class ERP360APITestRunner:
             self.log_result("Authentication", False, f"Authentication error: {str(e)}")
             return False
     
-    # ===================== APP SETTINGS API TESTS =====================
+    # ===================== PRIORITY 1: TEST THE 3 API FIXES =====================
     
-    def test_app_settings_get_api(self):
-        """Test GET /api/settings/app endpoint"""
-        print("\n=== Testing App Settings GET API ===")
+    def test_lead_creation_with_json_body(self):
+        """Test POST /api/sales/leads with JSON body - Fix #1"""
+        print("\n=== Testing Lead Creation with JSON Body (FIX #1) ===")
         
         try:
-            # Test 1: Get app settings (should return defaults if none exist)
-            response = requests.get(f"{API_BASE}/settings/app", headers=self.admin_headers)
+            # Test 1: Create lead with JSON body
+            lead_data = {
+                "first_name": "Jane",
+                "last_name": "Doe",
+                "email": "jane@test.com",
+                "phone": "+27111222333",
+                "source": "website"
+            }
+            
+            response = requests.post(
+                f"{API_BASE}/sales/leads",
+                json=lead_data,
+                headers=self.admin_headers
+            )
+            
+            if response.status_code in [200, 201]:
+                data = response.json()
+                
+                # Verify lead was created with correct data
+                if "id" not in data:
+                    self.log_result("Lead Creation - Response Structure", False, "Missing 'id' field in response")
+                    return False
+                
+                # Verify all fields are present
+                for field in ["first_name", "last_name", "email", "phone", "source"]:
+                    if field not in data:
+                        self.log_result("Lead Creation - Response Fields", False, f"Missing field: {field}")
+                        return False
+                
+                # Verify data matches input
+                if data["first_name"] != lead_data["first_name"]:
+                    self.log_result("Lead Creation - Data Mismatch", False, f"first_name mismatch: {data['first_name']} vs {lead_data['first_name']}")
+                    return False
+                
+                if data["email"] != lead_data["email"]:
+                    self.log_result("Lead Creation - Data Mismatch", False, f"email mismatch: {data['email']} vs {lead_data['email']}")
+                    return False
+                
+                # CRITICAL: Verify referred_by_member_id bug is fixed (should not be required)
+                # The bug was that referred_by_member_id was required but shouldn't be
+                # If we can create a lead without it, the bug is fixed
+                self.log_result("Lead Creation with JSON Body", True, f"Lead created successfully with ID: {data['id']}, referred_by_member_id bug is FIXED")
+                return True
+                
+            else:
+                error_msg = f"Failed with status {response.status_code}"
+                try:
+                    error_detail = response.json()
+                    error_msg += f": {error_detail}"
+                except:
+                    error_msg += f": {response.text}"
+                self.log_result("Lead Creation with JSON Body", False, error_msg)
+                return False
+            
+        except Exception as e:
+            self.log_result("Lead Creation with JSON Body", False, f"Error: {str(e)}")
+            return False
+    
+    def test_payment_analytics_endpoint(self):
+        """Test GET /api/reports/payment-analytics - Fix #2"""
+        print("\n=== Testing Payment Analytics Endpoint (FIX #2) ===")
+        
+        try:
+            # Test with period_months parameter
+            response = requests.get(
+                f"{API_BASE}/reports/payment-analytics",
+                params={"period_months": 12},
+                headers=self.admin_headers
+            )
             
             if response.status_code == 200:
                 data = response.json()
                 
-                # Verify response structure - all required fields should be present
-                required_fields = [
-                    "member_portal_enabled", 
-                    "member_portal_require_active_status",
-                    "enable_email_notifications",
-                    "enable_sms_notifications", 
-                    "enable_whatsapp_notifications",
-                    "enable_inapp_notifications"
-                ]
+                # Verify response structure
+                required_fields = ["payment_methods", "revenue_trends", "summary"]
                 
                 for field in required_fields:
                     if field not in data:
-                        self.log_result("App Settings Structure", False, f"Missing field: {field}")
+                        self.log_result("Payment Analytics - Structure", False, f"Missing field: {field}")
                         return False
                 
-                # Verify default values are boolean
-                for field in required_fields:
-                    if not isinstance(data[field], bool):
-                        self.log_result("App Settings Data Types", False, f"Field {field} should be boolean, got {type(data[field])}")
+                # Verify payment_methods structure
+                payment_methods = data["payment_methods"]
+                if not isinstance(payment_methods, list):
+                    self.log_result("Payment Analytics - Payment Methods", False, "payment_methods should be array")
+                    return False
+                
+                # Verify revenue_trends structure
+                revenue_trends = data["revenue_trends"]
+                if not isinstance(revenue_trends, list):
+                    self.log_result("Payment Analytics - Revenue Trends", False, "revenue_trends should be array")
+                    return False
+                
+                # Verify summary structure
+                summary = data["summary"]
+                summary_fields = ["total_revenue", "total_payments", "avg_payment_amount"]
+                for field in summary_fields:
+                    if field not in summary:
+                        self.log_result("Payment Analytics - Summary", False, f"Missing summary field: {field}")
                         return False
                 
-                # Verify default values match expected defaults
-                expected_defaults = {
-                    "member_portal_enabled": True,
-                    "member_portal_require_active_status": True,
-                    "enable_email_notifications": True,
-                    "enable_sms_notifications": True,
-                    "enable_whatsapp_notifications": False,
-                    "enable_inapp_notifications": True
-                }
-                
-                for field, expected_value in expected_defaults.items():
-                    if data[field] != expected_value:
-                        self.log_result("App Settings Default Values", False, f"Field {field} should default to {expected_value}, got {data[field]}")
-                        return False
-                
-                self.log_result("App Settings GET", True, f"Retrieved settings with all required fields and correct defaults")
+                self.log_result("Payment Analytics Endpoint", True, f"Total revenue: R{summary['total_revenue']:.2f}, Total payments: {summary['total_payments']}")
                 return True
                 
             else:
-                self.log_result("App Settings GET", False, f"Failed: {response.status_code}")
+                error_msg = f"Failed with status {response.status_code}"
+                try:
+                    error_detail = response.json()
+                    error_msg += f": {error_detail}"
+                except:
+                    error_msg += f": {response.text}"
+                self.log_result("Payment Analytics Endpoint", False, error_msg)
                 return False
             
         except Exception as e:
-            self.log_result("App Settings GET API", False, f"Error: {str(e)}")
+            self.log_result("Payment Analytics Endpoint", False, f"Error: {str(e)}")
+            return False
+    
+    def test_retention_report_endpoint(self):
+        """Test GET /api/reports/retention - Fix #3"""
+        print("\n=== Testing Retention Report Endpoint (FIX #3) ===")
+        
+        try:
+            # Test with period_months parameter
+            response = requests.get(
+                f"{API_BASE}/reports/retention",
+                params={"period_months": 12},
+                headers=self.admin_headers
+            )
+            
+            if response.status_code == 200:
+                data = response.json()
+                
+                # Verify response structure
+                required_fields = ["retention_data", "churn_rate", "cohort_analysis"]
+                
+                for field in required_fields:
+                    if field not in data:
+                        self.log_result("Retention Report - Structure", False, f"Missing field: {field}")
+                        return False
+                
+                # Verify retention_data structure
+                retention_data = data["retention_data"]
+                if not isinstance(retention_data, list):
+                    self.log_result("Retention Report - Retention Data", False, "retention_data should be array")
+                    return False
+                
+                # Verify churn_rate is a number
+                churn_rate = data["churn_rate"]
+                if not isinstance(churn_rate, (int, float)):
+                    self.log_result("Retention Report - Churn Rate", False, f"churn_rate should be number, got {type(churn_rate)}")
+                    return False
+                
+                # Verify cohort_analysis structure
+                cohort_analysis = data["cohort_analysis"]
+                if not isinstance(cohort_analysis, list):
+                    self.log_result("Retention Report - Cohort Analysis", False, "cohort_analysis should be array")
+                    return False
+                
+                self.log_result("Retention Report Endpoint", True, f"Churn rate: {churn_rate}%, Retention data points: {len(retention_data)}, Cohorts: {len(cohort_analysis)}")
+                return True
+                
+            else:
+                error_msg = f"Failed with status {response.status_code}"
+                try:
+                    error_detail = response.json()
+                    error_msg += f": {error_detail}"
+                except:
+                    error_msg += f": {response.text}"
+                self.log_result("Retention Report Endpoint", False, error_msg)
+                return False
+            
+        except Exception as e:
+            self.log_result("Retention Report Endpoint", False, f"Error: {str(e)}")
             return False
     
     def test_pipeline_forecast_api(self):
