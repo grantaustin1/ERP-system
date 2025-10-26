@@ -1380,13 +1380,15 @@ export default function Settings() {
 
                   {/* Save Button */}
                   <div className="flex justify-end pt-6 border-t border-slate-700">
-                    <Button 
-                      onClick={handleSaveAppSettings}
-                      className="bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700"
-                    >
-                      <SettingsIcon className="w-4 h-4 mr-2" />
-                      Save App Settings
-                    </Button>
+                    <WithTooltip tooltip="Save application settings including member portal, notifications, and freeze policy">
+                      <Button 
+                        onClick={handleSaveAppSettings}
+                        className="bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700"
+                      >
+                        <SettingsIcon className="w-4 h-4 mr-2" />
+                        Save App Settings
+                      </Button>
+                    </WithTooltip>
                   </div>
                 </CardContent>
               </Card>
