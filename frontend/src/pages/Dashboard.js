@@ -600,14 +600,16 @@ export default function Dashboard() {
                           <p className="text-sm text-slate-400">
                             {alertData?.amber_members?.length || 0} moderately engaged members
                           </p>
-                          <Button
-                            onClick={() => openNotificationDialog('amber')}
-                            size="sm"
-                            className="bg-amber-600 hover:bg-amber-700"
-                          >
-                            <Send className="w-4 h-4 mr-2" />
-                            Send Notification
-                          </Button>
+                          <WithTooltip tooltip="Send a notification to moderately engaged (amber) members to re-engage them">
+                            <Button
+                              onClick={() => openNotificationDialog('amber')}
+                              size="sm"
+                              className="bg-amber-600 hover:bg-amber-700"
+                            >
+                              <Send className="w-4 h-4 mr-2" />
+                              Send Notification
+                            </Button>
+                          </WithTooltip>
                         </div>
                         <div className="space-y-2 max-h-96 overflow-y-auto">
                           {alertData?.amber_members?.length > 0 ? (
