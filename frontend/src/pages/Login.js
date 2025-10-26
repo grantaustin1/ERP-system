@@ -9,6 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { toast } from 'sonner';
 import { Dumbbell, Eye, EyeOff } from 'lucide-react';
 import ChangePasswordDialog from '@/components/ChangePasswordDialog';
+import { usePermissions } from '@/contexts/PermissionContext';
 
 export default function Login() {
   const [isLogin, setIsLogin] = useState(true);
@@ -23,6 +24,7 @@ export default function Login() {
   const [isFirstLogin, setIsFirstLogin] = useState(false);
   const [forgotPasswordMode, setForgotPasswordMode] = useState(false);
   const navigate = useNavigate();
+  const { refreshPermissions } = usePermissions();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -40,6 +42,11 @@ export default function Login() {
         const response = await axios.post(`${API}${endpoint}`, formData);
         
         localStorage.setItem('token', response.data.access_token);
+        
+        // Refresh permissions after successful login
+        console.log('[Login] Token saved, refreshing permissions...');
+        await refreshPermissions();
+        console.log('[Login] Permissions refreshed');
         
         // Check if user needs to change password
         if (response.data.first_login || response.data.must_change_password) {
