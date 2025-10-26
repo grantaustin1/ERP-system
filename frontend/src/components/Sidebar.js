@@ -180,6 +180,15 @@ export default function Sidebar() {
       items: category.items.filter(isItemVisible)
     }))
     .filter(category => category.items.length > 0);
+  
+  // Log System category status
+  const systemCategory = menuCategories.find(cat => cat.name === 'System');
+  if (systemCategory) {
+    const systemVisibleItems = systemCategory.items.filter(isItemVisible);
+    console.log('[Sidebar] System category - Total items:', systemCategory.items.length, 'Visible items:', systemVisibleItems.length);
+    console.log('[Sidebar] System visible items:', systemVisibleItems.map(i => i.label));
+  }
+  console.log('[Sidebar] Visible categories:', visibleCategories.map(c => c.name));
 
   return (
     <div className="w-64 bg-slate-900/50 backdrop-blur-lg border-r border-slate-700 p-6 flex flex-col">
