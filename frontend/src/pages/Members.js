@@ -4,6 +4,7 @@ import { API } from '@/App';
 import Sidebar from '@/components/Sidebar';
 import PermissionGuard from '@/components/PermissionGuard';
 import { usePermissions } from '@/contexts/PermissionContext';
+import { WithTooltip } from '@/components/TooltipButton';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
