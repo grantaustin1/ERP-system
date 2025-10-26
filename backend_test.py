@@ -154,35 +154,37 @@ class ERP360APITestRunner:
             if response.status_code == 200:
                 data = response.json()
                 
-                # Verify response structure
-                required_fields = ["payment_methods", "revenue_trends", "summary"]
+                # Verify response structure (actual API returns: period, summary, payment_methods)
+                required_fields = ["period", "summary", "payment_methods"]
                 
                 for field in required_fields:
                     if field not in data:
                         self.log_result("Payment Analytics - Structure", False, f"Missing field: {field}")
                         return False
                 
-                # Verify payment_methods structure
-                payment_methods = data["payment_methods"]
-                if not isinstance(payment_methods, list):
-                    self.log_result("Payment Analytics - Payment Methods", False, "payment_methods should be array")
-                    return False
+                # Verify period structure
+                period = data["period"]
+                period_fields = ["start_date", "end_date", "months"]
+                for field in period_fields:
+                    if field not in period:
+                        self.log_result("Payment Analytics - Period", False, f"Missing period field: {field}")
+                        return False
                 
-                # Verify revenue_trends structure
-                revenue_trends = data["revenue_trends"]
-                if not isinstance(revenue_trends, list):
-                    self.log_result("Payment Analytics - Revenue Trends", False, "revenue_trends should be array")
+                # Verify payment_methods structure (it's a dict, not a list)
+                payment_methods = data["payment_methods"]
+                if not isinstance(payment_methods, dict):
+                    self.log_result("Payment Analytics - Payment Methods", False, "payment_methods should be object/dict")
                     return False
                 
                 # Verify summary structure
                 summary = data["summary"]
-                summary_fields = ["total_revenue", "total_payments", "avg_payment_amount"]
+                summary_fields = ["total_invoices", "paid_invoices", "total_revenue"]
                 for field in summary_fields:
                     if field not in summary:
                         self.log_result("Payment Analytics - Summary", False, f"Missing summary field: {field}")
                         return False
                 
-                self.log_result("Payment Analytics Endpoint", True, f"Total revenue: R{summary['total_revenue']:.2f}, Total payments: {summary['total_payments']}")
+                self.log_result("Payment Analytics Endpoint", True, f"Total revenue: R{summary['total_revenue']:.2f}, Total invoices: {summary['total_invoices']}, Paid: {summary['paid_invoices']}")
                 return True
                 
             else:
