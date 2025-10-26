@@ -1683,7 +1683,13 @@ async def login(credentials: UserLogin):
         raise HTTPException(status_code=401, detail="Invalid credentials")
     
     token = create_access_token({"sub": user["email"], "role": user["role"]})
-    return Token(access_token=token)
+    
+    # Return additional flags for frontend to handle
+    return Token(
+        access_token=token,
+        first_login=user.get("first_login", False),
+        must_change_password=user.get("must_change_password", False)
+    )
 
 @api_router.get("/auth/me", response_model=User)
 
