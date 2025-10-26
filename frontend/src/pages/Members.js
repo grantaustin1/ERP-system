@@ -1162,50 +1162,56 @@ export default function Members() {
                       <div className="flex gap-2">
                         <PermissionGuard permission="members:edit">
                           {member.freeze_status ? (
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleUnfreezeMembership(member.id);
-                              }}
-                              className="flex-1 border-emerald-500 text-emerald-400 hover:bg-emerald-500/10"
-                            >
-                              <Activity className="w-4 h-4 mr-1" />
-                              Unfreeze
-                            </Button>
+                            <WithTooltip tooltip="Unfreeze this member's membership to restore access">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleUnfreezeMembership(member.id);
+                                }}
+                                className="flex-1 border-emerald-500 text-emerald-400 hover:bg-emerald-500/10"
+                              >
+                                <Activity className="w-4 h-4 mr-1" />
+                                Unfreeze
+                              </Button>
+                            </WithTooltip>
                           ) : (
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setSelectedMemberForAction(member);
-                                setFreezeDialogOpen(true);
-                              }}
-                              className="flex-1 border-yellow-500 text-yellow-400 hover:bg-yellow-500/10"
-                              disabled={member.membership_status === 'cancelled'}
-                            >
-                              <Activity className="w-4 h-4 mr-1" />
-                              Freeze
-                            </Button>
+                            <WithTooltip tooltip="Temporarily freeze this membership (e.g., for medical leave or travel)">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setSelectedMemberForAction(member);
+                                  setFreezeDialogOpen(true);
+                                }}
+                                className="flex-1 border-yellow-500 text-yellow-400 hover:bg-yellow-500/10"
+                                disabled={member.membership_status === 'cancelled'}
+                              >
+                                <Activity className="w-4 h-4 mr-1" />
+                                Freeze
+                              </Button>
+                            </WithTooltip>
                           )}
                         </PermissionGuard>
                         <PermissionGuard permission="members:delete">
                           {member.membership_status !== 'cancelled' && (
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setSelectedMemberForAction(member);
-                                setCancelDialogOpen(true);
-                              }}
-                              className="flex-1 border-red-500 text-red-400 hover:bg-red-500/10"
-                            >
-                              <XCircle className="w-4 h-4 mr-1" />
-                              Cancel
-                            </Button>
+                            <WithTooltip tooltip="Permanently cancel this member's membership">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setSelectedMemberForAction(member);
+                                  setCancelDialogOpen(true);
+                                }}
+                                className="flex-1 border-red-500 text-red-400 hover:bg-red-500/10"
+                              >
+                                <XCircle className="w-4 h-4 mr-1" />
+                                Cancel
+                              </Button>
+                            </WithTooltip>
                           )}
                         </PermissionGuard>
                       </div>
